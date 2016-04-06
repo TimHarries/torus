@@ -21,6 +21,9 @@ if [[ $? -eq 0 ]]; then
     echo "Compilation completed with ${num_warn} warnings."
 else
     echo "Compilation failed."
+    echo "*** Compile log follows ****************************"
+    cat ${log_file}
+    echo "*** End compile log ********************************"
     export RETURN_CODE=2
 fi
 
@@ -518,14 +521,16 @@ do
 shift
 done
 
+# Set platform specific variables. We will assume that we are running on post-zen.
+export PATH=/home/torustest/openmpi/bin:/home/torustest/bin:/usr/local/bin:${PATH}:/usr/bin
+export TORUS_FITSLIBS="/home/torustest/cfitsio/lib"
+export TORUS_FC="gfortran -g -fcheck=all"
+
 case ${MODE} in 
 
     daily) export SYS_TO_TEST="gfortran ompiosx ompiosx-openmp"
            export BUILD_ONLY=""
 	   export DEBUG_OPTS="yes"
-	   export TORUS_FC="gfortran -g -fcheck=all"
-	   export TORUS_FITSLIBS="/home/torustest/cfitsio/lib"
-	   export PATH=~/openmpi/bin:~/bin:/usr/local/bin:${PATH}:/usr/bin
 	   echo -------------------------------------------------------------------
 	   echo TORUS daily test suite started on `date`
 	   echo -------------------------------------------------------------------
@@ -534,8 +539,6 @@ case ${MODE} in
     workingcopy) export SYS_TO_TEST="gfortran ompiosx ompiosx-openmp"
            export BUILD_ONLY=""
 	   export DEBUG_OPTS="yes"
-	   export TORUS_FC="gfortran -g -fcheck=all"
-	   export TORUS_FITSLIBS="${HOME}/cfitsio/lib"
 	   echo -------------------------------------------------------------------
 	   echo TORUS working copy tests started on `date`
 	   echo -------------------------------------------------------------------
@@ -544,9 +547,6 @@ case ${MODE} in
     build) export SYS_TO_TEST=" "
            export BUILD_ONLY="gfortran ompiosx ompiosx-openmp"
 	   export DEBUG_OPTS="yes"
-	   export TORUS_FC="gfortran -g -fcheck=all"
-	   export TORUS_FITSLIBS="/home/torustest/cfitsio"
-	   export PATH=~/openmpi/bin:~/bin:/usr/local/bin:${PATH}:/usr/bin
 	   echo -------------------------------------------------------------------
 	   echo TORUS build tests started on `date`
 	   echo -------------------------------------------------------------------
@@ -555,9 +555,6 @@ case ${MODE} in
     stable) export SYS_TO_TEST="gfortran ompiosx ompiosx-openmp"
 	    export BUILD_ONLY=""
             export DEBUG_OPTS="yes no"
-	    export TORUS_FC="gfortran -g -fcheck=all"
-	    export TORUS_FITSLIBS="/Users/acreman/cfitsio"
-	    export PATH=~/bin:/usr/local/bin:${PATH}
 	    echo -------------------------------------------------------------------
 	    echo TORUS stable version tests started on `date`
 	    echo -------------------------------------------------------------------
