@@ -54,7 +54,7 @@ program torus
 
 
   implicit none
-  integer :: unusedvariable ! for testing the test suite (DA)
+
   character(len=80) :: message
 !  character(len=10) :: stringArray(10)
 !  integer :: i
