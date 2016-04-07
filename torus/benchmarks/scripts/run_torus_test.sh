@@ -1,18 +1,17 @@
 #!/bin/ksh
-# Build the Torus executable for the system defined by the 
-# SYSTEM environment variable
+# Build the Torus executable
 make_build()
 {
 mkdir build
 cd    build 
 
-echo "Building Torus for ${SYSTEM} OpenMP=${USEOPENMP}"
-log_file=compile_log_${SYSTEM}.txt
+echo "Building Torus for ${THISCONFIG} configuration"
+log_file=compile_log_${THISCONFIG}.txt
 rsync -a ${TEST_DIR}/torus/* .
 rsync -a ${TEST_DIR}/torus/.svn .
 
 /usr/bin/make depends > ${log_file} 2>&1 
-/usr/bin/make debug=${USEDEBUGFLAGS} openmp=${USEOPENMP} coverage=${USEGCOV} >> ${log_file} 2>&1
+/usr/bin/make debug=${USEDEBUGFLAGS} mpi=${USEMPI} openmp=${USEOPENMP} coverage=${USEGCOV} >> ${log_file} 2>&1
 
 if [[ $? -eq 0 ]]; then
 # Count number of warnings. Subtract 2 because there are always warnings
@@ -57,36 +56,35 @@ ln -s ../moltest.dat
 ln -s ../compare_molbench.f90
 ln -s ../check_cube.f90
 
-log_file=run_log_${SYSTEM}_${THIS_BENCH}.txt
+log_file=run_log_${THISCONFIG}_${THIS_BENCH}.txt
 export TORUS_JOB_DIR=./
 ln -s ${WORKING_DIR}/build/torus.${SYSTEM} .
 
-case ${SYSTEM} in
-    ompiosx) mpirun -np ${NUM_MPI_PROC} torus.${SYSTEM} > ${log_file} 2>&1 ;;
-    gfortran) ./torus.${SYSTEM} > ${log_file} 2>&1 ;;
-    *) echo "Unrecognised SYSTEM type. Skipping this test.";;
+case ${THISCONFIG} in
+    openmp) ./torus.${SYSTEM} > ${log_file} 2>&1 ;;
+    mpi)    mpirun -np ${NUM_MPI_PROC} torus.${SYSTEM} > ${log_file} 2>&1 ;;
+    hybrid) mpirun -np ${NUM_MPI_PROC} torus.${SYSTEM} > ${log_file} 2>&1 ;;
+    *) echo "Unrecognised configuration. Skipping this test.";;
 esac
 
-#Rename the tune.dat file 
-mv tune.dat tune_${SYSTEM}_${THIS_BENCH}.txt 
+mv tune.dat tune_${THISCONFIG}_${THIS_BENCH}.txt 
 }
 
 run_bench()
 {
 cd ${WORKING_DIR}/benchmarks/${THIS_BENCH}
 ln -s ${WORKING_DIR}/build/torus.${SYSTEM} .
-log_file=run_log_${SYSTEM}_${THIS_BENCH}.txt
+log_file=run_log_${THISCONFIG}_${THIS_BENCH}.txt
 export TORUS_JOB_DIR=./
 
-case ${SYSTEM} in
-    ompiosx) mpirun -np ${NUM_MPI_PROC} torus.${SYSTEM} > ${log_file} 2>&1 ;;
-    gfortran) ./torus.${SYSTEM} > ${log_file} 2>&1 ;;
-    *) echo "Unrecognised SYSTEM type. Skipping this test.";;
+case ${THISCONFIG} in
+    openmp) ./torus.${SYSTEM} > ${log_file} 2>&1 ;;
+    mpi)    mpirun -np ${NUM_MPI_PROC} torus.${SYSTEM} > ${log_file} 2>&1 ;;
+    hybrid) mpirun -np ${NUM_MPI_PROC} torus.${SYSTEM} > ${log_file} 2>&1 ;;
+    *) echo "Unrecognised configuration. Skipping this test.";;
 esac
 
-#Rename the tune.dat file 
-mv tune.dat tune_${SYSTEM}_${THIS_BENCH}.txt 
-
+mv tune.dat tune_${THISCONFIG}_${THIS_BENCH}.txt 
 }
 
 # Run Torus with a domain decomposed grid.  
@@ -96,8 +94,8 @@ cd ${WORKING_DIR}/benchmarks/${THIS_BENCH}
 ln -s ${WORKING_DIR}/build/torus.${SYSTEM} . 
 mpirun -np $1 torus.${SYSTEM} > run_log_${THIS_BENCH}.txt 2>&1
 mv tune.dat tune_${THIS_BENCH}.txt
-# The check_completion function expects the run log to be tagged with the SYSTEM
-ln -s run_log_${THIS_BENCH}.txt run_log_${SYSTEM}_${THIS_BENCH}.txt
+# The check_completion function expects the run log to be tagged with the configuration
+ln -s run_log_${THIS_BENCH}.txt run_log_${THISCONFIG}_${THIS_BENCH}.txt
 }
 
 setup_sphbench()
@@ -186,7 +184,7 @@ ${TORUS_FC} -o check check.f90 -lcfitsio -L${TORUS_FITSLIBS}
 # even if Torus has bugged out. 
 check_completion()
 {
-    grep "Torus completed" run_log_${SYSTEM}_${THIS_BENCH}.txt > /dev/null
+    grep "Torus completed" run_log_${THISCONFIG}_${THIS_BENCH}.txt > /dev/null
     if [[ $? -eq 0 ]]; then
 	echo "Torus completed OK"
     else
@@ -233,39 +231,39 @@ fi
 run_torus_test_suite()
 {
 
-for sys in ${SYS_TO_TEST}; do
+for config in ${CONFIG_TO_TEST}; do
 
-# Details of how to run each system are set here
+# Details of how to run each configuration are set here
+    export THISCONFIG=${config}
     export USEGCOV=no
-# OpenMPI will bind to core by default so we'll use the 2 OpenMP threads available from hyperthreading.
-# Binding can be disabled by giving mpirun the '--bind-to none' option if more OpenMP threads are required.
-    if [[ ${sys} == "ompiosx-openmp" ]]; then
-	export SYSTEM=ompiosx
+    if [[ ${config} == "hybrid" ]]; then
 	export USEOPENMP=yes
+	export USEMPI=yes
+	# OpenMPI will bind to core by default so we'll use the 2 OpenMP threads available from hyperthreading.
+	# Binding can be disabled by giving mpirun the '--bind-to none' option if more OpenMP threads are required.
 	export NUM_MPI_PROC=4
 	export OMP_NUM_THREADS=2
-    elif [[ ${sys} == "ompiosx" ]]; then
-	export SYSTEM=ompiosx
+    elif [[ ${config} == "mpi" ]]; then
 	export USEOPENMP=no
+	export USEMPI=yes
 	export NUM_MPI_PROC=8
 	export USEGCOV=yes
-    elif [[ ${sys} == "gfortran" ]]; then
-	export SYSTEM=gfortran
+    elif [[ ${config} == "openmp" ]]; then
+	export USEMPI=no
 	export USEOPENMP=yes
 	export OMP_NUM_THREADS=8
     else
-	echo "${sys} not recognised. Aborting."
+	echo "${config} not recognised. Aborting."
 	exit 1
     fi
 
     echo
-    echo "======================================"
-    echo "Running tests for system ${SYSTEM}"
-    echo "OpenMP: ${USEOPENMP}"
-    echo "======================================"
+    echo "=============================================="
+    echo "Running tests for ${THISCONFIG} configuration"
+    echo "=============================================="
     echo
 
-    export WORKING_DIR=${TEST_DIR}/benchmarks_${sys}
+    export WORKING_DIR=${TEST_DIR}/benchmarks_${config}
     mkdir ${WORKING_DIR}
     cd    ${WORKING_DIR} 
     cp -r ${TEST_DIR}/torus/benchmarks . 
@@ -273,11 +271,11 @@ for sys in ${SYS_TO_TEST}; do
 # Build code
     make_build
 
-# Check if we have an executable. If not proceed to the next SYSTEM
+# Check if we have an executable. If not proceed to the next configuration
     if [[ -x build/torus.${SYSTEM} ]]; then
-	echo "Found executable file torus.${SYSTEM}"
+	echo "Found executable."
     else
-	echo "Executable not found. Skipping ${SYSTEM}"
+	echo "Executable not found. Skipping ${THISCONFIG} configuration"
 	continue
     fi
 
@@ -285,67 +283,67 @@ for sys in ${SYS_TO_TEST}; do
     make_comparespec
 
 # Run hydro benchmark
-    case ${sys} in
-	ompiosx)  echo "Running hydro benchmark"
+    case ${config} in
+	mpi)  echo "Running hydro benchmark"
 	    export THIS_BENCH=hydro
 	    run_dom_decomp 3
-	    check_hydro  > check_log_${SYSTEM}_hydro.txt 2>&1 
-	    cat check_log_${SYSTEM}_hydro.txt
+	    check_hydro  > check_log_${config}_hydro.txt 2>&1 
+	    cat check_log_${config}_hydro.txt
 	    check_completion
 	    echo ;;
-	*) echo "Hydro benchmark does not run on this system. Skipping"
+	*) echo "Hydro benchmark only runs with mpi configuration. Skipping"
 	    echo ;;
     esac
 
 # Domain decomposed Lexington benchmark
-    case ${sys} in
-	ompiosx)  echo "Running domain decomposed HII region benchmark"
+    case ${config} in
+	mpi)  echo "Running domain decomposed HII region benchmark"
 	    export THIS_BENCH=HII_regionMPI
 	    run_dom_decomp 9
-	    check_hII > check_log_${SYSTEM}_hII_MPI.txt 2>&1 
-	    cat check_log_${SYSTEM}_hII_MPI.txt
+	    check_hII > check_log_${config}_hII_MPI.txt 2>&1 
+	    cat check_log_${config}_hII_MPI.txt
 	    check_completion
 	    echo ;;
-	*) echo "Domain decomposed HII region does not run on this system. Skipping"
+	*) echo "Domain decomposed HII region only runs with mpi configuration. Skipping"
 	    echo ;;
     esac
 
 # Imaging test
-    case ${sys} in
-	ompiosx)  echo "Running imaging benchmark"
+    case ${config} in
+	mpi)  echo "Running imaging benchmark"
 	    export THIS_BENCH=cylinder_image_test
 	    run_dom_decomp 9
-	    check_image > check_log_${SYSTEM}_image.txt 2>&1 
-	    cat check_log_${SYSTEM}_image.txt
+	    check_image > check_log_${config}_image.txt 2>&1 
+	    cat check_log_${config}_image.txt
             check_completion
 	    echo ;;
-	*) echo "Imaging benchmark does not run on this system. Skipping"
+	*) echo "Imaging benchmark only runs with mpi configuration. Skipping"
 	    echo ;;
     esac
 
 # Gravity solver test
-    case ${sys} in
-	ompiosx)  echo "Running 3D gravity solver test"
+    case ${config} in
+	mpi)  echo "Running 3D gravity solver test"
 	    export THIS_BENCH=gravtest
 	    run_dom_decomp 9
-	    check_it > check_log_${SYSTEM}_gravtest.txt 2>&1 
-	    tail check_log_${SYSTEM}_gravtest.txt
+	    check_it > check_log_${config}_gravtest.txt 2>&1 
+	    tail check_log_${config}_gravtest.txt
 	    check_completion
 	    echo ;;
-	*) echo "Gravity solver test does not run on this system. Skipping"
+	*) echo "Gravity solver test only runs with mpi configuration. Skipping"
 	    echo ;;
     esac
 
 # Gravity solver test in 2D
-    case ${sys} in
-	ompiosx)  echo "Running 2D gravity solver test"
+    case ${config} in
+	mpi)  echo "Running 2D gravity solver test"
 	    export THIS_BENCH=gravtest_2d
 	    run_dom_decomp 5
-	    check_it > check_log_${SYSTEM}_gravtest_2d.txt 2>&1 
-	    tail check_log_${SYSTEM}_gravtest_2d.txt
+	    check_it > check_log_${config}_gravtest_2d.txt 2>&1 
+	    tail check_log_${config}_gravtest_2d.txt
 	    check_completion
 	    echo ;;
-	*) echo "2D Gravity solver test does not run on this system. Skipping"
+	*) echo "2D Gravity solver test only runs with mpi configuration. Skipping"
 	    echo ;;
     esac
 
@@ -353,8 +351,8 @@ for sys in ${SYS_TO_TEST}; do
     echo "Running N body test"
     export THIS_BENCH=nbody
     run_bench
-    check_it > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
-    cat check_log_${SYSTEM}_${THIS_BENCH}.txt
+    check_it > check_log_${config}_${THIS_BENCH}.txt 2>&1 
+    cat check_log_${config}_${THIS_BENCH}.txt
     check_completion
     echo
 
@@ -362,33 +360,33 @@ for sys in ${SYS_TO_TEST}; do
     echo "Running disc benchmark"
     export THIS_BENCH=disc
     run_bench 
-    check_benchmark > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
-    cat check_log_${SYSTEM}_${THIS_BENCH}.txt
+    check_benchmark > check_log_${config}_${THIS_BENCH}.txt 2>&1 
+    cat check_log_${config}_${THIS_BENCH}.txt
     check_completion
     echo
 
     echo "Running HII region benchmark"
     export THIS_BENCH=HII_region
     run_bench
-    check_hII > check_log_${SYSTEM}_hII.txt 2>&1 
-    cat check_log_${SYSTEM}_hII.txt
+    check_hII > check_log_${config}_hII.txt 2>&1 
+    cat check_log_${config}_hII.txt
     check_completion
     echo
 
     echo "Running molecular benchmark"
     export THIS_BENCH=molebench 
     run_bench
-    check_molebench > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
-    tail -20 check_log_${SYSTEM}_${THIS_BENCH}.txt # Lots of output so tail this file
+    check_molebench > check_log_${config}_${THIS_BENCH}.txt 2>&1 
+    tail -20 check_log_${config}_${THIS_BENCH}.txt # Lots of output so tail this file
     check_completion
     echo
 
     echo "Running molecular restart test"
     export THIS_BENCH=moleRestart
     run_molecularRestart
-    check_molebench > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1
-    ./check_nrays.sh run_log_${SYSTEM}_${THIS_BENCH}.txt >> check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
-    tail -20 check_log_${SYSTEM}_${THIS_BENCH}.txt # Lots of output so tail this file
+    check_molebench > check_log_${config}_${THIS_BENCH}.txt 2>&1
+    ./check_nrays.sh run_log_${config}_${THIS_BENCH}.txt >> check_log_${config}_${THIS_BENCH}.txt 2>&1 
+    tail -20 check_log_${config}_${THIS_BENCH}.txt # Lots of output so tail this file
     check_completion
     echo
 
@@ -396,8 +394,8 @@ for sys in ${SYS_TO_TEST}; do
     export THIS_BENCH=sphbench
     setup_sphbench
     run_bench
-    ./checkSphToGrid.pl run_log_${SYSTEM}_${THIS_BENCH}.txt > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
-    cat check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1
+    ./checkSphToGrid.pl run_log_${config}_${THIS_BENCH}.txt > check_log_${config}_${THIS_BENCH}.txt 2>&1 
+    cat check_log_${config}_${THIS_BENCH}.txt 2>&1
     check_completion
     echo
 
@@ -406,8 +404,8 @@ for sys in ${SYS_TO_TEST}; do
     cd ${WORKING_DIR}/benchmarks/sphToGridBinary
     ln -s ${HOME}/torus_dev/forTestSuite/SQA0321
     run_bench
-    ./checkSphToGridChem.pl run_log_${SYSTEM}_${THIS_BENCH}.txt > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
-    cat check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1
+    ./checkSphToGridChem.pl run_log_${config}_${THIS_BENCH}.txt > check_log_${config}_${THIS_BENCH}.txt 2>&1 
+    cat check_log_${config}_${THIS_BENCH}.txt 2>&1
     check_completion
     echo
 
@@ -416,16 +414,16 @@ for sys in ${SYS_TO_TEST}; do
     cd ${WORKING_DIR}/benchmarks/restart
     ln -s ../disc/lucy_grid_tmp.dat
     run_bench
-    check_benchmark > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
-    cat check_log_${SYSTEM}_${THIS_BENCH}.txt
+    check_benchmark > check_log_${config}_${THIS_BENCH}.txt 2>&1 
+    cat check_log_${config}_${THIS_BENCH}.txt
     check_completion
     echo
 
     echo "Running angular imaging test"
     export THIS_BENCH=angularImageTest
     run_bench
-    check_angImg > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1 
-    cat check_log_${SYSTEM}_${THIS_BENCH}.txt
+    check_angImg > check_log_${config}_${THIS_BENCH}.txt 2>&1 
+    cat check_log_${config}_${THIS_BENCH}.txt
     check_completion
     echo
 
@@ -434,8 +432,8 @@ for sys in ${SYS_TO_TEST}; do
 	echo "Running cylindrical polar disc benchmark"
 	export THIS_BENCH=disc_cylindrical
 	run_bench
-	check_benchmark > check_log_${SYSTEM}_${THIS_BENCH}.txt 2>&1
-	cat check_log_${SYSTEM}_${THIS_BENCH}.txt
+	check_benchmark > check_log_${config}_${THIS_BENCH}.txt 2>&1
+	cat check_log_${config}_${THIS_BENCH}.txt
 	check_completion
 	echo 
     fi
@@ -445,30 +443,25 @@ done
 
 build_only_tests()
 {
+for config in ${BUILD_ONLY}; do
 
-for sys in ${BUILD_ONLY}; do
-
-echo
-echo "Running build-only test for ${sys}"
-echo
-
-# Details of how to build each system are set here
+    export THISCONFIG=${config}
     export USEGCOV=no
-    if [[ ${sys} == "ompiosx-openmp" ]]; then
-	export SYSTEM=ompiosx
+    if [[ ${config} == "hybrid" ]]; then
+	export USEMPI=yes
 	export USEOPENMP=yes
-    elif [[ ${sys} == "ompiosx" ]]; then
-	export SYSTEM=ompiosx
+    elif [[ ${config} == "mpi" ]]; then
+	export USEMPI=yes
 	export USEOPENMP=no
-    elif [[ ${sys} == "gfortran" ]]; then
-	export SYSTEM=gfortran
+    elif [[ ${config} == "openmp" ]]; then
+	export USEMPI=no
 	export USEOPENMP=yes
     else
-	echo "${sys} not recognised. Aborting."
+	echo "${config} not recognised. Aborting."
 	exit 1
     fi
 
-    export WORKING_DIR=${TEST_DIR}/build_only_${sys}
+    export WORKING_DIR=${TEST_DIR}/build_only_${config}
     mkdir ${WORKING_DIR}
     cd    ${WORKING_DIR} 
 
@@ -500,6 +493,7 @@ export RETURN_CODE=0
 export TORUS_SVN_PATH=https://repository.astro.ex.ac.uk/torus/trunk/torus/
 export TORUS_SVN_REVISION=
 export TORUS_WORKING_COPY=none
+export SYSTEM=testsuite
 
 # Parse command line arguments
 while [ $# -gt 0 ]
@@ -528,7 +522,7 @@ export TORUS_FC="gfortran -g -fcheck=all"
 
 case ${MODE} in 
 
-    daily) export SYS_TO_TEST="gfortran ompiosx ompiosx-openmp"
+    daily) export CONFIG_TO_TEST="openmp mpi hybrid"
            export BUILD_ONLY=""
 	   export DEBUG_OPTS="yes"
 	   echo -------------------------------------------------------------------
@@ -536,7 +530,7 @@ case ${MODE} in
 	   echo -------------------------------------------------------------------
 	   echo;;
 
-    workingcopy) export SYS_TO_TEST="gfortran ompiosx ompiosx-openmp"
+    workingcopy) export CONFIG_TO_TEST="openmp mpi hybrid"
            export BUILD_ONLY=""
 	   export DEBUG_OPTS="yes"
 	   echo -------------------------------------------------------------------
@@ -544,15 +538,15 @@ case ${MODE} in
 	   echo -------------------------------------------------------------------
 	   echo;;
 
-    build) export SYS_TO_TEST=" "
-           export BUILD_ONLY="gfortran ompiosx ompiosx-openmp"
+    build) export CONFIG_TO_TEST=" "
+           export BUILD_ONLY="openmp mpi hybrid"
 	   export DEBUG_OPTS="yes"
 	   echo -------------------------------------------------------------------
 	   echo TORUS build tests started on `date`
 	   echo -------------------------------------------------------------------
 	   echo;;
 
-    stable) export SYS_TO_TEST="gfortran ompiosx ompiosx-openmp"
+    stable) export CONFIG_TO_TEST="openmp mpi hybrid"
 	    export BUILD_ONLY=""
             export DEBUG_OPTS="yes no"
 	    echo -------------------------------------------------------------------
@@ -579,7 +573,7 @@ for opt in ${DEBUG_OPTS}; do
 
     export TORUS_DATA=${TEST_DIR}/torus/data
 
-# Set up working dir and check out source code
+# Set up working directory and check out source code
     prepare_run
 
 # Test build but don't run benchmarks
