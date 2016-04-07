@@ -150,7 +150,7 @@ ifeq ($(SYSTEM), thaw)
     CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
 endif
 
-# MPI build with the gfortran compiler. Used for daily test on post-zen with gfortran 4.8.2.
+# MPI build with the gfortran compiler. 
 ifeq ($(SYSTEM), ompiosx)
     F95COMP  = mpif90 
     DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-surprising -Wno-error=maybe-uninitialized -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
@@ -159,6 +159,22 @@ ifeq ($(SYSTEM), ompiosx)
     EXE = torus.ompiosx
     ZLIBLIBS = -lz	
     MPIFLAG = -DMPI
+    KNOWN_SYSTEM = yes
+endif
+
+# For use with the test suite on post-zen
+ifeq ($(SYSTEM), testsuite)
+    ifeq ($(mpi), yes)
+        F95COMP = mpif90
+        MPIFLAG = -DMPI
+    else
+        F95COMP = gfortran 
+    endif
+    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-surprising -Wno-error=maybe-uninitialized -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow
+    FASTFLAG = -O3
+    CFITSIOLIBS = -L/home/torustest/cfitsio/lib -lcfitsio
+    EXE = torus.testsuite
+    ZLIBLIBS = -lz	
     KNOWN_SYSTEM = yes
 endif
 
@@ -471,7 +487,9 @@ endif
 
 # Set OpenMP flags
 ifeq ($(openmp), yes)
+# Assume ifort as the default compiler
   OPENMPFLAG = -openmp
+# Change the openmp flag for gfortran-based systems
   ifeq ($(SYSTEM), gfortran)
      OPENMPFLAG = -fopenmp 
 # -static-libgcc fixes linking problems under Mac OS
@@ -480,6 +498,9 @@ ifeq ($(openmp), yes)
   ifeq ($(SYSTEM), ompiosx)
      OPENMPFLAG = -fopenmp 
      STARLIBS += -static-libgcc
+  endif
+  ifeq ($(SYSTEM), testsuite)
+     OPENMPFLAG = -fopenmp 
   endif
   ETCFLAG += $(OPENMPFLAG)
 endif
