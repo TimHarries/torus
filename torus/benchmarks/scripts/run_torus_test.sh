@@ -471,6 +471,240 @@ for config in ${BUILD_ONLY}; do
 done
 }
 
+# Process the output from gcov coverage analysis to work out what fraction of Torus has been 
+# exercised by the test suite
+process_gcov()
+{
+cd ${TEST_DIR}/benchmarks_mpi/build
+
+echo "--------------------------"
+echo "Processing coverage output"
+echo "--------------------------"
+
+rm -f coverage.dat coverage_sorted.dat
+
+for file in *90
+do
+    gcov ${file} >> coverage.dat 2> /dev/null
+done
+
+# Trailing space on grep is to cope with filenames which contain the string File
+grep 'File ' -A1 coverage.dat | tr '\n' ' ' | tr '-' '\n' | tr ':' ' ' >> coverage_sorted.dat
+mv coverage_sorted.dat coverage_sorted.dat~
+sort -r -g --key=5 < coverage_sorted.dat~ | crush > coverage_sorted.dat
+export num_prof_lines=`awk '{sum += $7*$5/100} END {print sum}' $1 < coverage_sorted.dat`
+export num_lines=`awk '{sum += $7} END {print sum}' $1 < coverage_sorted.dat`
+export prof_frac=`echo ${num_prof_lines} ${num_lines} | awk '{print $1/$2}`
+
+echo "Total number of lines: ${num_lines}"
+echo "Fraction profiled: ${prof_frac}"
+echo
+
+}
+
+# Process the timing information in tune.dat
+process_timing()
+{
+cd ${TEST_DIR}
+
+echo
+echo "--------------------------------"
+echo "Timing information from tune.dat"
+echo "--------------------------------"
+echo
+
+for tunefile in `find . -name 'tune*.txt'`; do
+    echo ${tunefile}
+    tail -1 ${tunefile}
+    echo
+done
+}
+
+check_results()
+{
+cd ${TEST_DIR}
+    
+suite_status="PASSED"
+
+echo "Summary of test results: " > header
+echo " " >> header
+
+# Test for success of disc benchmark
+num_success=`/bin/grep "TORUS: Test successful"  benchmarks_hybrid/benchmarks/disc/check_log_hybrid_disc.txt | /usr/bin/wc -l`
+num_success2=`/bin/grep "TORUS: Test successful" benchmarks_openmp/benchmarks/disc/check_log_openmp_disc.txt | /usr/bin/wc -l`
+num_success3=`/bin/grep "TORUS: Test successful" benchmarks_mpi/benchmarks/disc/check_log_mpi_disc.txt | /usr/bin/wc -l`
+if [[ ${num_success} -eq 3 && ${num_success2} -eq 3  && ${num_success3} -eq 3 ]]; then
+    echo "Disc benchmark successful" >> header 
+else
+    echo "!! Disc benchmark FAILED !!" >> header
+    suite_status="FAILED"
+fi
+
+if [[ ${MODE} == "stable" ]]; then
+    # Test for success of 3D disc benchmark
+    num_success=`/bin/grep -c "TORUS: Test successful"  benchmarks_hybrid/benchmarks/disc_cylindrical/check_log_hybrid_disc_cylindrical.txt`
+    num_success2=`/bin/grep -c "TORUS: Test successful" benchmarks_openmp/benchmarks/disc_cylindrical/check_log_openmp_disc_cylindrical.txt`
+    num_success3=`/bin/grep -c "TORUS: Test successful" benchmarks_mpi/benchmarks/disc_cylindrical/check_log_mpi_disc_cylindrical.txt`
+# SEDs only, no image so look for 2 successful results
+    if [[ ${num_success} -eq 2 && ${num_success2} -eq 2  && ${num_success3} -eq 2 ]]; then
+	echo "3D Disc benchmark successful" >> header 
+    else
+	echo "!! 3D Disc benchmark FAILED !!" >> header
+	suite_status="FAILED"
+    fi
+fi
+
+# Test for success of molebench
+num_success=`/bin/grep -c "TORUS: Test successful"  benchmarks_hybrid/benchmarks/molebench/check_log_hybrid_molebench.txt`
+num_success2=`/bin/grep -c "TORUS: Test successful" benchmarks_openmp/benchmarks/molebench/check_log_openmp_molebench.txt`
+num_success3=`/bin/grep -c "TORUS: Test successful" benchmarks_mpi/benchmarks/molebench/check_log_mpi_molebench.txt`
+if [[ ${num_success} -eq 2 && ${num_success2} -eq 2 && ${num_success3} -eq 2 ]]; then
+    echo "Molecular benchmark successful." >> header
+else
+    echo "!! Molecular benchmark FAILED !!" >> header
+    suite_status="FAILED"
+fi
+
+# Test for success of molecular mod restart
+num_success=`/bin/grep -c "TORUS: Test successful"  benchmarks_hybrid/benchmarks/molebench/restart/check_log_hybrid_moleRestart.txt`
+num_success2=`/bin/grep -c "TORUS: Test successful" benchmarks_openmp/benchmarks/molebench/restart/check_log_openmp_moleRestart.txt`
+num_success3=`/bin/grep -c "TORUS: Test successful" benchmarks_mpi/benchmarks/molebench/restart/check_log_mpi_moleRestart.txt`
+if [[ ${num_success} -eq 3 && ${num_success2} -eq 3 && ${num_success3} -eq 3 ]]; then
+    echo "Molecular restart successful." >> header
+else
+    echo "!! Molecular restart FAILED !!" >> header
+    suite_status="FAILED"
+fi
+
+# Test for success of hydro benchmark
+num_success=`/bin/grep "TORUS: Test successful" benchmarks_mpi/benchmarks/hydro/check_log_mpi_hydro.txt | /usr/bin/wc -l`
+if [[ ${num_success} -eq 1 ]]; then
+    echo "Hydro benchmark successful." >> header
+else
+    echo "!! Hydro benchmark FAILED !!" >> header
+    suite_status="FAILED"
+fi
+
+# Test for success of hII region benchmark
+num_success=`/bin/grep "TORUS: Test successful" benchmarks_hybrid/benchmarks/HII_region/check_log_hybrid_hII.txt | /usr/bin/wc -l`
+num_success2=`/bin/grep "TORUS: Test successful" benchmarks_openmp/benchmarks/HII_region/check_log_openmp_hII.txt | /usr/bin/wc -l`
+num_success3=`/bin/grep "TORUS: Test successful" benchmarks_mpi/benchmarks/HII_region/check_log_mpi_hII.txt | /usr/bin/wc -l`
+if [[ ${num_success} -eq 1 && ${num_success2} -eq 1 && ${num_success3} -eq 1 ]]; then
+    echo "HII region benchmark successful." >> header
+else
+    echo "!! HII region benchmark FAILED !!" >> header
+    suite_status="FAILED"
+fi
+
+# Test for success of domain decomposed hII region benchmark                                                                  
+num_success=`/bin/grep "TORUS: Test successful" benchmarks_mpi/benchmarks/HII_regionMPI/check_log_mpi_hII_MPI.txt | /usr/bin/wc -l`
+if [[ ${num_success} -eq 1 ]]; then
+    echo "MPI HII region benchmark successful." >> header
+else
+    echo "!! MPI HII region benchmark FAILED !!" >> header
+    suite_status="FAILED"
+fi
+
+# Test for success of imaging benchmark
+num_success=`/bin/grep "Test Successful" benchmarks_mpi/benchmarks/cylinder_image_test/check_log_mpi_image.txt | /usr/bin/wc -l`
+if [[ ${num_success} -eq 1 ]]; then
+    echo "Image benchmark successful. " >> header
+else
+    echo "!! Image benchmark FAILED !!" >> header
+    suite_status="FAILED"
+fi
+
+# Test for success of gravity solver test
+num_success=`/bin/grep "Torus gravity solver test successful" benchmarks_mpi/benchmarks/gravtest/check_log_mpi_gravtest.txt | /usr/bin/wc -l`
+if [[ ${num_success} -eq 1 ]]; then
+    echo "Gravity test successful. " >> header
+else
+    echo "!! Gravity test FAILED !!" >> header
+    suite_status="FAILED"
+fi
+
+# Test for success of 2D gravity solver test
+num_success=`/bin/grep "Torus gravity solver test successful" benchmarks_mpi/benchmarks/gravtest_2d/check_log_mpi_gravtest_2d.txt | /usr/bin/wc -l`
+if [[ ${num_success} -eq 1 ]]; then
+    echo "2D gravity test successful. " >> header
+else
+    echo "!! 2D gravity test FAILED !!" >> header
+    suite_status="FAILED"
+fi
+
+# Test for success of nbody test
+num_success=`/bin/grep "Torus nbody test successful" benchmarks_openmp/benchmarks/nbody/check_log_openmp_nbody.txt | /usr/bin/wc -l`
+num_success2=`/bin/grep "Torus nbody test successful" benchmarks_hybrid/benchmarks/nbody/check_log_hybrid_nbody.txt | /usr/bin/wc -l`
+num_success3=`/bin/grep "Torus nbody test successful" benchmarks_mpi/benchmarks/nbody/check_log_mpi_nbody.txt | /usr/bin/wc -l`
+if [[  ${num_success} -eq 1 && ${num_success2} -eq 1 && ${num_success3} -eq 1 ]]; then
+    echo "N body test successful. " >> header
+else
+    echo "!! N body test FAILED !!" >> header
+    suite_status="FAILED"
+fi
+
+# Test for success of SPH to grid test
+num_success=`/bin/grep "TORUS: Test successful" benchmarks_hybrid/benchmarks/sphbench/check_log_hybrid_sphbench.txt | /usr/bin/wc -l`
+num_success2=`/bin/grep "TORUS: Test successful" benchmarks_openmp/benchmarks/sphbench/check_log_openmp_sphbench.txt | /usr/bin/wc -l`
+num_success3=`/bin/grep "TORUS: Test successful" benchmarks_mpi/benchmarks/sphbench/check_log_mpi_sphbench.txt | /usr/bin/wc -l`
+if [[ ${num_success} -eq 1 && ${num_success2} -eq 1 && ${num_success3} -eq 1 ]]; then
+    echo "SPH to grid test successful." >> header
+else
+    echo "!! SPH to grid test FAILED !!" >> header
+    suite_status="FAILED"
+fi
+
+# Test for success of SPH to grid test (binary dump with chemistry)
+num_success=`/bin/grep -c "TORUS: Test successful" benchmarks_hybrid/benchmarks/sphToGridBinary/check_log_hybrid_sphToGridBinary.txt`
+num_success2=`/bin/grep -c "TORUS: Test successful" benchmarks_openmp/benchmarks/sphToGridBinary/check_log_openmp_sphToGridBinary.txt`
+num_success3=`/bin/grep -c "TORUS: Test successful" benchmarks_mpi/benchmarks/sphToGridBinary/check_log_mpi_sphToGridBinary.txt`
+if [[ ${num_success} -eq 1 && ${num_success2} -eq 1 && ${num_success3} -eq 1 ]]; then
+    echo "SPH to grid test with chemistry successful." >> header
+else
+    echo "!! SPH to grid test with chemistry FAILED !!" >> header
+    suite_status="FAILED"
+fi
+
+# Test for success of restart test
+num_success=`/bin/grep -c "TORUS: Test successful"  benchmarks_hybrid/benchmarks/restart/check_log_hybrid_restart.txt`
+num_success2=`/bin/grep -c "TORUS: Test successful" benchmarks_openmp/benchmarks/restart/check_log_openmp_restart.txt`
+num_success3=`/bin/grep -c "TORUS: Test successful" benchmarks_mpi/benchmarks/restart/check_log_mpi_restart.txt`
+if [[ ${num_success} -eq 3 && ${num_success2} -eq 3  && ${num_success3} -eq 3 ]]; then
+    echo "Restart test successful" >> header 
+else
+    echo "!! Restart test FAILED !!" >> header
+    suite_status="FAILED"
+fi
+
+# Test for success of angular image test
+num_success=`/bin/grep -c "TORUS: Test successful"  benchmarks_hybrid/benchmarks/angularImageTest/check_log_hybrid_angularImageTest.txt`
+num_success2=`/bin/grep -c "TORUS: Test successful" benchmarks_openmp/benchmarks/angularImageTest/check_log_openmp_angularImageTest.txt`
+num_success3=`/bin/grep -c "TORUS: Test successful" benchmarks_mpi/benchmarks/angularImageTest/check_log_mpi_angularImageTest.txt`
+if [[ ${num_success} -eq 1 && ${num_success2} -eq 1  && ${num_success3} -eq 1 ]]; then
+    echo "Angular image test successful" >> header 
+else
+    echo "!! Angular image test FAILED !!" >> header
+    suite_status="FAILED"
+fi
+
+# We won't attach the output now that it is available on post-zen
+echo  >> header
+echo "Output from these tests is on post-zen in ${TEST_DIR}" >> header
+echo  >> header
+
+# Send mail for daily test or write to terminal for other modes
+if [[ ${MODE} == "daily" ]]; then
+# Set up the message body 
+    cat header /home/torustest/torus_daily_test_log > /data/torustest/torus_daily_test_email
+    echo "Torus test suite: ${suite_status}" > /data/torustest/ready
+else
+    echo "Torus test suite: ${suite_status}"
+    cat header
+fi
+  
+}
+
+
 print_help()
 {
 echo ""
@@ -563,7 +797,7 @@ for opt in ${DEBUG_OPTS}; do
 
 # Set name of output directory
     case ${MODE} in 
-	daily)       export TEST_DIR=/data/torustest/torus_daily_test;;
+	daily)       export TEST_DIR=${HOME}/torus_daily_test;;
 	workingcopy) export TEST_DIR=${TORUS_WORKING_COPY}/tests;;
 	stable)      export TEST_DIR=${HOME}/torus_stable_version_tests/debug=${USEDEBUGFLAGS};;
 	build)       export TEST_DIR=${HOME}/torus_build_tests;;
@@ -582,12 +816,21 @@ for opt in ${DEBUG_OPTS}; do
 # Run benchmark tests
     run_torus_test_suite
 
+# Process results from coverage analysis
+    process_gcov
+
+# Report timing information
+    process_timing
+
 done
 
-rm ${TEST_DIR}/lock
+echo -------------------------------------------------------------------
+echo TORUS test suite finished at `date`
+echo -------------------------------------------------------------------
 
-echo -------------------------------------------------------------------
-echo TORUS tests finished at `date`
-echo -------------------------------------------------------------------
+# Check results and set up mail
+check_results
+    
+rm ${TEST_DIR}/lock
 
 exit ${RETURN_CODE}
