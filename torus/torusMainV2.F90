@@ -44,6 +44,10 @@ program torus
   use loadbalance_mod
   use biophysics_mod
 
+#ifdef CHEMISTRY
+  use chemistry_mod
+#endif
+
 !  use pah_mod
 !  use zlib_mod
   use sph_data_class, only: deallocate_sph
@@ -107,7 +111,6 @@ program torus
   ! For time statistics
   if (doTuning) call tune(6, "Torus Main") ! start a stopwatch  
 
-
   call inputs()
 
 #ifdef MPI
@@ -145,6 +148,14 @@ program torus
      if (doSetupAMRgrid) then
 
         call  setupamrgrid(grid)
+
+#ifdef CHEMISTRY
+    if (doChemistry) then
+       call initializeChemistry(grid%octreeRoot) ! setup chemistry stuff here!!!!!!!!
+    endif
+
+#endif
+
 
 !        call sanityCheckGrid(grid)
 

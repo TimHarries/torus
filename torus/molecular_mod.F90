@@ -55,7 +55,7 @@ module molecular_mod
    integer :: accstepgrand = 4
    integer :: deptharray(50) = 0
 
-   integer :: iupper(200), iLower(200)
+   integer :: iupper(2000), iLower(2000)
 
    character(len=20) :: molgridfilename, molgridltefilename
 
@@ -79,6 +79,7 @@ module molecular_mod
       real(double), pointer :: energy(:)
       real(double), pointer :: g(:)
       real(double), pointer :: j(:)
+      real(double), pointer :: k(:)
       integer :: nTrans
       real(double), pointer :: einsteinA(:)
       real(double), pointer :: einsteinBlu(:)
@@ -112,6 +113,7 @@ module molecular_mod
      character(len=*) :: molFilename
      character(len=80) :: junk
      character(len=200):: dataDirectory, filename
+     character(len=20) :: jkstring
      integer :: i, j, iLow, iUp, iPart
      real(double) :: a, freq, eu, c(20)
      logical :: preprocess1 = .true.
@@ -149,11 +151,21 @@ module molecular_mod
         allocate(thisMolecule%energy(1:thisMolecule%nLevels))
         allocate(thisMolecule%g(1:thisMolecule%nLevels))
         allocate(thisMolecule%j(1:thisMolecule%nLevels))
+        allocate(thisMolecule%k(1:thisMolecule%nLevels))
 
         read(30,*) junk
         do i = 1, thisMolecule%nLevels
-           read(30,*) j, thisMolecule%energy(i), thisMolecule%g(i), thisMolecule%j(i)
+           read(30,*) j, thisMolecule%energy(i), thisMolecule%g(i), jkString
            thisMolecule%energy(i) = thisMolecule%energy(i) / 8065.541  ! convert from per cm to ev - e/hc (CGS)     
+
+           if (index(jkstring,"_") /= 0) then
+              do j = 1, len(jkstring)
+                 if (jkstring(j:j) == "_") jkstring(j:j)=" "
+              enddo
+              read(jkstring,*) thisMolecule%j(i),thisMolecule%k(i)
+           else
+              read(jkstring,*) thisMolecule%j(i)
+           endif
         enddo
         
         read(30,*) junk
@@ -199,7 +211,7 @@ module molecular_mod
            maxnCollTemps = maxval(thisMolecule%nCollTemps(:))
            deallocate(thisMolecule%nCollTrans, thisMolecule%nCollTemps)
         else
-           maxnCollTrans = 5000
+           maxnCollTrans = 40000
            maxnCollTemps = 20
         endif
 
@@ -386,8 +398,8 @@ module molecular_mod
      logical, save :: firsttime2 = .true.
      logical :: inlte
      logical, save :: firstAbundanceMessage = .true.
-     real(double) :: nupper(200), nlower(200)
-     real(double) :: levelpops(200), alphanubase(200), nmol
+     real(double) :: nupper(2000), nlower(2000)
+     real(double) :: levelpops(2000), alphanubase(2000), nmol
 
      !$OMP THREADPRIVATE( firstTime2, firstAbundanceMessage )
 
@@ -411,10 +423,10 @@ module molecular_mod
 ! Allocate space for n_H2 and initialise, if not already done
            if (.not.associated(thisOctal%nh2)) then 
               allocate(thisOctal%nh2(1:thisOctal%maxChildren))
+           endif
 !- There was a bug here, it would only assign values to one subcell per octal THAW
 !              thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2.d0*mHydrogen)
-              thisOctal%nh2 = thisOctal%rho / (2.d0*mHydrogen)
-           end if
+              thisOctal%nh2(1:thisOctal%maxChildren) = thisOctal%rho(1:thisOctal%maxChildren) / (2.d0*mHydrogen)
 ! Temporary graph making code for molcluster. V1 code should ultimately be removed 
 !           if(plotlevels .and. molcluster) then
 !              if(firsttime2 .and. molcluster) then
@@ -459,6 +471,8 @@ module molecular_mod
 !           endif
 
 ! maxlevel - the greatest level that will be converged (but not necessarily counted for convergence)
+
+
            if(restart) then
 ! if restart then use previous maxlevel              
               if(firsttime2) then
@@ -470,6 +484,10 @@ module molecular_mod
 ! TODO V2:
 ! maxtrans currently assumes linear molecule so maxlevel - 1 is J=maxlevel - maxlevel-1 (not nec the case)
                  maxtrans = maxlevel - 1
+
+!tjh added this 
+                 maxtrans = thisMolecule%nTrans
+
                  firsttime2 = .false.
               endif
 
@@ -517,9 +535,14 @@ module molecular_mod
                  else
                     maxlevel = setmaxlevel
                  endif
+!tjh added
+                 maxLevel = thisMolecule%nLevels
+
 ! TODO V2:
 ! maxtrans currently assumes linear molecule so maxlevel - 1 is J=maxlevel - maxlevel-1 (not nec the case)
                  maxtrans = maxlevel - 1
+!tjh added
+                 maxtrans = thisMolecule%ntrans
                  firsttime2 = .false.
               endif
 ! fill microturbulent velocity array with constant (in TORUS V1) 
@@ -684,8 +707,8 @@ module molecular_mod
      type(octal), pointer   :: thisOctal
      type(octal), pointer  :: child 
      integer :: subcell, ichild
-     real(double) :: temparray(100,8)
-     integer :: temparray_int(100,8)
+     real(double) :: temparray(1000,8)
+     integer :: temparray_int(1000,8)
      integer :: h
 
      do subcell = 1, thisOctal%maxChildren
@@ -717,6 +740,7 @@ module molecular_mod
               allocate(thisoctal%newmolecularlevel(maxlevel,1:thisoctal%maxchildren))
               thisoctal%newmolecularlevel(1:maxlevel,1:thisOctal%maxChildren) = &
                    thisoctal%molecularlevel(1:maxlevel,1:thisOctal%maxChildren)
+
            endif
 
            if(associated(thisOctal%oldmolecularlevel)) then
@@ -915,7 +939,7 @@ module molecular_mod
      
      character(len=30) :: filename
      
-     real(double) :: tauarray(60) = -1.d0    
+     real(double) :: tauarray(600) = -1.d0    
      logical :: warn = .true.
      integer :: warncount, warncount_all
      real(double) :: error(50)
@@ -931,7 +955,7 @@ module molecular_mod
      integer :: status
      integer(bigint) :: fixedRaySeed
 
-     real(double) :: collmatrix(50,50), ctot(50)
+     real(double) :: collmatrix(500,500), ctot(500)
 
      logical :: warned_neg_dtau
 
@@ -1617,7 +1641,7 @@ end subroutine molecularLoop
 	 	 	 
      real(double), allocatable, save :: OneArray(:)
      real(double), save :: OneOverNTauArray(maxsamplePoints)
-     real(double), save :: BnuBckGrnd(128)
+     real(double), save :: BnuBckGrnd(600)
 	 
      integer :: subcell
 
@@ -3859,6 +3883,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
                     endif
 
                     thisOctal%molcellparam(1,subcell) = thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
+
                     nMol = thisOctal%molcellparam(1,subcell)
                     
                     iUpper = thisMolecule%iTransUpper(iTrans)
@@ -3875,6 +3900,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
                     etaLine = hCgsOverFourPi * thisMolecule%einsteinA(iTrans)
                     
                     thisOctal%molcellparam(5,subcell) = etaLine * nUpper
+
                     thisOctal%molcellparam(6,subcell) = hCgsOverFourPi * thisOctal%molcellparam(4,subcell)! balance
 
                  endif
@@ -4839,7 +4865,7 @@ END SUBROUTINE sobseq
    type(MOLECULETYPE) :: thisMolecule
    real(double) :: temperature, nsum
    real(double) :: levelpops(:), fac
-   real(double) :: templevelpops(200)
+   real(double) :: templevelpops(2000)
    integer :: i
 
    templevelpops(1) = 1.d0
@@ -5262,6 +5288,7 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
         
            nlower = thisOctal%molecularLevel(iLower,subcell)! * nMol
            nupper = thisOctal%molecularLevel(iUpper,subcell)! * nMol
+
                     
            balance = nLower * thisMolecule%einsteinBlu(iTrans) &
                 - nUpper * thisMolecule%einsteinBul(iTrans)
@@ -5314,6 +5341,7 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
         else
            alphanu2 =  0.0
         endif
+
 
         thisPosition = currentPosition
 
@@ -5407,7 +5435,10 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
 
            dI = opticaldepth * dI
            i0 = i0 + dI
+
         enddo
+
+
 
         
            currentPosition = currentPosition + (tval + origdeps) * direction

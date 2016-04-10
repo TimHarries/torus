@@ -15,6 +15,7 @@
   logical :: photoionPhysics
   logical :: atomicPhysics
   logical :: nbodyPhysics
+  logical :: doChemistry
   logical :: dustPhysics
   logical :: bioPhysics
   logical :: gasOpacityPhysics
@@ -488,7 +489,7 @@
 
   ! whitney stuff
   real(double) :: erInner, erOuter, mDotEnv, cavAngle, cavDens, rhoAmbient
-  real :: drInner, drOuter
+  real(double) :: drInner, drOuter
   real(double) :: rCavity, nDensity
   real :: rStellar, mEnv
 

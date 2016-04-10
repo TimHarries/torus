@@ -780,14 +780,18 @@ contains
        rhoEnv = max(rhoEnv, tiny(rhoEnv))
     endif
 
-    rho0  = real(mDisc *(beta-alpha+2.) / ( twoPi**1.5 * 0.01*rStellar * rStellar**(alpha-beta) * ( &
+
+    alpha = 2.125
+    beta  = 1.125
+    rho0  = real(mDisc *(beta-alpha+2.) / ( twoPi**1.5 * 0.01*drInner * drInner**(alpha-beta) * ( &
          (drouter**(beta-alpha+2.)-drInner**(beta-alpha+2.))) ))
 
     r = real(sqrt(point%x**2 + point%y**2)*1.e10)
-    h = 0.01 * rStellar * (r/rStellar)**beta
+    h = 0.1 * drInner * (r/drinner)**beta
     rhoDisc = 1.e-30
     if ((r > drInner).and.(r < drOuter)) then
-       rhoDisc = real(rho0 * (rStellar/r)**alpha  * exp(-0.5*((point%z*1.e10)/h)**2))
+       rhoDisc = real(rho0 * (drInner/r)**alpha  * exp(-0.5*((point%z*1.e10)/h)**2))
+
        fac =  1.d0-min(dble(r - drInner)/(0.02d0*drinner),1.d0)
        fac = exp(-fac*10.d0)
        rhoDisc = real(rhoDisc * fac)
@@ -801,6 +805,80 @@ contains
     
     whitneyDensity = max(rhoEnv, rhoDisc)
   end function whitneyDensity
+
+  type(VECTOR) function whitneyVelocity(point)
+    use inputs_mod, only : erInner, erOuter, beta, mdisc, mdotenv, mcore, cavangle, cavdens, &
+         rstellar, drouter, drinner 
+    TYPE(VECTOR), INTENT(IN) :: point
+    real(double) :: r, mu, mu_0, rhoEnv, r_c, rho0
+    real(double) :: h, rhoDisc, alpha
+    real(double) :: fac, theta
+    real(double) :: vr, vtheta, vphi, theat, phi
+    type(VECTOR) :: rHat, vVec
+
+    r = modulus(point)*1.e10
+
+    mu = (abs(point%z)*1.e10) /r
+
+    r_c = erInner
+
+    whitneyVelocity = VECTOR(0.d0, 0.d0, 0.d0)
+    if ((r > erInner).and.(r < erOuter)) then
+       mu_0 = rtnewt(-0.2 , 1.5 , 1.e-4, real(r/r_c), real(abs(mu)))
+ ! equation 1 for Whitney 2003 ApJ 591 1049 has a mistake in it
+! this is from Momose et al. 1998 ApJ 504 314
+
+
+       rhoEnv = real((mdotenv / fourPi) * (bigG * mCore)**(-0.5) * r**(-1.5) * &
+       (1. + abs(mu)/mu_0)**(-0.5) * &
+       (abs(mu)/mu_0 + (2.*mu_0**2 * r_c/r))**(-1.))
+
+       fac =  1.d0-min(dble(r - erInner)/(0.02d0*erinner),1.d0)
+       fac = exp(-fac*10.d0)
+       rhoEnv = real(rhoEnv * fac)
+       rhoEnv = max(rhoEnv, tiny(rhoEnv))
+
+
+       vr = -sqrt(bigG*mCore/r)*sqrt(1.d0 + mu/mu_0)
+       vtheta = sqrt(bigG*mCore/r)*(mu_0-mu)*sqrt((mu_0+mu)/(mu_0*sqrt(1.d0-mu**2)))
+       vphi = sqrt(bigG*mCore/r)*(sqrt(1.d0-mu_0**2)/sqrt(1.d0-mu**2))*sqrt(1.d0-mu/mu_0)
+
+       rHat = point
+       call normalize(rHat)
+       phi = atan2(point%y,point%x)
+       theta = acos(mu)
+
+       whitneyVelocity = (vr * rhat) + &
+            (vTheta * VECTOR(-1.d0*sin(theta),cos(theta),0.d0)) + &
+            (vPhi * VECTOR(cos(theta)*cos(phi),sin(theta)*cos(phi),-sin(phi)))
+       whitneyVelocity = whitneyVelocity/cSpeed
+    endif
+    alpha = -2.125
+    beta  = 1.125
+    rho0  = real(mDisc *(beta-alpha+2.) / ( twoPi**1.5 * 0.01*drInner * drInner**(alpha-beta) * ( &
+         (drouter**(beta-alpha+2.)-drInner**(beta-alpha+2.))) ))
+
+    r = real(sqrt(point%x**2 + point%y**2)*1.e10)
+    h = 0.1 * drInner * (r/drinner)**beta
+    rhoDisc = 1.e-30
+    if ((r > drInner).and.(r < drOuter)) then
+       rhoDisc = real(rho0 * (drInner/r)**alpha  * exp(-0.5*((point%z*1.e10)/h)**2))
+
+       fac =  1.d0-min(dble(r - drInner)/(0.02d0*drinner),1.d0)
+       fac = exp(-fac*10.d0)
+       rhoDisc = real(rhoDisc * fac)
+       rhoDisc = max(rhoDisc, tiny(rhoDisc))
+       rHat = point
+       call normalize(rHat)
+       vVec = VECTOR(0.d0, 0.d0, 1.d0).cross.rHat
+       call normalize(vVec)
+       if (rhoDisc > rhoEnv) then
+          whitneyVelocity = (sqrt(bigG*mDisc/r)*vvec)/cspeed
+       endif
+    endif
+
+    
+  end function whitneyVelocity
 
   real function planetgapDensity(point, grid) result(rhoDisc)
     use inputs_mod
@@ -885,7 +963,7 @@ contains
     type(VECTOR),save :: stream1(nStream), stream2(nStream), rPlanet
     real(double) :: rSpiralInner, rSpiralOuter,  mu, r_c, rhoEnv, mu_0, theta
     real(double) :: rInnerPlanetDisc, rOuterPlanetDisc, heightPlanetDisc, alphaPlanetDisc, betaPlanetDisc, rhoPlanetDisc
-    real(double) :: mPlanetDisc, hillRadius
+    real(double) :: mPlanetDisc, hillRadius, vr,vtheta,vphi
     logical :: ok
     real :: x1, x2
 
@@ -1039,6 +1117,7 @@ contains
        if (theta < cavAngle/2.d0)  then
           rhoEnv = cavdens
        endif
+
     endif
        if (smoothInnerEdge) then
           fac = 1.d0

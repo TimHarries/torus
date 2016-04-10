@@ -3852,16 +3852,16 @@ CONTAINS
        case("whitney")          
           cellSize = thisOctal%subcellSize * 1.d10
           cellCentre = 1.d10 * subcellCentre(thisOctal,subCell)
-          nr1 = 50
-          nr2 = 10
+          nr1 = 100
+          nr2 = 0
           nr = nr1 + nr2
           
           do i = 1, nr1
-             rgrid(i) = log10(0.5*drInner)+dble(i)*(log10(drOuter)-log10(0.5*drInner))/dble(nr1)
+             rgrid(i) = log10(0.5*drInner)+dble(i)*(log10(erOuter)-log10(0.5*drInner))/dble(nr1)
           end do
-          do i = 1, nr2
-             rgrid(nr1+i) = log10(drOuter)+dble(i)*(log10(erOuter)-log10(drInner))/dble(nr2)
-          end do
+!          do i = 1, nr2
+!             rgrid(nr1+i) = log10(drOuter)+dble(i)*(log10(erOuter)-log10(drInner))/dble(nr2)
+!          end do
           rgrid(1:nr) = 10.d0**rgrid(1:nr)
           r = modulus(cellcentre)
           if (thisOctal%nDepth < 5) split = .true.
@@ -3871,9 +3871,9 @@ CONTAINS
           endif
           r = sqrt(cellcentre%x**2 + cellcentre%y**2)
           if ((r > drInner*0.9).and.(r < drOuter)) then
-             hr = 0.01 * rStellar * (r / rStellar)**1.25
-             if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 1.)) split = .true.
-             if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 1.)) split = .true.
+             hr = 0.1 * drInner * (r / drInner)**1.25
+             if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.5)) split = .true.
+             if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
           endif
           dr = tan(cavAngle/2.) * abs(cellCentre%z)
           if ( ((abs(cellCentre%x) - cellsize/2.) < dr).and.(cellSize > dr/4.) .and.(abs(cellCentre%z)>erInner)) then
@@ -10118,7 +10118,7 @@ endif
     
   subroutine benchmarkDisk(thisOctal,subcell)
 
-    use inputs_mod, ONLY : rInner, rOuter, height, rho
+    use inputs_mod, ONLY : rInner, rOuter, height, rho,tminglobal
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     real :: r, hr, rd
@@ -10137,7 +10137,7 @@ endif
     r = real(modulus(rVec))
 
     thisOctal%rho(subcell) = min_rho
-    thisOctal%temperature(subcell) = 10.
+    thisOctal%temperature(subcell) = tminGlobal
     thisOctal%etaCont(subcell) = 0.
     thisOctal%inFlow(subcell) = .true.
     rd = rOuter / 2.
@@ -10150,7 +10150,7 @@ endif
              thisOctal%rho(subcell) = rho * ((r / rd)**(-1.))*exp(-pi/4.*(rVec%z/hr)**2)
           endif
           thisOctal%rho(subcell) = max(thisOctal%rho(subcell), min_rho)
-          thisOctal%temperature(subcell) = 100.
+          thisOctal%temperature(subcell) = tminGlobal
           thisOctal%inFlow(subcell) = .true.
           thisOctal%etaCont(subcell) = 0.
        endif
@@ -11506,7 +11506,7 @@ end function readparameterfrom2dmap
 
   subroutine assign_whitney(thisOctal,subcell,grid)
 
-    use density_mod, only: whitneyDensity
+    use density_mod, only: whitneyDensity, whitneyVelocity
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
@@ -11514,12 +11514,13 @@ end function readparameterfrom2dmap
     
     rVec = subcellCentre(thisOctal,subcell)
     thisOctal%rho(subcell) = whitneyDensity(rVec, grid)
+    thisOctal%velocity(subcell) = whitneyVelocity(rVec)
     thisOctal%temperature(subcell) = 10.
     thisOctal%etaCont(subcell) = 0.
     thisOctal%inFlow(subcell) = .true.
-    thisOctal%velocity = VECTOR(0.,0.,0.)
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
+    thisOctal%iAnalyticalVelocity(subcell) = 4
   end subroutine assign_whitney
 
   subroutine assign_planetgap(thisOctal,subcell,grid)
@@ -13435,6 +13436,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%molAbundance, source%molAbundance)
 
     call copyAttribute(dest%atomAbundance, source%atomAbundance)
+    call copyAttribute(dest%kromeSpeciesX, source%kromeSpeciesX)
 
     call copyAttribute(dest%atomLevel, source%atomLevel)
 
@@ -17143,12 +17145,15 @@ end function readparameterfrom2dmap
   subroutine allocateOctalAttributes(grid, thisOctal)
     use inputs_mod, only : mie,  nDustType, molecular, TminGlobal, &
          photoionization, hydrodynamics, timeDependentRT, nAtom, &
-         lineEmission, atomicPhysics, photoionPhysics, dustPhysics, molecularPhysics, cmf!, storeScattered
+         lineEmission, atomicPhysics, photoionPhysics, dustPhysics, molecularPhysics, cmf, doChemistry
     use inputs_mod, only : grainFrac, pdrcalc, xraycalc, useionparam, biophysics
     use gridtype_mod, only: statEqMaxLevels
     use h21cm_mod, only: h21cm
 #ifdef PDR
     use inputs_mod, only :  hlevel
+#endif
+#ifdef CHEMISTRY
+    use krome_user
 #endif
     type(OCTAL), pointer :: thisOctal
     type(GRIDTYPE) :: grid
@@ -17160,9 +17165,6 @@ end function readparameterfrom2dmap
     thisOctal%rho = amr_min_rho
     thisOctal%gasOpacity = .false.
     thisOctal%temperature = TMinGlobal
-
-
-    
 
     if (atomicPhysics.or.molecularPhysics.or.h21cm) then
        call allocateAttribute(thisOctal%iAnalyticalVelocity,thisOctal%maxChildren)
@@ -17239,6 +17241,12 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%undersampled, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%uDens, thisOctal%maxChildren)
     endif
+
+#ifdef CHEMISTRY
+    if (doChemistry) then
+       call allocateAttribute(thisOctal%kromeSpeciesX, thisOctal%maxChildren, krome_nmols)
+    endif
+#endif
 
     if (atomicPhysics) then
        call allocateAttribute(thisOctal%iAnalyticalVelocity,thisOctal%maxChildren)
@@ -17599,6 +17607,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%molmicroturb)
     call deallocateAttribute(thisOctal%atomLevel)
     call deallocateAttribute(thisOctal%atomAbundance)
+    call deallocateAttribute(thisOctal%kromeSpeciesX)
     call deallocateAttribute(thisOctal%newatomLevel)
     call deallocateAttribute(thisOctal%jnu)
     call deallocateAttribute(thisOctal%jnuCont)

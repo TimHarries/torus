@@ -251,6 +251,9 @@ contains
     call getLogical("biophysics", bioPhysics, cLine, fLine, nLines, &
          "Include biophysics in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("chemistry", doChemistry, cLine, fLine, nLines, &
+         "Include biophysics in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
+
     call getLogical("dustphysics", dustPhysics, cLine, fLine, nLines, &
          "Include dust physics in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -1425,6 +1428,31 @@ contains
        call getLogical("fixatQcrit", fixatQcrit, cLine, fLine, &
             &nLines,"Fix Toomre parameter Q at critical value: ",&
             &"(a,1l,1x,a)", .false., ok, .true.)
+
+   case("whitney")
+
+       call getDouble("erinner", erinner, autocm, cLine, fLine, nLines, &
+            "Inner radius of envelope (AU): ","(a,f5.1,a)", 180.d0, ok, .true.)
+
+       call getDouble("erouter", erouter, autocm, cLine, fLine, nLines, &
+            "Outer radius of envelope (AU): ","(a,f5.1,a)", 180.d0, ok, .true.)
+
+       call getDouble("mdotenv", mdotenv, msol/(365.25d0*24.d0*3600.d0), cLine, fLine, nLines, &
+            "Accretion of envelope (solar/year): ","(a,f5.1,a)", 180.d0, ok, .true.)
+
+       call getDouble("drinner", drinner, autocm, cLine, fLine, nLines, &
+            "Inner radius of disc (AU): ","(a,f5.1,a)", 180.d0, ok, .true.)
+
+       call getDouble("drouter", drouter, autocm, cLine, fLine, nLines, &
+            "Outer radius of disc (AU): ","(a,f5.1,a)", 180.d0, ok, .true.)
+
+       call getReal("mdisc", mdisc, real(msol), cLine, fLine, nLines, &
+            "Mass of disc (solar): ","(a,f5.1,a)", 180.0, ok, .true.)
+
+
+       call getReal("mass1", mcore, real(msol), cLine, fLine, nLines, &
+            "Mass of core (solar): ","(a,f5.1,a)", 180.0, ok, .true.)
+
 
     case("shakara")
 

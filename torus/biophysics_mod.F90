@@ -690,7 +690,7 @@ contains
     detectorRadius = 500.d0*microntocm
     detectorPosition = VECTOR(0.02d0, 0.d0, 0.d0)
     call zeroDistanceGrid(grid%octreeRoot)
-    nphoton = 0
+    nphoton = 10000
     call writeInfo("Running photon loop...",TRIVIAL)
     do i = 1, nPhoton
 

@@ -1496,6 +1496,13 @@ contains
     use inputs_mod, only : iModel
     use utils_mod, only : findMultiFilename
 
+#ifdef CHEMISTRY
+    use krome_main
+    use krome_user
+    character(len=16) :: species(krome_nmols)
+    integer :: j
+#endif
+
 #ifdef MPI
     use mpi
 #endif
@@ -1512,7 +1519,7 @@ contains
     integer :: lunit = 69
     integer :: nOctals, nVoxels, i, iType
     integer :: nPointOffset
-    logical :: ascii, writeXml
+    logical :: ascii, writeXml, addChemistry
     integer :: iSize(1)
     integer, allocatable :: icell(:)
 #ifdef MPI
@@ -1593,6 +1600,26 @@ contains
        valueType(1:nValueType) = valueTypeString(1:nValueType)
     endif
 
+    addChemistry = .false.
+#ifdef CHEMISTRY
+    do i = 1, nValueType
+       if (trim(valueType(i))=="chemistry") then
+          do j = i, nValueType-1
+             valueType(j) = valueType(j+1)
+          enddo
+          nValueType = nValueType - 1
+          addChemistry = .true.
+          exit
+       endif
+    enddo
+    if (addChemistry) then
+       species = krome_get_names()
+       do i = nValueType+1, nValueType+krome_nmols
+          valueType(i) = species(i-nValueType)
+       enddo
+       nValueType = nValueType + krome_nmols
+    endif
+#endif
 
     if (grid%octreeRoot%threed) then
        nPointOffset = 8
@@ -2342,6 +2369,12 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
   use mpi
 #endif
   use inputs_mod, only : vtkIncludeGhosts, nDustType
+#ifdef CHEMISTRY
+    use krome_main
+    use krome_user
+    character(len=16) :: species(krome_nmols)
+    logical :: addChemistry
+#endif
   type(GRIDTYPE) :: grid
   character(len=*) :: vtkFilename
   integer :: nValueType
@@ -2379,6 +2412,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
 #ifdef MPI
   integer, allocatable :: nSubcellArray(:)
 #endif
+
   float = 0.
   int = 0
   int1 = 0
@@ -2455,6 +2489,28 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
         endif
      endif
   endif
+
+#ifdef CHEMISTRY
+    addChemistry = .false.
+    do i = 1, nValueType
+       if (trim(valueType(i))=="chemistry") then
+          do j = i, nValueType-1
+             valueType(j) = valueType(j+1)
+          enddo
+          nValueType = nValueType - 1
+          addChemistry = .true.
+          exit
+       endif
+    enddo
+    if (addChemistry) then
+       species = krome_get_names()
+       do i = nValueType+1, nValueType+krome_nmols
+          valueType(i) = species(i-nValueType)
+       enddo
+       nValueType = nValueType + krome_nmols
+    endif
+#endif
+
 
   if (grid%octreeRoot%threed) then
      nPointOffset = 8
@@ -2816,6 +2872,13 @@ end subroutine writeXMLVtkFileAMR
 #ifdef MPI
       use inputs_mod, only : hydrodynamics
 #endif
+
+#ifdef CHEMISTRY
+    use krome_main
+    use krome_user
+    character(len=16) :: species(krome_nmols)
+#endif
+
       type(OCTAL), pointer :: thisOctal, child
       logical :: includeGhosts
       type(GRIDTYPE) :: grid
@@ -2827,6 +2890,11 @@ end subroutine writeXMLVtkFileAMR
       type(VECTOR) :: rVec, vel, vec, pos
       real, parameter :: min_single_prec = 1.0e-37
       logical, save :: firstTime=.true.
+      logical :: found 
+#ifdef CHEMISTRY
+       species = krome_get_names()
+#endif
+
 
 !$OMP THREADPRIVATE (firstTime)
 
@@ -2859,6 +2927,7 @@ end subroutine writeXMLVtkFileAMR
             do iVal = 1, nVal
             n = n + 1
 
+            found = .true.
             select case (valueType)
                case("rho")
 
@@ -3422,10 +3491,22 @@ end subroutine writeXMLVtkFileAMR
                   else
                      rArray(1, n) =  0.
                   endif
-
                case DEFAULT
-                  write(*,*) "Cannot write vtk type B",trim(valueType)
+                  found = .false.
              end select
+
+#ifdef CHEMISTRY
+             do i = 1, krome_nmols
+                if (trim(Valuetype) == species(i)) then
+                   rArray(1, n) = real(thisOctal%kromeSpeciesX(subcell,krome_get_index(trim(valuetype))))
+                   found = .true.
+                endif
+             enddo
+#endif
+             if (.not.found) then
+                write(*,*) "VTK file write called with unknown type: ",trim(valuetype)
+             endif
+
           enddo
 
 

@@ -3,6 +3,7 @@ module analytical_velocity_mod
   use vector_mod
   use constants_mod
   use magnetic_mod
+  use density_mod
   implicit none
   
 
@@ -24,6 +25,8 @@ contains
           analyticalVelocity =   TTauriKeplerianVelocity(point)
        case(3) ! ttauri stellar wind
           analyticalVelocity = TTauriStellarWindVelocity(point)
+       case(4) ! whitney
+          analyticalVelocity = WhitneyVelocity(point)
 
 
 

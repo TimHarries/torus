@@ -17,16 +17,20 @@ module physics_mod
 contains
 
   subroutine setupMicrophysics(grid)
-    use inputs_mod, only : biophysics
+    use inputs_mod, only : biophysics, dochemistry
     use biophysics_mod
 #ifdef CMFATOM
     use inputs_mod, only : atomicPhysics, nAtom
     use modelatom_mod
 #endif
+#ifdef CHEMISTRY
+    use chemistry_mod
+#endif
 #ifdef MOLECULAR
     use inputs_mod, only : molecularPhysics, moleculeFile, molecular
     use molecular_mod, only: readMolecule, globalMolecule
 #endif
+
 #ifdef PHOTOION
     use ion_mod, only: addIons, globalIonArray, nGlobalIon
     use inputs_mod, only : photoionization, photoionPhysics, usemetals, hOnly, usexraymetals
@@ -43,6 +47,7 @@ contains
     endif
 #endif
 
+
 #ifdef CMFATOM
     if (atomicPhysics) then
        if (associated(globalAtomArray)) deallocate(globalAtomArray)
@@ -50,6 +55,7 @@ contains
        call setupAtoms(nAtom, globalAtomArray)
     endif
 #endif
+
 
 #ifdef PHOTOION
   if (photoionPhysics) then
@@ -64,6 +70,10 @@ contains
      call setupMatcherSkinTissue()
      call writeInfo("Done.",TRIVIAL)
    endif
+#ifdef CHEMISTRY
+       call initializeKrome()
+#endif
+
 
   end subroutine setupMicrophysics
 
@@ -346,6 +356,11 @@ contains
 #ifdef STATEQ
     use stateq_mod, only: amrstateqNew
 #endif
+
+#ifdef CHEMISTRY
+    use inputs_mod, only : doChemistry
+#endif
+
 #ifdef HYDRO
     use nbody_mod, only : donBodyonly
 #endif
@@ -383,7 +398,9 @@ contains
 #endif
 #endif
 #endif
-
+#ifdef CHEMISTRY
+    use chemistry_mod
+#endif
 #ifdef MOLECULAR
     use molecular_mod, only : molecularLoop, globalMolecule
     use inputs_mod, only : lowmemory, molecularPhysics,  useDust, realDust
@@ -441,6 +458,12 @@ contains
           enddo
        endif
     endif
+
+#ifdef CHEMISTRY
+    if (doChemistry) then
+       call doChem(grid)
+    endif
+#endif
 
     if (bioPhysics) then
        call photonLoop(grid)
