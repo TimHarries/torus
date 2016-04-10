@@ -3565,7 +3565,7 @@ CONTAINS
     !   derived from information in the current cell  
 
     use inputs_mod, only: height, betadisc, rheight, flaringpower, rinner, router, hydrodynamics
-    use inputs_mod, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore, &
+    use inputs_mod, only: drInner, drOuter, cavangle, erInner, erOuter, rCore, &
          ttauriRouter, sphereRadius, amr2d
     use inputs_mod, only: warpFracHeight, warpRadius, warpSigma, warpAngle, hOverR
     use inputs_mod, only: solveVerticalHydro, hydroWarp, rsmooth
@@ -17145,7 +17145,7 @@ end function readparameterfrom2dmap
   subroutine allocateOctalAttributes(grid, thisOctal)
     use inputs_mod, only : mie,  nDustType, molecular, TminGlobal, &
          photoionization, hydrodynamics, timeDependentRT, nAtom, &
-         lineEmission, atomicPhysics, photoionPhysics, dustPhysics, molecularPhysics, cmf, doChemistry
+         lineEmission, atomicPhysics, photoionPhysics, dustPhysics, molecularPhysics, cmf
     use inputs_mod, only : grainFrac, pdrcalc, xraycalc, useionparam, biophysics
     use gridtype_mod, only: statEqMaxLevels
     use h21cm_mod, only: h21cm

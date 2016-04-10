@@ -747,7 +747,7 @@ contains
 
   real function whitneyDensity(point, grid)
     use inputs_mod, only : erInner, erOuter, beta, mdisc, mdotenv, mcore, cavangle, cavdens, &
-         rstellar, drouter, drinner 
+         drouter, drinner 
     TYPE(VECTOR), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN), optional   :: grid
     real :: r, mu, mu_0, rhoEnv, r_c, rho0
@@ -787,7 +787,7 @@ contains
          (drouter**(beta-alpha+2.)-drInner**(beta-alpha+2.))) ))
 
     r = real(sqrt(point%x**2 + point%y**2)*1.e10)
-    h = 0.1 * drInner * (r/drinner)**beta
+    h = real(0.1d0 * drInner * (r/drinner)**beta)
     rhoDisc = 1.e-30
     if ((r > drInner).and.(r < drOuter)) then
        rhoDisc = real(rho0 * (drInner/r)**alpha  * exp(-0.5*((point%z*1.e10)/h)**2))
@@ -807,13 +807,13 @@ contains
   end function whitneyDensity
 
   type(VECTOR) function whitneyVelocity(point)
-    use inputs_mod, only : erInner, erOuter, beta, mdisc, mdotenv, mcore, cavangle, cavdens, &
-         rstellar, drouter, drinner 
+    use inputs_mod, only : erInner, erOuter, beta, mdisc, mdotenv, mcore, &
+         drouter, drinner 
     TYPE(VECTOR), INTENT(IN) :: point
     real(double) :: r, mu, mu_0, rhoEnv, r_c, rho0
     real(double) :: h, rhoDisc, alpha
     real(double) :: fac, theta
-    real(double) :: vr, vtheta, vphi, theat, phi
+    real(double) :: vr, vtheta, vphi, phi
     type(VECTOR) :: rHat, vVec
 
     r = modulus(point)*1.e10
@@ -963,7 +963,7 @@ contains
     type(VECTOR),save :: stream1(nStream), stream2(nStream), rPlanet
     real(double) :: rSpiralInner, rSpiralOuter,  mu, r_c, rhoEnv, mu_0, theta
     real(double) :: rInnerPlanetDisc, rOuterPlanetDisc, heightPlanetDisc, alphaPlanetDisc, betaPlanetDisc, rhoPlanetDisc
-    real(double) :: mPlanetDisc, hillRadius, vr,vtheta,vphi
+    real(double) :: mPlanetDisc, hillRadius
     logical :: ok
     real :: x1, x2
 

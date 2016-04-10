@@ -17,13 +17,14 @@ module physics_mod
 contains
 
   subroutine setupMicrophysics(grid)
-    use inputs_mod, only : biophysics, dochemistry
+    use inputs_mod, only : biophysics
     use biophysics_mod
 #ifdef CMFATOM
     use inputs_mod, only : atomicPhysics, nAtom
     use modelatom_mod
 #endif
 #ifdef CHEMISTRY
+    use inputs_mod, only : doChemistry
     use chemistry_mod
 #endif
 #ifdef MOLECULAR
@@ -71,7 +72,9 @@ contains
      call writeInfo("Done.",TRIVIAL)
    endif
 #ifdef CHEMISTRY
+   if (doChemistry)
        call initializeKrome()
+    endif
 #endif
 
 
