@@ -14,7 +14,7 @@ contains
 #endif
     use source_mod, only : globalNSource, globalSourceArray, writeSourceHistory
     use inputs_mod, only : gridOutputFilename, writegrid, calcPhotometry, amr2d
-    use inputs_mod, only : calcDataCube, atomicPhysics, nAtom, sourceHistory, calcDustCube
+    use inputs_mod, only : calcDataCube, atomicPhysics, nAtom, sourceHistory, calcDustCube, doAnalysis
     use inputs_mod, only : iTransLine, iTransAtom, gridDistance, gasOpacityPhysics
     use inputs_mod, only : writePolar
     use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark, calcMovie
@@ -37,6 +37,7 @@ contains
     use inputs_mod, only : cmf, lamline, ttauriRouter,amrgridsize
     use h21cm_mod, only: h21cm
     use physics_mod, only : setupXarray, setupDust
+    use gridanalysis_mod
 #ifdef MOLECULAR
     use molecular_mod
     use angularImage
@@ -124,6 +125,7 @@ contains
     if ( (.not.calcImage).and. &
          (.not.calcSpectrum).and. &
          (.not.calcMovie).and. &
+         (.not.doAnalysis).and. &
          (.not.calcDataCube).and. &
          (.not.calcPhotometry).and. &
          (.not.calcBenchmark) .and. &
@@ -478,6 +480,7 @@ if (.false.) then
     if (sourceHistory) then
        call writeSourceHistory(sourceHistoryfilename,globalSourceArray,globalnSource)
     endif
+    if (doAnalysis) call analysis(grid)
 
     if (dowriteRadialFile) then
        if (splitOverMpi) then

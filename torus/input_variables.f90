@@ -74,6 +74,7 @@
   logical :: calcMovie
   Logical :: calcSpectrum
   logical :: calcBenchmark
+  logical :: doAnalysis
 
   logical :: dowriteRadialFile
   character(len=200) :: radialFilename

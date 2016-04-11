@@ -560,6 +560,9 @@ contains
     call getLogical("movie", calcMovie, cLine, fLine, nLines, &
          "Calculate a movie: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("analysis", doAnalysis, cLine, fLine, nLines, &
+         "Perform a grid analysis: ","(a,1l,1x,a)", .false., ok, .false.)
+
 
     call getLogical("spectrum", calcSpectrum, cLine, fLine, nLines, &
          "Calculate a spectrum: ","(a,1l,1x,a)", .false., ok, .false.)
