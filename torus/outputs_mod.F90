@@ -137,6 +137,7 @@ contains
 
     nimage = getnImage()
 
+    if (doAnalysis) call analysis(grid)
 
     if (calcBenchmark) then
        select case (grid%geometry)
@@ -480,7 +481,6 @@ if (.false.) then
     if (sourceHistory) then
        call writeSourceHistory(sourceHistoryfilename,globalSourceArray,globalnSource)
     endif
-    if (doAnalysis) call analysis(grid)
 
     if (dowriteRadialFile) then
        if (splitOverMpi) then
