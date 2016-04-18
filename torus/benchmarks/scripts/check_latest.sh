@@ -54,7 +54,7 @@ else
 	    attach_list="${attach_list} -a ${file}"
 	done
 	echo ${culprit}@astro.ex.ac.uk > ${rundir}/ready
-#	/sw/bin/mutt -s "Torus build failed" ${attach_list} ${culprit}@astro.ex.ac.uk < ~/torus_latest/build_log
+	/usr/bin/mail -s "Torus build failed" ${attach_list} ${culprit}@astro.ex.ac.uk < /data/torustest/torus_latest/build_log
 	cd ${rundir}
     fi
 fi

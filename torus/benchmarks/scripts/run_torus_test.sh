@@ -831,9 +831,11 @@ echo -------------------------------------------------------------------
 echo TORUS test suite finished at `date`
 echo -------------------------------------------------------------------
 
-# Check results and set up mail
-check_results
-    
+# Check results
+if [[ ${MODE} == daily || ${MODE} == workingcopy ]]; then
+    check_results
+fi
+
 rm ${TEST_DIR}/lock
 
 exit ${RETURN_CODE}
