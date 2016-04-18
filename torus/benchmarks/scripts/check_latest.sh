@@ -49,12 +49,8 @@ else
 	culprit=`/usr/bin/svn info torus | grep 'Last Changed Author' | awk '{print $4}'`
 	echo "Last change was by ${culprit}"
 	cd ${HOME}/torus_build_tests
-	attach_list=""
-	for file in build_only_*/build/compile_log_*.txt; do
-	    attach_list="${attach_list} -a ${file}"
-	done
 	echo ${culprit}@astro.ex.ac.uk > ${rundir}/ready
-	/usr/bin/mail -s "Torus build failed" ${attach_list} ${culprit}@astro.ex.ac.uk < /data/torustest/torus_latest/build_log
+	/usr/bin/mail -s "Torus build failed" ${culprit}@astro.ex.ac.uk < /data/torustest/torus_latest/build_log
 	cd ${rundir}
     fi
 fi

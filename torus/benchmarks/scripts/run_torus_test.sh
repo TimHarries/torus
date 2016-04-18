@@ -819,11 +819,12 @@ for opt in ${DEBUG_OPTS}; do
 # Run benchmark tests
     run_torus_test_suite
 
+    if [[ ${MODE != build ]]; then 
 # Process results from coverage analysis
-    process_gcov
-
+	process_gcov
 # Report timing information
-    process_timing
+	process_timing
+    fi
 
 done
 
