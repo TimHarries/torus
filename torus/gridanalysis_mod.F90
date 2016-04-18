@@ -75,7 +75,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol
     type(VECTOR) :: rVec
     real(double) :: totalMass
     real(double),optional :: minRho, maxRho, minRadius, maxRadius
-    real(double) :: dv,r,da
+    real(double) :: dv,r
     integer :: subcell, i
     logical :: includeThisCell
 
@@ -121,13 +121,12 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol
   end subroutine findMassWithBounds
 
   recursive subroutine writeVelocityWithBounds(thisOctal, minRho, maxRho, minRadius, maxRadius)
-    use source_mod, only : globalSourceArray
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     type(VECTOR) :: rVec
-    real(double) :: totalMass, r, da
+    real(double) :: r
     real(double),optional :: minRho, maxRho, minRadius, maxRadius
-    real(double) :: dv!, totalVolume
+    real(double) :: dv
     integer :: subcell, i
     logical :: includeThisCell
 
