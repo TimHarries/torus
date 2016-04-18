@@ -694,9 +694,12 @@ echo  >> header
 
 # Send mail for daily test or write to terminal for other modes
 if [[ ${MODE} == "daily" ]]; then
+    mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk aali@astro.ex.ac.uk tdouglas@astro.ex.ac.uk haworth@astro.ex.ac.uk"
 # Set up the message body 
     cat header /home/torustest/torus_daily_test_log > /data/torustest/torus_daily_test_email
-    echo "Torus test suite: ${suite_status}" > /data/torustest/ready
+    for user in ${mail_to}; do
+        /usr/bin/mail -s "Torus test suite: ${suite_status}" ${user} < /data/torustest/torus_daily_test_email
+    done
 else
     echo "Torus test suite: ${suite_status}"
     cat header
