@@ -7449,7 +7449,7 @@ recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHea
      kappaTimesFlux, uvVec)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
-  real :: nCrossings(:)
+  real(double) :: nCrossings(:)
   real(double) :: photoIonCoeff(:,:)
   real(double) :: hHeating(:)
   real(double) :: heHeating(:)
@@ -7475,7 +7475,7 @@ recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHea
      else
         if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
         nIndex = nIndex + 1
-        nCrossings(nIndex) = real(thisOctal%nCrossings(subcell))
+        nCrossings(nIndex) = dble(thisOctal%nCrossings(subcell))
         photoIonCoeff(nIndex, :) = thisOctal%photoIonCoeff(subcell, :)
         hHeating(nIndex) = thisOctal%hHeating(subcell)
         heHeating(nIndex) = thisOctal%heHeating(subcell)
@@ -7491,7 +7491,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
      kappaTimesFlux, uvVec)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
-  real :: nCrossings(:)
+  real(double) :: nCrossings(:)
   real(double) :: photoIonCoeff(:,:)
   real(double) :: hHeating(:)
   real(double) :: heHeating(:)
@@ -7517,7 +7517,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
        else
           if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
           nIndex = nIndex + 1
-          thisOctal%nCrossings(subcell) = int(nCrossings(nIndex))
+          thisOctal%nCrossings(subcell) = nint(nCrossings(nIndex))
           thisOctal%photoIonCoeff(subcell, :) = photoIonCoeff(nIndex, :)
           thisOctal%hHeating(subcell) = hHeating(nIndex) 
           thisOctal%heHeating(subcell) = heHeating(nIndex) 
@@ -8571,8 +8571,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
     type(gridtype) :: grid
     integer :: nVoxels, i
-    real, allocatable :: nCrossings(:)
-    real, allocatable :: tempRealArray(:)
+    real(double), allocatable :: nCrossings(:)
     real(double), allocatable :: hHeating(:), heHeating(:)
     real(double), allocatable :: photoIonCoeff(:,:)
     real(double), allocatable :: tempDoubleArray(:)
@@ -8600,7 +8599,6 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
          kappaTimesFlux, uvvec)
 
     allocate(tempDoubleArray(nVoxels))
-    allocate(tempRealArray(nVoxels))
 
     do i = 1, grid%nIon
       tempDoubleArray = 0.d0
@@ -8619,10 +8617,10 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
          MPI_SUM, amrParComm,ierr)
     heHeating = tempDoubleArray
 
-    tempRealArray = 0.0
-    call MPI_ALLREDUCE(nCrossings,tempRealArray,nVoxels,MPI_REAL,&
+    tempDoubleArray = 0.0
+    call MPI_ALLREDUCE(nCrossings,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
          MPI_SUM, amrParComm,ierr)
-    nCrossings = tempRealArray 
+    nCrossings = tempDoubleArray 
 
     tempDoubleArray = 0.0
     call MPI_ALLREDUCE(distanceGrid,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
@@ -8675,7 +8673,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
          MPI_SUM, amrParComm, ierr)
     uvvec(1:nVoxels)%z = tempDoubleArray 
 
-    deallocate(tempRealArray, tempDoubleArray)
+    deallocate(tempDoubleArray)
      
     call MPI_BARRIER(amrParComm, ierr) 
     
