@@ -510,7 +510,7 @@ module image_mod
        do i = 1, SIZE(array,1)
           do j = 1, SIZE(array,2)
              array(i,j) = real(returnMagnitude(dble(max(1.e-30,array(i,j))), mag))
-             array(i,j) = 10.d0**(array(i,j)/-2.5d0)
+             array(i,j) = 10.0**(array(i,j)/(-2.5))
           enddo
        enddo
 
