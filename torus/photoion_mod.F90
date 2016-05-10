@@ -119,6 +119,7 @@ contains
 
     integer :: nPacketIonizing
     real(double) :: nPhotonIonizing
+    real(double) :: r1
     
 #ifdef MPI
     ! For MPI implementations
@@ -362,21 +363,21 @@ contains
                         kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat, dir=uHat)
 
 
-!                   if ((thisFreq*hcgs*ergtoev) > 13.6) then ! ionizing photon
-!                      call randomNumberGenerator(getDouble=r1)
-!                      if (r1 < (kappaAbsGas / (kappaAbsGas + kappaAbsDust))) then  ! absorbed by gas rather than dust
+                   if ((thisFreq*hcgs*ergtoev) > 13.6) then ! ionizing photon
+                      call randomNumberGenerator(getDouble=r1)
+                      if (r1 < (kappaAbsGas / (kappaAbsGas + kappaAbsDust))) then  ! absorbed by gas rather than dust
                          call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
                          call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
                          call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
                          call addFreeFreeContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell)
 !                        call addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
                          call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-!                      else
-                         call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
-!                      endif
-!                   else ! non-ionizing photon must be absorbed by dust
-!                         call  addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
-!                   endif
+                      else
+                        call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+                      endif
+                   else ! non-ionizing photon must be absorbed by dust
+                         call  addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+                   endif
                    if (firsttime.and.writeoutput) then
                       firsttime = .false.
                       open(67,file="spec.dat",status="unknown",form="formatted")
@@ -3047,7 +3048,7 @@ end subroutine readHeIIrecombination
 #endif
 
   subroutine createImagePhotoion(grid, nSource, source,imageNum)
-    use inputs_mod, only : nPhotons
+    use inputs_mod, only : nPhotImage
     use image_mod, only: initImage, freeImage, IMAGETYPE, addPhotonToPhotoionImage
     use image_utils_mod
 #ifdef USECFITSIO
@@ -3118,10 +3119,13 @@ end subroutine readHeIIrecombination
     thisImage = initImage(imageNum)
 
     call setupGridForImage(grid, outputimageType, lambdaLine, iLambdaPhoton, nsource, source, lcore)
+    if (writeoutput) write(*,*) "Grid set up."
     if (nSource > 1) &
          call randomSource(source, nSource, iSource, photonPacketWeight, junk, 5, initialize=.true.)
+    if (writeoutput) write(*,*) "Sources initialised."
 
     call computeProbDist(grid, totalLineEmission, totalEmission, 1.0, .false.)
+    if (writeoutput) write(*,*) "Probabilities computed."
     totalEmission = totalEmission * 1.d30
 
     ! Probability that a photon comes from a source rather than the envelope
@@ -3151,25 +3155,25 @@ end subroutine readHeIIrecombination
        call writeInfo(message)
     endif
 
-    powerPerPhoton = ( (lCore + totalEmission) / dble(nPhotons) ) / 1.0d20
+    powerPerPhoton = ( (lCore + totalEmission) / dble(nPhotImage) ) / 1.0d20
     write(message,*) "power per photon ",powerperphoton
     call writeInfo (message, FORINFO)
 
 #ifdef MPI
-    i = nPhotons/nThreadsGlobal
+    i = nPhotImage/nThreadsGlobal
     ibeg = (myrankGlobal * i) + 1
     iend = ibeg + i -1
-    if (myRankGlobal == (nThreadsGlobal-1)) iEnd = nPhotons
+    if (myRankGlobal == (nThreadsGlobal-1)) iEnd = nPhotImage
 #else
     iBeg = 1
-    iEnd = nPhotons
+    iEnd = nPhotImage
 #endif
 
 !$OMP PARALLEL DEFAULT (NONE) &
 !$OMP PRIVATE (iPhoton, thisPhoton, thisSource, r, rhat, iSource, thisSourceWeight) &
-!$OMP PRIVATE (thisOctal, subcell, escaped, absorbed, observerPhoton, observerDirection) &
+!$OMP PRIVATE (thisOctal, subcell, escaped, absorbed, observerPhoton) &
 !$OMP SHARED (iBeg, iEnd, powerPerPhoton, iLambdaPhoton, probSource, grid, source) &
-!$OMP SHARED (weightSource, weightEnv, nsource, thisImage) &
+!$OMP SHARED (weightSource, weightEnv, nsource, thisImage, observerDirection) &
 !$OMP REDUCTION (+: totalFlux) 
 
 !$OMP DO

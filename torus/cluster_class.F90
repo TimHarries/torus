@@ -355,6 +355,16 @@ contains
        write(115,*) thisOctal%molabundance(subcell), clusterparam%x, thisOctal%nh2(subcell)
     end if
 
+
+! If sphData%rhoCO is in use then assume we want to use CO from SPH particles for abundance
+    if ( associated (sphData%dustfrac) ) then 
+       if (firstTime) call writeInfo("Setting dust fraction from particle dust fraction values")
+       clusterparam = Clusterparameter(point, thisoctal, subcell, theparam = 4)
+       thisOctal%dustTypeFraction(subcell,1) = clusterparam%x 
+    end if
+
+
+
     firstTime=.false.
 
   end subroutine assign_grid_values

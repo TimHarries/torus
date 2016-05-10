@@ -1299,10 +1299,10 @@ contains
 
   function MWC275Disc(point) result (rhoOut)
     use inputs_mod!, only: massRatio, binarySep, rInner, rOuter, betaDisc, height, &
-!         alphaDisc, rho0, smoothInnerEdge, streamFac, rGapInner1, rGapOuter1, rhoGap, &
-!         deltaCav, erInner, erOuter, mDotEnv, mcore, cavAngle, cavDens, rhoAmbient, planetDisc
-!    use inputs_mod, only : sourcePos, sourceMass, sourceRadius, hydrodynamics, &
-!         rGapInner2, rGapOuter2, heightInner, ringHeight, hOverR, rSublimation
+    !         alphaDisc, rho0, smoothInnerEdge, streamFac, rGapInner1, rGapOuter1, rhoGap, &
+    !         deltaCav, erInner, erOuter, mDotEnv, mcore, cavAngle, cavDens, rhoAmbient, planetDisc
+    !    use inputs_mod, only : sourcePos, sourceMass, sourceRadius, hydrodynamics, &
+    !         rGapInner2, rGapOuter2, heightInner, ringHeight, hOverR, rSublimation
     use utils_mod, only: solveQuad
     TYPE(VECTOR), INTENT(IN) :: point
     real(double) :: r, h, rhoOut, warpHeight, fac
@@ -1387,34 +1387,47 @@ contains
        endif
 
 
+
+
+       !    basic gap
+
+       if ((r < rGapOuter1).and.(r > rGapInner1)) then
+
+
+
+          h = height * (r / (100.d0*autocm/1.d10))**betaDisc
+          fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
+          fac = max(-50.d0,fac)
+          rhoOut = dble(rho0) * (dble(rInner/r))**dble(alphaDisc) * exp(fac)
+          rhoOut =  rhoGap * rhoOut
+
+
+       endif
+
+       if ((r < rGapOuter2).and.(r > rGapInner2)) then
+
+
+
+          h = height * (r / (100.d0*autocm/1.d10))**betaDisc
+          fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
+          fac = max(-50.d0,fac)
+          rhoOut = dble(rho0) * (dble(rInner/r))**dble(alphaDisc) * exp(fac)
+          rhoOut =  rhoGap * rhoOut
+
+
+       endif
+
+       if (r > rGapOuter2) then
+
+          h = height2 * (r / (100.d0*autocm/1.d10))**betaDisc
+          fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
+          fac = max(-50.d0,fac)
+          rhoOut = dble(rho0) * (dble(rInner/r))**dble(alphaDisc) * exp(fac)
+
+
+       endif
     endif
-    
 
-!    basic gap
-
-    if ((r < rGapOuter1).and.(r > rGapInner1)) then
-
-
-
-       h = height * (r / (100.d0*autocm/1.d10))**betaDisc
-       fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
-       fac = max(-50.d0,fac)
-       rhoOut =  rhoGap * exp(fac)
-
-
-    endif
-
-    if ((r < rGapOuter2).and.(r > rGapInner2)) then
-
-
-
-       h = height * (r / (100.d0*autocm/1.d10))**betaDisc
-       fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
-       fac = max(-50.d0,fac)
-       rhoOut =  rhoGap * exp(fac)
-
-
-    endif
 
     rhoOut = max(rhoOut, rhoAmbient)
 

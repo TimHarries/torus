@@ -1887,13 +1887,13 @@ contains
        call getReal("radius1", rCore, real(rsol/1.e10), cLine, fLine, nLines, &
             "Core radius (solar radii): ","(a,f7.3,a)", 10., ok, .true.)
 
-       call getReal("rinner", rInner, real(autocm/1.d10), cLine, fLine, nLines, &
+       call getReal("rinner", rInner, real(AUtocm/1.d10), cLine, fLine, nLines, &
             "Inner Radius (AU): ","(a,f7.3,a)", 12., ok, .true.)
 
        call getReal("teff1", teff, 1., cLine, fLine, nLines, &
             "Source effective temperature: ","(a,f7.1,a)", 12., ok, .true.)
 
-          call getReal("rsub", rSublimation, rcore, cLine, fLine, nLines, &
+          call getReal("rsub", rSublimation, real(autocm/1.d10), cLine, fLine, nLines, &
                "Sublimation radius (rstar): ","(a,f5.1,a)", 0., ok, .false.)
 
        call getLogical("setsubradius", setSubRadius, cLine, fLine, nLines, &
@@ -1947,6 +1947,9 @@ contains
 
        call getReal("height", height, real(autocm/1.d10), cLine, fLine, nLines, &
             "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+
+       call getReal("height2", height2, real(autocm/1.d10), cLine, fLine, nLines, &
+            "Scale height of outer disc (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
 
 
        call getReal("mass1", mCore, real(msol), cLine, fLine, nLines, &

@@ -74,6 +74,8 @@ module sph_data_class
      real(double), pointer, dimension(:) :: hn                 ! Smoothing length
      ! Density of the gas particles
      real(double), pointer, dimension(:) :: rhon
+     ! Dust fraction
+     real(double), pointer, dimension(:) :: dustfrac
      ! Density of H2
      real(double), pointer, dimension(:) :: rhoH2 => null()
      ! Density of CO
@@ -105,6 +107,7 @@ module sph_data_class
   real(double), allocatable :: PositionArray(:,:), OneOverHsquared(:), &
                                RhoArray(:), TemArray(:), VelocityArray(:,:), Harray(:), RhoH2Array(:)
   real(double), pointer :: rhoCOarray(:) => null()
+  real(double), pointer :: dustfrac(:) => null()
 
   logical, allocatable :: HullArray(:)
   type(sph_data), save :: sphdata
@@ -192,6 +195,7 @@ contains
     ALLOCATE(sphdata%vy(nptmass))
     ALLOCATE(sphdata%vz(nptmass))
     ALLOCATE(sphdata%hpt(nptmass))
+
        
     ! -- for mass of stars
     ALLOCATE(sphdata%ptmass(nptmass))
@@ -395,7 +399,8 @@ contains
     character(len=500) :: namestring, unitString, pTypeString
     integer :: ix, iy, iz, ivx, ivy, ivz, irho, iu, iitype, ih, imass, iUoverT, ipType
     logical :: haveUandUoverT
-
+    integer :: iDustfrac
+    real(double) :: dustfrac
     integer, allocatable :: pNumArray(:) ! Array of particle numbers read from header
     
 !
@@ -523,6 +528,12 @@ contains
        call writeFatal("Did not find velocity columns in SPH file.")
     end if
 
+    idustfrac = 0
+    if (wordIsPresent("dustfrac",word,nWord)) then
+       idustfrac = indexWord("dustfrac",word,nWord)
+    endif
+
+
     read(unit(ivx),*) uvel
 
     imass = indexWord("particle mass",word,nWord)
@@ -534,7 +545,8 @@ contains
     else
        iu = indexWord("u",word,nWord)
     endif
-       read(unit(iu),*) utemp
+    utemp = 1.d0
+    if (iu /=0) read(unit(iu),*) utemp
     
     irho = indexWord("density",word,nWord)
     ih = indexWord("h",word,nWord)
@@ -604,6 +616,11 @@ contains
        allocate(sphdata%rhoH2(npart))
     end if
 
+    if (idustfrac/=0) then
+       ALLOCATE(sphdata%dustfrac(sphdata%npart))
+    endif
+
+
     sphdata%totalgasmass = 0.d0
     sphdata%totalHImass  = 0.d0
     sphdata%totalMolmass = 0.d0
@@ -637,9 +654,18 @@ part_loop: do ipart=1, nlines
 
        if (internalView) call rotate_particles(galaxyPositionAngle+extraPA, galaxyInclination)
 
-       u = junkArray(iu)
+       u = 0.d0
+       if (iu /= 0) u = junkArray(iu)
        rhon = junkArray(irho)
        h = junkArray(ih)
+
+
+       dustfrac = 0.1
+       if (idustFrac /= 0) then
+          dustfrac = junkArray(idustfrac)
+       endif
+
+
        if (iitype == 0) then
 ! If we don't have itype then treat as a gas particle provided the smoothing length is valid
           if (h>0.0) then
@@ -668,6 +694,8 @@ part_loop: do ipart=1, nlines
           sphdata%vxn(igas) = vx
           sphdata%vyn(igas) = vy
           sphdata%vzn(igas) = vz
+
+          if (idustfrac/=0) sphdata%dustfrac = dustfrac
 
 ! For SPH simulations with chemistry we need to set up H2
           if ( convertRhoToHI.or.sphwithChem ) then
@@ -3015,6 +3043,7 @@ contains
           allocate(ind(npart))
           allocate(OneOverHsquared(npart))
           if (associated(sphData%rhoCO)) allocate (rhoCOarray(npart))
+          if (associated(sphData%dustfrac)) allocate (dustfrac(npart))
           
           allocate(HullArray(npart))
           
@@ -3119,6 +3148,9 @@ contains
           if (associated (rhoCOarray) .and. associated(sphdata%rhoCO) ) then 
              rhoCOarray(:) = sphdata%rhoCO(ind(:)) * codeDensityToTorus
           end if
+          if (associated (dustfrac) .and. associated(sphdata%dustfrac) ) then 
+             dustfrac(:) = sphdata%dustfrac(ind(:)) 
+          end if
           
           hcrit = hcrit * codeLengthtoTORUS
           OneOverHcrit = 1.d0 / hcrit
@@ -3188,6 +3220,7 @@ contains
 
           if (allocated(etaarray))      deallocate(etaarray)
           if (associated(rhoCOarray))   deallocate(rhoCOarray)
+          if (associated(dustfrac))   deallocate(dustfrac)
           if (allocated(VelocityArray)) deallocate (VelocityArray)
        endif
        nullify(previousOctal)
@@ -3351,6 +3384,19 @@ contains
           enddo
           
           Clusterparameter = VECTOR(paramValue(1)*fac, 0.d0, 0.d0)  ! density ! stays as vector for moment
+       elseif (param .eq. 4) then 
+
+          if(sumweight .gt. sph_norm_limit) then
+             fac = 1.d0 / sumWeight
+          else
+             fac = 1.0
+          end if
+
+          do i = 1, nparticles
+             paramValue(1) = paramValue(1) + partArray(i) * dustfrac(indexArray(i)) ! CO density
+          enddo
+          
+          Clusterparameter = VECTOR(paramValue(1)*fac, 0.d0, 0.d0)  ! dustfraction ! stays as vector for moment
 
        endif
     else

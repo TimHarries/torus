@@ -30,10 +30,11 @@ contains
     use inputs_mod, only : variableDustSublimation, iterlucy, rCore, scatteredLightWavelength, solveVerticalHydro
     use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau
     use inputs_mod, only : object, convergeOnUndersampled, maxMemoryAvailable !, mDisc, dusttogas, dustSettling
-    use inputs_mod, only : writelucyTmpfile, discWind, mincrossings, maxiterLucy, solveDiffusionZone, quickSublimate
+    use inputs_mod, only : writelucyTmpfile, discWind, mincrossings, maxiterLucy, solveDiffusionZone, quickSublimate, splitovermpi
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
-    use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled, randomwalk
+    use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled, randomwalk, &
+         unsetDiffusion
     use amr_mod, only: myScaleSmooth, myTauSmooth, findtotalmass, scaledensityamr
     use dust_mod, only: filldustuniform, stripdustaway, sublimatedust, sublimatedustwr104, fillDustShakara, &
          normalizeDustFractions, findDustMass, setupOrigDustFraction, reportMasses
@@ -226,7 +227,7 @@ contains
        call scaleDensityAMR(grid%octreeRoot, dble(scaleFac))
     endif
 
-
+    call unsetDiffusion(grid%octreeRoot)
 
     !    call setupFreqProb(temperature, freq, dnu, nFreq, ProbDistPlanck)
 
@@ -301,10 +302,11 @@ contains
 
 
     nCellsInDiffusion = 0
-    call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
-    write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
-    call writeInfo(message,IMPORTANT)
-
+    if (solveDiffusionZone) then
+       call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
+       write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
+       call writeInfo(message,IMPORTANT)
+    endif
 !    call getTauinMidPlane(grid)
 
     iIter_grand = 0
@@ -378,7 +380,9 @@ contains
           endif
 
           nCellsInDiffusion = 0
-          call defineDiffusionOnRosseland(grid,grid%octreeRoot,tauDiff,  nDiff=nCellsInDiffusion)
+          if (solveDiffusionZone) then
+             call defineDiffusionOnRosseland(grid,grid%octreeRoot,tauDiff,  nDiff=nCellsInDiffusion)
+          endif
 
 
           if (doTuning) call tune(6, "One Lucy Rad Eq Itr")  ! start a stopwatch
@@ -763,12 +767,16 @@ contains
                dT_sum, dT_min, dT_max, dT_over_T_max)
 
 
-          if (doTuning) call tune(6, "Gauss-Seidel sweeps")
-          call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff)
+          if (solveDiffusionZone) then
+             if (doTuning) call tune(6, "Gauss-Seidel sweeps")
+             call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff)
+          endif
 
 
           nCellsInDiffusion = 0
-          call defineDiffusionOnUndersampled(grid%octreeroot, nDiff=nCellsInDiffusion)
+          if (solveDiffusionZone) then
+             call defineDiffusionOnUndersampled(grid%octreeroot, nDiff=nCellsInDiffusion)
+          endif
 
           if (solveDiffusionZone) then
              if (.not.variableDustSublimation) then
@@ -847,12 +855,13 @@ contains
 
 
           nCellsInDiffusion = 0
-          call defineDiffusionOnRosseland(grid,grid%octreeRoot,tauDiff,  nDiff=nCellsInDiffusion)
-          !       call unsetOnDirect(grid%octreeRoot)
-          write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
-          call writeInfo(message,IMPORTANT)
-
-          if (doTuning) call tune(6, "Gauss-Seidel sweeps")
+          if (solvediffusionZone) then
+             call defineDiffusionOnRosseland(grid,grid%octreeRoot,tauDiff,  nDiff=nCellsInDiffusion)
+             !       call unsetOnDirect(grid%octreeRoot)
+             write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
+             call writeInfo(message,IMPORTANT)
+             if (doTuning) call tune(6, "Gauss-Seidel sweeps")
+          endif
 
 
 
@@ -957,9 +966,11 @@ contains
 
 
              nCellsInDiffusion = 0
-             call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
-             write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
-             call writeInfo(message,IMPORTANT)
+             if (solveDiffusionZone) then
+                call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
+                write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
+                call writeInfo(message,IMPORTANT)
+             endif
 
 
 
@@ -1801,6 +1812,9 @@ contains
           end do
        else
 
+          if (.not.associated(thisOctal%oldTemperature)) then
+             allocate(thisOctal%oldTemperature(1:thisOctal%maxChildren))
+          endif
           thisOctal%oldTemperature(subcell) = thisOctal%temperature(subcell)
 
           if (thisOctal%inFlow(subcell)) then
@@ -2930,18 +2944,26 @@ end subroutine addDustContinuumLucyMono
 !-------------------------------------------------------------------------------
 
 subroutine addDustContinuumLucyMonoAtDustTemp(thisOctal, subcell, grid,  lambda, iPhotonLambda)
-
+  use inputs_mod, only : tminGlobal
   type(OCTAL), pointer :: thisOctal
   integer :: subcell
   type(GRIDTYPE) :: grid
   integer :: iPhotonLambda
   real ::  lambda
   real(double) :: kappaAbs
+  logical, save :: firstTime = .true.
+
   kappaAbs = 0.d0
   thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont(subcell))
 
-  call returnKappa(grid, thisOctal, subcell, lambda=lambda, iLambda=iPhotonLambda, kappaAbs=kappaAbs)
+  if (thisOctal%tDust(subcell) < tMinglobal) then
+     if (firstTime.and.writeoutput) write(*,*) "Looks like tdust not set up, setting tdust to temperature"
+     thisOctal%tDust(subcell) = dble(thisOctal%temperature(subcell))
+     firstTime = .false.
+  endif
 
+
+  call returnKappa(grid, thisOctal, subcell, lambda=lambda, iLambda=iPhotonLambda, kappaAbs=kappaAbs)
   thisOctal%etaCont(subcell) =  bLambda(dble(lambda), thisOctal%tdust(subcell)) * &
              kappaAbs * 1.d-10 * fourPi * 1.d-8 ! conversion from per cm to per A
   if (.not.thisOctal%inFlow(subcell)) thisOctal%etaCont(subcell) = 0.d0

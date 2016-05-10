@@ -730,7 +730,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
      if (mie .and. (.not. useDust)) then
 
-        write(*,*) "nlambda ",nlambda, " grid%lamArray ",grid%lamarray
+!        write(*,*) "nlambda ",nlambda, " grid%lamArray ",grid%lamarray
         call calcContinuumEmissivityLucy(grid, grid%octreeRoot , nlambda, grid%lamArray)
 
 
@@ -1017,7 +1017,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
         if (writeoutput) write(*,'(a,e12.3)') "Chance continuum emission in wind: ", grid%chanceWindOverTotalContinuum
 
-        write(*,*) "nlambda ",nlambda
+!        write(*,*) "nlambda ",nlambda
         ! set up the line and continuum weights
 
         if ((probLinePhoton /= 0.).and.(probContphoton /= 0.)) then

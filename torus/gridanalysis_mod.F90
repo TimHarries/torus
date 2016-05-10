@@ -150,8 +150,11 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol
              includeThisCell = .false.
 
              if ((abs(rVec%z)-thisOctal%subcellSize/2.d0)  < 1.d0) then
-                includeThisCell = .true.
+                if ((abs(rVec%y)-thisOctal%subcellSize/2.d0)  < 1.d0) then
+                   includeThisCell = .true.
+                endif
              endif
+
 
              if (PRESENT(minRadius)) then
                 if (r < minRadius) includeThisCell = .false.

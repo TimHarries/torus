@@ -88,6 +88,7 @@ module molecular_mod
       integer, pointer :: itransUpper(:)
       integer, pointer :: itransLower(:)
       real(double), pointer :: Eu(:)
+
       integer, pointer :: iCollUpper(:,:)
       integer, pointer :: iCollLower(:,:)
       integer :: nCollPart
@@ -104,6 +105,167 @@ module molecular_mod
 
  contains
    ! Read in molecular parameters from file - note: abundance hard-coded here
+
+   subroutine reduceMolecule(thisMolecule,maxLevel)
+     type(MOLECULETYPE) :: thisMolecule
+     integer :: maxLevel
+     real(double),allocatable :: tmp(:)
+     integer, allocatable :: itmp(:)
+     logical, allocatable :: keep(:)
+     integer :: i, j, k, iColl, iTemp
+     integer :: newNtrans, newNcollTrans
+
+
+
+     if (writeoutput) write(*,*) "Reducing molecule to maximum level: ",maxlevel
+     allocate(tmp(1:thisMolecule%nLevels))
+
+     tmp = thisMolecule%energy
+     deallocate(thisMolecule%energy)
+     allocate(thisMolecule%energy(1:maxLevel))
+     thisMolecule%energy(1:maxLevel) = tmp(1:maxLevel)
+
+     tmp = thisMolecule%g
+     deallocate(thisMolecule%g)
+     allocate(thisMolecule%g(1:maxLevel))
+     thisMolecule%g(1:maxLevel) = tmp(1:maxLevel)
+
+     tmp = thisMolecule%j
+     deallocate(thisMolecule%j)
+     allocate(thisMolecule%j(1:maxLevel))
+     thisMolecule%j(1:maxLevel) = tmp(1:maxLevel)
+
+     if (associated(thisMolecule%k)) then
+        tmp = thisMolecule%k
+        deallocate(thisMolecule%k)
+        allocate(thisMolecule%k(1:maxLevel))
+        thisMolecule%k(1:maxLevel) = tmp(1:maxLevel)
+     endif
+     
+
+     deallocate(tmp)
+     allocate(keep(1:thisMolecule%nTrans))
+     keep = .false.
+     newNtrans = 0 
+     do i = 1, thisMolecule%nTrans
+        if (thisMolecule%iTransUpper(i) <= maxLevel) then
+           newNtrans = newNtrans + 1
+           keep(i) = .true.
+        endif
+     enddo
+
+     call resizeArray(thisMolecule%einsteinA, keep, newNtrans)
+     call resizeArray(thisMolecule%einsteinBul, keep, newNtrans)
+     call resizeArray(thisMolecule%einsteinBlu, keep, newNtrans)
+     call resizeArray(thisMolecule%transfreq, keep, newNtrans)
+     call resizeArray(thisMolecule%eu, keep, newNtrans)
+     call resizeArrayInt(thisMolecule%iTransUpper, keep, newNtrans)
+     call resizeArrayInt(thisMolecule%iTransLower, keep, newNtrans)
+     deallocate(keep)
+
+     if (writeoutput) write(*,*) "Number of radiative transitions removed: ",thisMolecule%nTrans - newNtrans
+     thisMolecule%ntrans = newNtrans
+
+
+     do iColl = 1, thisMolecule%nCollPart
+
+        allocate(keep(1:thisMolecule%nCollTrans(iColl)))
+        keep = .false.
+        newNcollTrans = 0
+        do j = 1, thisMolecule%nCollTrans(iColl)
+           if (thisMolecule%iCollUpper(iColl, j) <= maxLevel) then
+              keep(j) = .true.
+              newNCollTrans = newNCollTrans + 1
+           endif
+        enddo
+
+        allocate(itmp(1:thisMolecule%nCollTrans(iColl)))
+        itmp = thisMolecule%iCollUpper(iColl, 1:thisMolecule%nCollTrans(iColl))
+        k = 0 
+        do j = 1, thisMolecule%nCollTrans(iColl)
+           if (keep(j)) then
+              k = k + 1
+              thisMolecule%iCollUpper(iColl,k) = itmp(j)
+           endif
+        enddo
+        deallocate(itmp)
+
+        allocate(itmp(1:thisMolecule%nCollTrans(iColl)))
+        itmp = thisMolecule%iCollLower(iColl,  1:thisMolecule%nCollTrans(iColl))
+        k = 0 
+        do j = 1, thisMolecule%nCollTrans(iColl)
+           if (keep(j)) then
+              k = k + 1
+              thisMolecule%iCollLower(iColl,k) = itmp(j)
+           endif
+        enddo
+        deallocate(itmp)
+
+
+        do itemp = 1, thisMolecule%nCollTemps(iColl)
+           allocate(tmp(1:SIZE(thisMolecule%collRates,2)))
+           tmp = thisMolecule%collRates(iColl, 1:thisMolecule%nCollTrans(iColl),itemp)
+           k = 0 
+           do j = 1, thisMolecule%nCollTrans(iColl)
+              if (keep(j)) then
+                 k = k + 1
+                 thisMolecule%collRates(iColl,k,itemp) = tmp(j)
+              endif
+           enddo
+           deallocate(tmp)
+        enddo
+
+
+        if (writeoutput) write(*,*) "Number of collisional transitions removed for partner ",icoll,": ", &
+             thisMolecule%nCollTrans(iColl)-newNCollTrans
+        thisMolecule%nCollTrans(iColl) = newNCollTrans
+     end do
+
+     thisMolecule%nLevels = maxLevel
+
+   end subroutine reduceMolecule
+
+   subroutine resizeArray(inputArray, keep, newSize)
+     logical :: keep(:)
+     integer :: newSize
+     real(double), pointer :: inputArray(:)
+     real(double), allocatable :: tmp(:)
+     integer :: i, j
+     allocate(tmp(1:SIZE(keep)))
+     tmp = inputArray
+     deallocate(inputArray)
+     allocate(inputArray(1:newSize))
+     j = 0
+     do i = 1, size(keep)
+        if (keep(i)) then
+           j = j + 1
+           inputArray(j) = tmp(i)
+        endif
+     enddo
+     deallocate(tmp)
+   end subroutine resizeArray
+
+   subroutine resizeArrayInt(inputArray, keep, newSize)
+     logical :: keep(:)
+     integer :: newSize
+     integer, pointer :: inputArray(:)
+     integer, allocatable :: tmp(:)
+     integer :: i, j
+     allocate(tmp(1:SIZE(keep)))
+     tmp = inputArray
+     deallocate(inputArray)
+     allocate(inputArray(1:newSize))
+     j = 0
+     do i = 1, size(keep)
+        if (keep(i)) then
+           j = j + 1
+           inputArray(j) = tmp(i)
+        endif
+     enddo
+     deallocate(tmp)
+   end subroutine resizeArrayInt
+
+
 
 
   subroutine readMolecule(thisMolecule, molFilename)
@@ -535,7 +697,11 @@ module molecular_mod
                  else
                     maxlevel = setmaxlevel
                  endif
+                 write(*,*) "MAX LEVEL DONE HERE!!!!! ",maxlevel
 !tjh added
+                 call writeInfo("Reducing molecule...",TRIVIAL)
+                 call reduceMolecule(thisMolecule, maxlevel)
+                 call writeInfo("Done.",TRIVIAL)
                  maxLevel = thisMolecule%nLevels
 
 ! TODO V2:
@@ -1067,16 +1233,30 @@ module molecular_mod
      if(isinlte .and. .not. restart) then
         write(molgridltefilename,*) trim(thismolecule%molecule),"_lte.grid"
 
-        call writeAMRgrid(molgridltefilename,.false.,grid)
+!        call writeAMRgrid(molgridltefilename,.false.,grid)
         if (setupMolecularLteOnly) goto 666
      endif
 
 ! Write maximum interesting level as determined by molecularlevel
      write(message, *) "Maximum Interesting Level", maxlevel
      call writeinfo(message, TRIVIAL)
+
+     call writeInfo("Reducing molecule...",TRIVIAL)
+     call reduceMolecule(thisMolecule, maxlevel)
+     call writeInfo("Done.",TRIVIAL)
+     
+
+
 ! minlevel used for determining convergence and allocating less important variables (allocateother)
       minlevel = min(10, maxlevel-2)
       mintrans = minlevel - 1
+!tjh changed 19/4/16
+      minLevel = thisMolecule%nLevels
+      minTrans = thisMolecule%nTrans
+      maxTrans = thisMolecule%nTrans
+      maxLevel = thisMolecule%nLevels
+
+
 ! allocateother allocates new/old/oldest molecular levels for ng acceleration
 ! also tau and levelconvergence and convergence etc.
       call allocateother(grid, grid%octreeroot)
@@ -1180,7 +1360,7 @@ grid_conv_loop: do while (.not. gridConverged)
                mintrans = minlevel - 1
             endif
 
-            minLevel = 6 !TJH !!!!!!!!!!!!!!!
+!            minLevel = 6 !TJH !!!!!!!!!!!!!!!
 
             if(grid%geometry .eq. 'agbstar' .or. &
                  grid%geometry .eq. 'h2obench1' .or. &
@@ -3252,6 +3432,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
    tau = 0.d0
    thisOctal => grid%octreeRoot
    
+
    iUpper(:)  = thisMolecule%iTransUpper(1:maxtrans)
    iLower(:)  = thisMolecule%iTransLower(1:maxtrans)
 
@@ -5995,7 +6176,10 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
          
            jnu = etaLine * phiProfVal
 
-           if(useDust) jnu = jnu + dustjnu
+           if(useDust) then
+              jnu = jnu + dustjnu
+              write(*,*) "dustjnu ",dustjnu
+           endif
 
            if (alpha .ne. 0.d0) then
               snu = jnu/alpha

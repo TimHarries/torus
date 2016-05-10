@@ -211,6 +211,7 @@ module image_mod
      real  :: thisVel
      real :: weight
      type(filter_set), intent(in) :: filters     
+     type(STOKESVECTOR) :: thisStokes
      real, intent(in), optional :: lambda0_cont  ! rest wavelength of contiuum photon
      !
      integer :: i
@@ -251,6 +252,11 @@ module image_mod
         xDist = real(r * cos(ang))
         yDist = real(r * sin(ang))
            
+        thisStokes%i = thisPhoton%stokes%i
+        thisStokes%q = cos(2.d0*positionAngle) * thisPhoton%stokes%q + sin(2.d0*positionAngle) * thisPhoton%stokes%u
+        thisStokes%u = cos(2.d0*positionAngle) * thisPhoton%stokes%u - sin(2.d0*positionAngle) * thisPhoton%stokes%q
+        thisStokes%v = thisPhoton%stokes%v
+
         call pixelLocate(thisImageSet(i), xDist, yDist, xPix, yPix)
 
         if ((xPix >= 1) .and. &
@@ -262,9 +268,9 @@ module image_mod
 !           write(*,*) xpix,ypix,thisPhoton%stokes%i*weight*filter_response, thisPhoton%stokes%i, weight, filter_response
                  
            thisImageSet(i)%pixel(xPix, yPix) = thisImageSet(i)%pixel(xPix, yPix)  &
-                + thisPhoton%stokes * weight * filter_response
+                + thisStokes * weight * filter_response
            thisImageSet(i)%totWeight(xPix,yPix) = real(thisImageSet(i)%totWeight(xPix,yPix) &
-                + (thisPhoton%stokes%i*weight*filter_response))
+                + (thisStokes%i*weight*filter_response))
 
         endif
 
@@ -475,6 +481,41 @@ module image_mod
 
      end subroutine ConvertArrayToMagPerSqArcsec
 
+! Convert from ergs/s/A to magnitudes per square arcsec
+     subroutine ConvertArrayToFluxPerSqArcsec(array, lambda, dx, distance)
+       use utils_mod, only : returnMagnitude
+       real, intent(inout)      :: array(:,:)
+       character(len=1) :: mag
+       real(double), intent(in) :: distance, dx
+       real(double), parameter :: FluxToJanskies     = 1.e23_db ! ergs s^-1 cm^2 Hz^1
+       real(double), parameter :: PerAngstromToPerCm = 1.e8_db
+       real(double) :: strad, scale
+       real :: lambda
+       integer :: i, j
+
+       if (abs(lambda-1.22e4)/1.22e4 < 1.d-4) then
+          mag = "J"
+       else if (abs(lambda-1.63e4)/1.63e4 < 1.d-4) then
+          mag = "H"
+       else if (abs(lambda-2.19e4)/2.19e4 < 1.d-4) then
+          mag = "K"
+       else
+          write(*,*) "unknown magnitude for lambda ",lambda
+          stop
+       endif
+       strad = (dx*1.d10/distance)**2
+       scale = 1.d20/distance**2
+       array = array * real(scale / strad)
+       array = array / 4.254517e10   ! from per str to per arcsec^2
+       do i = 1, SIZE(array,1)
+          do j = 1, SIZE(array,2)
+             array(i,j) = real(returnMagnitude(dble(max(1.e-30,array(i,j))), mag))
+             array(i,j) = 10.d0**(array(i,j)/-2.5d0)
+          enddo
+       enddo
+
+     end subroutine ConvertArrayToFluxPerSqArcsec
+
 ! Convert from ergs/s/A to Jy/Pix
      subroutine ConvertArrayToJanskysPerPix(array, lambda, distance)
        real, intent(inout)      :: array(:,:)
@@ -678,7 +719,7 @@ module image_mod
        if (fwhmPixels > 0.d0) call smoothImage(image, fwhmpixels)
 
        scale = 1.
-       array = 1.e-30
+       array = 0.
        select case(type)
           case("intensity")
              array = real(image%pixel%i * scale)
@@ -716,7 +757,7 @@ module image_mod
           case("qr")
              do i = 1, image%nx
                 do j = 1, image%ny
-                   phi = atan2(image%xAxisCentre(i), image%yAxisCentre(j))
+                   phi = atan2(image%xAxisCentre(i), image%yAxisCentre(j)) + piby2
                    array(i,j) = real(cos(2.d0*phi) * image%pixel(i,j)%q + sin(2.d0*phi)*image%pixel(i,j)%u)
                 enddo
              enddo
@@ -724,7 +765,7 @@ module image_mod
           case("ur")
              do i = 1, image%nx
                 do j = 1, image%ny
-                   phi = atan2(image%xAxisCentre(i), image%yAxisCentre(j))
+                   phi = atan2(image%xAxisCentre(i), image%yAxisCentre(j)) + piby2
                    array(i,j) = real(-sin(2.d0*phi) * image%pixel(i,j)%q + cos(2.d0*phi)*image%pixel(i,j)%u)
                 enddo
              enddo
@@ -746,6 +787,7 @@ module image_mod
        samplings = 0
 
 ! Convert pixel units if a wavelength has been provided
+
        if (present(lambdaImage)) then 
           write(message,"(a,f14.2,a)") "Converting flux units using lambda= ", &
                lambdaImage, " Angstrom"
@@ -767,6 +809,8 @@ module image_mod
                 call ConvertArrayToJanskysPerPix(array, lambdaImage, objectDistance)
              case("mag/arcsec2")
                 call ConvertArrayToMagPerSqArcsec(array, lambdaImage, dx, objectDistance)
+             case("flux/arcsec2")
+                call ConvertArrayToFluxPerSqArcsec(array, lambdaImage, dx, objectDistance)
              case DEFAULT
                 call writeFatal("Flux unit not recognised: "//trim(getFluxUnits()))
              end select
@@ -794,6 +838,8 @@ module image_mod
              call ftpkys(unit,'BUNIT', "JY/BEAM", "units of image values", status)
           case("mag/arcsec2")
              call ftpkys(unit,'BUNIT', "MAG/ARCSEC2", "units of image values", status)
+          case("flux/arcsec2")
+             call ftpkys(unit,'BUNIT', "FLUX/ARCSEC2", "units of image values", status)
           case DEFAULT
              call writeFatal("Flux unit not recognised: "//trim(getFluxUnits()))
        end select
@@ -806,6 +852,15 @@ module image_mod
        case ("arcsec")
           dx = ((dx * 1.d10)/objectDistance)*radtodeg
           dy = ((dy * 1.d10)/objectDistance)*radtodeg
+          refValX = (( image%xAxisCentre(1) * 1.d10)/objectDistance)*radiansToArcsec
+          refValY = (( image%yAxisCentre(1) * 1.d10)/objectDistance)*radiansToArcsec
+          refValX = 0.
+          refValY = 0.
+          call ftpkys(unit,'CUNIT1', "deg", "x axis unit", status)
+          call ftpkys(unit,'CUNIT2', "deg", "y axis unit", status)
+       case ("mas")
+          dx = ((dx * 1.d10)/objectDistance)*radiansToArcsec*1000.d0
+          dy = ((dy * 1.d10)/objectDistance)*radiansToArcsec*1000.d0
           refValX = (( image%xAxisCentre(1) * 1.d10)/objectDistance)*radiansToArcsec
           refValY = (( image%yAxisCentre(1) * 1.d10)/objectDistance)*radiansToArcsec
           refValX = 0.

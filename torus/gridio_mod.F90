@@ -271,7 +271,7 @@ contains
        endif
     endif
 #endif
-          
+
 
     if (fileFormatted) then 
        call openUncompressedFile(20, updatedFilename)
@@ -380,7 +380,6 @@ contains
          open(unit=lunit, file=thisFilename, form="unformatted", status="unknown",position=positionStatus, iostat=returnVal)
          if (returnVal /= 0) call writeWarning("Error opening file with position "//trim(positionStatus))
       endif !"
-
     end subroutine openUncompressedFile
 
     recursive subroutine writeOctreePrivateFlexi(thisOctal,fileFormatted, grid)

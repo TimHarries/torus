@@ -505,7 +505,7 @@
 
   ! model parameters
   !
-  real :: height
+  real :: height, height2
   real :: heightinner
   real :: ringHeight
   real(double) :: envAngle, envRho

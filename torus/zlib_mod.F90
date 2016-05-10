@@ -147,6 +147,8 @@ contains
     if (PRESENT(positionStatus)) then
        if (trim(positionStatus)=="append") then
           open(lunit, file=thisFilename, form="unformatted", status="unknown",position=positionStatus)
+       else if (trim(positionStatus)=="rewind") then
+          open(lunit, file=thisFilename, form="unformatted", status="unknown",position=positionStatus)
        else if (trim(positionStatus)=="newfile") then
           inquire(file=thisFilename, exist=fileExists)
           inquire(unit=lunit, opened=luOpened)

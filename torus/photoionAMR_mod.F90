@@ -1800,7 +1800,7 @@ end subroutine radiationHydro
        else
           nfreq = 1000
           nuStart = cSpeed / (1000.e4 * 1.d-8)
-          nuEnd =  cSpeed / (10. * 1.d-8) ! 2.d0*maxval(grid%ion(1:grid%nIon)%nuThresh)
+          nuEnd =  cSpeed / (100. * 1.d-8) ! 2.d0*maxval(grid%ion(1:grid%nIon)%nuThresh)
           do i = 1, nFreq
              freq(i) = log10(nuStart) + dble(i-1)/dble(nFreq-1) * (log10(nuEnd)-log10(nuStart))
              freq(i) = 10.d0**freq(i)

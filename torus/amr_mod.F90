@@ -3598,7 +3598,7 @@ CONTAINS
 #endif
 #ifdef SPH
     USE cluster_class, only:   find_n_particle_in_subcell
-    use sph_data_class, only:  sphVelocityPresent, get_npart, get_pt_position, get_udist
+    use sph_data_class, only:  sphVelocityPresent, get_npart, get_pt_position, get_udist, get_nptmass
 #endif
 
     IMPLICIT NONE
@@ -3979,7 +3979,7 @@ CONTAINS
                    split = .TRUE.
                 end if
              end if
-             !         end if                                      
+             !         end if          
           end if          
           
           if (grid%geometry == "romanova") then         
@@ -4095,6 +4095,21 @@ CONTAINS
                   cellVolume(thisOctal,subcell)*1.d30*density(cellCentre,grid) > maxCellMass) &
                   split=.true.
           endif
+
+
+          if (ttauriMagnetosphere) then
+             if ((modulus(cellCentre) > ttauriRouter/1.d10).and.(thisOCtal%subcellSize > (ttauriRouter/1.d10)/100.d0) &
+               .and.(inSubcell(thisOctal, subcell, VECTOR(1.d-6,0.d0,1.d-6)).or. &
+               inSubcell(thisOctal,subcell,VECTOR(1.d-6,0.d0,-1.d-6)))) &
+                  split=.true.
+          endif
+
+          if (ttauriMagnetosphere) then
+             if ((modulus(cellCentre) < ttauriRouter/1.d10).and.(thisOCtal%subcellSize > (ttauriRouter/1.d10)/100.d0)) &
+                  split=.true.
+          endif
+
+
           
           !     if (thisOctal%threed) then
           !        cellsize = MAX(cellsize, r0 * thisOctal%dphi)
@@ -5038,7 +5053,7 @@ CONTAINS
 
 
              if (inputnSource > 0) then
-                do iSource = 1, inputnSource
+                do iSource = 1, get_nptmass()
                    rvec = get_pt_position(isource) * (get_udist()/1.d10)
                    if (inSubcell(thisOctal,subcell, rvec) &
                         .and. (thisOctal%nDepth < maxDepthAMR)) then
