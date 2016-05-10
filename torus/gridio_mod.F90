@@ -4315,6 +4315,14 @@ contains
 
          call writeInfo("Reading flexible AMR file from: "//trim(gridfilename),TRIVIAL)
 
+! Trap obviously incorrect values in time stamp
+         if ( timeValues(2)<1 .or. timeValues(2)>12 .or. &
+              timeValues(3)<1 .or. timeValues(3)>31) then
+            call writeWarning("Incorrect values in time stamp. Can be caused by incorrect endian.")
+            write(message,*) timeValues(1), timeValues(2), timeValues(3), timeValues(4), timeValues(5)
+            call writeWarning(message)
+         endif
+
          write(message,'(a,i4,a,i2.2,a,i2.2,a,i2.2,a,i2.2)') ' - data file written at: ', &
               timeValues(1),'/',timeValues(2),'/',&
               timeValues(3),'  ',timeValues(5),':',timeValues(6)
