@@ -611,7 +611,8 @@ CAPF90SOURCE =	 amr_mod.F90  octal_mod.F90 mpi_global_mod.F90 random_mod.F90 uni
                  phaseloop_mod.F90 gridio_mod.F90 angularImage_mod.F90  timedep_mod.F90 zlib_mod.F90 dust_mod.F90 mieDistPhaseMatrix.F90  \
 	         setupamr_mod.F90 physics_mod.F90 outputs_mod.F90 memory_mod.F90 viscosity_mod.F90 xray_mod.F90 loadbalance_mod.F90 \
                  healpix_modules.F90 healpix.F90 nrayshealpix.F90 pdr_mod.F90 pdr_utils_mod.F90 setuppdr_mod.F90 pah_mod.F90 \
-		biophysics_mod.F90 chemistry_mod.F90 gridanalysis_mod.F90 $(TORUSMAINSOURCE)
+		biophysics_mod.F90 interface_hierarchy_mod.f90 triangle_mesh_mod.f90 object_media_mod.f90 obj_io_mod.f90 detector_mod.f90 \
+		chemistry_mod.F90 gridanalysis_mod.F90 $(TORUSMAINSOURCE)
 
 
 CAPF90SOURCELIB = mpi_global_mod.F90 random_mod.F90 unix_mod.F90  memory_mod.F90 setupamr_mod.F90 physics_mod.F90 outputs_mod.F90 \

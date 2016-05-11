@@ -15,6 +15,7 @@ module spectrum_mod
      real(double), pointer :: lambda(:) => null()
      real(double), pointer :: prob(:) => null()
      real(double), pointer :: dlambda(:) => null()
+     real(double), pointer :: lambdaBinStart(:) => null()
      integer :: nLambda
      real(double), pointer :: ppw(:) => null() !Thaw - photon packet weight
   end type SPECTRUMTYPE
@@ -42,6 +43,31 @@ module spectrum_mod
       spectrum%nlambda = 0
     end subroutine freeSpectrum
 
+    subroutine newSpectrum(spectrum, lamStart, lamEnd, nLambda)
+      type(SPECTRUMTYPE) :: spectrum
+      real(double) :: lamStart, lamEnd
+      integer :: nLambda
+      integer :: i
+
+      allocate(spectrum%flux(1:nLambda))
+      spectrum%flux = 0.d0
+      allocate(spectrum%normflux(1:nLambda))
+      spectrum%normflux = 0.d0
+      allocate(spectrum%lambda(1:nLambda))
+      allocate(spectrum%prob(1:nLambda))
+      spectrum%prob = 0.d0
+      allocate(spectrum%dlambda(1:nLambda))
+      allocate(spectrum%LambdaBinStart(1:nLambda))
+
+      spectrum%nLambda = nLambda
+      do i = 1, nLambda
+         spectrum%lambda(i) = lamStart + (lamEnd - lamStart)*dble(i-1)/dble(nLambda-1)
+      enddo
+      spectrum%dlambda = (lamEnd-LamStart)/dble(nLambda)
+      spectrum%lambdaBinStart = spectrum%lambda - spectrum%dlambda/2.d0
+    end subroutine newSpectrum
+
+    
     subroutine getWavelength(spectrum, wavelength, photonPacketWeight)
       use random_mod, only: randomNumberGenerator
       type(SPECTRUMTYPE) :: spectrum
@@ -292,7 +318,17 @@ module spectrum_mod
 
     end subroutine addXray
 
-      
+    subroutine addPhotonToSpectrum(spectrum, photonWavelength, photonWeight)
+      type(SPECTRUMTYPE) :: spectrum
+      real(double) :: photonWavelength, photonWeight
+      integer :: j
+
+      if ( (photonWavelength >= spectrum%lambda(1)-spectrum%dlambda(1)/2.d0).and. &
+           (photonWavelength <= spectrum%lambda(spectrum%nLambda)+spectrum%dlambda(spectrum%nLambda)/2.d0) ) then
+         call locate(spectrum%lambdaBinStart, spectrum%nLambda, photonWavelength, j)
+         spectrum%flux(j) = spectrum%flux(j) + photonWeight
+      endif
+    end subroutine addPhotonToSpectrum
 
     subroutine readSpectrum(spectrum, filename, ok)
       type(SPECTRUMTYPE) :: spectrum

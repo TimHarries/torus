@@ -68,7 +68,7 @@ contains
 
   if (biophysics) then
      call writeInfo("Setting up skin tissue properties...",TRIVIAL)
-     call setupMatcherSkinTissue()
+!     call setupMatcherSkinTissue()
      call writeInfo("Done.",TRIVIAL)
    endif
 #ifdef CHEMISTRY
@@ -471,7 +471,7 @@ contains
     if (bioPhysics) then
        call photonLoop(grid)
        call writeVtkFile(grid, "skin.vtu", &
-            valueTypeString=(/"tissue    ","udens     ","ncrossings","surfnorm  "/))
+            valueTypeString=(/"udens     ","ncrossings","etaline   "/))
     endif
 
 
@@ -816,6 +816,7 @@ contains
 
    subroutine setupGlobalSources(grid)     
      use parallel_mod
+     use surface_mod
 #ifdef SPH
      use sph_data_class
 #endif

@@ -27,8 +27,8 @@ module vector_mod
        getPolar, &
        fromPhotosphereVector, &
        distancePointLineSegment, &
-       greatCircleDistance       
-       
+       greatCircleDistance
+
 !  private :: &
 !       rmultSingle, rmultDouble, rmultOctal, rmultSingleReversed, rmultDoubleReversed, &
 !       rmultOctalReversed, dmult, divideVecSingle, divideVecDouble, divideVecOctal, &
@@ -47,8 +47,8 @@ module vector_mod
 !       fromPhotosphereDoubleVector, fromPhotosphereOctalVector, distancePointLineSegmentSingle, &
 !       distancePointLineSegmentOctal, distancePointLineSegmentDouble, greatCircleDistanceSingle, &
 !       greatCircleDistanceDouble, greatCircleDistanceOctal
-  
-  
+
+
 
   ! The definition of the vector type
 
@@ -113,13 +113,13 @@ module vector_mod
   interface operator(.cross.)
      module procedure crossProd
   end interface
-  
+
   type(VECTOR), parameter :: xHat = VECTOR(1.d0, 0.d0, 0.d0)
   type(VECTOR), parameter :: yHat = VECTOR(0.d0, 1.d0, 0.d0)
   type(VECTOR), parameter :: zHat = VECTOR(0.d0, 0.d0, 1.d0)
-  
+
   type(VECTOR), parameter :: zeroVector = VECTOR(0.d0, 0.d0, 0.d0)
-  
+
 contains
 
   ! the dot product function
@@ -131,7 +131,7 @@ contains
     dotProd = a%x*b%x + a%y*b%y + a%z*b%z
 
   end function dotProd
-  
+
   ! the cross product function
 
   type(VECTOR) pure function crossProd(a ,b)
@@ -142,7 +142,7 @@ contains
     crossProd%y = -(a%x*b%z - a%z*b%x)
     crossProd%z =  (a%x*b%y - a%y*b%x)
   end function crossProd
-  
+
   ! normalization subroutine - checks for zero vector
 
   subroutine normalize(a)
@@ -165,7 +165,7 @@ contains
     endif
 
   end subroutine normalize
-  
+
   ! find the modulus of a vector
 
   real(double) pure function modulus(a)
@@ -209,7 +209,7 @@ contains
 
   end function divide
   ! add two vectors
-  
+
   type(VECTOR) pure function add(a,b)
     type(VECTOR), intent(in) :: a
     type(VECTOR), intent(in) :: b
@@ -219,7 +219,7 @@ contains
     add%z = a%z + b%z
 
   end function add
-  
+
   ! subtract two vectors
 
   type(VECTOR) pure function subtract(a,b)
@@ -237,7 +237,7 @@ contains
     type(VECTOR) :: value
     integer :: level
     logical :: thisOutputInfo
-    
+
     thisOutputInfo = outputInfo
     if (verbosityLevel .lt. Level) then
        thisoutputinfo = .false.
@@ -253,7 +253,7 @@ contains
     implicit none
     type(vector), intent(in) :: vec
     real(double), intent(out) :: r, theta, phi
-    real(double) :: cosTheta 
+    real(double) :: cosTheta
 
     r = modulus(vec)
     if ((vec%y == 0.d0) .and. (vec%x == 0.d0)) then
@@ -267,10 +267,10 @@ contains
     else
        cosTheta = 0.d0
     endif
-       
+
     theta = acos(cosTheta)
   end subroutine getPolar
-  
+
   ! rotate a vector "a" about the z-axis by angle b - CLOCKWISE!
 
   type(VECTOR) pure function rotateZ(a,b)
@@ -286,7 +286,7 @@ contains
     rotateZ%z = a%z
 
   end function rotateZ
-  
+
   ! rotate a vector "a" about the x-axis by angle b - CLOCKWISE!
 
   type(VECTOR) pure function rotateX(a,b)
@@ -297,12 +297,12 @@ contains
     cosb = cos(b)
     sinb = sin(b)
 
-    rotateX%x = a%x 
+    rotateX%x = a%x
     rotateX%y = cosb * a%y + sinb * a%z
     rotateX%z =-sinb * a%y + cosb * a%z
 
   end function rotateX
-  
+
   ! rotate a vector "a" about the y-axis by angle b - ANTI-CLOCKWISE!
 
   type(VECTOR) pure function rotateY(a,b)
@@ -329,7 +329,7 @@ contains
     percentPhoCav = 0.9d0
 
     call randomNumberGenerator(getDouble=r)
-    if (r < percentPhoCav) then   !% of photons in cavities 
+    if (r < percentPhoCav) then   !% of photons in cavities
        call randomNumberGenerator(getDouble=r)
        if(r < 0.5) then
           call randomNumberGenerator(getDouble=r)
@@ -338,7 +338,7 @@ contains
           call randomNumberGenerator(getDouble=r)
           w = -cos(openingAngle) + (r*(-1.0 + cos(openingAngle)))
        end if
-       photonPacketWeight = (1.0 - cos(openingAngle)) / percentPhoCav          
+       photonPacketWeight = (1.0 - cos(openingAngle)) / percentPhoCav
     else  !rest towards disc
        call randomNumberGenerator(getDouble=r)
        w = -cos(openingAngle) + (r * 2.0 * cos(openingAngle))
@@ -367,11 +367,11 @@ contains
 !    percentInGrid = 0.99999d0
 !    percentInGrid = 0.95d0
     percentInGrid = 0.99d0
-    
+
 !    openingAngle = atan(dx/(2.d0*L))
 !    openingAngle = atan(dx/(4.d0*L))
     openingAngle = atan(dx/(L))
-    
+
 !    call randomNumberGenerator(getDouble=r)
 !    if (r < percentInGrid) then   !% of photons in pseudo-3d grid
 !       call randomNumberGenerator(getDouble=r)
@@ -382,20 +382,20 @@ contains
 !!          call randomNumberGenerator(getDouble=r)
  !         v = -cos(openingAngle) + (r*(-1.0 + cos(openingAngle)))
  !      end if
- !      photonAngleWeight = photonAngleWeight*(1.0 - cos(openingAngle)) / percentInGrid 
+ !      photonAngleWeight = photonAngleWeight*(1.0 - cos(openingAngle)) / percentInGrid
  !   else  !rest go elsewhere
  !      call randomNumberGenerator(getDouble=r)
  !      v = -cos(openingAngle) + (r * 2.0 * cos(openingAngle))
  !      photonAngleWeight = photonAngleWeight*(cos(openingAngle) / (1.0 - percentInGrid))
  !  end if
- !  
+ !
  !   call randomNumberGenerator(getDouble=r)
  !   u = 2.d0*r - 1.d0
  !   call randomNumberGenerator(getDouble=r)
 !    w = 2.d0*r - 1.d0
 !    rVec = VECTOR(u,v,w)
 
-    !      ! simply treating as a point source                                 
+    !      ! simply treating as a point source
 !    position = source%position
 !    direction = randomUnitVector()
 !    if (biasPhiDirection > 0.d0) then
@@ -409,11 +409,11 @@ contains
     if (r < percentInGrid) then
        call randomNumberGenerator(getDouble=r2)
        ang = biasPhiDir + ((2.d0*r2)-1.d0) * openingAngle
-!       photonAngleWeight = photonAngleWeight*(openingAngle/(pi/2.d0)) / percentInGrid    
-!       photonAngleWeight = photonAngleWeight*sin(openingAngle/2.d0) / percentInGrid 
-       photonAngleWeight = photonAngleWeight*sin(openingAngle) / percentInGrid 
+!       photonAngleWeight = photonAngleWeight*(openingAngle/(pi/2.d0)) / percentInGrid
+!       photonAngleWeight = photonAngleWeight*sin(openingAngle/2.d0) / percentInGrid
+       photonAngleWeight = photonAngleWeight*sin(openingAngle) / percentInGrid
     else
-       ang = biasPhiDir       
+       ang = biasPhiDir
 
        call randomNumberGenerator(getDouble=r)
       if(r > 0.5d0) then
@@ -454,7 +454,7 @@ contains
 !    v = t*sin(ang)
     rVec = VECTOR(u, v, w)
 !    call normalize(rvec)
-    
+
 
 !    v = t*sin(ang)!
 !
@@ -464,7 +464,7 @@ contains
 !    u = 2.d0*r-1.d0
 !   call randomNumberGenerator(getDouble=r)
  !   v = 2.d0*r-1.d0
-   
+
 
 
 
@@ -538,64 +538,64 @@ contains
     endif
 
   end function intersectionLinePlane
-  
+
   pure subroutine intersectionLineSphere(r0, rHat, length, s0, sR, found1,&
                               found2,intersectionDistance1,intersectionDistance2)
     ! finds the intersection(s) between a line segment and a sphere
-    
+
     implicit none
 
     type(vector), intent(in)      :: r0, rHat ! equation of line
-    real(double), intent(in)              :: length   ! length of line segment 
+    real(double), intent(in)              :: length   ! length of line segment
     type(vector), intent(in)      :: s0       ! centre of sphere
     real(double), intent(in)              :: sR       ! radius of sphere
     logical,intent(out)           :: found1   ! there is one intersection
     logical,intent(out)           :: found2   ! there is a second intersection
-    real(double), intent(out)             :: intersectionDistance1 ! distances along line 
+    real(double), intent(out)             :: intersectionDistance1 ! distances along line
     real(double), intent(out)             :: intersectionDistance2 !   to intersections
     real(double)  :: a, b, c       ! quadratic formula variables
     real(double)  :: discriminant  ! quadratic formula variable
     real(double)  :: solution1     ! quadratic formula variable
     real(double)  :: solution2     ! quadratic formula variable
-    
+
     type(Vector) :: r0Double, rHatDouble ! equation of line (real(double))
     type(Vector) :: s0Double             ! centre of sphere (real(double))
     real(double)   :: sRDouble             ! radius of sphere (real(double))
-    
+
     r0Double = Vector(r0%x,r0%y,r0%z)
     rHatDouble = Vector(rHat%x,rHat%y,rHat%z)
     s0Double = Vector(s0%x,s0%y,s0%z)
     sRDouble = sR
-    
+
     a = rHatDouble%x**2.0_db + rHatDouble%y**2.0_db + rHatDouble%z**2.0_db
     b = 2.0_db * ( rHatDouble%x * (r0Double%x - s0Double%x) + rHatDouble%y * &
-                (r0Double%y - s0Double%y) + rHatDouble%z * (r0Double%z - s0Double%z)) 
+                (r0Double%y - s0Double%y) + rHatDouble%z * (r0Double%z - s0Double%z))
     c = (r0Double%x - s0Double%x)**2.0_db + (r0Double%y - s0Double%y)**2.0_db + &
-                (r0Double%z - s0Double%z)**2.0_db - sRDouble**2.0_db 
- 
+                (r0Double%z - s0Double%z)**2.0_db - sRDouble**2.0_db
+
     discriminant = b**2.0_db - (4.0_db * a * c)
 
     intersectionDistance1 = -9.99e9
     intersectionDistance2 = -9.99e9
     found1 = .false.
     found2 = .false.
-    
+
     if (discriminant >= 0.0_db) then
-      
+
       ! we only need to find the smallest positive solution of the quadratic
-      
-      solution1 = (-b - (b**2.0_db - 4.0_db*a*c)**0.5) / (2.0_db * a) 
-      solution2 = (-b + (b**2.0_db - 4.0_db*a*c)**0.5) / (2.0_db * a) 
-      
-      if (solution1 >= 0.0_db) then 
-        
+
+      solution1 = (-b - (b**2.0_db - 4.0_db*a*c)**0.5) / (2.0_db * a)
+      solution2 = (-b + (b**2.0_db - 4.0_db*a*c)**0.5) / (2.0_db * a)
+
+      if (solution1 >= 0.0_db) then
+
         if (solution1 < length) then
           found1 = .true.
           intersectionDistance1 = solution1
         end if
-        
+
         if (solution2 < length) then
-          if (found1) then      
+          if (found1) then
             found2 = .true.
             intersectionDistance2 = solution2
           else
@@ -605,49 +605,49 @@ contains
         end if
       end if
     end if
-    
+
   end subroutine intersectionLineSphere
-  
+
   type(VECTOR) pure function arbitraryRotate(p, theta, r)
     type(VECTOR),intent(in) :: p      ! position vector
     real(double),intent(in)         :: theta  ! angle in radians
     type(VECTOR),intent(in) :: r      ! the arbitrary axis
-    
+
     real(double) :: cosTheta, sinTheta
-    type(VECTOR)            :: q    
+    type(VECTOR)            :: q
 
     costheta = cos(theta)
     sintheta = sin(theta)
-    
+
     q%x = (costheta + (1. - costheta) * r%x * r%x) * p%x
     q%x = q%x + ((1. - costheta) * r%x * r%y - r%z * sintheta) * p%y
     q%x = q%x + ((1. - costheta) * r%x * r%z + r%y * sintheta) * p%z
-    
+
     q%y = ((1. - costheta) * r%x * r%y + r%z * sintheta) * p%x
     q%y = q%y + (costheta + (1. - costheta) * r%y * r%y) * p%y
     q%y = q%y + ((1. - costheta) * r%y * r%z - r%x * sintheta) * p%z
-    
+
     q%z = ((1. - costheta) * r%x * r%z - r%y * sintheta) * p%x
     q%z = q%z + ((1. - costheta) * r%y * r%z + r%x * sintheta) * p%y
     q%z = q%z + (costheta + (1. - costheta) * r%z * r%z) * p%z
-    
+
     arbitraryRotate = q
-    
+
   end function arbitraryRotate
-  
-  
+
+
   type(VECTOR) function fromPhotosphereVector(rVec)
     use constants_mod, only: twoPi
     real(double) :: ang, z
     type(VECTOR) :: norm, zAxis, v, rVec, n
-    
+
     zAxis = VECTOR(0.,0.,1.)
 
     do while (ABS(rVec .dot. zAxis) == 1.0d0)
        ! choose another one
        rVec = randomUnitVector()
     end do
-    
+
     norm = rVec
     call normalize(norm)
 
@@ -683,7 +683,7 @@ contains
        outprev = out
        rvecprev = rvec
     endif
-       
+
   end function projectToXZ
 
   elemental subroutine SPtoXYZvector(out,in)
@@ -694,7 +694,7 @@ contains
     out%x = in%r * SIN(in%theta) * COS(in%phi)
     out%y = in%r * SIN(in%theta) * SIN(in%phi)
     out%z = in%r * COS(in%theta)
-    
+
   end subroutine SPtoXYZvector
 
   ELEMENTAL SUBROUTINE XYZtoSPvector(out,in)
@@ -703,21 +703,21 @@ contains
     TYPE(vector),  INTENT(IN) :: in
 
     out%r = modulus(in)
-    
+
     IF ( ABS(out%r) > TINY(1.0) ) THEN
       out%theta = ACOS( in%z / out%r )
-    ELSE   
+    ELSE
       out%theta = pi / 2.0
     END IF
-      
+
     IF ( ( ABS(in%x) > TINY(1.0) ) .AND. ( ABS(in%y) > TINY(1.0) )) THEN
-      out%phi = ATAN2(in%y, in%x) 
+      out%phi = ATAN2(in%y, in%x)
     ELSE
       out%phi = 0.0
     ENDIF
     ! transform range from (-pi to pi) to (0 to 2pi)
     IF (out%phi < 0.0) out%phi = out%phi + twoPi
-    
+
   END SUBROUTINE XYZtoSPvector
 
   elemental logical function VectorEquivalence(a, b)
@@ -737,32 +737,32 @@ contains
           endif
        endif
     endif
-    
+
   end function VectorEquivalence
-  
+
   FUNCTION greatCircleDistance(pointA, pointB) RESULT(distance)
     ! returns the great circle distance between two points
     !   on a spherical surface
- 
+
     REAL(double) :: distance ! (radians)
     TYPE(spVector), INTENT(IN) :: pointA, pointB
       ! the "r" components of the vectors are ignored
-    
+
     REAL(double) :: dLon, dLat, a
-    
+
     dLon = pointB%phi - pointA%phi
     dLat = pointB%theta - pointA%theta
     a = (SIN(dLat/2.d0))**2 + COS(pointA%theta) * COS(pointB%theta) * SIN(dLon/2.d0)**2
     distance = 2.d0 * ASIN(MIN(1.0_db,SQRT(a)))
-  
+
   END FUNCTION greatCircleDistance
-  
-  
+
+
   FUNCTION distancePointLineSegment(linePoint1, linePoint2, testPoint) &
                                           RESULT(distance)
-    ! given a line segment, defined by the two points at either end, 
+    ! given a line segment, defined by the two points at either end,
     !   this returns the distance to the line segment from another point
-   
+
     REAL(double) :: distance
     TYPE(vector), INTENT(IN) :: linePoint1, linePoint2 ! points defining line segment
     TYPE(vector), INTENT(IN) :: testPoint
@@ -782,7 +782,7 @@ contains
       distance = distanceA
       RETURN
     END IF
-    
+
     b = line .dot. line
     distanceB = modulus( testPoint - linePoint2 )
     IF ( b <= a ) THEN
@@ -793,7 +793,7 @@ contains
     c = a / b
     extendedPoint = linePoint1 + (c * line)
     distance = modulus( testPoint - extendedPoint )
-    
+
   END FUNCTION distancePointLineSegment
 
   function minimumDistanceFromPointToLine(point, lineStart, lineEnd) result (distance)
@@ -805,7 +805,7 @@ contains
 
     distance = modulus(a .cross. b) / modulus(a)
   end function minimumDistanceFromPointToLine
-    
+
   subroutine biasTowardsPlanet(stellarSurfacePosition, surfaceNormal, planetPosition, planetRadius, planetBiasweight, direction)
     use constants_mod
     type(VECTOR) :: stellarSurfacePosition, surfaceNormal, planetPosition, direction
@@ -828,7 +828,7 @@ contains
     vectorInSurface =  surfaceNormal .cross. towardsPlanetCentre
     call normalize(vectorInSurface)
     direction = towardsPlanetCentre
-    direction = arbitraryRotate(direction, rTheta, vectorInSurface) 
+    direction = arbitraryRotate(direction, rTheta, vectorInSurface)
 
     call randomNumberGenerator(getDouble=r)
     rTheta = r * twoPi
@@ -843,6 +843,88 @@ contains
 666 continue
   end subroutine biasTowardsPlanet
 
+  logical function intersectLineTriangle(point, direction, isSemiInfinite, & ! inputs
+                                         triangleA, triangleB, triangleC,  &
+                                         distance, coords) result(intersect) ! outputs
+    ! Tests whether an (semi)infinite line, passing through 'point' and parallel to 'direction'
+    ! intersects with the triangle with vertices A, B, C.
+    ! If isSemiInfinite == .true. , the test assumes the semi-infinite line starts at 'point'
+    ! and continues along 'direction'
+    !
+    ! Returns:
+    ! intersect:           true for unique intersection, false for no intersection or infinitely many
+    ! distance (optional): scalar such that point + distance*direction is the intersection point
+    !                      set to 0 if intersect == false
+    ! coords (optional):   homogeneous coordinates of the intersection point, such that the intersection point is
+    !                      coords%x * triangleA + coords%y + triangleB + coords%z * triangleC
+    !                      set to 0-vector if intersect == false
+    !
+    ! Added by:  Sid Visser (16 feb 2016)
+    ! Edited by: --
+
+    ! in
+    type(vector), intent(in) :: point, direction                ! point and direction of line
+    logical, intent(in)      :: isSemiInfinite                  ! semi-infinite line?
+    type(vector), intent(in) :: triangleA, triangleB, triangleC ! triangle vertices
+    ! out
+    real(double), intent(out), optional :: distance
+    type(vector), intent(out), optional :: coords
+
+    real(double) :: d ! placeholder for distance
+    type(vector) :: c ! placeholder for coords
+
+    type(vector) :: x0, x1, x2
+    real(double) :: determinant
+
+    real(double), parameter :: tol = 1.d-12 ! tolerance on matrix determinant
+
+
+    ! Intersection is obtained by solving:
+    ! p + t*d = A + u*(B-A) + v*(C-A)
+    ! with p(oint), d(irection), vertices A,B,C and scalars t, u, v (to be found).
+    ! Set x0=B-A, x1=C-A, x2=-d to obtain [x0 x1 x2]*[u,v,t] = p - A
+    ! Solution is obtained via explicit formula for 3x3 matrix inverse
+    ! (http://en.wikipedia.org/wiki/Invertible_matrix)
+
+    x0 = triangleB - triangleA
+    x1 = triangleC - triangleA
+    x2 = direction * (-1.d0)
+
+    determinant = dotProd(x0, crossProd(x1, x2))
+
+    if(abs(determinant) < tol) then
+      intersect = .false.
+      if(present(distance)) distance = 0
+      if(present(coords)) coords = vector(0,0,0)
+      return
+    end if
+
+    ! compute solution
+    d = dotProd(crossProd(x0,x1), point - triangleA) / determinant
+    if(isSemiInfinite .and. d < 0) then ! intersection in 'wrong' direction
+      intersect = .false.
+      if(present(distance)) distance = 0
+      if(present(coords)) coords = vector(0,0,0)
+      return
+    end if
+
+    c%y = dotProd(crossProd(x1,x2), point - triangleA) / determinant
+    c%z = dotProd(crossProd(x2,x0), point - triangleA) / determinant
+    c%x = 1.d0 - c%y - c%z ! by definition of homogeneous coordinates
+
+    ! see if solution lies inside triangle
+    if(c%x >= 0 .and. c%y >= 0 .and. c%z >= 0) then
+      intersect = .true.
+      if(present(distance)) distance = d
+      if(present(coords)) coords = c
+      return
+    else
+      intersect = .false.
+      if(present(distance)) distance = 0
+      if(present(coords)) coords = vector(0,0,0)
+      return
+    end if
+  end function intersectLineTriangle
 
 end module vector_mod
 

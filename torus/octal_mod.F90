@@ -1,6 +1,6 @@
 MODULE octal_mod
   ! data type and some routines needed by for adaptive mesh refinement. nhs.
-  
+
   ! these are in a separate module from amr_mod because they need to be
   !   accessed from module(s) that are themselves USEd by amr_mod.
 
@@ -8,7 +8,9 @@ MODULE octal_mod
   use constants_mod
   USE vector_mod
   USE messages_mod
-  
+
+  use interface_hierarchy_mod, only: localInterfaceHierarchy
+
   IMPLICIT NONE
 
   public :: subcellCentre, within_subcell
@@ -18,9 +20,9 @@ MODULE octal_mod
 
 !       y                  z
 !       |                 /
-!       |      __________/______ 
+!       |      __________/______
 !       |     /        /       /|
-!       |    /   7    /   8   / | 
+!       |    /   7    /   8   / |
 !       |   /________/_______/  |
 !       |  /        /       /| 8|   Diagram showing the convention used here for
 !       | /   3    /   4   / |  |   numbering the subcells of each octal.
@@ -29,7 +31,7 @@ MODULE octal_mod
 !       |        |        |  |/ |
 !       |    3   |   4    |  /  |
 !       |        |        | /| 6|
-!       |________|________|/ |  /      
+!       |________|________|/ |  /
 !       |        |        |  | /
 !       |        |        | 2|/
 !       |    1   |   2    |  /
@@ -86,6 +88,7 @@ MODULE octal_mod
 
   interface copyAttribute
      module procedure copyAttributeDoublePointer
+     module procedure copyAttributeLocalInterface
      module procedure copyAttributeDoublePointer2d
      module procedure copyAttributeDoublePointer3d
      module procedure copyAttributeRealPointer
@@ -137,9 +140,9 @@ MODULE octal_mod
     TYPE(octal), POINTER  :: content => NULL()
     LOGICAL, DIMENSION(8) :: inUse
   END TYPE octalWrapper
- 
+
   TYPE wrapperArray
-    TYPE(octalWrapper), DIMENSION(:), POINTER :: wrappers => NULL()  ! a number of octal wrappers  
+    TYPE(octalWrapper), DIMENSION(:), POINTER :: wrappers => NULL()  ! a number of octal wrappers
   END TYPE wrapperArray
 
   TYPE octalListElement
@@ -154,7 +157,7 @@ MODULE octal_mod
     integer                            :: mpiThread(8)  ! the thread number associated with this subcell (from 0 to n)
     INTEGER                            :: nChildren    ! how many pointers to children there are (max 8)
     INTEGER                            :: indexChild(8)! index of child array containing
-                                                        ! pointer to each subcell's child (if it exists) 
+                                                        ! pointer to each subcell's child (if it exists)
     LOGICAL                            :: threeD        ! this is a three-dimensional octal
     LOGICAL                            :: twoD          ! this is a two-dimensional octal (quartal?!)
     LOGICAL                            :: oneD          ! this is a one-dimensional octal (bital?!)
@@ -163,13 +166,13 @@ MODULE octal_mod
     INTEGER                            :: maxChildren   ! this is 8 for three-d and 4 for two-d
     TYPE(octal), DIMENSION(:), POINTER :: child => NULL()
     LOGICAL, DIMENSION(8)              :: hasChild
-    TYPE(octal), POINTER               :: parent => null()         
+    TYPE(octal), POINTER               :: parent => null()
     TYPE(vector)                  :: centre
     real(double)                       :: xMax, xMin, yMax, yMin, zMax, zMin
     real(double)                       :: r
     REAL(double), DIMENSION(8)         :: rho            ! density
 !    REAL(double)         :: columnRho            ! density
-    INTEGER, DIMENSION(8) :: label                       ! numeric label for each subcell. 
+    INTEGER, DIMENSION(8) :: label                       ! numeric label for each subcell.
 
     integer, pointer :: iAnalyticalVelocity(:)  => null()
     integer, pointer :: iEquationOfState(:)  => null()
@@ -178,7 +181,7 @@ MODULE octal_mod
     real(double), pointer :: divV(:) => null()
     REAL, DIMENSION(8)                 :: temperature    ! grid subcell temperatures (gas or dust)
 #ifdef PHOTOION
-    real, DIMENSION(8)        :: TLastIter = 0.0    !Temperature at last iteration thaw, initialise here. 
+    real, DIMENSION(8)        :: TLastIter = 0.0    !Temperature at last iteration thaw, initialise here.
 #endif
     real(oct)               :: subcellSize    ! the size (length of a vertex) of each subcell
 #ifdef SPH
@@ -198,7 +201,7 @@ MODULE octal_mod
     real(double)               :: phi, dphi, phimin, phimax
 
     real(double), dimension(:,:,:), pointer :: qViscosity => null()
-    
+
     logical, dimension(:), pointer                 :: diffusionApprox => null()
     logical, dimension(:), pointer                 :: fixedTemperature => null()
     real, dimension(:), pointer :: nDiffusion => null()
@@ -248,7 +251,7 @@ MODULE octal_mod
     real(double), pointer :: oldestmolecularLevel(:,:) => null() ! molecular level populations
 
 
-    real(double), pointer :: spectrum(:,:) => null() 
+    real(double), pointer :: spectrum(:,:) => null()
     integer, pointer :: nFreq(:) =>  null()
 
 ! time dependent RT stuff
@@ -280,7 +283,7 @@ MODULE octal_mod
     real(double), pointer :: jnuCont(:,:) => null()
     real(double), pointer :: jnuLine(:,:) => null()
     real(double), pointer :: tau(:,:) => null() ! molecular level populations
-    real(double), pointer :: bnu(:,:) => null() ! 
+    real(double), pointer :: bnu(:,:) => null() !
     real, pointer :: molAbundance(:) => null() ! molecular abundances ! only 1D because only deal with one molecule at a time
     real, pointer :: convergence(:) => null() ! convergence
     integer, pointer :: levelconvergence(:,:) => null() ! convergence
@@ -292,7 +295,7 @@ MODULE octal_mod
     real(double),  pointer, dimension(:) :: Hheating => null()
     real(double),  pointer, dimension(:) :: Heheating => null()
     real(double), dimension(:), pointer  :: tDust  => null()
-   
+
     real(double), dimension(:,:), pointer  :: ionFrac => null()
     real(double), dimension(:,:), pointer  :: photoIonCoeff  => null()
     real(double), dimension(:,:), pointer :: sourceContribution => null()
@@ -302,7 +305,7 @@ MODULE octal_mod
 
       ! the subcell labels may be useful for debugging the code, but are not needed for
       !   any of the normal AMR routines. They should probably be removed in the future.
-    
+
 
     ! This is used only when we construct the tree from SPH data which
     ! contains the position+density+velocitiy of gas particles.
@@ -337,18 +340,18 @@ MODULE octal_mod
     real(double), dimension(:,:,:), pointer :: relch=>null()
 
 !    real(double), dimension (:, :, :, :), pointer :: pdrTransition=>null()
-    
+
     real(double), pointer :: UV(:)=>null()
 
     real(double), pointer :: TPrev(:)=>null()
-!    real(double), pointer :: TPDR(:)=>null()     
-    real(double), pointer :: TLast(:)=>null()     
-    real(double), pointer :: TMin(:)=>null()     
-    real(double), pointer :: TMax(:)=>null()     
-    real(double), pointer :: TLow(:)=>null()     
-    real(double), pointer :: THigh(:)=>null()     
-    real(double), pointer :: TMinArray(:)=>null()     
-    real(double), pointer :: TMaxArray(:)=>null()     
+!    real(double), pointer :: TPDR(:)=>null()
+    real(double), pointer :: TLast(:)=>null()
+    real(double), pointer :: TMin(:)=>null()
+    real(double), pointer :: TMax(:)=>null()
+    real(double), pointer :: TLow(:)=>null()
+    real(double), pointer :: THigh(:)=>null()
+    real(double), pointer :: TMinArray(:)=>null()
+    real(double), pointer :: TMaxArray(:)=>null()
     real(double), pointer :: CII_Pop(:,:)=>null()
     real(double), pointer :: CI_Pop(:,:)=>null()
     real(double), pointer :: OI_Pop(:,:)=>null()
@@ -395,20 +398,26 @@ MODULE octal_mod
     integer, pointer :: boundaryCondition(:) => null()
     logical, pointer :: boundaryCell(:) => null()
 
+
+    !type(localInterfaceHierarchy), pointer :: localInterfaces(:) => null()
+    type(localInterfaceHierarchy), pointer, dimension(:) :: localInterfaces => null()
+    type(localInterfaceHierarchy), pointer, dimension(:) :: localInterfacesCONTROL => null()
+
+
   END TYPE octal
- 
+
   TYPE octalPointer
      TYPE(OCTAL), pointer :: pointer => null()
   end TYPE octalPointer
-     
-CONTAINS 
- 
+
+CONTAINS
+
   TYPE(Vector) FUNCTION subcellCentre(thisOctal,nChild)
-    ! returns the centre of one of the subcells of the current octal 
+    ! returns the centre of one of the subcells of the current octal
 
     IMPLICIT NONE
 
-    TYPE(octal), INTENT(IN) :: thisOctal 
+    TYPE(octal), INTENT(IN) :: thisOctal
     INTEGER, INTENT(IN)     :: nChild    ! index (1-8) of the subcell
     type(VECTOR) :: rVec
     real(oct)    :: d
@@ -431,94 +440,94 @@ CONTAINS
        if (.not.thisOctal%cylindrical) then
 
           SELECT CASE (nChild)
-          CASE (1)    
+          CASE (1)
              subcellCentre = thisOctal%centre + d * VECTOR(-1.d0,-1.d0,-1.d0)
-          CASE (2)    
+          CASE (2)
              subcellCentre = thisOctal%centre + d * VECTOR(1.d0,-1.d0,-1.d0)
-          CASE (3)    
+          CASE (3)
              subcellCentre = thisOctal%centre + d * VECTOR(-1.d0,1.d0,-1.d0)
-          CASE (4)    
+          CASE (4)
              subcellCentre = thisOctal%centre + d * VECTOR(1.d0,1.d0,-1.d0)
-          CASE (5)    
+          CASE (5)
              subcellCentre = thisOctal%centre + d * VECTOR(-1.d0,-1.d0,1.d0)
-          CASE (6)    
+          CASE (6)
              subcellCentre = thisOctal%centre + d * VECTOR(1.d0,-1.d0,1.d0)
-          CASE (7)    
+          CASE (7)
              subcellCentre = thisOctal%centre + d * VECTOR(-1.d0,1.d0,1.d0)
-          CASE (8)    
+          CASE (8)
              subcellCentre = thisOctal%centre + d * VECTOR(1.d0,1.d0,1.d0)
           CASE DEFAULT
              PRINT *, "Error:: Invalid nChild passed to subcellCentre threed case"
-             PRINT *, "        nChild = ", nChild 
+             PRINT *, "        nChild = ", nChild
              STOP
           END SELECT
        else
           rVec = VECTOR(thisOctal%r,0.d0,thisOctal%centre%z)
           if (thisOctal%splitAzimuthally) then
              SELECT CASE (nChild)
-             CASE (1)    
+             CASE (1)
                 subcellCentre = rVec - (d * xHat) - (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
-             CASE (2)    
+             CASE (2)
                 subcellCentre = rVec + (d * xHat) - (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
-             CASE (3)    
+             CASE (3)
                 subcellCentre = rVec - (d * xHat) - (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+0.25d0*thisOctal%dphi))
-             CASE (4)    
+             CASE (4)
                 subcellCentre = rVec + (d * xHat) - (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+0.25d0*thisOctal%dphi))
-             CASE (5)    
+             CASE (5)
                 subcellCentre = rVec - (d * xHat) + (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
-             CASE (6)    
+             CASE (6)
                 subcellCentre = rVec + (d * xHat) + (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
-             CASE (7)    
+             CASE (7)
                 subcellCentre = rVec - (d * xHat) + (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+0.25d0*thisOctal%dphi))
-             CASE (8)    
+             CASE (8)
                 subcellCentre = rVec + (d * xHat) + (d * zHat)
                 subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+0.25d0*thisOctal%dphi))
              CASE DEFAULT
                 PRINT *, "Error:: Invalid nChild passed to subcellCentre cylindical 3D case 1"
-                PRINT *, "        nChild = ", nChild 
+                PRINT *, "        nChild = ", nChild
                 do
                 enddo
              END SELECT
           else
              if(cart2d) then
                 SELECT CASE (nChild)
-                CASE (1)    
+                CASE (1)
                    subcellCentre = thisOctal%centre + d * VECTOR(-1.d0,0.d0,-1.d0)
-                CASE (2)    
+                CASE (2)
                    subcellCentre = thisOctal%centre + d * VECTOR(1.d0,0.d0,-1.d0)
-                CASE (3)    
+                CASE (3)
                    subcellCentre = thisOctal%centre + d * VECTOR(-1.d0,0.d0,-1.d0)
-                CASE (4)    
+                CASE (4)
                    subcellCentre = thisOctal%centre + d * VECTOR(1.d0,0.d0,-1.d0)
                 CASE DEFAULT
                    PRINT *, "Error:: Invalid nChild passed to subcellCentre threed case"
-                   PRINT *, "        nChild = ", nChild 
+                   PRINT *, "        nChild = ", nChild
                    STOP
                 END SELECT
              else
                 SELECT CASE (nChild)
-                CASE (1)    
+                CASE (1)
                    subcellCentre = rVec - (d * xHat) - (d * zHat)
                    subcellCentre = rotateZ(subcellCentre,-thisOctal%phi)
-                CASE (2)    
+                CASE (2)
                    subcellCentre = rVec + (d * xHat) - (d * zHat)
                    subcellCentre = rotateZ(subcellCentre,-thisOctal%phi)
-                CASE (3)    
+                CASE (3)
                    subcellCentre = rVec - (d * xHat) + (d * zHat)
                    subcellCentre = rotateZ(subcellCentre,-thisOctal%phi)
-                CASE (4)    
+                CASE (4)
                    subcellCentre = rVec + (d * xHat) + (d * zHat)
                    subcellCentre = rotateZ(subcellCentre,-thisOctal%phi)
                 CASE DEFAULT
                    PRINT *, "Error:: Invalid nChild passed to subcellCentre cylindical 3D case 2"
-                   PRINT *, "        nChild = ", nChild 
+                   PRINT *, "        nChild = ", nChild
                    do
                    enddo
                 END SELECT
@@ -527,17 +536,17 @@ CONTAINS
        endif
     else
     SELECT CASE (nChild)
-    CASE (1)    
+    CASE (1)
        subcellCentre = thisOctal%centre - (d * xHat) - (d * zHat)
-    CASE (2)    
+    CASE (2)
        subcellCentre = thisOctal%centre + (d * xHat) - (d * zHat)
-    CASE (3)    
+    CASE (3)
        subcellCentre = thisOctal%centre - (d * xHat) + (d * zHat)
-    CASE (4)    
+    CASE (4)
        subcellCentre = thisOctal%centre + (d * xHat) + (d * zHat)
     CASE DEFAULT
        PRINT *, "Error:: Invalid nChild passed to subcellCentre twoD case 3"
-       PRINT *, "        nChild = ", nChild 
+       PRINT *, "        nChild = ", nChild
        do;enddo
        END SELECT
     endif
@@ -546,11 +555,11 @@ CONTAINS
   END FUNCTION subcellCentre
 
   subroutine subcellCorners(thisOctal,nChild, corner)
-    ! returns the centre of one of the subcells of the current octal 
+    ! returns the centre of one of the subcells of the current octal
 
     IMPLICIT NONE
 
-    TYPE(octal), INTENT(IN) :: thisOctal 
+    TYPE(octal), INTENT(IN) :: thisOctal
     INTEGER, INTENT(IN)     :: nChild    ! index (1-8) of the subcell
     type(VECTOR) :: rVec, corner(8), cellCentre
     real(oct)    :: d, phi, zp, zm, r1, r2, phistart, phiend, dphi
@@ -574,25 +583,25 @@ CONTAINS
        if (.not.thisOctal%cylindrical) then
 
           SELECT CASE (nChild)
-          CASE (1)    
+          CASE (1)
              cellCentre = thisOctal%centre + d * VECTOR(-1.d0,-1.d0,-1.d0)
-          CASE (2)    
+          CASE (2)
              cellCentre = thisOctal%centre + d * VECTOR(1.d0,-1.d0,-1.d0)
-          CASE (3)    
+          CASE (3)
              cellCentre = thisOctal%centre + d * VECTOR(-1.d0,1.d0,-1.d0)
-          CASE (4)    
+          CASE (4)
              cellCentre = thisOctal%centre + d * VECTOR(1.d0,1.d0,-1.d0)
-          CASE (5)    
+          CASE (5)
              cellCentre = thisOctal%centre + d * VECTOR(-1.d0,-1.d0,1.d0)
-          CASE (6)    
+          CASE (6)
              cellCentre = thisOctal%centre + d * VECTOR(1.d0,-1.d0,1.d0)
-          CASE (7)    
+          CASE (7)
              cellCentre = thisOctal%centre + d * VECTOR(-1.d0,1.d0,1.d0)
-          CASE (8)    
+          CASE (8)
              cellCentre = thisOctal%centre + d * VECTOR(1.d0,1.d0,1.d0)
           CASE DEFAULT
              PRINT *, "Error:: Invalid nChild passed to cellCentre threed case"
-             PRINT *, "        nChild = ", nChild 
+             PRINT *, "        nChild = ", nChild
              STOP
           END SELECT
        else
@@ -620,36 +629,36 @@ CONTAINS
        endif
     else
        SELECT CASE (nChild)
-       CASE (1)    
+       CASE (1)
           cellCentre = thisOctal%centre - (d * xHat) - (d * zHat)
-       CASE (2)    
+       CASE (2)
           cellCentre = thisOctal%centre + (d * xHat) - (d * zHat)
-       CASE (3)    
+       CASE (3)
           cellCentre = thisOctal%centre - (d * xHat) + (d * zHat)
-       CASE (4)    
+       CASE (4)
           cellCentre = thisOctal%centre + (d * xHat) + (d * zHat)
        CASE DEFAULT
           PRINT *, "Error:: Invalid nChild passed to cellCentre twoD case 3"
-          PRINT *, "        nChild = ", nChild 
+          PRINT *, "        nChild = ", nChild
           do;enddo
        END SELECT
-       
+
        corner(1) = cellCentre + d * xHat + d * zHat
        corner(2) = cellCentre + d * xHat - d * zHat
        corner(3) = cellCentre - d * xHat + d * zHat
        corner(4) = cellCentre - d * xHat - d * zHat
 
-       
+
     endif
 666 continue
   END subroutine subcellCorners
-  
+
   real(double) FUNCTION subcellRadius(thisOctal,nChild)
-    ! returns the radius of one of the subcells of the current octal 
+    ! returns the radius of one of the subcells of the current octal
 
     IMPLICIT NONE
 
-    TYPE(octal), INTENT(IN) :: thisOctal 
+    TYPE(octal), INTENT(IN) :: thisOctal
     INTEGER, INTENT(IN)     :: nChild    ! index (1-8) of the subcell
     real(double) :: d
 
@@ -670,41 +679,41 @@ CONTAINS
     if (thisOctal%cylindrical) then
        if (thisOctal%splitAzimuthally) then
           SELECT CASE (nChild)
-             CASE (1)    
+             CASE (1)
                 subcellRadius = thisOctal%r - d
-             CASE (2)    
+             CASE (2)
                 subcellRadius = thisOctal%r + d
-             CASE (3)    
+             CASE (3)
                 subcellRadius = thisOctal%r - d
-             CASE (4)    
+             CASE (4)
                 subcellRadius = thisOctal%r + d
-             CASE (5)    
+             CASE (5)
                 subcellRadius = thisOctal%r - d
-             CASE (6)    
+             CASE (6)
                 subcellRadius = thisOctal%r + d
-             CASE (7)    
+             CASE (7)
                 subcellRadius = thisOctal%r - d
-             CASE (8)    
+             CASE (8)
                 subcellRadius = thisOctal%r + d
              CASE DEFAULT
                 PRINT *, "Error:: Invalid nChild passed to subcellCentre twoD case 4"
-                PRINT *, "        nChild = ", nChild 
+                PRINT *, "        nChild = ", nChild
                 do
                 enddo
              END SELECT
           else
              SELECT CASE (nChild)
-             CASE (1)    
+             CASE (1)
                 subcellRadius = thisOctal%r - d
-             CASE (2)    
+             CASE (2)
                 subcellRadius = thisOctal%r + d
-             CASE (3)    
+             CASE (3)
                 subcellRadius = thisOctal%r - d
-             CASE (4)    
+             CASE (4)
                 subcellRadius = thisOctal%r + d
              CASE DEFAULT
                 PRINT *, "Error:: Invalid nChild passed to subcellRadius non-split case"
-                PRINT *, "        nChild = ", nChild 
+                PRINT *, "        nChild = ", nChild
                 do
                 enddo
              END SELECT
@@ -725,16 +734,16 @@ CONTAINS
     implicit none
     logical :: out
     type(octal), intent(in) :: this
-    integer, intent(in) :: subcell   
+    integer, intent(in) :: subcell
     real(double), intent(in) :: x, y, z
     !
     TYPE(Vector)     :: cellCenter
     real(double) :: x0, y0, z0  ! cell center
     real(double) :: d, dp, dm, r, phi, r0, phi0, dphi
     real(double), parameter :: eps = 0.0d0
-    
+
 ! Either use a subcell or the whole octal if subcell=0
-    if ( subcell > 0 ) then 
+    if ( subcell > 0 ) then
        d = (this%subcellSize)*0.5d0
        cellCenter = subcellCentre(this,subcell)
     else
@@ -749,7 +758,7 @@ CONTAINS
        write(*,*) "one-d case not implemented in within_subcell"
        stop
     endif
-    
+
     x0=dble(cellCenter%x); y0=dble(cellCenter%y); z0=dble(cellCenter%z)
 
     ! Fortran check the condidtion from
@@ -760,7 +769,7 @@ CONTAINS
           if ( x > (x0+dp) ) then
              out = .false.
           else if ( x < (x0-dm)) then
-             out = .false.      
+             out = .false.
           elseif ( y > (y0+dp) ) then
              out = .false.
           elseif ( y < (y0-dm)) then
@@ -803,7 +812,7 @@ CONTAINS
        if ( x > (x0+dp) ) then
           out = .false.
        else if ( x < (x0-dm)) then
-          out = .false.      
+          out = .false.
        elseif ( z > (z0+dp) ) then
           out = .false.
        elseif ( z < (z0-dm)) then
@@ -854,7 +863,7 @@ CONTAINS
 !          if (thisOctal%splitAzimuthally) then
 !             dPhi = thisOctal%dPhi / 2.d0
 !          else
-!             dPhi = thisOctal%dPhi 
+!             dPhi = thisOctal%dPhi
 !          endif
           dPhi = returndPhi(thisOctal)*2.d0
           v = (dphi/dble(twoPi)) * dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
@@ -913,7 +922,7 @@ CONTAINS
        array = TINY(array)
     endif
   end subroutine allocateAttributeDouble3d
-  
+
   subroutine allocateAttributeReal(array, nSize)
     integer :: nSize
     real, pointer :: array(:)
@@ -959,6 +968,15 @@ CONTAINS
     integer :: dest, source
     dest = source
   end subroutine copyAttributeSingleInteger
+
+  subroutine copyAttributeLocalInterface(dest, source)
+    type(localInterfaceHierarchy), pointer :: dest(:), source(:)
+    if (associated(source)) then
+       allocate(dest(SIZE(source)))
+       dest = source
+    endif
+
+  end subroutine copyAttributeLocalInterface
 
   subroutine copyAttributeDoublePointer(dest, source)
     real(double), pointer :: dest(:), source(:)
@@ -1174,7 +1192,7 @@ CONTAINS
     logical :: valPresent
     integer, pointer :: array(:)
     logical :: fileFormatted
-    
+
     if (fileFormatted) then
        read(lUnit,*) valPresent
     else
@@ -1201,7 +1219,7 @@ CONTAINS
     logical :: valPresent
     real, pointer :: array(:)
     logical :: fileFormatted
-    
+
     if (fileFormatted) then
        read(lUnit,*) valPresent
     else
@@ -1228,7 +1246,7 @@ CONTAINS
     logical :: valPresent
     TYPE(VECTOR) , pointer :: array(:)
     logical :: fileFormatted
-    
+
     if (fileFormatted) then
        read(lUnit,*) valPresent
     else

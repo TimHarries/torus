@@ -1,0 +1,10 @@
+gfortran -c obj_io_mod.f90 kind_mod.f90 random_mod.F90 mpi_global_mod.F90 messages_mod.f90  constants_mod.f90\
+            vector_mod.f90 octal_mod.F90 triangle_mesh_mod.f90 interface_hierarchy_mod.f90 #
+            #biophysics_mod.F90\
+            #utils_mod.f90 unix_mod.F90 gaussian_mod.f90 object_media_mod.f90 gridtype_mod.F90 spectrum_mod.f90\
+            #atom_mod.f90 inputs_modV2.F90 units_mod.F90 parallel_mod.F90 gridFromFlash.F90 vh1_mod.f90\
+            #image_utils_mod.F90
+
+gfortran -g obj_io_mod.o vector_mod.o kind_mod.o random_mod.o mpi_global_mod.o \
+            messages_mod.o octal_mod.o triangle_mesh_mod.o interface_hierarchy_mod.o \
+            $1

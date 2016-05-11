@@ -191,16 +191,8 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
-                   if (doSmoothGrid) then
-          call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
-          do
-             gridConverged = .true.
-             call myScaleSmooth(3., grid, &
-                  gridConverged,  inheritProps = .false., interpProps = .false.)
-             if (gridConverged) exit
-          end do
-          call writeInfo("...grid smoothing complete", TRIVIAL)
-          endif
+          call writeVtkFile(grid, "tissue.vtk",  valueTypeString=(/"tissue"/))
+
 
 
 #ifdef SPH
@@ -469,9 +461,9 @@ doGridshuffle: if(gridShuffle) then
 
        select case (geometry)
 
-          case("skin")
-             call  fillMatcherSkinLayers(grid%octreeRoot)
-             call setSurfaceNormals(grid, grid%octreeRoot)
+!          case("skin")
+!             call  fillMatcherSkinLayers(grid%octreeRoot)
+!             call setSurfaceNormals(grid, grid%octreeRoot)
 
           case("theGalaxy","fitsfile")
              if (variableDustsublimation) then

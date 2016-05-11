@@ -5,7 +5,9 @@
   use vector_mod
   use utils_mod
   use octal_mod
-  use surface_mod
+  use gridtype_mod
+  use surface_mod, only : surfacetype, ishot, getelement, writesurface, readsurface, &
+       getphotovec, buildspherenbody, emptysurface, buildsphere
 
   implicit none
 

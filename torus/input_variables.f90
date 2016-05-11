@@ -967,3 +967,18 @@
   logical :: fixatalphasat ! Fix the stress in the disc to saturation
   logical :: fixatQcrit ! Fix Q to critical value for fragmentation
   integer :: nspiralarms
+
+
+!---------------------------------------
+! Biophysics detector
+!---------------------------------------
+
+  type(VECTOR) :: detectorPosition
+  real(double) :: detectorTheta, detectorPhi
+  real(double) :: detectorxSize, detectorySize
+  real(double) :: detRadius, detectorna
+  integer :: detectornx, detectorny
+  character(len=80) :: detFilename
+  character(len=80) :: detType
+  character(len=80) :: wavefrontFile
+  

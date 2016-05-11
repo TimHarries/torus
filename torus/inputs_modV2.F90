@@ -382,6 +382,7 @@ contains
     if (atomicPhysics) call readAtomicPhysicsParameters(cLine, fLine, nLines)
     if (molecularPhysics) call readMolecularPhysicsParameters(cLine, fLine, nLines)
     if (bioPhysics) call readBiophysicsParameters(cLine, fLine, nLines)
+    if (bioPhysics) call readDetectorParameters(cLine, fLine, nLines)
 #ifdef PHOTOION
     if (photoionPhysics) call readPhotoionPhysicsParameters(cLine, fLine, nLines)
 #endif
@@ -3589,6 +3590,52 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
 
   end subroutine readDataCubeParameters
 #endif
+  subroutine readDetectorParameters(cLine, fLine, nLines)
+    use constants_mod
+    character(len=lencLine) :: cLine(:)
+    logical :: fLine(:)
+    integer :: nLines
+    logical :: ok
+
+    call getString("detectortype", detType, cLine, fLine, nLines,&
+         "Type of detector:", "(a,a,1x,a)", "au", ok, .true.)
+
+    call getVector("detectorpos", detectorPosition, 1.d0, cLine, fLine, nLines, &
+                  "Detector position: ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
+
+    call getDouble("detectortheta", detectorTheta, degtorad, cLine, fLine, nLines, &
+                  "Detector polar angle (deg): ","(a,f6.1,a)",0.d0, ok, .true.)
+
+    select case(detType)
+       case("ccd")
+          call getDouble("detectorphi", detectorPhi, degtorad, cLine, fLine, nLines, &
+               "Detector azimuthal angle (deg): ","(a,f6.1,a)",0.d0, ok, .true.)
+
+          call getDouble("detectorxsize", detectorXsize, 1.d0, cLine, fLine, nLines, &
+                  "Detector X size: ","(a,f6.1,a)",0.d0, ok, .true.)
+          
+          call getDouble("detectorysize", detectorYsize, 1.d0, cLine, fLine, nLines, &
+               "Detector Y size: ","(a,f6.1,a)",0.d0, ok, .true.)
+          
+          call getInteger("detectornx", detectornx, cLine, fLine, nLines, &
+               "Detector X pixels ","(a,i4,a)",0, ok, .true.)
+          
+          call getInteger("detectorny", detectorny, cLine, fLine, nLines, &
+                  "Detector Y pixels ","(a,i4,a)",0, ok, .true.)
+       case("fibre")
+          call getDouble("detradius", detRadius, microntocm, cLine, fLine, nLines, &
+                  "Detector fibre radius: ","(a,f6.1,a)",0.d0, ok, .true.)
+          call getDouble("detectorna", detectorNA, 1.d0, cLine, fLine, nLines, &
+                  "Detector fibre numerical aperture: ","(a,f6.1,a)",0.d0, ok, .true.)
+
+    end select
+
+          
+    call getString("detfilename", detFilename, cLine, fLine, nLines,&
+         "Filename for detector output:", "(a,a,1x,a)", "au", ok, .true.)
+  end subroutine readDetectorParameters
+    
+
 
   subroutine readImageParameters(cLine, fLine, nLines)
     use constants_mod
@@ -4047,6 +4094,14 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
                "Numerical aperture: ","(a,f5.1,1x,a)", 1.0d0, ok, .true.)
        endif
     enddo
+
+    call getString("wavefrontfile", wavefrontfile, cLine, fLine, nLines, &
+            "Wavefront file: ","(a,a,1x,a)","spectrum.dat", ok, .true.)
+
+    call getBigInteger("nphotons", nPhotons, cLine, fLine, nLines, &
+         "Number of photons in loop: ", "(a,i15,1x,a)", 100000_bigInt, ok, .false.)
+
+
   end subroutine readBioPhysicsParameters
 
 
