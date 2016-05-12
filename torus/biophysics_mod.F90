@@ -234,8 +234,8 @@ contains
         call setupMatcherSkinTissue()
 
         objectmeshlist = readTriangleMesh(wavefrontFile)
-        call sortTriangleMeshList(objectMeshList)
         n = size(objectMeshList)
+        if (n > 1) call sortTriangleMeshList(objectMeshList)
 
         allocate(objectMediaList(0:n))
 
@@ -919,7 +919,6 @@ contains
                if (stored) then
                   call addEventsToGrid(nEvent, cellEvent, lengthEvent, grid)
                endif
-
             else
 !               write(*,*) "photon absorbed after ", countEvent, "events"
             endif

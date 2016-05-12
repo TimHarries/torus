@@ -12,8 +12,8 @@ module triangle_mesh_mod
     type triangleMesh
         ! 3d object consisting of a collection of points (nodes) in space
         ! and a set of triangles (faces) between them.
-        character(len=80), allocatable :: label
-        character(len=80), allocatable :: material
+        character(len=80) :: label
+        character(len=80) :: material
 
         integer :: nNode
         integer :: nFace
@@ -230,10 +230,9 @@ contains
         end if
 
         call writeInfo("--- TRIANGLE MESH SUMMARY ---", l)
-        if(allocated(mesh%label)) then
-            write (temp, '(a,a)') "label: ", mesh%label
-            call writeInfo(temp, l)
-        end if
+        write (temp, '(a,a)') "label: ", trim(mesh%label)
+        call writeInfo(temp, l)
+
         if(mesh%isClosed) then
             call writeInfo("topology: closed", l)
         else
