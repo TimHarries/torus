@@ -2,7 +2,6 @@ module biophysics_mod
 
     use vector_mod
     use kind_mod
-    !use unix_mod
     use utils_mod
     use gridtype_mod
     use spectrum_mod
@@ -287,16 +286,18 @@ contains
             return
         end if
 
-        print *, 'summary of objects and their materials:'
+        if (writeoutput) print *, 'summary of objects and their materials:'
 
         n = size(objectMeshList)
         do i = 1,n
             call printTriangleMeshSummary(objectMeshList(i))
-            if(associated(objectMediaList(i)%p)) then
-                print *,'medium: ', objectMediaList(i)%p%label
-            else
-                print *, 'medium undefined'
-            end if
+            if (writeoutput) then
+               if(associated(objectMediaList(i)%p)) then
+                  print *,'medium: ', objectMediaList(i)%p%label
+               else
+                  print *, 'medium undefined'
+               end if
+            endif
         end do
 
     end subroutine summarize3dObjects
@@ -706,6 +707,9 @@ contains
 
 
     subroutine photonLoop(grid)
+#ifdef MPI
+      use mpi_global_mod
+#endif
         use random_mod
         use inputs_mod, only : smallestCellSize, nPhotons, detFilename
         use amr_utils_mod
@@ -733,6 +737,10 @@ contains
         type(VECTOR) :: cellEvent(maxEvents)
         real(double) :: lengthEvent(maxEvents)
         integer :: nEvent
+        integer(bigint) :: iMonte_beg, iMonte_end
+#ifdef MPI
+        integer(bigint) :: m, n_rmdr, np
+#endif
         call createNewDetector(thisDetector)
 
         call writeInfo("Creating photon source...",TRIVIAL)
@@ -743,17 +751,50 @@ contains
 
         call writeInfo("Running photon loop...",TRIVIAL)
 
+
+
+          imonte_beg=1; imonte_end=nPhotons  ! default value
+
+#ifdef MPI
+                 ! Set the range of index for a photon loop used later.     
+                 np = nThreadsGlobal
+                 n_rmdr = MOD(nPhotons,np)
+                 m = nPhotons/np
+          
+                 if (myRankGlobal .lt. n_rmdr ) then
+                    imonte_beg = (m+1)*myRankGlobal + 1
+                    imonte_end = imonte_beg + m
+                 else
+                    imonte_beg = m*myRankGlobal + 1 + n_rmdr
+                    imonte_end = imonte_beg + m -1
+                 end if
+             !    print *, ' '
+             !    print *, 'imonte_beg = ', imonte_beg
+             !    print *, 'imonte_end = ', imonte_end
+            
+                
+                 !  Just for safety.
+                 if (imonte_end .gt. nPhotons .or. imonte_beg < 1) then
+                    print *, 'Index out of range: i_beg and i_end must be ' 
+                    print *, ' 0< index < ', nPhotons , '    ... [lucy_mod::lucyRadiativeEquilibriumAMR]'
+                    print *, 'imonte_beg = ', imonte_beg
+                    print *, 'imonte_end = ', imonte_end
+                    stop
+                 end if
+#endif    
+
+
 !$OMP PARALLEL DEFAULT(NONE) &
 !$OMP PRIVATE(i, firstWrite, photonNormal, photonPosition, photonWeight, photonDirection, photonWavelength, nEvent) &
 !$OMP PRIVATE(dist, hitgrid, absorbed, countEvent, thisOctal, subcell, thisObjectID, thisMedium, subcellHasInterface) &
 !$OMP PRIVATE(intersect, tautoboundary, r, tau, cellEvent, lengthEvent, albedo, hitsInterface, vec, nextMedium, doesenter, stored) &
-!$OMP SHARED(nPhotons, thisDetector, source, grid, smallestCellSize) 
+!$OMP SHARED(nPhotons, thisDetector, source, grid, smallestCellSize, iMonte_beg, iMonte_end) 
 
 !$OMP DO SCHEDULE(DYNAMIC,2)
-        do i = 1, nPhotons
-           if (mod(i,(nphotons/10))==0) then
-              write(*,*) 100.*real(i)/real(nphotons), " % complete"
-              call writeDetectorfile(thisDetector, "temp")
+        do i = iMonte_beg, iMonte_end
+
+           if (mod(i-iMonte_beg+1,(iMonte_end-iMonte_beg)/10)==0) then
+              if (writeoutput) write(*,*) 100.*real(i-iMonte_beg+1)/real(iMonte_end-iMonte_beg), " % complete"
            endif
 
 
@@ -926,7 +967,12 @@ contains
 !$OMP END DO
 
 !$OMP END PARALLEL
-        call writeDetectorfile(thisDetector, detFilename)
+
+        call updateGridMPI(grid)
+        call gatherDetector(thisDetector)
+
+
+        if (writeoutput) call writeDetectorfile(thisDetector, detFilename)
         call writeInfo("Done.",TRIVIAL)
         call calculateEnergyDensity(grid%octreeRoot)
 
@@ -1071,10 +1117,162 @@ contains
     end subroutine setupSpectrum
 
 
+
+#ifdef MPI
+
+  subroutine updateGridMPI(grid)
+
+    use mpi
+    use amr_utils_mod
+    implicit none
+
+    type(gridtype) :: grid
+    integer :: nOctals, nVoxels
+    real, allocatable :: tempRealArray(:)
+    real, allocatable :: nCrossings(:)
+    real(double), allocatable :: distanceGrid(:), etaLine(:), tempDoubleArray(:)
+    integer :: ierr, nIndex
+
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+    nOctals = 0
+    nVoxels = 0
+    call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+    allocate(nCrossings(1:nVoxels))
+    allocate(distanceGrid(1:nVoxels))
+    allocate(etaLine(1:nVoxels))
+
+    nIndex = 0
+    call packValues(grid%octreeRoot,nIndex, &
+         distanceGrid,nCrossings, etaLine)
+
+    allocate(tempRealArray(nVoxels))
+    allocate(tempDoubleArray(nVoxels))
+
+
+    tempDoubleArray = 0.d0
+    call MPI_ALLREDUCE(distanceGrid,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+         MPI_SUM,MPI_COMM_WORLD,ierr)
+    distanceGrid = tempDoubleArray 
+
+    tempDoubleArray = 0.d0
+    call MPI_ALLREDUCE(etaLine,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+         MPI_SUM,MPI_COMM_WORLD,ierr)
+    etaLine = tempDoubleArray 
+
+    tempRealArray = 0.0
+    call MPI_ALLREDUCE(nCrossings,tempRealArray,nVoxels,MPI_REAL,&
+         MPI_SUM,MPI_COMM_WORLD,ierr)
+    nCrossings = tempRealArray 
+
+    
+    deallocate(tempRealArray, tempDoubleArray)
+     
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+    
+    nIndex = 0
+    call unpackValues(grid%octreeRoot,nIndex, &
+         distanceGrid,nCrossings, etaLine)
+
+    deallocate(nCrossings, distanceGrid, etaLine)
+
+  end subroutine updateGridMPI
+
+  recursive subroutine packvalues(thisOctal,nIndex, &
+       distanceGrid, nCrossings, etaLine)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real(double) :: distanceGrid(:)
+  real(double) :: etaLine(:)
+  real :: nCrossings(:)
+  integer :: nIndex
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call packvalues(child,nIndex,distanceGrid,nCrossings,etaLine)
+                exit
+             end if
+          end do
+       else
+          nIndex = nIndex + 1
+          distanceGrid(nIndex) = thisOctal%distanceGrid(subcell)
+          etaLine(nIndex) = thisOctal%etaLine(subcell)
+          nCrossings(nIndex) = real(thisOctal%nCrossings(subcell))
+       endif
+    enddo
+  end subroutine packvalues
+
+  recursive subroutine unpackvalues(thisOctal,nIndex,distanceGrid,nCrossings, etaLine)
+!    use inputs_mod, only : storeScattered
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real(double) :: distanceGrid(:), etaLine(:)
+  real :: ncrossings(:)
+  integer :: nIndex
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call unpackvalues(child,nIndex,distanceGrid,nCrossings, &
+                     etaLine)
+                exit
+             end if
+          end do
+       else
+          nIndex = nIndex + 1
+          thisOctal%distanceGrid(subcell) = distanceGrid(nIndex)
+          thisOctal%etaLine(subcell) = etaLine(nIndex)
+          thisOctal%nCrossings(subcell) = int(nCrossings(nIndex))
+       endif
+    enddo
+  end subroutine unpackvalues
+
+  subroutine gatherDetector(thisDetector)
+    use mpi
+    type(DETECTORTYPE) :: thisDetector
+    real(double), allocatable :: tArrayd(:), tempArrayd(:)
+    integer :: n, ierr
+
+    n = thisDetector%nx * thisDetector%ny
+    allocate(tArrayd(1:n))
+    allocate(tempArrayd(1:n))
+
+    tArrayd = RESHAPE(thisDetector%intensity, SHAPE=SHAPE(tArrayd))
+    call MPI_ALLREDUCE(tArrayd,tempArrayd,n,MPI_DOUBLE_PRECISION,&
+         MPI_SUM,MPI_COMM_WORLD,ierr)
+    thisDetector%intensity = RESHAPE(tempArrayd,SHAPE=SHAPE(thisDetector%intensity))
+
+    tArrayd = RESHAPE(thisDetector%rintensity, SHAPE=SHAPE(tArrayd))
+    call MPI_ALLREDUCE(tArrayd,tempArrayd,n,MPI_DOUBLE_PRECISION,&
+         MPI_SUM,MPI_COMM_WORLD,ierr)
+    thisDetector%rintensity = RESHAPE(tempArrayd,SHAPE=SHAPE(thisDetector%intensity))
+
+    tArrayd = RESHAPE(thisDetector%gintensity, SHAPE=SHAPE(tArrayd))
+    call MPI_ALLREDUCE(tArrayd,tempArrayd,n,MPI_DOUBLE_PRECISION,&
+         MPI_SUM,MPI_COMM_WORLD,ierr)
+    thisDetector%gintensity = RESHAPE(tempArrayd,SHAPE=SHAPE(thisDetector%intensity))
+
+    tArrayd = RESHAPE(thisDetector%bintensity, SHAPE=SHAPE(tArrayd))
+    call MPI_ALLREDUCE(tArrayd,tempArrayd,n,MPI_DOUBLE_PRECISION,&
+         MPI_SUM,MPI_COMM_WORLD,ierr)
+    thisDetector%bintensity = RESHAPE(tempArrayd,SHAPE=SHAPE(thisDetector%intensity))
+
+    deallocate(tArrayd, tempArrayd)
+
+  end subroutine gatherDetector
+
+
+#endif
+
 end module biophysics_mod
-
-
-
 
 
 ! =============================================================

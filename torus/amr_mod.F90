@@ -2186,46 +2186,6 @@ CONTAINS
   END SUBROUTINE finishGrid
 
 
-  SUBROUTINE countVoxels(thisOctal,nOctals,nVoxels)
-    ! count the number of octals in the current section of the grid.
-    ! also counts the number of unique volume elements (voxels) i.e.
-    !   those subcells that are not subdivided
-
-    IMPLICIT NONE
-
-    TYPE(OCTAL), POINTER  :: thisOctal
-    INTEGER,INTENT(INOUT) :: nOctals   ! number of octals
-    INTEGER,INTENT(INOUT) :: nVoxels   ! number of childless subcells
-
-    nOctals = 0
-    nVoxels = 0
-    CALL countVoxelsPrivate(thisOctal)
-
-    CONTAINS
-
-      RECURSIVE SUBROUTINE countVoxelsPrivate(thisOctal)
-
-        TYPE(OCTAL), POINTER  :: thisOctal
-        TYPE(OCTAL), POINTER  :: child
-        INTEGER :: i
-
-        nOctals = nOctals + 1
-
-        IF ( thisOctal%nChildren > 0 ) THEN
-          ! call this subroutine recursively on each of its children
-          DO i = 1, thisOctal%nChildren, 1
-            child => thisOctal%child(i)
-            CALL countVoxelsPrivate(child)
-          END DO
-        END IF
-
-        ! increment the counter once for each of its childless subcells
-        nVoxels = nVoxels + (thisOctal%maxChildren - thisOctal%nchildren)
-
-      END SUBROUTINE countVoxelsPrivate
-
-  END SUBROUTINE countVoxels
-
 
   RECURSIVE SUBROUTINE fixParentPointers(thisOctal)
 
