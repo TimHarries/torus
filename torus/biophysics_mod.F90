@@ -968,9 +968,10 @@ contains
 
 !$OMP END PARALLEL
 
+#ifdef MPI
         call updateGridMPI(grid)
         call gatherDetector(thisDetector)
-
+#endif
 
         if (writeoutput) call writeDetectorfile(thisDetector, detFilename)
         call writeInfo("Done.",TRIVIAL)
