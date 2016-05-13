@@ -180,6 +180,13 @@ ${TORUS_FC} -o check check.f90 -lcfitsio -L${TORUS_FITSLIBS}
 ./check
 }
 
+check_rainbow()
+{
+echo "Compiling check.f90 for angular image test"
+${TORUS_FC} -o checkrainbow checkrainbow.f90
+./checkrainbow
+}
+
 # Check that Torus completed OK. For some tests the results file can be written 
 # even if Torus has bugged out. 
 check_completion()
@@ -347,6 +354,16 @@ for config in ${CONFIG_TO_TEST}; do
 	    echo ;;
     esac
 
+# rainbow test
+    echo "Running rainbow test"
+    export THIS_BENCH=rainbow
+    run_bench
+    check_rainbow > check_log_${config}_${THIS_BENCH}.txt 2>&1 
+    cat check_log_${config}_${THIS_BENCH}.txt
+    check_completion
+    echo
+
+
 # N body test
     echo "Running N body test"
     export THIS_BENCH=nbody
@@ -426,6 +443,7 @@ for config in ${CONFIG_TO_TEST}; do
     cat check_log_${config}_${THIS_BENCH}.txt
     check_completion
     echo
+
 
 # Only run in stable version tests as this is slow
     if [[ ${MODE} == stable ]]; then
@@ -684,6 +702,17 @@ if [[ ${num_success} -eq 1 && ${num_success2} -eq 1  && ${num_success3} -eq 1 ]]
     echo "Angular image test successful" >> header 
 else
     echo "!! Angular image test FAILED !!" >> header
+    suite_status="FAILED"
+fi
+
+# Test for success of angular image test
+num_success=`/bin/grep -c "TORUS: Test successful"  benchmarks_hybrid/benchmarks/angularImageTest/check_log_hybrid_angularImageTest.txt`
+num_success2=`/bin/grep -c "TORUS: Test successful" benchmarks_openmp/benchmarks/angularImageTest/check_log_openmp_angularImageTest.txt`
+num_success3=`/bin/grep -c "TORUS: Test successful" benchmarks_mpi/benchmarks/angularImageTest/check_log_mpi_angularImageTest.txt`
+if [[ ${num_success} -eq 1 && ${num_success2} -eq 1  && ${num_success3} -eq 1 ]]; then
+    echo "Rainbow test successful" >> header 
+else
+    echo "!! Rainbow test FAILED !!" >> header
     suite_status="FAILED"
 fi
 
