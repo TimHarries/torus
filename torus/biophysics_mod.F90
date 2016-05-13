@@ -788,7 +788,7 @@ contains
 !$OMP PRIVATE(i, firstWrite, photonNormal, photonPosition, photonWeight, photonDirection, photonWavelength, nEvent) &
 !$OMP PRIVATE(dist, hitgrid, absorbed, countEvent, thisOctal, subcell, thisObjectID, thisMedium, subcellHasInterface) &
 !$OMP PRIVATE(intersect, tautoboundary, r, tau, cellEvent, lengthEvent, albedo, hitsInterface, vec, nextMedium, doesenter, stored) &
-!$OMP SHARED(nPhotons, thisDetector, source, grid, smallestCellSize, iMonte_beg, iMonte_end) 
+!$OMP SHARED(nPhotons, thisDetector, source, grid, smallestCellSize, iMonte_beg, iMonte_end, writeoutput) 
 
 !$OMP DO SCHEDULE(DYNAMIC,2)
         do i = iMonte_beg, iMonte_end
