@@ -5,14 +5,12 @@
 !
 module stateq_mod
 
-  use vector_mod
-  use octal_mod
   use constants_mod
+  use vector_mod
+  use octal_mod, only: OCTAL, OCTALWRAPPER, subcellcentre
   use amr_mod, only: getoctalarray
-  use surface_mod, only: SURFACETYPE
   use math_mod, only: directionalderiv
   use gridtype_mod, only: GRIDTYPE, statEqMaxLevels
-  use grid_mod, only: readGridPopulations, writeGridPopulations, getIndices
   use jets_mod, only: dv_dn_jets
   use hyd_col_coeff, only: omegaij, omegaik, tempTable
   use utils_mod, only: locate, hunt, logInterp_dble, logint, solvequaddble
@@ -593,6 +591,8 @@ contains
 
   subroutine initgridstateq(grid, contfile1, contfile2, popFileName, &
        readPops, writePops, lte, nLower, nUpper)
+
+    use grid_mod, only: readGridPopulations, writeGridPopulations, getIndices
 
     implicit none
     integer, parameter :: maxLevels =  stateqMaxLevels
@@ -2889,6 +2889,7 @@ contains
     ! calculate the statistical equilibrium for the subcells in an
     !   adaptive octal grid.
 
+    use surface_mod, only: SURFACETYPE
     use inputs_mod, only : lamLine
     use source_mod, only : globalSourceArray
     USE amr_mod
@@ -3535,6 +3536,7 @@ contains
     ! calculate the statistical equilibrium for the subcells in an
     !   adaptive octal grid.
 
+    use surface_mod, only: SURFACETYPE
     USE amr_mod
     USE inputs_mod, ONLY: LyContThick, statEq1stOctant, lamLine
     use parallel_mod
