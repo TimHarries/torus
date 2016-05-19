@@ -91,7 +91,6 @@ contains
 
     if ( ((uHat.dot.towardsDetector) > 0.d0) .and. &
          ((uHat.dot.thisDetector%normal) < 0.d0) ) then ! photon is moving towards detector (from the correct side!)
-
        select case(thisDetector%type)
           case("ccd")
 
@@ -126,6 +125,7 @@ contains
     logical :: stored
 
     stored = .false.
+
 
     if (hitDetector(thisDetector, photonPos, photonDirection)) then
        stored = .true.

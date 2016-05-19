@@ -423,10 +423,6 @@ contains
             phi = twoPi * r
             photonDirection = arbitraryRotate(photonDirection,phi,source%component(iComponent)%direction)
         endif
-!        write(*,*) " pos ",photonposition
-!        write(*,*) " dir ",photonDirection
-!        write(*,*) " lam ",photonWavelength
-!        write(*,*) " ang ",acos(photonDirection%z)*radtodeg
     end subroutine emitPhoton
 
     subroutine scatter(inComingDirection, normal, gFac, outGoingDirection)
@@ -794,7 +790,7 @@ contains
         do i = iMonte_beg, iMonte_end
 
            if (mod(i-iMonte_beg+1,(iMonte_end-iMonte_beg)/10)==0) then
-              if (writeoutput) write(*,*) 100.*real(i-iMonte_beg+1)/real(iMonte_end-iMonte_beg), " % complete"
+              if (writeoutput) write(*,*) nint(100.*real(i-iMonte_beg+1)/real(iMonte_end-iMonte_beg)), " % complete"
            endif
 
 
@@ -1105,16 +1101,23 @@ contains
 
 
     subroutine setupSpectrum(spectrum, teff)
+      use inputs_mod, only : fibreSpectrum
       real(double) :: teff
       type(SPECTRUMTYPE) :: spectrum
       integer :: nLambda
       real(double) :: lamStart, lamEnd
+      logical :: ok
 
       lamStart = 4000.
       lamEnd = 8000.
       nLambda = 1000
 
-      call fillSpectrumBB(spectrum, teff, lamStart, lamEnd, nLambda)
+      select case (fibreSpectrum)
+         case("blackbody")
+            call fillSpectrumBB(spectrum, teff, lamStart, lamEnd, nLambda)
+         case("led")
+            call readSpectrum(spectrum, "led.dat", ok)
+      end select
     end subroutine setupSpectrum
 
 

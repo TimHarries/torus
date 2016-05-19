@@ -386,6 +386,54 @@ module spectrum_mod
 
     end subroutine readSpectrum
 
+    subroutine mapSpectrumFromFile(spectrum, filename, ok)
+      type(SPECTRUMTYPE) :: spectrum
+      logical :: ok
+      character(len=*) :: filename
+      real(double) :: fTemp(120000),xTemp(120000), x, f, fac
+      character(len=80) :: cLine
+      integer :: nLambda, i, j
+
+      ok = .true.
+      open(20,file=filename,form="formatted",status="old", err=666)
+      nLambda = 1
+10    continue
+      read(20,'(a)',end=20) cline
+      if (len(trim(cline)).gt.0) then
+         if (cLine(1:1) /="#") then
+            read(cLine,*,err=10) x, f
+         else 
+            goto 10
+         endif
+      else
+         goto 10
+      endif
+      xtemp(nLambda) = x
+      fTemp(nLambda) = max(f,1.d-30)
+      nLambda = nLambda + 1
+      goto 10
+20    continue
+      close(20)
+      nLambda = nLambda - 1
+      if (nLambda == 0) then
+         call writeFatal("Error reading continuum flux file: "//trim(filename))
+      endif
+      do i = 1, spectrum%nLambda
+         call locate(xtemp, nLambda, spectrum%lambda(i), j)
+         fac = (spectrum%lambda(i) - xtemp(j))/(xtemp(j+1)-xtemp(j))
+         spectrum%flux(j) = ftemp(j)+fac*(ftemp(j+1)-ftemp(j))
+      enddo
+      call probSpectrum(spectrum)
+
+      goto 999
+
+666   continue
+      ok = .false.
+      call writeFatal("Error in opening file: "//trim(filename))
+999   continue
+
+    end subroutine mapSpectrumFromFile
+
 
     subroutine readTlustySpectrumIni(spectrum, filename, ok)
       type(SPECTRUMTYPE) :: spectrum

@@ -3606,11 +3606,11 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     call getDouble("detectortheta", detectorTheta, degtorad, cLine, fLine, nLines, &
                   "Detector polar angle (deg): ","(a,f6.1,a)",0.d0, ok, .true.)
 
+    call getDouble("detectorphi", detectorPhi, degtorad, cLine, fLine, nLines, &
+         "Detector azimuthal angle (deg): ","(a,f6.1,a)",0.d0, ok, .true.)
+
     select case(detType)
        case("ccd")
-          call getDouble("detectorphi", detectorPhi, degtorad, cLine, fLine, nLines, &
-               "Detector azimuthal angle (deg): ","(a,f6.1,a)",0.d0, ok, .true.)
-
           call getDouble("detectorxsize", detectorXsize, 1.d0, cLine, fLine, nLines, &
                   "Detector X size: ","(a,f6.1,a)",0.d0, ok, .true.)
           
@@ -3627,6 +3627,9 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
                   "Detector fibre radius: ","(a,f6.1,a)",0.d0, ok, .true.)
           call getDouble("detectorna", detectorNA, 1.d0, cLine, fLine, nLines, &
                   "Detector fibre numerical aperture: ","(a,f6.1,a)",0.d0, ok, .true.)
+          call getString("fibrespectrum", fibreSpectrum, cLine, fLine, nLines, &
+                  "Source fibre spectrum: ","(a,a,a)", "none", ok, .true.)
+
 
     end select
 

@@ -981,4 +981,6 @@
   character(len=80) :: detFilename
   character(len=80) :: detType
   character(len=80) :: wavefrontFile
+  character(len=80) :: fibreSpectrum
+
   
