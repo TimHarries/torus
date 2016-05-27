@@ -7,7 +7,7 @@ cd    build
 
 echo "Building Torus for ${THISCONFIG} configuration"
 log_file=compile_log_${THISCONFIG}.txt
-rsync -a ${TEST_DIR}/torus/* .
+rsync --exclude=data -a ${TEST_DIR}/torus/* .
 rsync -a ${TEST_DIR}/torus/.svn .
 
 /usr/bin/make depends > ${log_file} 2>&1 
@@ -182,7 +182,7 @@ ${TORUS_FC} -o check check.f90 -lcfitsio -L${TORUS_FITSLIBS}
 
 check_rainbow()
 {
-echo "Compiling check.f90 for angular image test"
+echo "Compiling checkrainbow"
 ${TORUS_FC} -o checkrainbow checkrainbow.f90
 ./checkrainbow
 }
@@ -705,10 +705,10 @@ else
     suite_status="FAILED"
 fi
 
-# Test for success of angular image test
-num_success=`/bin/grep -c "TORUS: Test successful"  benchmarks_hybrid/benchmarks/angularImageTest/check_log_hybrid_angularImageTest.txt`
-num_success2=`/bin/grep -c "TORUS: Test successful" benchmarks_openmp/benchmarks/angularImageTest/check_log_openmp_angularImageTest.txt`
-num_success3=`/bin/grep -c "TORUS: Test successful" benchmarks_mpi/benchmarks/angularImageTest/check_log_mpi_angularImageTest.txt`
+# Test for success of rainbow test
+num_success=`/bin/grep -c "TORUS: Test successful"  benchmarks_hybrid/benchmarks/rainbow/check_log_hybrid_rainbow.txt`
+num_success2=`/bin/grep -c "TORUS: Test successful" benchmarks_openmp/benchmarks/rainbow/check_log_openmp_rainbow.txt`
+num_success3=`/bin/grep -c "TORUS: Test successful" benchmarks_mpi/benchmarks/rainbow/check_log_mpi_rainbow.txt`
 if [[ ${num_success} -eq 1 && ${num_success2} -eq 1  && ${num_success3} -eq 1 ]]; then
     echo "Rainbow test successful" >> header 
 else
