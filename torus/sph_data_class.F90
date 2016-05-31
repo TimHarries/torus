@@ -121,6 +121,13 @@ module sph_data_class
 
   real(double) :: maxx, maxy, maxz, maxr2 ! maximum extents of particles
 
+! This is the maximum line length when reading an ASCII file, specified as a module parameter
+! as it appears in multiple subroutines. If the line is longer than this length itype is likely 
+! to be lost leading to out of bounds array access. 
+  integer, parameter, private :: MaxAsciiLineLength=800
+! Maximum number of words per line when reading an ASCII file
+  integer, parameter, private :: MaxWords=50
+
   interface kill
      module procedure kill_sph_data
   end interface
@@ -384,7 +391,7 @@ contains
 
     character(LEN=*), intent(in)  :: rootfilename
     character(LEN=80) :: filename
-    character(len=20) :: word(40), unit(40), pType(40)
+    character(len=20) :: word(MaxWords), unit(MaxWords), pType(MaxWords)
     integer :: nword, nunit, npType, status
     !   
     integer, parameter  :: LUIN = 10 ! logical unit # of the data file
@@ -396,7 +403,7 @@ contains
     real(double) :: junkArray(50)
     character(LEN=1)  :: junkchar
     character(LEN=150) :: message
-    character(len=500) :: namestring, unitString, pTypeString
+    character(len=MaxAsciiLineLength) :: namestring, unitString, pTypeString
     integer :: ix, iy, iz, ivx, ivy, ivz, irho, iu, iitype, ih, imass, iUoverT, ipType
     logical :: haveUandUoverT
     integer :: iDustfrac
@@ -3657,10 +3664,10 @@ contains
   end function SmoothingKernel3d
   
  subroutine splitIntoWords(longString, word, nWord, wordLen, adjL)
-   character(len=20) :: word(:)
+   character(len=20) :: word(MaxWords)
    integer :: nWord, thisLen
    character(len=*) :: longString
-   character(len=500) :: tempString
+   character(len=MaxAsciiLineLength) :: tempString
    logical :: stillSplitting, doAdjL
    integer, optional, intent(in) :: wordLen
    logical, optional, intent(in) :: adjL
@@ -3689,6 +3696,10 @@ contains
    stillSplitting = .true.
    do while(stillSplitting)
       nWord = nWord + 1
+      if (nWord > MaxWords) then 
+         call writeFatal("Trying to read too many words from ASCII file")
+         call writeFatal("Recompile with larger MaxWords in sph_data_class")
+      endif
       word(nWord) = tempString(1:thisLen)
       tempString = tempString(thisLen+1:)
       if (len(trim(tempString)) == 0) stillSplitting = .false.
