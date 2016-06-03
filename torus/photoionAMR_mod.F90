@@ -37,7 +37,7 @@ implicit none
 private
 public :: photoIonizationloopAMR, createImagesplitgrid, ionizeGrid, &
      neutralGrid, resizePhotoionCoeff, resetNH, hasPhotoionAllocations, allocatePhotoionAttributes, &
-     computeProbDistAMRMpi, putStarsInGridAccordingToDensity
+     computeProbDistAMRMpi, putStarsInGridAccordingToDensity, testBranchCopying
 
 #ifdef HYDRO
 public :: radiationHydro
@@ -4047,6 +4047,8 @@ recursive subroutine  freeOctalSpectrum(thisOctal)
         if (associated(thisOctal%spectrum)) then
            deallocate(thisOctal%spectrum)
            thisOctal%spectrum => null()
+           deallocate(thisOctal%nfreq)
+           thisOctal%nfreq => null()
         endif
      end if
   end do
@@ -8562,6 +8564,52 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 !!$    endif
 !!$    deallocate(nVoxels)
 !!$  end subroutine checkSetsHaveSameNumberOfOctals
+
+  subroutine testBranchCopying(grid)
+    type(GRIDTYPE) :: grid
+    integer :: i, ithread
+
+    if (associated(nLoadBalanceList)) then
+       deallocate(nloadBalanceList)
+       nullify(nloadBalanceList)
+    endif
+    if (associated(LoadBalanceList)) then
+       deallocate(loadBalanceList)
+       nullify(loadBalanceList)
+    endif
+    allocate(nLoadBalanceList(1:nHydroThreadsGlobal))
+    nLoadBalanceList = 1
+
+    allocate(loadBalanceList(1:nHydroThreadsGlobal,1:(nLoadBalancingThreadsGlobal+1)))
+    do i = 1, nHydroThreadsGlobal
+       loadBalanceList(i,1) = i
+    enddo
+    
+    do i = nHydroThreadsGlobal+1, nHydroThreadsGlobal+nLoadBalancingThreadsGlobal
+       nLoadBalanceList(1) = nLoadBalanceList(1)+1
+       loadBalanceList(1,nLoadBalanceList(1)) = i
+    enddo
+    
+    i = 0
+    do while(i < 100000)
+       i =  i + 1
+       if (myrankGlobal == 1) write(*,*) "Sending branch repeat ",i
+       call createLoadBalanceCommunicator
+       call createLoadThreadDomainCopies(grid)
+       do iThread = 1, nHydroThreadsGlobal
+          if (nLoadBalanceList(iThread) > 1) then
+             if (ANY(loadBalanceList(iThread,1:nLoadBalanceList(iThread)) == myRankGlobal)) then
+                call updateGridMPIPhoto(grid, loadBalanceCommunicator(iThread))
+             endif
+          endif
+       enddo
+
+
+    enddo
+
+
+  end subroutine testBranchCopying
+
     
   subroutine updateGridMPIphoto(grid, amrParComm)
     use gridtype_mod, only : gridtype

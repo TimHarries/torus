@@ -216,6 +216,7 @@ contains
     subroutine initialize3dObjects()
         use inputs_mod, only : wavefrontFile
         use triangle_mesh_mod, only: readTriangleMesh, printTriangleMeshSummary
+        use obj_io_mod, only : obj_count
         integer :: i, n
         type(medium), pointer :: vacuum, water, crownglass, flintglass, air, blood, rubber, &
              intralipid10
@@ -231,6 +232,8 @@ contains
         intralipid10 = defineFatSolution("intralipid10")
         call setupMatcherSkinTissue()
 
+        n = obj_count(wavefrontfile)
+        allocate(objectmeshlist(1:n))
         objectmeshlist = readTriangleMesh(wavefrontFile)
         n = size(objectMeshList)
         if (n > 1) call sortTriangleMeshList(objectMeshList)

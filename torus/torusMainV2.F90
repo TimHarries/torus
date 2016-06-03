@@ -43,6 +43,7 @@ program torus
   use turbulence_mod
   use loadbalance_mod
   use biophysics_mod
+  use photoionAMR_mod
 
 #ifdef CHEMISTRY
   use chemistry_mod
@@ -185,8 +186,9 @@ program torus
     endif
      call setupGlobalSources(grid)
 
-
+#ifdef MPI
 !     call testBranchCopying(grid)
+#endif
 
 ! SPH data may be required for setting up sources so only free memeory after this is done
 

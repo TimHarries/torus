@@ -915,6 +915,176 @@ subroutine obj_read ( input_filename, node_num, face_num, normal_num, &
   return
 end subroutine obj_read
 
+integer function obj_count (input_filename)
+
+!*****************************************************************************80
+!
+!! OBJ_READ reads graphics information from a Wavefront OBJ file.
+!
+!  Discussion:
+!
+!    It is intended that the information read from the file can
+!    either start a whole new graphics object, or simply be added
+!    to a current graphics object via the '<<' command.
+!
+!    This is controlled by whether the input values have been zeroed
+!    out or not.  This routine simply tacks on the information it
+!    finds to the current graphics object.
+!
+!  Example:
+!
+!    #  magnolia.obj
+!
+!    v -3.269770 -39.572201 0.876128
+!    v -3.263720 -39.507999 2.160890
+!    ...
+!    v 0.000000 -9.988540 0.000000
+!    vn 1.0 0.0 0.0
+!    ...
+!    vn 0.0 1.0 0.0
+!
+!    f 8 9 11 10
+!    f 12 13 15 14
+!    ...
+!    f 788 806 774
+!
+!  Licensing:
+!
+!    This code is distributed under the GNU LGPL license.
+!
+!  Modified:
+!
+!    13 April 2001
+!
+!  Author:
+!
+!    John Burkardt
+!
+!  Parameters:
+!
+!    Input, character ( len = * ) INPUT_FILENAME, the name of the input file.
+!
+!    Input, integer ( kind = 4 ) NODE_NUM, the number of points.
+!
+!    Input, integer ( kind = 4 ) FACE_NUM, the number of faces.
+!
+!    Input, integer ( kind = 4 ) NORMAL_NUM, the number of normal vectors.
+!
+!    Input, integer ( kind = 4 ) ORDER_MAX, the maximum number of vertices
+!    per face.
+!
+!    Output, real ( kind = 8 ) NODE_XYZ(3,NODE_NUM), the coordinates of points.
+!
+!    Output, integer ( kind = 4 ) FACE_ORDER(FACE_NUM), the number of vertices
+!    per face.
+!
+!    Output, integer ( kind = 4 ) FACE_NODE(ORDER_MAX,FACE_NUM), the nodes
+!    making faces.
+!
+!    Output, real ( kind = 8 ) NORMAL_VECTOR(3,NORMAL_NUM), normal vectors.
+!
+!    Output, integer ( kind = 4 ) VERTEX_NORMAL(ORDER_MAX,FACE_NUM), the indices
+!    of normal vectors per vertex.
+!
+!    Optional output, character(len=255), pointer OBJECT_NAME(OBJECT_NUM), array containing
+!    names of objects
+!
+!    Optional output, integer (kind=4), OBJECT_START_NODE(OBJECT_NUM), array containing
+!    index number of first node of each object
+!
+!    Optional output, integer (kind=4), OBJECT_START_FACE(OBJECT_NUM), array containing
+!    index number of first face of each object
+!
+!    Optional output, integer (kind=4), OBJECT_START_NORMAL(OBJECT_NUM), array containing
+!    index number of first normal of each object
+!
+  implicit none
+
+  logical done
+  character ( len = * ) input_filename
+  integer ( kind = 4 ) input_file_unit
+  integer ( kind = 4 ) input_file_status
+  character ( len = 255 ) line
+
+
+  !logical s_eqi
+  integer ( kind = 4 ) text_num
+  character ( len = 255 ) word
+  integer ( kind = 4 ) word_index
+  character ( len = 255 ) word_one
+
+  obj_count = 0
+  text_num = 0
+
+  call get_unit ( input_file_unit )
+
+  open ( unit = input_file_unit, file = input_filename, status = 'old', &
+    iostat = input_file_status )
+
+  if ( input_file_status /= 0 ) then
+    write ( *, '(a)' ) ' '
+    write ( *, '(a)' ) 'OBJ_READ - Fatal error!'
+    write ( *, '(a)' ) '  Could not open the file "' &
+     // trim ( input_filename ) // '".'
+    stop
+  end if
+
+  word = ' '
+!
+!  Read a line of text from the file.
+!
+  do
+
+    read ( input_file_unit, '(a)', iostat = input_file_status ) line
+
+
+    if ( input_file_status /= 0 ) then
+      exit
+    end if
+
+    text_num = text_num + 1
+!
+!  Replace any control characters (in particular, TAB's) by blanks.
+!
+    call s_control_blank ( line )
+
+    done = .true.
+    word_index = 0
+!
+!  Read a word from the line.
+!
+    call word_next_read ( line, word, done )
+!
+!  If no more words in this line, read a new line.
+!
+    if ( done ) then
+      cycle
+    end if
+!
+!  If this word begins with '#' or '$', then it's a comment.  Read a new line.
+!
+    if ( word(1:1) == '#' .or. word(1:1) == '$' ) then
+      cycle
+    end if
+
+    word_index = word_index + 1
+
+    if ( word_index == 1 ) then
+      word_one = word
+    end if
+
+    if ( s_eqi ( word_one, 'O' ) ) then
+
+       obj_count = obj_count + 1
+
+    end if
+
+  end do
+
+  close ( unit = input_file_unit )
+
+end function obj_count
+
 subroutine trim_int_array(ptr, new_size)
     ! Given array of integer, allocate new memory of given size and copy values into it
     integer(kind=4), dimension(:), pointer, intent(inout) :: ptr

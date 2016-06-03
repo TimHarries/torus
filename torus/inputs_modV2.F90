@@ -3627,8 +3627,6 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
                   "Detector fibre radius: ","(a,f6.1,a)",0.d0, ok, .true.)
           call getDouble("detectorna", detectorNA, 1.d0, cLine, fLine, nLines, &
                   "Detector fibre numerical aperture: ","(a,f6.1,a)",0.d0, ok, .true.)
-          call getString("fibrespectrum", fibreSpectrum, cLine, fLine, nLines, &
-                  "Source fibre spectrum: ","(a,a,a)", "none", ok, .true.)
 
 
     end select
@@ -4095,6 +4093,8 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
           write(keyword, '(a,i1)') "na",i
           call getDouble(keyword, componentNa(i), 1.d0, cLine, fLine, nLines, &
                "Numerical aperture: ","(a,f5.1,1x,a)", 1.0d0, ok, .true.)
+          call getString("fibrespectrum", fibreSpectrum, cLine, fLine, nLines, &
+                  "Source fibre spectrum: ","(a,a,a)", "none", ok, .true.)
        endif
     enddo
 

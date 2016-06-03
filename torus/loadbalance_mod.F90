@@ -284,41 +284,6 @@ contains
 
   end subroutine setLoadBalancingThreadsByCells
        
-  subroutine testBranchCopying(grid)
-    type(GRIDTYPE) :: grid
-    integer :: i
-
-    if (associated(nLoadBalanceList)) then
-       deallocate(nloadBalanceList)
-       nullify(nloadBalanceList)
-    endif
-    if (associated(LoadBalanceList)) then
-       deallocate(loadBalanceList)
-       nullify(loadBalanceList)
-    endif
-    allocate(nLoadBalanceList(1:nHydroThreadsGlobal))
-    nLoadBalanceList = 1
-
-    allocate(loadBalanceList(1:nHydroThreadsGlobal,1:(nLoadBalancingThreadsGlobal+1)))
-    do i = 1, nHydroThreadsGlobal
-       loadBalanceList(i,1) = i
-    enddo
-    
-    do i = nHydroThreadsGlobal+1, nHydroThreadsGlobal+nLoadBalancingThreadsGlobal
-       nLoadBalanceList(1) = nLoadBalanceList(1)+1
-       loadBalanceList(1,nLoadBalanceList(1)) = i
-    enddo
-    
-    i = 0
-    do while(i < 100000)
-       i =  i + 1
-       if (myrankGlobal == 1) write(*,*) "Sending branch repeat ",i
-       call createLoadBalanceCommunicator
-       call createLoadThreadDomainCopies(grid)
-    enddo
-
-
-  end subroutine testBranchCopying
 
   subroutine createLoadThreadDomainCopies(grid)
     use mpi
