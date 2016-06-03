@@ -17,6 +17,7 @@ sourcephi 0.
 ncomponent 1
 
 componenttype1 fibre
+fibrespectrum blackbody
 wavelength1 635.
 componentpos1 0.d0 0.d0 0.d0
 radius1 100.
@@ -33,6 +34,5 @@ detectorxsize 3.
 detectorysize 3.
 detectornx 400
 detectorny 400
-rgbfilename detector
 detfilename detector
 
