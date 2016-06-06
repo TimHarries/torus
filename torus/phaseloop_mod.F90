@@ -211,7 +211,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   real(double) :: totDustContinuumEmission, totEnvelopeEmission
 
   integer :: nFromEnv
-  integer(kind=bigInt) :: iInner_beg, iInner_end ! beginning and end of the innerPhotonLoop index.
 
   integer(kind=bigint) :: i
   integer :: istep, ispline 
@@ -229,7 +228,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   character(len=80) :: specfile
 
   logical :: ok
-  type(OCTAL), pointer :: sourceOctal, currentOctal, tempOctal
   integer :: sourceSubcell, currentSubcell, tempSubcell
 
 #ifdef MPI
@@ -1741,6 +1739,10 @@ CONTAINS
     type(PHOTON) :: tempPhoton
     type(PHOTON) :: thisPhoton
     integer :: intPathError
+
+    type(OCTAL), pointer :: sourceOctal, currentOctal, tempOctal
+
+    integer(kind=bigInt) :: iInner_beg, iInner_end ! beginning and end of the innerPhotonLoop index.
 
     ! default inner loop indices
     iInner_beg = 1
