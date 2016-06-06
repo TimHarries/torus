@@ -62,7 +62,7 @@ angle4 = atan2((s - r1)/s*1.5,1.0)* 180./3.141592654
 
 if ((angle1 > 40.89).and.(angle1 < 43.).and.(angle2 > 40.89).and.(angle2 < 43.).and. &
      (angle3 > 50.).and.(angle3 < 52.0).and.(angle4>50.).and.(angle4 < 52.)) then
-   write(*,*) "TORUS: test successful"
+   write(*,*) "TORUS: Test successful"
 else
    write(*,*) "Rainbow benchmark failed"
 endif
