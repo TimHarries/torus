@@ -16,7 +16,7 @@ rsync -a ${TEST_DIR}/torus/.svn .
 if [[ $? -eq 0 ]]; then
 # Count number of warnings. Subtract 2 because there are always warnings
 # about include files from the make depends step (run twice).
-    num_warn=`grep -i warning ${log_file} | wc -l | awk '{print $1 - 2}`
+    num_warn=`grep -i -c warning ${log_file} | awk '{print $1 - 2}`
     echo "Compilation completed with ${num_warn} warnings."
 else
     echo "Compilation failed."
@@ -547,10 +547,12 @@ suite_status="PASSED"
 echo "Summary of test results: " > header
 echo " " >> header
 
+grepper="/bin/grep -c -i"
+
 # Test for success of disc benchmark
-num_success=`/bin/grep "TORUS: Test successful"  benchmarks_hybrid/benchmarks/disc/check_log_hybrid_disc.txt | /usr/bin/wc -l`
-num_success2=`/bin/grep "TORUS: Test successful" benchmarks_openmp/benchmarks/disc/check_log_openmp_disc.txt | /usr/bin/wc -l`
-num_success3=`/bin/grep "TORUS: Test successful" benchmarks_mpi/benchmarks/disc/check_log_mpi_disc.txt | /usr/bin/wc -l`
+num_success=`${grepper} "TORUS: Test successful"  benchmarks_hybrid/benchmarks/disc/check_log_hybrid_disc.txt`
+num_success2=`${grepper} "TORUS: Test successful" benchmarks_openmp/benchmarks/disc/check_log_openmp_disc.txt`
+num_success3=`${grepper} "TORUS: Test successful" benchmarks_mpi/benchmarks/disc/check_log_mpi_disc.txt`
 if [[ ${num_success} -eq 3 && ${num_success2} -eq 3  && ${num_success3} -eq 3 ]]; then
     echo "Disc benchmark successful" >> header 
 else
@@ -560,9 +562,9 @@ fi
 
 if [[ ${MODE} == "stable" ]]; then
     # Test for success of 3D disc benchmark
-    num_success=`/bin/grep -c "TORUS: Test successful"  benchmarks_hybrid/benchmarks/disc_cylindrical/check_log_hybrid_disc_cylindrical.txt`
-    num_success2=`/bin/grep -c "TORUS: Test successful" benchmarks_openmp/benchmarks/disc_cylindrical/check_log_openmp_disc_cylindrical.txt`
-    num_success3=`/bin/grep -c "TORUS: Test successful" benchmarks_mpi/benchmarks/disc_cylindrical/check_log_mpi_disc_cylindrical.txt`
+    num_success=`${grepper} "TORUS: Test successful"  benchmarks_hybrid/benchmarks/disc_cylindrical/check_log_hybrid_disc_cylindrical.txt`
+    num_success2=`${grepper} "TORUS: Test successful" benchmarks_openmp/benchmarks/disc_cylindrical/check_log_openmp_disc_cylindrical.txt`
+    num_success3=`${grepper} "TORUS: Test successful" benchmarks_mpi/benchmarks/disc_cylindrical/check_log_mpi_disc_cylindrical.txt`
 # SEDs only, no image so look for 2 successful results
     if [[ ${num_success} -eq 2 && ${num_success2} -eq 2  && ${num_success3} -eq 2 ]]; then
 	echo "3D Disc benchmark successful" >> header 
@@ -573,9 +575,9 @@ if [[ ${MODE} == "stable" ]]; then
 fi
 
 # Test for success of molebench
-num_success=`/bin/grep -c "TORUS: Test successful"  benchmarks_hybrid/benchmarks/molebench/check_log_hybrid_molebench.txt`
-num_success2=`/bin/grep -c "TORUS: Test successful" benchmarks_openmp/benchmarks/molebench/check_log_openmp_molebench.txt`
-num_success3=`/bin/grep -c "TORUS: Test successful" benchmarks_mpi/benchmarks/molebench/check_log_mpi_molebench.txt`
+num_success=`${grepper} "TORUS: Test successful"  benchmarks_hybrid/benchmarks/molebench/check_log_hybrid_molebench.txt`
+num_success2=`${grepper} "TORUS: Test successful" benchmarks_openmp/benchmarks/molebench/check_log_openmp_molebench.txt`
+num_success3=`${grepper} "TORUS: Test successful" benchmarks_mpi/benchmarks/molebench/check_log_mpi_molebench.txt`
 if [[ ${num_success} -eq 2 && ${num_success2} -eq 2 && ${num_success3} -eq 2 ]]; then
     echo "Molecular benchmark successful." >> header
 else
@@ -584,9 +586,9 @@ else
 fi
 
 # Test for success of molecular mod restart
-num_success=`/bin/grep -c "TORUS: Test successful"  benchmarks_hybrid/benchmarks/molebench/restart/check_log_hybrid_moleRestart.txt`
-num_success2=`/bin/grep -c "TORUS: Test successful" benchmarks_openmp/benchmarks/molebench/restart/check_log_openmp_moleRestart.txt`
-num_success3=`/bin/grep -c "TORUS: Test successful" benchmarks_mpi/benchmarks/molebench/restart/check_log_mpi_moleRestart.txt`
+num_success=`${grepper} "TORUS: Test successful"  benchmarks_hybrid/benchmarks/molebench/restart/check_log_hybrid_moleRestart.txt`
+num_success2=`${grepper} "TORUS: Test successful" benchmarks_openmp/benchmarks/molebench/restart/check_log_openmp_moleRestart.txt`
+num_success3=`${grepper} "TORUS: Test successful" benchmarks_mpi/benchmarks/molebench/restart/check_log_mpi_moleRestart.txt`
 if [[ ${num_success} -eq 3 && ${num_success2} -eq 3 && ${num_success3} -eq 3 ]]; then
     echo "Molecular restart successful." >> header
 else
@@ -595,7 +597,7 @@ else
 fi
 
 # Test for success of hydro benchmark
-num_success=`/bin/grep "TORUS: Test successful" benchmarks_mpi/benchmarks/hydro/check_log_mpi_hydro.txt | /usr/bin/wc -l`
+num_success=`${grepper} "TORUS: Test successful" benchmarks_mpi/benchmarks/hydro/check_log_mpi_hydro.txt`
 if [[ ${num_success} -eq 1 ]]; then
     echo "Hydro benchmark successful." >> header
 else
@@ -604,9 +606,9 @@ else
 fi
 
 # Test for success of hII region benchmark
-num_success=`/bin/grep "TORUS: Test successful" benchmarks_hybrid/benchmarks/HII_region/check_log_hybrid_hII.txt | /usr/bin/wc -l`
-num_success2=`/bin/grep "TORUS: Test successful" benchmarks_openmp/benchmarks/HII_region/check_log_openmp_hII.txt | /usr/bin/wc -l`
-num_success3=`/bin/grep "TORUS: Test successful" benchmarks_mpi/benchmarks/HII_region/check_log_mpi_hII.txt | /usr/bin/wc -l`
+num_success=`${grepper} "TORUS: Test successful" benchmarks_hybrid/benchmarks/HII_region/check_log_hybrid_hII.txt`
+num_success2=`${grepper} "TORUS: Test successful" benchmarks_openmp/benchmarks/HII_region/check_log_openmp_hII.txt`
+num_success3=`${grepper} "TORUS: Test successful" benchmarks_mpi/benchmarks/HII_region/check_log_mpi_hII.txt`
 if [[ ${num_success} -eq 1 && ${num_success2} -eq 1 && ${num_success3} -eq 1 ]]; then
     echo "HII region benchmark successful." >> header
 else
@@ -615,7 +617,7 @@ else
 fi
 
 # Test for success of domain decomposed hII region benchmark                                                                  
-num_success=`/bin/grep "TORUS: Test successful" benchmarks_mpi/benchmarks/HII_regionMPI/check_log_mpi_hII_MPI.txt | /usr/bin/wc -l`
+num_success=`${grepper} "TORUS: Test successful" benchmarks_mpi/benchmarks/HII_regionMPI/check_log_mpi_hII_MPI.txt`
 if [[ ${num_success} -eq 1 ]]; then
     echo "MPI HII region benchmark successful." >> header
 else
@@ -624,7 +626,7 @@ else
 fi
 
 # Test for success of imaging benchmark
-num_success=`/bin/grep "Test Successful" benchmarks_mpi/benchmarks/cylinder_image_test/check_log_mpi_image.txt | /usr/bin/wc -l`
+num_success=`${grepper} "Test Successful" benchmarks_mpi/benchmarks/cylinder_image_test/check_log_mpi_image.txt`
 if [[ ${num_success} -eq 1 ]]; then
     echo "Image benchmark successful. " >> header
 else
@@ -633,7 +635,7 @@ else
 fi
 
 # Test for success of gravity solver test
-num_success=`/bin/grep "Torus gravity solver test successful" benchmarks_mpi/benchmarks/gravtest/check_log_mpi_gravtest.txt | /usr/bin/wc -l`
+num_success=`${grepper} "Torus gravity solver test successful" benchmarks_mpi/benchmarks/gravtest/check_log_mpi_gravtest.txt`
 if [[ ${num_success} -eq 1 ]]; then
     echo "Gravity test successful. " >> header
 else
@@ -642,7 +644,7 @@ else
 fi
 
 # Test for success of 2D gravity solver test
-num_success=`/bin/grep "Torus gravity solver test successful" benchmarks_mpi/benchmarks/gravtest_2d/check_log_mpi_gravtest_2d.txt | /usr/bin/wc -l`
+num_success=`${grepper} "Torus gravity solver test successful" benchmarks_mpi/benchmarks/gravtest_2d/check_log_mpi_gravtest_2d.txt`
 if [[ ${num_success} -eq 1 ]]; then
     echo "2D gravity test successful. " >> header
 else
@@ -651,9 +653,9 @@ else
 fi
 
 # Test for success of nbody test
-num_success=`/bin/grep "Torus nbody test successful" benchmarks_openmp/benchmarks/nbody/check_log_openmp_nbody.txt | /usr/bin/wc -l`
-num_success2=`/bin/grep "Torus nbody test successful" benchmarks_hybrid/benchmarks/nbody/check_log_hybrid_nbody.txt | /usr/bin/wc -l`
-num_success3=`/bin/grep "Torus nbody test successful" benchmarks_mpi/benchmarks/nbody/check_log_mpi_nbody.txt | /usr/bin/wc -l`
+num_success=`${grepper} "Torus nbody test successful" benchmarks_openmp/benchmarks/nbody/check_log_openmp_nbody.txt`
+num_success2=`${grepper} "Torus nbody test successful" benchmarks_hybrid/benchmarks/nbody/check_log_hybrid_nbody.txt`
+num_success3=`${grepper} "Torus nbody test successful" benchmarks_mpi/benchmarks/nbody/check_log_mpi_nbody.txt`
 if [[  ${num_success} -eq 1 && ${num_success2} -eq 1 && ${num_success3} -eq 1 ]]; then
     echo "N body test successful. " >> header
 else
@@ -662,9 +664,9 @@ else
 fi
 
 # Test for success of SPH to grid test
-num_success=`/bin/grep "TORUS: Test successful" benchmarks_hybrid/benchmarks/sphbench/check_log_hybrid_sphbench.txt | /usr/bin/wc -l`
-num_success2=`/bin/grep "TORUS: Test successful" benchmarks_openmp/benchmarks/sphbench/check_log_openmp_sphbench.txt | /usr/bin/wc -l`
-num_success3=`/bin/grep "TORUS: Test successful" benchmarks_mpi/benchmarks/sphbench/check_log_mpi_sphbench.txt | /usr/bin/wc -l`
+num_success=`${grepper} "TORUS: Test successful" benchmarks_hybrid/benchmarks/sphbench/check_log_hybrid_sphbench.txt`
+num_success2=`${grepper} "TORUS: Test successful" benchmarks_openmp/benchmarks/sphbench/check_log_openmp_sphbench.txt`
+num_success3=`${grepper} "TORUS: Test successful" benchmarks_mpi/benchmarks/sphbench/check_log_mpi_sphbench.txt`
 if [[ ${num_success} -eq 1 && ${num_success2} -eq 1 && ${num_success3} -eq 1 ]]; then
     echo "SPH to grid test successful." >> header
 else
@@ -673,9 +675,9 @@ else
 fi
 
 # Test for success of SPH to grid test (binary dump with chemistry)
-num_success=`/bin/grep -c "TORUS: Test successful" benchmarks_hybrid/benchmarks/sphToGridBinary/check_log_hybrid_sphToGridBinary.txt`
-num_success2=`/bin/grep -c "TORUS: Test successful" benchmarks_openmp/benchmarks/sphToGridBinary/check_log_openmp_sphToGridBinary.txt`
-num_success3=`/bin/grep -c "TORUS: Test successful" benchmarks_mpi/benchmarks/sphToGridBinary/check_log_mpi_sphToGridBinary.txt`
+num_success=`${grepper} "TORUS: Test successful" benchmarks_hybrid/benchmarks/sphToGridBinary/check_log_hybrid_sphToGridBinary.txt`
+num_success2=`${grepper} "TORUS: Test successful" benchmarks_openmp/benchmarks/sphToGridBinary/check_log_openmp_sphToGridBinary.txt`
+num_success3=`${grepper} "TORUS: Test successful" benchmarks_mpi/benchmarks/sphToGridBinary/check_log_mpi_sphToGridBinary.txt`
 if [[ ${num_success} -eq 1 && ${num_success2} -eq 1 && ${num_success3} -eq 1 ]]; then
     echo "SPH to grid test with chemistry successful." >> header
 else
@@ -684,9 +686,9 @@ else
 fi
 
 # Test for success of restart test
-num_success=`/bin/grep -c "TORUS: Test successful"  benchmarks_hybrid/benchmarks/restart/check_log_hybrid_restart.txt`
-num_success2=`/bin/grep -c "TORUS: Test successful" benchmarks_openmp/benchmarks/restart/check_log_openmp_restart.txt`
-num_success3=`/bin/grep -c "TORUS: Test successful" benchmarks_mpi/benchmarks/restart/check_log_mpi_restart.txt`
+num_success=`${grepper} "TORUS: Test successful"  benchmarks_hybrid/benchmarks/restart/check_log_hybrid_restart.txt`
+num_success2=`${grepper} "TORUS: Test successful" benchmarks_openmp/benchmarks/restart/check_log_openmp_restart.txt`
+num_success3=`${grepper} "TORUS: Test successful" benchmarks_mpi/benchmarks/restart/check_log_mpi_restart.txt`
 if [[ ${num_success} -eq 3 && ${num_success2} -eq 3  && ${num_success3} -eq 3 ]]; then
     echo "Restart test successful" >> header 
 else
@@ -695,9 +697,9 @@ else
 fi
 
 # Test for success of angular image test
-num_success=`/bin/grep -c "TORUS: Test successful"  benchmarks_hybrid/benchmarks/angularImageTest/check_log_hybrid_angularImageTest.txt`
-num_success2=`/bin/grep -c "TORUS: Test successful" benchmarks_openmp/benchmarks/angularImageTest/check_log_openmp_angularImageTest.txt`
-num_success3=`/bin/grep -c "TORUS: Test successful" benchmarks_mpi/benchmarks/angularImageTest/check_log_mpi_angularImageTest.txt`
+num_success=`${grepper} "TORUS: Test successful"  benchmarks_hybrid/benchmarks/angularImageTest/check_log_hybrid_angularImageTest.txt`
+num_success2=`${grepper} "TORUS: Test successful" benchmarks_openmp/benchmarks/angularImageTest/check_log_openmp_angularImageTest.txt`
+num_success3=`${grepper} "TORUS: Test successful" benchmarks_mpi/benchmarks/angularImageTest/check_log_mpi_angularImageTest.txt`
 if [[ ${num_success} -eq 1 && ${num_success2} -eq 1  && ${num_success3} -eq 1 ]]; then
     echo "Angular image test successful" >> header 
 else
@@ -706,9 +708,9 @@ else
 fi
 
 # Test for success of rainbow test
-num_success=`/bin/grep -c "TORUS: Test successful"  benchmarks_hybrid/benchmarks/rainbow/check_log_hybrid_rainbow.txt`
-num_success2=`/bin/grep -c "TORUS: Test successful" benchmarks_openmp/benchmarks/rainbow/check_log_openmp_rainbow.txt`
-num_success3=`/bin/grep -c "TORUS: Test successful" benchmarks_mpi/benchmarks/rainbow/check_log_mpi_rainbow.txt`
+num_success=`${grepper} "TORUS: Test successful"  benchmarks_hybrid/benchmarks/rainbow/check_log_hybrid_rainbow.txt`
+num_success2=`${grepper} "TORUS: Test successful" benchmarks_openmp/benchmarks/rainbow/check_log_openmp_rainbow.txt`
+num_success3=`${grepper} "TORUS: Test successful" benchmarks_mpi/benchmarks/rainbow/check_log_mpi_rainbow.txt`
 if [[ ${num_success} -eq 1 && ${num_success2} -eq 1  && ${num_success3} -eq 1 ]]; then
     echo "Rainbow test successful" >> header 
 else
