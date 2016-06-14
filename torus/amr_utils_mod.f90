@@ -533,10 +533,10 @@ module amr_utils_mod
          amrGridVelocity = newVec
 
 
-         amrgridvelocity = resultoctal%velocity(subcell)
-         phi = atan2(point%y, point%x)
-         newVec = rotateZ(amrGridVelocity, -phi)
-         amrGridVelocity = newVec         
+!         amrgridvelocity = resultoctal%velocity(subcell)
+ !        phi = atan2(point%y, point%x)
+  !       newVec = rotateZ(amrGridVelocity, -phi)
+   !      amrGridVelocity = newVec         
 
    else ! one-d
       select case(subcell)
