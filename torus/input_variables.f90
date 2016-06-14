@@ -271,6 +271,7 @@
   real(double), protected :: lineUnrefineThresh
   logical, protected :: forceIniRay
   logical, protected :: zeroghosts
+  logical :: ALMA      !use casa friendly fits headers
   logical, protected :: renewinputrays
   logical, protected :: plotlevels   
   logical, protected :: writetempfits

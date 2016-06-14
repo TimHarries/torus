@@ -1070,6 +1070,10 @@ CONTAINS
     CASE ("simpledisc")
        CALL simpledisc(thisOctal, subcell)
 
+    CASE ("HLtau")
+       CALL HLtauDiscDensity(thisOctal, subcell)
+
+
     CASE ("parker")
        CALL parkerwind(thisOctal, subcell)
 
@@ -4602,6 +4606,24 @@ CONTAINS
        case("fontdisc")
  !         rVec = subcellCentre(thisOctal, subcell)
           if(thisOctal%ndepth < mindepthamr) split = .true.
+
+       case("HLtau")
+          if(thisOctal%ndepth < mindepthamr) split = .true.
+
+          rVec = subcellCentre(thisOctal, subcell)
+
+          if(modulus(rvec) < 10.*autocm/1.d10) then
+             if(thisOctal%ndepth < maxdepthamr) split = .true.
+          elseif(modulus(rvec) < 20.*autocm/1.d10) then
+             if(thisOctal%ndepth < maxdepthamr-1) split = .true.
+          elseif(modulus(rvec) < 50.*autocm/1.d10) then
+             if(thisOctal%ndepth < maxdepthamr-2) split = .true.
+          elseif(modulus(rvec) < 70.*autocm/1.d10) then
+             if(thisOctal%ndepth < maxdepthamr-3) split = .true.
+          elseif(modulus(rvec) < 100.*autocm/1.d10) then
+             if(thisOctal%ndepth < maxdepthamr-4) split = .true.
+          endif
+
 
        case("simpledisc")
           if(thisOctal%ndepth < mindepthamr) split = .true.
@@ -10157,6 +10179,88 @@ endif
     thisOctal%velocity(subcell) = vector(0.d0, 0.d0, 0.d0)
 
   end subroutine parkerWind
+
+
+    subroutine HLtauDiscDensity(thisOctal,subcell)
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(vector) :: rvec
+
+    real(double) :: cs, vkep, omega, rTaper, alpha, beta, Ro, Ho, mu
+    real(double) :: rOuter, starMass, H, Sigma, rhoMid, T30au, rturn
+    real(double) :: sigmaO, Mdisc, rinner, dela, Rc, zq, delta, Tmid, Tatm, Tz
+
+    starMass = 0.55d0*msol
+    rOuter = 156.d-10*autocm
+    rinner = 2.5d-10*autocm
+    rvec = subcellcentre(thisoctal, subcell)
+    omega = (bigG*starMass/(rvec%x*1.d10)**3)**0.5
+
+    if(.not. associated(thisOctal%rhou)) then
+       allocate(thisOctal%rhou(1:thisOctal%maxchildren))
+    endif
+    if(.not. associated(thisOctal%rhov)) then
+       allocate(thisOctal%rhov(1:thisOctal%maxchildren))
+    endif
+    if(.not. associated(thisOctal%rhow)) then
+       allocate(thisOctal%rhow(1:thisOctal%maxchildren))
+    endif
+
+    Mdisc = 0.0735*msol
+    SigmaO = 23.61d0/2.d0
+    Rc = 79.d-10*autocm
+    Ro = 10.d-10*autocm
+
+    mu = 2.3d0
+    delta = 2.d0
+
+    Tatm = 280.d0
+
+    Sigma = SigmaO*(abs(rvec%x)/Ro)**(0.23)*exp(-(abs(rvec%x)/Rc)**(2.23))
+
+    Tatm = max(280.*(abs(rvec%x)/(5.d-10*autocm))**(-0.44), 10.)
+    Tmid = max(real(110.*(abs(rvec%x)/(5.d-10*autocm))**(-0.569)), 10.)
+
+    if(abs(rvec%x) < router .and. abs(rvec%x) > rinner) then
+
+       cs = sqrt(kerg*Tmid/mu/mHydrogen)
+       H = cs/omega
+       zq = 4.d-10*H
+
+       if(abs(rvec%z) >= zq) then
+          Tz = Tatm
+       else
+          Tz = Tmid + (Tatm-Tmid)*(sin(pi*abs(rvec%z)/(2.d0*zq)))**(2.d0*delta)
+       endif
+
+       thisOctal%temperature(subcell) = real(Tz)
+       rhoMid = sigma/H
+       thisOctal%rho(subcell) = rhoMid*exp(-((abs(rvec%z)*1.d10)**2)/(2.d0*H**2))
+
+       vKep = sqrt(bigG*starmass/(abs(rvec%x)*1.d10))
+
+       thisoctal%rho(subcell) = max(thisOCtal%rho(subcell), 1.d-5*mhydrogen)
+       thisOctal%rhou(subcell) = 0.d0
+       thisOctal%rhov(subcell) = thisOctal%rho(subcell)*vkep
+       thisOctal%rhow(subcell) = 0.d0
+       thisOctal%velocity(subcell) = vector(0.d0, vkep, 0.d0)/cspeed
+
+    else
+
+       thisOCtal%rho(subcell) = 1.d-30
+       thisOctal%temperature(subcell) = 10.d0
+       cs = sqrt(kerg*thisOctal%temperature(subcell)/(2.3*mHydrogen))
+       thisOctal%rhou(subcell) = 0.d0
+       thisOctal%rhow(subcell) = 0.d0
+       thisOctal%velocity(subcell) = vector(0.d0, 0.d0, 0.d0)/cspeed
+
+    endif
+    thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.d0*mhydrogen)
+
+  end subroutine HLtauDiscDensity
+
+
 
 
   subroutine simpleDisc(thisOctal,subcell)

@@ -168,8 +168,9 @@ module molecular_mod
 
 
      do iColl = 1, thisMolecule%nCollPart
-
-        allocate(keep(1:thisMolecule%nCollTrans(iColl)))
+        if(.not. allocated(keep)) then
+           allocate(keep(1:thisMolecule%nCollTrans(iColl)))
+        endif
         keep = .false.
         newNcollTrans = 0
         do j = 1, thisMolecule%nCollTrans(iColl)
@@ -697,7 +698,7 @@ module molecular_mod
                  else
                     maxlevel = setmaxlevel
                  endif
-                 write(*,*) "MAX LEVEL DONE HERE!!!!! ",maxlevel
+!                 write(*,*) "MAX LEVEL DONE HERE!!!!! ",maxlevel
 !tjh added
                  call writeInfo("Reducing molecule...",TRIVIAL)
                  call reduceMolecule(thisMolecule, maxlevel)
@@ -2751,7 +2752,7 @@ doNg:       if(ng) then
 subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, inputViewVec)
 
    use inputs_mod, only : itrans, nSubpixels, observerpos, rgbCube, &
-        gridDistance, imageside, wantTau, dataCubeUnits, datacubeaxisunits
+        gridDistance, imageside, wantTau, dataCubeUnits, datacubeaxisunits, ALMA
    use datacube_mod, only: convertIntensityToBrightnessTemperature
 #ifdef USECFITSIO
    use fits_utils_mod
@@ -2854,17 +2855,21 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 ! Commented out line for removing background intensity - will want to do this one day
 !   call TranslateCubeIntensity(cube,1.d0*Tcbr) ! 
 
-     select case (dataCubeUnits)
-     case("flux","Flux")
-! convert intensity (ergcm-2sr-1Hz-1) to flux (Wm-2Hz-1) (so that per pixel flux is correct)     
-        call writeinfo('Converting Intensity to Flux', TRIVIAL)
-        call cubeIntensityToFlux(cube, thismolecule, itrans)
-     case("tb","TB","Tb")
-        call writeinfo('Converting Intensity to brightness temperature', TRIVIAL)
-        thisWavelength = cspeed / thisMolecule%transfreq(itrans)
-        call convertIntensityToBrightnessTemperature(cube, thisWavelength)
-     end select
-
+     if(ALMA) then
+        call cubeIntensityToJanskyPerPixel(cube, thismolecule, itrans)        
+     else
+        select case (dataCubeUnits)
+        case("flux","Flux")
+           ! convert intensity (ergcm-2sr-1Hz-1) to flux (Wm-2Hz-1) (so that per pixel flux is correct)     
+           call writeinfo('Converting Intensity to Flux', TRIVIAL)
+           call cubeIntensityToFlux(cube, thismolecule, itrans)
+        case("tb","TB","Tb")
+           call writeinfo('Converting Intensity to brightness temperature', TRIVIAL)
+           thisWavelength = cspeed / thisMolecule%transfreq(itrans)
+           call convertIntensityToBrightnessTemperature(cube, thisWavelength)
+        end select
+     endif
+     
      call convertspatialaxes(cube, datacubeaxisunits)
 
      if(observerpos .gt. 0) then
@@ -2901,14 +2906,17 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 ! Write separate cubes which are easier to handle when not using kvis
       call writeinfo("Writing intensity to intensity_"//trim(filename), TRIVIAL)
       call writedatacube(cube, "intensity_"//trim(dataCubeFileName), write_Intensity=.true., &
-           write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false.)
+           write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false., &
+           frequency=thisMolecule%transfreq(itrans))
       call writeinfo("Writing column density to nCol_"//trim(filename), TRIVIAL)
       call writedatacube(cube, "nCol_"//trim(dataCubeFileName), write_Intensity=.false., &
-           write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.true., write_axes=.false.)
+           write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.true., write_axes=.false., &
+           frequency=thisMolecule%transfreq(itrans))
       if ( wanttau ) then 
          call writeinfo("Writing optical depth to tau_"//trim(filename), TRIVIAL)
          call writedatacube(cube, "tau_"//trim(dataCubeFileName), write_Intensity=.false., &
-              write_ipos=.false., write_ineg=.false., write_Tau=.true., write_nCol=.false., write_axes=.false.)
+              write_ipos=.false., write_ineg=.false., write_Tau=.true., write_nCol=.false., write_axes=.false., &
+              frequency=thisMolecule%transfreq(itrans))
       endif
 
 ! Write VTK file
@@ -3375,7 +3383,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
               status = 0
               write(filename,'(a,i3,a)') "MolRTtemp",iv,".fits"
               call deleteFitsFile (filename, status)
-              call writedatacube(cube, filename)
+              call writedatacube(cube, filename, frequency=thisMolecule%transfreq(itrans))
               if(iv .gt. 1) then
                  write(filename,'(a,i3,a)') "MolRTtemp",iv-1,".fits"
                  call deleteFitsFile (filename, status)
@@ -5112,15 +5120,18 @@ END SUBROUTINE sobseq
 
       call writeinfo("Writing intensity to intensity_"//trim(dataCubeFileName), TRIVIAL)
       call writedatacube(cube, "intensity_"//trim(dataCubeFileName), write_Intensity=.true., &
-           write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false.)
+           write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false., &
+           frequency=thisMolecule%transfreq(itrans))
 
       call writeinfo("Writing column density to nCol_"//trim(dataCubeFileName), TRIVIAL)
       call writedatacube(cube, "nCol_"//trim(dataCubeFileName), write_Intensity=.false., &
-           write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.true., write_axes=.false.)
+           write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.true., write_axes=.false., &
+           frequency=thisMolecule%transfreq(itrans))
 
       call writeinfo("Writing emission weighted velocity to WV_"//trim(dataCubeFileName), TRIVIAL)
       call writedatacube(cube, "WV_"//trim(dataCubeFileName), write_Intensity=.false., write_ipos=.false., &
-           write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false., write_WV=.true.)
+           write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false., write_WV=.true., &
+           frequency=thisMolecule%transfreq(itrans))
 
    endif
 #else
@@ -5750,6 +5761,35 @@ endif
    enddo
 
  end subroutine cubeIntensityToFlux
+
+!Added by Haworth for ALMA/casa friendly cubes
+ subroutine cubeIntensityToJanskyPerPixel(cube,thisMolecule,itrans)
+
+   use inputs_mod, only : gridDistance, nv
+   type(moleculetype) :: thismolecule
+   type(datacube) :: cube
+   integer :: ipixel,jpixel,iv, itrans
+   real(double) :: dx
+
+   dx = cube%xAxis(2) - cube%xAxis(1) ! pixelwidth in torus units
+   dx = (dx / (gridDistance*1e-10))**2 ! not in steradians (* 2 pi)
+
+   do ipixel = 1,cube%nx
+      do jpixel = 1,cube%ny
+         do iv = 1,nv
+
+            if(cube%intensity(ipixel, jpixel, iv) == 0.0) then
+               cube%intensity(ipixel, jpixel, iv) =Bnu(thisMolecule%transfreq(itrans), Tcbr)
+            endif
+
+            cube%intensity(ipixel,jpixel,iv) = real(cube%intensity(ipixel,jpixel,iv) &
+                 *dx/1.e-23)
+
+         enddo
+      enddo
+   enddo
+   
+ end subroutine cubeIntensityToJanskyPerPixel
 
  subroutine GaussianWeighting(cube,npix,FWHM,NormalizeArea)
 

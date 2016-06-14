@@ -2668,6 +2668,8 @@ contains
     integer :: nLines
     logical :: ok
 
+       call getLogical("ALMA", ALMA, cLine, fLine, nLines, &
+            "Generate a datacube with ALMA (casa)-friendly headers: ","(a,1l,1x,a)", .false., ok, .false.)   
        call getLogical("lte", lte, cLine, fLine, nLines, &
             "Read in LTE grid: ","(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("restart", restart, cLine, fLine, nLines, &
@@ -3315,7 +3317,7 @@ contains
 
 #ifdef FITSCUBE
   subroutine readDataCubeParameters(cLine, fLine, nLines)
-    use datacube_mod, only: cubePositionAngle, datacubeFilename, setCubeParams, npixels
+    use datacube_mod, only: cubePositionAngle, datacubeFilename, setCubeParams, npixels, RA, DEC
     use angularImage_utils
     use h21cm_mod, only: h21cm
 
@@ -3352,6 +3354,13 @@ contains
          "Calculate data cube of 21cm emission: ","(a,1l,a)", .false., ok, .false.)
     call getReal("wvbackground", WV_background, 1.0, cLine, fLine, nLines, &
          "Background to subtract for moment maps: ","(a,f4.1,1x,a)", -1.0, ok, .false.)
+
+    call getDouble("DEC", dec, 1.d0, cLine, fLine, nLines, &
+         "Reference declination: ","(a,f8.1,1x,a)", 0.0d0, ok, .false.)
+
+    call getDouble("RA", ra, 1.d0, cLine, fLine, nLines, &
+         "Reference right ascension: ","(a,f8.1,1x,a)", 0.0d0, ok, .false.)
+
 
     if (atomicPhysics) then
           call getInteger("ninc", nDataCubeInclinations,cLine, fLine, nLines, &

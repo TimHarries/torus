@@ -51,7 +51,7 @@ module datacube_mod
   integer, save, private :: npixelsX ! number of spatial pixels in x-axis
   integer, save, private :: npixelsY ! number of spatial pixels in y-axis
   real, save, private    :: axisRatio ! ratio of npixelsX to npixelsY
-
+  real(double), save :: RA, DEC
   logical, save, private :: useFixedBg
   real, save, private    :: fixedBg
 
@@ -80,8 +80,8 @@ contains
 
 #ifdef USECFITSIO
   subroutine writeDataCube(thisCube, filename, write_Intensity, write_ipos, write_ineg, write_Tau, &
-       write_Weight, write_nCol, write_axes, write_WV)
-
+       write_Weight, write_nCol, write_axes, write_WV, frequency)
+    use inputs_mod, only : ALMA
     use fits_utils_mod
     implicit none
     
@@ -97,6 +97,7 @@ contains
     logical, optional, intent(in) :: write_nCol
     logical, optional, intent(in) :: write_axes
     logical, optional, intent(in) :: write_WV
+    real(double), optional, intent(in) :: frequency
 
     integer :: status,unit,blocksize,bitpix,naxis
     integer, dimension(5) :: naxes
@@ -217,6 +218,11 @@ contains
     group=1
     fpixel=1
 
+
+    if(present(frequency) .and. ALMA) then
+       call convertVelocityToHz(thiscube, frequency)
+    endif
+    
 
     ! 1st HDU : flux
     if( do_write_Intensity ) then
@@ -405,55 +411,105 @@ contains
     contains
 
       subroutine addWCSinfo
+        use inputs_mod, only : ALMA
         implicit none
         real(double) :: refPix, refVal, deltaPix, startVal
-
+        real(double) :: refValX, refValY, dx, dy
 ! 
 ! Axis 1:
 !
         ! Write WCS keywords to the header
-        call ftpkyd(unit,'CRPIX1',0.5_db,-3,'reference pixel',status)
-        call ftpkyd(unit,'CDELT1',thisCube%xAxis(2)-thisCube%xAxis(1),-3,'coordinate increment at reference point',status)
-        call ftpkys(unit,'CTYPE1',thisCube%xAxisType,"x axis", status)
-        call ftpkyd(unit,'CRVAL1',thisCube%xAxis(1),-3,'coordinate value at reference point',status)
-        call ftpkys(unit,'CUNIT1', thisCube%xUnit, "x axis unit", status)
+        if(ALMA) then
+           dx = thisCube%xAxis(2)-thisCube%xAxis(1)
+           dy = thisCube%yAxis(2)-thisCube%yAxis(1)
+           dx = ((dx * 1.d20)/thisCube%obsdistance)*radtodeg
+           dy = ((dy * 1.d20)/thisCube%obsdistance)*radtodeg
+           refValX = DEC
+           refValY = RA
+           call ftpkyd(unit,'CRPIX1',0.5_db,-3,'reference pixel',status)
+           call ftpkyd(unit,'CDELT1',dx,10,' ',status)
+           call ftpkys(unit,'CTYPE1',thisCube%xAxisType,"x axis", status)
+           call ftpkyd(unit,'CRVAL1',refValX,-5,'coordinate value at reference point',status)
+           call ftpkys(unit,'CUNIT1', "deg", "x axis unit", status)
+           
+        else
+           call ftpkyd(unit,'CRPIX1',0.5_db,-3,'reference pixel',status)
+           call ftpkyd(unit,'CDELT1',thisCube%xAxis(2)-thisCube%xAxis(1),-3,'coordinate increment at reference point',status)
+           call ftpkys(unit,'CTYPE1',thisCube%xAxisType,"x axis", status)
+           call ftpkyd(unit,'CRVAL1',thisCube%xAxis(1),-3,'coordinate value at reference point',status)
+           call ftpkys(unit,'CUNIT1', thisCube%xUnit, "x axis unit", status)
+        endif
 
 ! 
 ! Axis 2:
 !
-! When dealing with Galactic co-ordinates some software assumes that the reference pixel is at b=0 so we'll
-! handle Galactic co-ordinates as a special case
-        if (thisCube%yAxisType(1:8)=="GLAT-CAR") then
-           ! Pixel size assuming uniform pixels
-           deltaPix  = thisCube%yAxis(2)-thisCube%yAxis(1)
-           ! startVal is the lower edge of the grid which is offset by 1/2 pixel from centre of first pixel
-           startVal  = thisCube%yAxis(1) - deltaPix*0.5
-           ! -1 x distance from start of the grid to zero terms of in number of pixels
-           refPix    = -1.0*startVal / (deltaPix)
-           ! Reference latitude is zero by definition
-           refVal    = 0.0_db                              
-        else
-           deltaPix  = thisCube%yAxis(2)-thisCube%yAxis(1)
-           refPix    = 0.5_db
-           refVal    = thisCube%yAxis(1)
-        endif
 
-        call ftpkyd(unit,'CRPIX2',refPix,-3,'reference pixel',status)
-        call ftpkyd(unit,'CDELT2',deltaPix,-3,'coordinate increment at reference point',status)
-        call ftpkys(unit,'CTYPE2',thisCube%yAxisType, "y axis", status)
-        call ftpkyd(unit,'CRVAL2',refVal,-3,'coordinate value at reference point',status)
-        call ftpkys(unit,'CUNIT2',thisCube%xUnit, "y axis unit", status)
+        if(ALMA) then
+           dx = thisCube%xAxis(2)-thisCube%xAxis(1)
+           dy = thisCube%yAxis(2)-thisCube%yAxis(1)
+           dx = ((dx * 1.d20)/thisCube%obsdistance)*radtodeg
+           dy = ((dy * 1.d20)/thisCube%obsdistance)*radtodeg
+           refValX = DEC
+           refValY = RA
+           call ftpkyd(unit,'CRPIX2',0.5_db,-3,'reference pixel',status)
+           call ftpkyd(unit,'CDELT2',dy,10 ,' ',status)
+           call ftpkys(unit,'CTYPE2',"DEC--SIN","y axis", status)
+           call ftpkyd(unit,'CRVAL2',refValY,-5,'coordinate value at reference point',status)
+           call ftpkys(unit,'CUNIT2', "deg", "y axis unit", status)
+
+           call ftpkyd(unit,'CD1_1',dx,10,' ',status)
+           call ftpkyd(unit,'CD2_2',dy,10,' ',status)
+
+        else
+           ! When dealing with Galactic co-ordinates some software assumes that the reference pixel is at b=0 so we'll
+           ! handle Galactic co-ordinates as a special case
+           if (thisCube%yAxisType(1:8)=="GLAT-CAR") then
+              ! Pixel size assuming uniform pixels
+              deltaPix  = thisCube%yAxis(2)-thisCube%yAxis(1)
+              ! startVal is the lower edge of the grid which is offset by 1/2 pixel from centre of first pixel
+              startVal  = thisCube%yAxis(1) - deltaPix*0.5
+              ! -1 x distance from start of the grid to zero terms of in number of pixels
+              refPix    = -1.0*startVal / (deltaPix)
+              ! Reference latitude is zero by definition
+              refVal    = 0.0_db                              
+           else
+              deltaPix  = thisCube%yAxis(2)-thisCube%yAxis(1)
+              refPix    = 0.5_db
+              refVal    = thisCube%yAxis(1)
+           endif
+
+           call ftpkyd(unit,'CRPIX2',refPix,-3,'reference pixel',status)
+           call ftpkyd(unit,'CDELT2',deltaPix,-3,'coordinate increment at reference point',status)
+           call ftpkys(unit,'CTYPE2',thisCube%yAxisType, "y axis", status)
+           call ftpkyd(unit,'CRVAL2',refVal,-3,'coordinate value at reference point',status)
+           call ftpkys(unit,'CUNIT2',thisCube%xUnit, "y axis unit", status)
+        endif
 
 ! 
 ! Axis 3:
 !
-        call ftpkyd(unit,'CRPIX3',0.5_db,-3,'reference pixel',status)
-        if (SIZE(thisCube%vAxis)  > 1) then
-           call ftpkyd(unit,'CDELT3',thisCube%vAxis(2)-thisCube%vAxis(1),-3,'coordinate increment at reference point',status)
-        endif
-        call ftpkys(unit,'CTYPE3',thisCube%vAxisType, "velocity axis", status)
-        call ftpkyd(unit,'CRVAL3',thisCube%vAxis(1),-3,'coordinate value at reference point',status)
+        if(ALMA) then
 
+           call ftpkyd(unit,'CRPIX3',0.5_db,-3,'reference pixel',status)
+           if (SIZE(thisCube%vAxis)  > 1) then
+              call ftpkyd(unit,'CDELT3',thisCube%vAxis(2)-thisCube%vAxis(1),-3,'coordinate increment at reference point',status)
+              call ftpkyd(unit,'CD3_3',thisCube%vAxis(2)-thisCube%vAxis(1),-3,'coordinate increment at reference point',status)
+           endif
+           
+           
+           call ftpkys(unit,'CTYPE3',thisCube%vAxisType, "velocity axis", status)
+           call ftpkyd(unit,'CRVAL3',thisCube%vAxis(1),-9,'coordinate value at reference point',status)
+           call ftpkys(unit,'CUNIT3', "Hz", "vel axis unit", status)           
+
+        else
+           call ftpkyd(unit,'CRPIX3',0.5_db,-3,'reference pixel',status)
+           if (SIZE(thisCube%vAxis)  > 1) then
+              call ftpkyd(unit,'CDELT3',thisCube%vAxis(2)-thisCube%vAxis(1),-3,'coordinate increment at reference point',status)
+           endif
+           
+           call ftpkys(unit,'CTYPE3',thisCube%vAxisType, "velocity axis", status)
+           call ftpkyd(unit,'CRVAL3',thisCube%vAxis(1),-3,'coordinate value at reference point',status)
+        endif
       end subroutine addWCSinfo
 
       subroutine writeWeightedVelocity
@@ -578,7 +634,7 @@ contains
 ! thisCube%weight here. D. Acreman, March 2014.
 !
   subroutine initCube(thisCube, nv, mytelescope, splitCubes, wantTau, galacticPlaneSurvey)
-
+    use inputs_mod, only : ALMA
     type(DATACUBE) :: thisCube
     type(TELESCOPE), optional :: mytelescope
     integer :: nx, ny, nv
@@ -622,6 +678,21 @@ contains
           end if
        endif
     end if
+
+
+
+    if(ALMA) then
+       thisCube%xUnit     = "degrees "
+       thisCube%xAxisType = "RA---SIN"
+       thisCube%yAxisType = "DEC--SIN"
+       thisCube%vAxisType = "FREQ    "
+       thisCube%vUnit =     "Hz      "
+       thisCube%intensityUnit =  "Jy/pixel"
+       if ( nv==1 ) then          
+          allocate(thisCube%weight(1:nx,1:ny))
+          thisCube%weight(:,:) = 0.0
+       end if
+    endif
 
     thisCube%nx = nx
     thisCube%ny = ny
@@ -755,6 +826,16 @@ contains
     end select
 
   end subroutine convertSpatialAxes
+
+  subroutine convertVelocityToHz(cube, freq)
+
+    type(DATACUBE) :: cube
+    real(double) :: freq
+
+    cube%vAxis(:) = freq*(1.d0 + ((cube%vAxis(:)*1.d5)/cspeed))
+
+  end subroutine convertVelocityToHz
+
 
   subroutine convertVelocityAxis(cube, newUnit)
 
