@@ -80,8 +80,8 @@ contains
 
 #ifdef USECFITSIO
   subroutine writeDataCube(thisCube, filename, write_Intensity, write_ipos, write_ineg, write_Tau, &
-       write_Weight, write_nCol, write_axes, write_WV, frequency)
-    use inputs_mod, only : ALMA
+       write_Weight, write_nCol, write_axes, write_WV, frequency, ALMA)
+!    use inputs_mod, only : ALMA
     use fits_utils_mod
     implicit none
     
@@ -98,6 +98,7 @@ contains
     logical, optional, intent(in) :: write_axes
     logical, optional, intent(in) :: write_WV
     real(double), optional, intent(in) :: frequency
+    logical, optional, intent(in) :: ALMA
 
     integer :: status,unit,blocksize,bitpix,naxis
     integer, dimension(5) :: naxes
@@ -219,7 +220,7 @@ contains
     fpixel=1
 
 
-    if(present(frequency) .and. ALMA) then
+    if(present(frequency) .and. present(ALMA)) then
        call convertVelocityToHz(thiscube, frequency)
     endif
     
@@ -411,7 +412,7 @@ contains
     contains
 
       subroutine addWCSinfo
-        use inputs_mod, only : ALMA
+!        use inputs_mod, only : ALMA
         implicit none
         real(double) :: refPix, refVal, deltaPix, startVal
         real(double) :: refValX, refValY, dx, dy
@@ -419,7 +420,7 @@ contains
 ! Axis 1:
 !
         ! Write WCS keywords to the header
-        if(ALMA) then
+        if(present(ALMA)) then
            dx = thisCube%xAxis(2)-thisCube%xAxis(1)
            dy = thisCube%yAxis(2)-thisCube%yAxis(1)
            dx = ((dx * 1.d20)/thisCube%obsdistance)*radtodeg
@@ -444,7 +445,7 @@ contains
 ! Axis 2:
 !
 
-        if(ALMA) then
+        if(present(ALMA)) then
            dx = thisCube%xAxis(2)-thisCube%xAxis(1)
            dy = thisCube%yAxis(2)-thisCube%yAxis(1)
            dx = ((dx * 1.d20)/thisCube%obsdistance)*radtodeg
@@ -488,7 +489,7 @@ contains
 ! 
 ! Axis 3:
 !
-        if(ALMA) then
+        if(present(ALMA)) then
 
            call ftpkyd(unit,'CRPIX3',0.5_db,-3,'reference pixel',status)
            if (SIZE(thisCube%vAxis)  > 1) then
@@ -633,12 +634,12 @@ contains
 ! the GaussianWeighting subroutine in molecular_mod then you'll need to allocate 
 ! thisCube%weight here. D. Acreman, March 2014.
 !
-  subroutine initCube(thisCube, nv, mytelescope, splitCubes, wantTau, galacticPlaneSurvey)
-    use inputs_mod, only : ALMA
+  subroutine initCube(thisCube, nv, mytelescope, splitCubes, wantTau, galacticPlaneSurvey, ALMA)
+!    use inputs_mod, only : ALMA
     type(DATACUBE) :: thisCube
     type(TELESCOPE), optional :: mytelescope
     integer :: nx, ny, nv
-    logical, optional, intent(in) :: splitCubes, wantTau, galacticPlaneSurvey
+    logical, optional, intent(in) :: splitCubes, wantTau, galacticPlaneSurvey, ALMA
 
     nx = npixelsX
     ny = npixelsY
@@ -681,7 +682,7 @@ contains
 
 
 
-    if(ALMA) then
+    if(present(ALMA)) then
        thisCube%xUnit     = "degrees "
        thisCube%xAxisType = "RA---SIN"
        thisCube%yAxisType = "DEC--SIN"

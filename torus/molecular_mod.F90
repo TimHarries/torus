@@ -2907,16 +2907,16 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
       call writeinfo("Writing intensity to intensity_"//trim(filename), TRIVIAL)
       call writedatacube(cube, "intensity_"//trim(dataCubeFileName), write_Intensity=.true., &
            write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false., &
-           frequency=thisMolecule%transfreq(itrans))
+           frequency=thisMolecule%transfreq(itrans), ALMA=ALMA)
       call writeinfo("Writing column density to nCol_"//trim(filename), TRIVIAL)
       call writedatacube(cube, "nCol_"//trim(dataCubeFileName), write_Intensity=.false., &
            write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.true., write_axes=.false., &
-           frequency=thisMolecule%transfreq(itrans))
+           frequency=thisMolecule%transfreq(itrans), ALMA=ALMA)
       if ( wanttau ) then 
          call writeinfo("Writing optical depth to tau_"//trim(filename), TRIVIAL)
          call writedatacube(cube, "tau_"//trim(dataCubeFileName), write_Intensity=.false., &
               write_ipos=.false., write_ineg=.false., write_Tau=.true., write_nCol=.false., write_axes=.false., &
-              frequency=thisMolecule%transfreq(itrans))
+              frequency=thisMolecule%transfreq(itrans), ALMA=ALMA)
       endif
 
 ! Write VTK file
@@ -3162,7 +3162,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
    subroutine createimage(cube, grid, viewvec, observerVec, thisMolecule, iTrans, nSubpixels, imagebasis, revVel)
 
      use inputs_mod, only : gridDistance, beamsize, nv, imageside, &
-          maxVel, minVel, usedust, lineimage, lamline, plotlevels, debug, wanttau, dotune
+          maxVel, minVel, usedust, lineimage, lamline, plotlevels, debug, wanttau, dotune, ALMA
 #ifdef USECFITSIO
     use inputs_mod, only : writetempfits
     use fits_utils_mod
@@ -3383,7 +3383,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
               status = 0
               write(filename,'(a,i3,a)') "MolRTtemp",iv,".fits"
               call deleteFitsFile (filename, status)
-              call writedatacube(cube, filename, frequency=thisMolecule%transfreq(itrans))
+              call writedatacube(cube, filename, frequency=thisMolecule%transfreq(itrans), ALMA=ALMA)
               if(iv .gt. 1) then
                  write(filename,'(a,i3,a)') "MolRTtemp",iv-1,".fits"
                  call deleteFitsFile (filename, status)
@@ -5076,7 +5076,7 @@ END SUBROUTINE sobseq
  subroutine make_h21cm_image(grid)
    
    use inputs_mod, only : nsubpixels, itrans, lineImage, maxRhoCalc
-   use inputs_mod, only : useDust, isInLte, lowmemory, datacubeaxisunits
+   use inputs_mod, only : useDust, isInLte, lowmemory, datacubeaxisunits, ALMA
    use h21cm_mod, only : h21cm_lambda
 
 #ifdef USECFITSIO
@@ -5121,17 +5121,17 @@ END SUBROUTINE sobseq
       call writeinfo("Writing intensity to intensity_"//trim(dataCubeFileName), TRIVIAL)
       call writedatacube(cube, "intensity_"//trim(dataCubeFileName), write_Intensity=.true., &
            write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false., &
-           frequency=thisMolecule%transfreq(itrans))
+           frequency=thisMolecule%transfreq(itrans), ALMA=ALMA)
 
       call writeinfo("Writing column density to nCol_"//trim(dataCubeFileName), TRIVIAL)
       call writedatacube(cube, "nCol_"//trim(dataCubeFileName), write_Intensity=.false., &
            write_ipos=.false., write_ineg=.false., write_Tau=.false., write_nCol=.true., write_axes=.false., &
-           frequency=thisMolecule%transfreq(itrans))
+           frequency=thisMolecule%transfreq(itrans), ALMA=ALMA)
 
       call writeinfo("Writing emission weighted velocity to WV_"//trim(dataCubeFileName), TRIVIAL)
       call writedatacube(cube, "WV_"//trim(dataCubeFileName), write_Intensity=.false., write_ipos=.false., &
            write_ineg=.false., write_Tau=.false., write_nCol=.false., write_axes=.false., write_WV=.true., &
-           frequency=thisMolecule%transfreq(itrans))
+           frequency=thisMolecule%transfreq(itrans), ALMA=ALMA)
 
    endif
 #else
