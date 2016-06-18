@@ -10187,9 +10187,9 @@ endif
     INTEGER, INTENT(IN) :: subcell
     type(vector) :: rvec
 
-    real(double) :: cs, vkep, omega, rTaper, alpha, beta, Ro, Ho, mu
-    real(double) :: rOuter, starMass, H, Sigma, rhoMid, T30au, rturn
-    real(double) :: sigmaO, Mdisc, rinner, dela, Rc, zq, delta, Tmid, Tatm, Tz
+    real(double) :: cs, vkep, omega, Ro, mu
+    real(double) :: rOuter, starMass, H, Sigma, rhoMid
+    real(double) :: sigmaO, Mdisc, rinner, Rc, zq, delta, Tmid, Tatm, Tz
 
     starMass = 0.55d0*msol
     rOuter = 156.d-10*autocm
@@ -10219,7 +10219,7 @@ endif
 
     Sigma = SigmaO*(abs(rvec%x)/Ro)**(0.23)*exp(-(abs(rvec%x)/Rc)**(2.23))
 
-    Tatm = max(280.*(abs(rvec%x)/(5.d-10*autocm))**(-0.44), 10.)
+    Tatm = max(280.*(abs(rvec%x)/(5.d-10*autocm))**(-0.44), 10._db)
     Tmid = max(real(110.*(abs(rvec%x)/(5.d-10*autocm))**(-0.569)), 10.)
 
     if(abs(rvec%x) < router .and. abs(rvec%x) > rinner) then

@@ -5779,7 +5779,7 @@ endif
          do iv = 1,nv
 
             if(cube%intensity(ipixel, jpixel, iv) == 0.0) then
-               cube%intensity(ipixel, jpixel, iv) =Bnu(thisMolecule%transfreq(itrans), Tcbr)
+               cube%intensity(ipixel, jpixel, iv) =real(Bnu(thisMolecule%transfreq(itrans), Tcbr))
             endif
 
             cube%intensity(ipixel,jpixel,iv) = real(cube%intensity(ipixel,jpixel,iv) &
