@@ -260,6 +260,8 @@
   logical :: molecular
   logical, protected :: constantAbundance
   logical :: useKromeAbundance
+  real(double), allocatable :: kromeInitialAbundances(:)
+  real(double) :: timeChemistry
   logical, protected :: removeHotMolecular
   real, protected :: molAbundance
   real(double) :: isotopologueFraction
@@ -986,4 +988,3 @@
   character(len=80) :: wavefrontFile
   character(len=80) :: fibreSpectrum
 
-  

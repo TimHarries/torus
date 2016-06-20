@@ -102,6 +102,7 @@ end subroutine setMolAbundanceToKrome
 
 
 recursive subroutine  initializeChemistry(thisOctal)
+  use inputs_mod, only : kromeInitialAbundances
   use krome_main
   use krome_user
   use krome_user_commons
@@ -127,20 +128,13 @@ recursive subroutine  initializeChemistry(thisOctal)
            allocate(thisOctal%kromeSpeciesX(1:thisOctal%maxChildren, 1:krome_nmols))
         endif
         thisOctal%kromeSpeciesX(subcell, :) = 1.d-20
-
-
-        thisOctal%kromeSpeciesX(subcell,krome_idx_H)  = 1.d-4
-        thisOctal%kromeSpeciesX(subcell,krome_idx_H2)  = 0.5d0
-        thisOctal%kromeSpeciesX(subcell,krome_idx_CO) = 1.d-4
-        thisOctal%kromeSpeciesX(subcell,krome_idx_CO_dust) = 1.d-30
-
-        thisOctal%kromeSpeciesX(subcell, KROME_idx_H2)  = 0.5d0   
-        thisOctal%kromeSpeciesX(subcell, KROME_idx_He)  = 9.d-2   
+        do i = 1, krome_nMols
+           thisOctal%kromeSpeciesX(subcell,i)  = kromeInitialAbundances(i)
+        enddo
 
         thisOctal%kromeSpeciesX(subcell,:) = thisOctal%kromeSpeciesX(subcell,:) * &
              thisOctal%rho(subcell) * nAvogadro/1.28d0
         thisX = thisOctal%kromeSpeciesX(subcell,:)
-!        thisOctal%kromeSpeciesX(subcell,krome_idx_e) = krome_get_electrons(thisX)
 
   !user commons for opacity and CR rate
   tau = 1d1 !opacity Av (#)
@@ -431,6 +425,7 @@ end subroutine storePathlength
 
 
 subroutine doChem(grid)
+  use inputs_mod, only : timeChemistry
   use gridtype_mod
   use krome_main !use krome (mandatory)
   use krome_user !use utility (for krome_idx_* constants and others)
@@ -448,10 +443,11 @@ subroutine doChem(grid)
      call writeVtkFile(grid, vtkFilename, &
           valueTypeString=(/"chemistry  ","rho        ","temperature"/))
 
-  dt = 1.d7 * yearstosecs
+
+
   do i = 1,1
      call writeInfo("Doing chemistry timestep...",TRIVIAL)
-     call doChemistryoverGrid(grid, dt)
+     call doChemistryoverGrid(grid, timeChemistry)
      call writeInfo("Done.",TRIVIAL)
      write(vtkFilename,"(a,i3.3,a)") "chem",i,".vtk"
      call writeVtkFile(grid, vtkFilename, &
@@ -465,13 +461,14 @@ end subroutine doChem
 
 subroutine reportKromeSpecies()
   use krome_user
+  use inputs_mod, only : kromeInitialAbundances
   character(len=16) :: species(krome_nmols)
   integer :: i
   species = krome_get_names()
   if (writeoutput) then
      call writebanner("Krome species in reaction network","+")
      do i = 1, krome_nmols
-        write(*,'(i3,1x,a16)') i, species(i)
+        write(*,'(i3,1x,a16,1p,e12.3)') i, species(i), kromeinitialAbundances(i)
      enddo
   endif
 end subroutine reportKromeSpecies

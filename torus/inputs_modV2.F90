@@ -314,7 +314,11 @@ contains
             "Star burst type: ","(a,a,1x,a)","none", ok, .true.)
     endif
 
-
+#ifdef CHEMISTRY
+    if (doChemistry) then
+       call readChemistryParameters(cline, fline ,nLines)
+    endif
+#endif
 
 
     if (nBodyPhysics) then
@@ -2801,17 +2805,23 @@ contains
     use krome_user
     character(len=lencLine) :: cLine(:)
     logical :: fLine(:)
-    integer :: nLines
+    integer :: nLines,i 
     character(len=20) :: keyword
-    character(len=20) :: kromeNames(1:krome_nmols)
+    character(len=16) :: kromeNames(1:krome_nmols)
     character(len=40) :: outputString
+    logical :: ok
 
-    call krome_get_names(kromeNames)
+    call getDouble("timechemistry", timeChemistry, yearstoSecs, cLine, fLine, nLines, &
+            "Time for chemistry to evolve: ","(a,1p,e12.3,1x,a)", 1.d6, ok, .true.)
+
+
+    kromeNames = krome_get_names()
+    allocate(kromeInitialAbundances(1:krome_nmols))
     kromeInitialAbundances = 1.d-30
     do i = 1, krome_nmols
-       write(keyword,'a') "krome_"//trim(kromeNames(i))
+       write(keyword,'(a)') "krome_"//trim(kromeNames(i))
        write(outputString,'(a,a,a)') "Initial krome abundance for ",trim(kromenames(i))," :"
-       call getDouble(keyword, kromeInitialAbundance(i), 1.d0, cLine, fLine, nLines, &
+       call getDouble(keyword, kromeInitialAbundances(i), 1.d0, cLine, fLine, nLines, &
             trim(outputString),"(a,1p,e12.3,1x,a)", 1.d-20, ok, .false.)
     enddo
   end subroutine readChemistryParameters
