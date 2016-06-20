@@ -2795,6 +2795,28 @@ contains
 
   end subroutine readMolecularPhysicsParameters
 
+#ifdef CHEMISTRY
+  subroutine readChemistryParameters(cline, fline ,nLines)
+    use krome_main
+    use krome_user
+    character(len=lencLine) :: cLine(:)
+    logical :: fLine(:)
+    integer :: nLines
+    character(len=20) :: keyword
+    character(len=20) :: kromeNames(1:krome_nmols)
+    character(len=40) :: outputString
+
+    call krome_get_names(kromeNames)
+    kromeInitialAbundances = 1.d-30
+    do i = 1, krome_nmols
+       write(keyword,'a') "krome_"//trim(kromeNames(i))
+       write(outputString,'(a,a,a)') "Initial krome abundance for ",trim(kromenames(i))," :"
+       call getDouble(keyword, kromeInitialAbundance(i), 1.d0, cLine, fLine, nLines, &
+            trim(outputString),"(a,1p,e12.3,1x,a)", 1.d-20, ok, .false.)
+    enddo
+  end subroutine readChemistryParameters
+#endif  
+
 #ifdef PHOTOION
   subroutine readPhotoionPhysicsParameters(cLine, fLine, nLines)
     use ion_mod, only: setAbundances
