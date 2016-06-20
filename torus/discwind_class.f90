@@ -1004,7 +1004,7 @@ contains
 
 
   recursive subroutine assignDensitiesDiscwind(grid, thisOctal, thisWind)
-    use inputs_mod, only : vturb
+    use inputs_mod, only : vturb,dustPhysics, grainFrac, nDustType
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child
     TYPE(discwind_type), INTENT(IN)  :: thisWind
@@ -1031,10 +1031,13 @@ contains
              if (ave_discwind_density(thisOctal, subcell, thisWind) > thisOctal%rho(subcell)) then
                 thisOctal%inFlow(subcell) = .true.
                 thisOctal%iAnalyticalVelocity(subcell) = 1
-                thisOctal%temperature(subcell) = real(thisWind%Twind)
+                thisOctal%temperature(subcell) = real(max(10.d0,thisWind%Twind))
                 thisOctal%rho(subcell) = ave_discwind_density(thisOctal, subcell, thisWind)
                 thisOctal%velocity(subcell) = discwind_velocity(thisWind, vector(x,y,z))
-!                thisOctal%fixedTemperature(subcell) = .true.
+                if (dustPhysics) then
+                   thisOctal%dustTypeFraction(subcell,1:nDustType) = grainFrac(1:nDustType)
+                endif
+                if (thisWind%tWind > 0.) thisOctal%fixedTemperature(subcell) = .true.
                 if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = vturb
              endif
           endif

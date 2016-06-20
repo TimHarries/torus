@@ -13385,6 +13385,7 @@ end function readparameterfrom2dmap
 
     dest%inStar = source%inStar
 
+    call copyAttribute(dest%blackBody, source%blackBody)
 
     call copyAttribute(dest%localInterfaces, source%localInterfaces)
     call copyAttribute(dest%localInterfacesCONTROL, source%localInterfacesCONTROL)
@@ -15215,8 +15216,8 @@ end function readparameterfrom2dmap
           cellCentre = subcellCentre(thisOctal, subcell)
           thisRho  = rhoAlphaDisc(grid, cellCentre)
           r = sqrt(cellCentre%x**2 + cellCentre%y**2)
-          thisOctal%dustTypeFraction(subcell,:) = 0.d0
-          thisOctal%fixedTemperature(subcell) = .true.
+!          thisOctal%dustTypeFraction(subcell,:) = 0.d0
+!          thisOctal%fixedTemperature(subcell) = .true.
           if ((r > rSublimation).and.(thisRho >= thisOctal%rho(subcell))) then
              thisOctal%dustTypeFraction(subcell,1) = grainFrac(1)
              thisOctal%fixedTemperature(subcell) = .false.
@@ -15229,6 +15230,7 @@ end function readparameterfrom2dmap
           endif
           if ((thisRho > thisOctal%rho(subcell)).and.(r < rSublimation)) then
              thisOctal%temperature(subcell) = alphaDiscTemp
+             thisOctal%blackBody(subcell) = .true. ! this means there is blackbody emission from here
           endif
           if ( (r > Rinner).and.(r < rOuter).and.(thisRho > thisOctal%rho(subcell))) then
              thisOctal%velocity(subcell) = velocityAlphaDisc(cellcentre)
@@ -15282,6 +15284,7 @@ end function readparameterfrom2dmap
              thisOCtal%rho(subcell) = thisRho
              thisOCtal%fixedTemperature(subcell) = .true.
              thisOctal%temperature(subcell) = real(SW_temperature)
+             thisOctal%fixedTemperature(subcell) = .true.
           endif
 
        endif
@@ -17341,6 +17344,7 @@ end function readparameterfrom2dmap
     if (atomicPhysics) then
        call allocateAttribute(thisOctal%iAnalyticalVelocity,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%microturb, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%blackBody, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%atomAbundance, thisOctal%maxChildren, nAtom)
        call allocateAttribute(thisOctal%biasCont3D, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%biasLine3D, thisOctal%maxChildren)
@@ -17634,6 +17638,7 @@ end function readparameterfrom2dmap
   subroutine deallocateOctalDynamicAttributes(thisOctal)
     type(OCTAL) :: thisOctal
     call deallocateAttribute(thisOctal%iEquationOfState)
+    call deallocateAttribute(thisOctal%blackBody)
     call deallocateAttribute(thisOctal%iAnalyticalVelocity)
     call deallocateAttribute(thisOctal%gamma)
     call deallocateAttribute(thisOctal%neighbourOctal)

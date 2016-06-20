@@ -995,6 +995,12 @@ contains
                case("ne")
                   write(lunit, *) real(thisOctal%ne(subcell))
 
+               case("blackbody")
+                  if (thisOctal%blackbody(subcell)) then
+                  write(lunit, *) 1.
+               else
+                  write(lunit, *) 0.
+               endif
                case("pressure")
                   write(lunit, *) real(thisOctal%pressure_i(subcell))
 
@@ -3241,6 +3247,12 @@ end subroutine writeXMLVtkFileAMR
                  endif
                case("ne")
                   rArray(1, n) = real(real(thisOctal%ne(subcell)))
+               case("blackbody")
+                  if (thisOctal%blackBody(subcell)) then
+                  rArray(1, n) = 1.
+               else
+                  rArray(1,n) = 0.
+               endif
 
                case("level2")
                   rArray(1, n) = real(thisOctal%atomLevel(subcell,1,2))

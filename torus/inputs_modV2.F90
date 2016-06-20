@@ -632,7 +632,7 @@ contains
     select case(geometry)
 
        case("ttauri")
-          if (TTauriDisc.and.(.not.DustPhysics)) then
+          if (TTauriDisc.and.(.not.DustPhysics).and.(alphaDiscTemp==0.)) then
              call writeFatal("ttauridisc specified but dustphysics is false")
              call torus_abort
           endif
@@ -863,11 +863,23 @@ contains
 
           call getReal("thotspot", thotspot, 1., cLine, fLine, nLines, &
                "Hot spot temperature (K): ","(a,f8.1,1x,a)", 0., ok, .false.)
+          call getReal("dipoleoffset", dipoleOffset, real(degtorad), cLine, fLine, nLines, &
+               "Dipole offset (degrees): ","(a,f7.1,1x,a)", 1.e14, ok, .true.)
+          call getLogical("usehartmanntemp", useHartmannTemp, cLine, fLine, nLines, &
+               "Use temperatures from Hartmann paper:","(a,1l,1x,a)", .false., ok, .false.)
+          call getLogical("isotherm", isoTherm, cLine, fLine, nLines, &
+               "Use isothermal temperature :","(a,1l,1x,a)", .false., ok, .false.)
+          call getReal("isothermtemp", isoThermTemp, 1., cLine, fLine, nLines, &
+               "Isothermal temperature (K): ","(a,f7.1,1x,a)", 6500.0, ok, .false.)
+          if (.not.(useHartmannTemp .or. isoTherm)) then 
+             if (writeoutput)  write(*,'(a)') "WARNING: neither useHartmannTemp nor isoTherm specified!"
+             call torus_stop
+          end if
        endif
 
        call getDouble("holeradius", holeRadius, dble(ttaurirstar), cLine, fLine, nLines, &
             "Size of hole in geometrically thin, optically thick disc (in R_star): ","(a,f7.1,1x,a)", &
-            0.d0, ok, .true.)
+            1.d10, ok, .false.)
 
 
 
@@ -906,7 +918,7 @@ contains
                "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
 
           call getReal("disctemp", alphaDiscTemp, 1., cLine, fLine, nLines, &
-               "Disc temperature inside sub radius: ","(a,f8.1,a)", 10000., ok, .true.)
+               "Disc temperature inside sub radius: ","(a,f8.1,a)", 0., ok, .true.)
 
        endif
 
@@ -965,16 +977,8 @@ contains
 
        call getLogical("lte", lte, cLine, fLine, nLines, &
             "Statistical equ. in LTE: ","(a,1l,1x,a)", .false., ok, .false.)
-       call getReal("dipoleoffset", dipoleOffset, real(degtorad), cLine, fLine, nLines, &
-            "Dipole offset (degrees): ","(a,f7.1,1x,a)", 1.e14, ok, .true.)
        call getLogical("enhance", enhance, cLine, fLine, nLines, &
             "Accretion enhancement: ","(a,1l,1x,a)", .false., ok, .false.)
-       call getLogical("usehartmanntemp", useHartmannTemp, cLine, fLine, nLines, &
-            "Use temperatures from Hartmann paper:","(a,1l,1x,a)", .false., ok, .false.)
-       call getLogical("isotherm", isoTherm, cLine, fLine, nLines, &
-            "Use isothermal temperature :","(a,1l,1x,a)", .false., ok, .false.)
-       call getReal("isothermtemp", isoThermTemp, 1., cLine, fLine, nLines, &
-            "Isothermal temperature (K): ","(a,f7.1,1x,a)", 6500.0, ok, .false.)
 
        call getLogical("ttauriwind", ttauriWind, cLine, fLine, nLines, &
             "T Tauri disc wind present:","(a,1l,1x,a)", .false., ok, .false.)
@@ -1118,10 +1122,6 @@ contains
           call torus_stop
        end if
 
-       if (.not.(useHartmannTemp .or. isoTherm)) then 
-          if (writeoutput)  write(*,'(a)') "WARNING: neither useHartmannTemp nor isoTherm specified!"
-          call torus_stop
-       end if
 
        if (useHartmannTemp) &
             call getReal("maxharttemp", maxHartTemp, 1., cLine, fLine, nLines, &

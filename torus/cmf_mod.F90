@@ -3034,7 +3034,7 @@ contains
     integer :: ilambda, iomp
     real(double) :: transitionLambda, kappaSca, kappaAbs, kappaExt
     
-    real(double) :: tauStep, tauTmp, iStep
+    real(double) :: tauStep, tauTmp, iStep, blackbodyIntensity
     logical :: passThroughResonance, ok, closeToResonance, hitgrid
 #ifdef _OPENMP
     integer :: omp_get_thread_num
@@ -3164,6 +3164,11 @@ contains
              endLoopAtPhotosphere = .true.
           endif
 
+          if (thisOctal%blackBody(subcell)) then
+             i0 = i0 + bnu(transitionFreq, dble(thisOctal%temperature(subcell))) * exp(-tau)
+             tau = 1.d10
+          else
+
 
           nTau = 2
 
@@ -3232,7 +3237,6 @@ contains
                 alphanu = 0.d0
              endif
 
-
              if (i == 2) then
                 bfOpac = thisOctal%kappaAbs(subcell,1)
                 bfEmiss = thisOctal%etaCont(subcell)
@@ -3246,6 +3250,7 @@ contains
                    dustEmiss = dustEmiss + kappaSca * thisOctal%meanIntensity(subcell)
                 endif
              endif
+
 
 
              if (.not.lineoff) then
@@ -3287,6 +3292,7 @@ contains
                 snu = tiny(snu)
              endif
 
+
              dTau = alphaNu *  (distArray(i)-distArray(i-1))
 
              if ((dtau > 0.1d0).and.(tau < 20.d0).and.(alphanu < 1.d29)) then
@@ -3317,6 +3323,9 @@ contains
                 ok = .true.
              endif
           enddo
+       endif
+
+
           rhoCol = rhoCol + tVal*thisOctal%rho(subcell)*1.d10
           oldPosition = currentPosition
           currentPosition = currentPosition + (tVal+1.d-3*grid%halfSmallestSubcell) * direction
@@ -3427,7 +3436,8 @@ contains
          "sourceline ",  &
          "ne         ", "jnu        ","haschild   ", &
          "inflow     ","temperature", "velocity   ", &
-         "cornervel  ","level2     ", "level3     "/))
+         "cornervel  ","level2     ", "level3     ", &
+         "blackbody  "/))
 
 
     doCube = calcDataCube
@@ -3760,7 +3770,7 @@ contains
     real(double), pointer :: xPoints(:), yPoints(:)
     real(double) :: dx, dy
     integer :: nRay
-    integer, parameter :: maxRay = 10000
+    integer, parameter :: maxRay = 100000
     real(double) :: xRay(maxray), yRay(maxray)
     real(double) :: area(maxray)
     real(double) :: totArea, tmp
@@ -4007,7 +4017,11 @@ contains
        allocate(xtmp(1:nray),ytmp(1:nRay))
        xtmp(1:nRay) = xRay(1:nray) - (xcen-dx/2.d0)
        ytmp(1:nray) = yRay(1:nRay) - (yCen-dy/2.d0)
-       call voron2(nRay, xTmp, yTmp, dx, area(1:nRay), ok)
+       if (nRay <= 10000) then
+          call voron2(nRay, xTmp, yTmp, dx, area(1:nRay), ok)
+       else
+          ok = .false.
+       endif
        if (.not.ok) then
           area(1:nRay) = dx*dy/dble(nray)
        endif
