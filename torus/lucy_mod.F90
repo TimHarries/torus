@@ -1,4 +1,3 @@
-
 module lucy_mod
 
   use constants_mod
@@ -41,6 +40,10 @@ contains
     use random_mod
     use gas_opacity_mod, only: atomhydrogenRayXsection
     use gridio_mod, only: writeAMRgrid
+#ifdef CHEMISTRY
+    use inputs_mod, only : doChemistry
+    use chemistry_mod
+#endif
 #ifdef MPI
     use mpi_global_mod, only: myRankGlobal, nThreadsGlobal
     use mpi
@@ -389,6 +392,11 @@ contains
 
           call zeroDistanceGrid(grid%octreeRoot)
 
+#ifdef CHEMISTRY
+          if (doChemistry) then
+             call zeroPathLength(grid%octreeRoot)
+          endif
+#endif
 
 
           call resetDirectGrid(grid%octreeRoot)
@@ -759,6 +767,12 @@ contains
 
           totalEmission = 0.
 
+#ifdef CHEMISTRY
+          if (doChemistry) then
+             call pathLengthToIntensity(grid%octreeRoot, epsOverDeltat)
+          endif
+#endif
+
           call locate(freq, nFreq, cSpeed/(scatteredLightWavelength*angstromtocm),i)
           call calculateMeanIntensity(grid%octreeRoot, epsOverDeltaT,dnu(i))
 
@@ -1122,7 +1136,7 @@ contains
     allocate(tauArray(1:100000), xArray(1:100000))
 
    call tauAlongPath(1, grid, VECTOR(0.d0, 0.d0, 1.d-3*grid%halfSmallestSubcell), VECTOR(1.d0, 0.d0, 0.d0), &
-         tau,  ross = .true., tauMax=0.667d0, subRadius=subRadius)
+         tau,  tauMax=0.667d0, subRadius=subRadius)
 
    if (tau >= 0.667d0) then
        if (present(temperature)) then
@@ -1938,9 +1952,13 @@ contains
 subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, nLambda, lamArray,  &
       photonInDiffusionZone, diffusionZoneTemp,  directPhoton, scatteredPhoton, &
        startOctal, foundOctal, foundSubcell, ilamIn, kappaAbsOut, kappaScaOut)
-
    use diffusion_mod, only: randomwalk
    use inputs_mod, only : scatteredLightWavelength, storeScattered
+
+#ifdef CHEMISTRY
+   use chemistry_mod
+   use inputs_mod, only : doChemistry
+#endif
 
    type(GRIDTYPE) :: grid
    type(VECTOR) :: rVec,uHat, octVec
@@ -2137,6 +2155,11 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + tVal_db * kappaAbsdb * packetWeight
 !$OMP ATOMIC
     thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
+
+#ifdef CHEMISTRY
+    if (doChemistry) call storePathLength(thisOctal, subcell, thisFreq, tval_db * packetWeight)
+#endif
+
     if (directPhoton) then
 !$OMP ATOMIC
        thisOctal%nDirectPhotons(subcell) = thisOctal%nDirectPhotons(subcell)+1
@@ -2253,6 +2276,11 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     tauRatio = real( (tau/thisTau) ,db)
 !$OMP ATOMIC
     thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + (tVal_db*tauRatio) * kappaAbsdb * packetWeight
+
+#ifdef CHEMISTRY
+    if (doChemistry) call storePathLength(thisOctal, subcell, thisFreq, (tval_db*tauRatio) * packetWeight)
+#endif
+
 !$OMP ATOMIC
     thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
     if (directPhoton) then
@@ -2325,6 +2353,13 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
   !
   recursive subroutine update_octal_MPI(thisOctal, grid)
     use mpi_global_mod, only: nThreadsGlobal
+
+#ifdef CHEMISTRY
+    use krome_main
+    use krome_user
+    use inputs_mod, only : doChemistry
+#endif
+
     use mpi
     implicit none
 
@@ -2335,6 +2370,10 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     ! data space to store values from all processors
     real  :: buffer_ncrossings(nThreadsGlobal)     
     real(double) :: buffer_distanceGrid(nThreadsGlobal) 
+#ifdef CHEMISTRY
+    real(double) :: buffer_pathlength(nThreadsGlobal) 
+    integer :: j
+#endif
     integer  :: ierr
 
 
@@ -2354,6 +2393,19 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           call MPI_ALLGATHER(thisOctal%distanceGrid(subcell), 1, MPI_REAL, &
                buffer_distanceGrid, 1, MPI_REAL, MPI_COMM_WORLD, ierr)  
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+
+#ifdef CHEMISTRY
+          if (doChemistry) then
+             do j = 1, krome_nPhotoBins
+                call MPI_ALLGATHER(thisOctal%kromeIntensity(subcell,j), 1, MPI_REAL, &
+                     buffer_pathlength, 1, MPI_REAL, MPI_COMM_WORLD, ierr)  
+                call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+                thisOctal%kromeIntensity(subcell,j) = sum(buffer_pathlength)
+             enddo
+          endif
+#endif
+
+
           
           
           call MPI_ALLGATHER(REAL(thisOctal%ncrossings(subcell)), 1, MPI_REAL, &

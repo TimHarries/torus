@@ -259,8 +259,10 @@
 
   logical :: molecular
   logical, protected :: constantAbundance
+  logical :: useKromeAbundance
   logical, protected :: removeHotMolecular
   real, protected :: molAbundance
+  real(double) :: isotopologueFraction
   character(len=80), protected :: molFilename
   character(len=80), protected :: moleculefile
   logical, protected :: restart

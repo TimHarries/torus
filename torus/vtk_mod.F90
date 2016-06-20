@@ -878,7 +878,7 @@ contains
                case("niter")
                   write(lunit, *) int(thisOctal%convergence(subcell)/100)
 
-               case("nh2")
+               case("numh2")
                   write(lunit, *) real(thisOctal%nh2(subcell))
 
                case("convergence")
@@ -1014,7 +1014,7 @@ contains
                      write(lunit, *) 0.
                   endif
 
-               case("NH2")
+               case("NUMH2")
                   write(lunit, *) real( thisOctal%NH2(subcell) )
 
                case("fixedtemp")
@@ -1496,22 +1496,22 @@ contains
     use inputs_mod, only : iModel
     use utils_mod, only : findMultiFilename
 
-#ifdef CHEMISTRY
-    use krome_main
-    use krome_user
-    character(len=16) :: species(krome_nmols)
-    integer :: j
-#endif
-
 #ifdef MPI
     use mpi
 #endif
+#ifdef CHEMISTRY
+    use krome_main
+    use krome_user
+    character(len=25) :: species(krome_nmols)
+    integer :: j
+#endif
+
     type(GRIDTYPE) :: grid
     character(len=*) :: rootVTKfilename
     character(len=80) :: vtkFilename
     character(len=100) :: xmlFilename
     integer :: nValueType
-    character(len=20) :: valueType(50)
+    character(len=25) :: valueType(500)
     character(len=*), optional ::  valueTypeFilename
     character(len=*), optional ::  valueTypeString(:)
     logical, optional :: xml
@@ -1993,7 +1993,7 @@ endif
 
      allocate(sizeCompressedBlock(1:nBlocks))
 
-     allocate(iTemp(1:nBytesUncompressed))
+     allocate(iTemp(1:nBytesUncompressed+100))
      iCurrent = 1
 !     allocate(compressedBlock(1:blockSize))
      do i = 1, nBlocks
@@ -2372,13 +2372,15 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
 #ifdef CHEMISTRY
     use krome_main
     use krome_user
-    character(len=16) :: species(krome_nmols)
+    character(len=25) :: species(krome_nmols)
     logical :: addChemistry
+    integer :: i1
 #endif
   type(GRIDTYPE) :: grid
   character(len=*) :: vtkFilename
   integer :: nValueType
-  character(len=20) :: valueType(50)
+  character(len=25) :: valueType(1000)
+  integer :: chemindex(1000)
   character(len=*), optional ::  valueTypeFilename
   character(len=*), optional ::  valueTypeString(:)
   integer :: nCells
@@ -2490,11 +2492,12 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
      endif
   endif
 
+  chemIndex = 0
 #ifdef CHEMISTRY
     addChemistry = .false.
-    do i = 1, nValueType
-       if (trim(valueType(i))=="chemistry") then
-          do j = i, nValueType-1
+    do i1 = 1, nValueType
+       if (trim(valueType(i1))=="chemistry") then
+          do j = i1, nValueType-1
              valueType(j) = valueType(j+1)
           enddo
           nValueType = nValueType - 1
@@ -2504,8 +2507,9 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
     enddo
     if (addChemistry) then
        species = krome_get_names()
-       do i = nValueType+1, nValueType+krome_nmols
-          valueType(i) = species(i-nValueType)
+       do i1 = nValueType+1, nValueType+krome_nmols
+          valueType(i1) = species(i1-nValueType)
+          chemIndex(i1) = i1-nValueType
        enddo
        nValueType = nValueType + krome_nmols
     endif
@@ -2757,7 +2761,8 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
 
         if (writeheader.and.(.not.grid%splitOverMPI)) then
            allocate(rArray(1:1, 1:nCellsGlobal))
-           call getValues(grid, valueType(iValues), rarray, includeGhosts=vtkIncludeGhosts)
+           call getValues(grid, valueType(iValues), rarray, vtkIncludeGhosts, &
+                chemIndex(iValues))
            allocate(float32(1:nCellsGlobal))
            float32 = rarray(1,1:nCellsGlobal)
 !           call base64encode(writeheader, pstring, nString, float32=float32)
@@ -2778,7 +2783,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
            deallocate(rArray)
         else if (grid%splitOverMPI) then
 #ifdef MPI
-           call writeDomainDecomposed(valueType(iValues), grid, vtkFilename, lunit, nCells)
+           call writeDomainDecomposed(valueType(iValues), grid, vtkFilename, lunit, nCells, chemindex(ivalues))
 #endif
         endif
 
@@ -2800,7 +2805,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
 
         if (writeheader.and.(.not.grid%splitOverMPI)) then
            allocate(rArray(1:3, 1:nCells))
-           call getValues(grid, valueType(iValues), rarray, includeGhosts=vtkIncludeGhosts)
+           call getValues(grid, valueType(iValues), rarray, vtkIncludeGhosts, chemIndex(iValues))
            allocate(float32(1:nCellsGlobal*3))
            float32 = RESHAPE(rarray, (/SIZE(float32)/))
 !           call base64encode(writeheader,pstring, nString, float32=float32)
@@ -2820,7 +2825,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
            deallocate(rArray)
         else if (grid%splitOverMPI) then
 #ifdef MPI
-           call writeDomainDecomposed(valueType(iValues), grid, vtkFilename, lunit, nCells)
+           call writeDomainDecomposed(valueType(iValues), grid, vtkFilename, lunit, nCells, chemIndex(iValues))
 #endif
         endif
            
@@ -2854,20 +2859,21 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
 end subroutine writeXMLVtkFileAMR
 
 
-  subroutine getValues(grid, valuetype, rarray, includeGhosts)
+  subroutine getValues(grid, valuetype, rarray, includeGhosts, chemIndex)
     type(GRIDTYPE) :: grid
     character(len=*) :: valueType
+    integer :: chemIndex
     real :: rArray(:,:)
     integer :: n
     logical :: includeGhosts
 
     n = 0 
 
-    call getValuesRecursive(grid, grid%octreeRoot, valueType, rArray, n, includeGhosts)
+    call getValuesRecursive(grid, grid%octreeRoot, valueType, rArray, n, includeGhosts, chemIndex)
 
   end subroutine getValues
 
-    recursive subroutine getValuesRecursive(grid, thisOctal, valueType, rArray, n, includeGhosts)
+    recursive subroutine getValuesRecursive(grid, thisOctal, valueType, rArray, n, includeGhosts, chemIndex)
       use inputs_mod, only : lambdaSmooth, gridDistanceScale
 #ifdef MPI
       use inputs_mod, only : hydrodynamics
@@ -2876,10 +2882,11 @@ end subroutine writeXMLVtkFileAMR
 #ifdef CHEMISTRY
     use krome_main
     use krome_user
-    character(len=16) :: species(krome_nmols)
+    character(len=25) :: species(krome_nmols)
 #endif
 
       type(OCTAL), pointer :: thisOctal, child
+      integer :: chemIndex
       logical :: includeGhosts
       type(GRIDTYPE) :: grid
       character(len=*) :: valueType
@@ -2891,12 +2898,13 @@ end subroutine writeXMLVtkFileAMR
       real, parameter :: min_single_prec = 1.0e-37
       logical, save :: firstTime=.true.
       logical :: found 
+!$OMP THREADPRIVATE (firstTime)
+
 #ifdef CHEMISTRY
        species = krome_get_names()
 #endif
 
 
-!$OMP THREADPRIVATE (firstTime)
 
       do subcell = 1, thisOctal%maxChildren
          if (thisOctal%hasChild(subcell)) then
@@ -2904,7 +2912,7 @@ end subroutine writeXMLVtkFileAMR
             do i = 1, thisOctal%nChildren, 1
                if (thisOctal%indexChild(i) == subcell) then
                   child => thisOctal%child(i)
-                  call getValuesRecursive(grid, child, valueType, rArray, n, includeGhosts)
+                  call getValuesRecursive(grid, child, valueType, rArray, n, includeGhosts, chemIndex)
                   exit
                end if
             end do
@@ -3027,7 +3035,7 @@ end subroutine writeXMLVtkFileAMR
                case("niter")
                   rArray(1, n) = real(int(thisOctal%convergence(subcell)/100))
 
-               case("nh2")
+               case("numh2")
                   rArray(1, n) = real(real(thisOctal%nh2(subcell)))
 
                case("convergence")
@@ -3258,7 +3266,7 @@ end subroutine writeXMLVtkFileAMR
                      rArray(1, n) = real(0.)
                   endif
 
-               case("NH2")
+               case("NUMH2")
                   rArray(1, n) = real(real( thisOctal%NH2(subcell) ))
 
                case("fixedtemp")
@@ -3496,12 +3504,18 @@ end subroutine writeXMLVtkFileAMR
              end select
 
 #ifdef CHEMISTRY
-             do i = 1, krome_nmols
-                if (trim(Valuetype) == species(i)) then
-                   rArray(1, n) = real(thisOctal%kromeSpeciesX(subcell,krome_get_index(trim(valuetype))))
+!             do i = 1, krome_nmols
+!                if (trim(Valuetype) == species(i)) then
+!                   rArray(1, n) = real(thisOctal%kromeSpeciesX(subcell,krome_get_index(trim(valuetype))))
+!                   found = .true.
+!                endif
+!             enddo
+             if (chemIndex /= 0) then
+                   rArray(1, n) = real( &
+                        thisOctal%kromeSpeciesX(subcell, chemIndex)/ &
+                        (dble(thisOctal%rho(subcell)*nAvogadro/1.28d0)) )
                    found = .true.
-                endif
-             enddo
+             endif
 #endif
              if (.not.found) then
                 write(*,*) "VTK file write called with unknown type: ",trim(valuetype)
@@ -3516,11 +3530,12 @@ end subroutine writeXMLVtkFileAMR
 
 
 #ifdef MPI
-  subroutine writeDomainDecomposed(valueType, grid, vtkFilename, lunit, nCells)
+  subroutine writeDomainDecomposed(valueType, grid, vtkFilename, lunit, nCells, chemindex)
     use mpi
     use inputs_mod, only : vtkIncludeGhosts
     character(len=*) :: valueType, vtkFilename
     type(GRIDTYPE) :: grid
+    integer :: chemIndex
     integer :: nCells
     integer :: lunit
     integer :: iThread
@@ -3555,12 +3570,12 @@ end subroutine writeXMLVtkFileAMR
         if (scalarValue) then
            allocate(float32(1:nCells))
            allocate(rArray(1:1, 1:nCells))
-           call getValues(grid, valueType, rarray(1:1,1:nCells), includeGhosts=vtkIncludeGhosts)
+           call getValues(grid, valueType, rarray(1:1,1:nCells), vtkIncludeGhosts, chemIndex)
            float32(1:nCells) = RESHAPE(rArray(1:1, 1:nCells),(/ncells/))
         else
            allocate(float32(1:nCells*3))
            allocate(rArray(1:3, 1:nCells))
-           call getValues(grid, valueType, rarray, includeGhosts=vtkIncludeGhosts)
+           call getValues(grid, valueType, rarray, vtkIncludeGhosts, chemIndex)
            float32(1:nCells*3) = RESHAPE(rarray, (/SIZE(float32(1:ncells*3))/))
         endif
         call convertandcompressInSections(iBytes, iHeader, farray32=float32, firstTime=.true.)
@@ -3615,13 +3630,13 @@ end subroutine writeXMLVtkFileAMR
         if (scalarValue) then
            allocate(float32(1:nCells))
            allocate(rArray(1:1, 1:nCells))
-           call getValues(grid, valueType, rarray(1:1,1:nCells), includeGhosts=vtkIncludeghosts)
+           call getValues(grid, valueType, rarray(1:1,1:nCells), vtkIncludeghosts, chemindex)
            float32(1:nCells) = reshape(rArray(1:1, 1:nCells),(/ncells/))
            j = nCells
         else
            allocate(float32(1:nCells*3))
            allocate(rArray(1:3, 1:nCells))
-           call getValues(grid, valueType, rarray, vtkIncludeGhosts)
+           call getValues(grid, valueType, rarray, vtkIncludeGhosts, chemindex)
            float32 = RESHAPE(rarray, (/SIZE(float32)/))
            j = ncells*3
         endif
@@ -3668,7 +3683,7 @@ end subroutine writeXMLVtkFileAMR
         do iThread = 2, nHydroThreadsGlobal
            call MPI_RECV(k, 1, MPI_INTEGER8, iThread, tag, MPI_COMM_WORLD, status, ierr)
            allocate(float32(1:k))
-           call MPI_RECV(float32, k, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
+           call MPI_RECV(float32, int(k, kind=4), MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
            if (iThread /= nHydroThreadsGlobal) then
               call convertandcompressInSections(iBytes, iHeader, farray32=float32)
            else
@@ -3719,7 +3734,7 @@ end subroutine writeXMLVtkFileAMR
         float32 = RESHAPE(rarray, (/SIZE(float32)/))
         j = int(nPoints,kind=bigint)*3
         call MPI_SEND(j, 1, MPI_INTEGER8, 1, tag, MPI_COMM_WORLD, ierr)
-        call MPI_SEND(float32, j, MPI_REAL, 1, tag, MPI_COMM_WORLD, ierr)
+        call MPI_SEND(float32, int(j,kind=4), MPI_REAL, 1, tag, MPI_COMM_WORLD, ierr)
         deallocate(float32, rArray)
      endif
      
@@ -3738,6 +3753,7 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
   character(len=*) :: vtkFilename
   integer :: nValueType
   character(len=20) :: valueType(50)
+  integer :: chemindex(50)
   character(len=*), optional ::  valueTypeFilename
   character(len=*), optional ::  valueTypeString(:)
   integer :: nCells
@@ -4064,7 +4080,7 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
 
         if (writeheader) then
            allocate(rArray(1:1, 1:nCells))
-           call getValues(grid, valueType(iValues), rarray, vtkIncludeGhosts)
+           call getValues(grid, valueType(iValues), rarray, vtkIncludeGhosts, chemIndex(ivalues))
            allocate(float32(1:nCells))
            float32 = rarray(1,1:nCells)
 !           call base64encode(writeheader, pstring, nString, float32=float32)
@@ -4103,7 +4119,7 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
 
         if (writeheader) then
            allocate(rArray(1:3, 1:nCells))
-           call getValues(grid, valueType(iValues), rarray, includeGhosts=vtkIncludeGhosts)
+           call getValues(grid, valueType(iValues), rarray, vtkIncludeGhosts, chemIndex(iValues))
            allocate(float32(1:nCells*3))
            float32 = RESHAPE(rarray, (/SIZE(float32)/))
 !           call base64encode(writeheader,pstring, nString, float32=float32)

@@ -165,6 +165,10 @@ ifeq ($(SYSTEM), ompiosx)
     EXE = torus.ompiosx
     ZLIBLIBS = -lz	
     MPIFLAG = -DMPI
+    KROMELIBS = -L${HOME}/krome/build -lkrome
+    ifeq ($(chemistry), yes)
+       F95COMP+=-I${HOME}/krome/build
+    endif
     KNOWN_SYSTEM = yes
 endif
 
@@ -497,12 +501,12 @@ ifeq ($(openmp), yes)
   OPENMPFLAG = -openmp
 # Change the openmp flag for gfortran-based systems
   ifeq ($(SYSTEM), gfortran)
-     OPENMPFLAG = -fopenmp 
+     OPENMPFLAG = -fopenmp
 # -static-libgcc fixes linking problems under Mac OS
      STARLIBS += -static-libgcc
   endif
   ifeq ($(SYSTEM), ompiosx)
-     OPENMPFLAG = -fopenmp 
+     OPENMPFLAG = -fopenmp
      STARLIBS += -static-libgcc
   endif
   ifeq ($(SYSTEM), testsuite)
@@ -600,7 +604,7 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90 image_uti
             cmfgen_class.f90 modelatom_mod.f90  magField.f90 \
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
             magnetic_mod.f90 units_mod.f90 interferometry_mod.f90 \
-            qShep3D_mod.f90 qShep2D_mod.f90 turbulence_mod.f90 eos_mod.f90 $(VERSIONSOURCE)
+            qShep3D_mod.f90 qShep2D_mod.f90 turbulence_mod.f90 eos_mod.f90 citations_mod.f90 $(VERSIONSOURCE)
             
 
 

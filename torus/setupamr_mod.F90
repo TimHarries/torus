@@ -1529,7 +1529,7 @@ doGridshuffle: if(gridShuffle) then
 ! Write a VTK file so we can check the SPH to grid conversion
        if ( sphWithChem ) then 
           call writeVTKfile(grid, "gridFromSph.vtk", valueTypeString=(/"rho         ",&
-         "temperature ", "velocity    ", "molabundance", "nh2         "/))
+         "temperature ", "velocity    ", "molabundance", "numh2       "/))
        else
           call writeVTKfile(grid, "gridFromSph.vtk")
        end if

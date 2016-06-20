@@ -4536,7 +4536,7 @@ CONTAINS
        case("unisphere")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
           if (thisOctal%nDepth < halfRefined(minDepthAMR, maxDepthAMR)) split = .true.
-
+          if (thisOctal%nDepth == maxDepthAMR) split = .false.
        case("interptest")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
@@ -10189,7 +10189,7 @@ endif
 
     real(double) :: cs, vkep, omega, Ro, mu
     real(double) :: rOuter, starMass, H, Sigma, rhoMid
-    real(double) :: sigmaO, Mdisc, rinner, Rc, zq, delta, Tmid, Tatm, Tz
+    real(double) :: sigmaO, Mdisc, rinner,  Rc, zq, delta, Tmid, Tatm, Tz
 
     starMass = 0.55d0*msol
     rOuter = 156.d-10*autocm
@@ -10219,8 +10219,13 @@ endif
 
     Sigma = SigmaO*(abs(rvec%x)/Ro)**(0.23)*exp(-(abs(rvec%x)/Rc)**(2.23))
 
+<<<<<<< .mine
+    Tatm = max(280.d0*(abs(rvec%x)/(5.d-10*autocm))**(-0.44d0), 10.d0)
+    Tmid = max(110.d0*(abs(rvec%x)/(5.d-10*autocm))**(-0.569d0), 10.d0)
+=======
     Tatm = max(280.*(abs(rvec%x)/(5.d-10*autocm))**(-0.44), 10._db)
     Tmid = max(real(110.*(abs(rvec%x)/(5.d-10*autocm))**(-0.569)), 10.)
+>>>>>>> .r4879
 
     if(abs(rvec%x) < router .and. abs(rvec%x) > rinner) then
 
@@ -11759,6 +11764,7 @@ end function readparameterfrom2dmap
     if(molecular) then
  !      if(modulus(rvec) .lt. 1000.) then
           thisOctal%velocity(subcell) = keplerianVelocity(rvec)
+          thisOctal%iAnalyticalVelocity(subcell) = 2
 !      else
  !         thisOctal%velocity(subcell) = vector(0.,0.,0.)
  !      endif
@@ -13518,6 +13524,7 @@ end function readparameterfrom2dmap
 
     call copyAttribute(dest%atomAbundance, source%atomAbundance)
     call copyAttribute(dest%kromeSpeciesX, source%kromeSpeciesX)
+    call copyAttribute(dest%kromeIntensity, source%kromeIntensity)
 
     call copyAttribute(dest%atomLevel, source%atomLevel)
 
@@ -17230,10 +17237,14 @@ end function readparameterfrom2dmap
     use inputs_mod, only : grainFrac, pdrcalc, xraycalc, useionparam, biophysics
     use gridtype_mod, only: statEqMaxLevels
     use h21cm_mod, only: h21cm
+
+
 #ifdef PDR
     use inputs_mod, only :  hlevel
 #endif
+
 #ifdef CHEMISTRY
+    use inputs_mod, only : doChemistry
     use krome_user
 #endif
     type(OCTAL), pointer :: thisOctal
@@ -17328,6 +17339,7 @@ end function readparameterfrom2dmap
 #ifdef CHEMISTRY
     if (doChemistry) then
        call allocateAttribute(thisOctal%kromeSpeciesX, thisOctal%maxChildren, krome_nmols)
+       call allocateAttribute(thisOctal%kromeIntensity, thisOctal%maxChildren, krome_nPhotobins)
     endif
 #endif
 
@@ -17691,6 +17703,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%atomLevel)
     call deallocateAttribute(thisOctal%atomAbundance)
     call deallocateAttribute(thisOctal%kromeSpeciesX)
+    call deallocateAttribute(thisOctal%kromeIntensity)
     call deallocateAttribute(thisOctal%newatomLevel)
     call deallocateAttribute(thisOctal%jnu)
     call deallocateAttribute(thisOctal%jnuCont)

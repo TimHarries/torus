@@ -241,7 +241,7 @@ contains
   end subroutine safierFits
 
   type (VECTOR) function TTauriKeplerianVelocity(point)
-    use inputs_mod, only : ttauriMstar
+    use inputs_mod, only : sourceMass
     type(VECTOR), intent(in) :: point
     type(VECTOR) :: vVec, rVec
     real(double) :: v
@@ -252,7 +252,7 @@ contains
     call normalize(vVec)
     v = 0.d0
     if (modulus(rVec) /= 0.d0) then
-       v = sqrt(bigG*ttauriMstar/(modulus(rVec)*1.d10))/cSpeed
+       v = sqrt(bigG*sourceMass(1)/(modulus(rVec)*1.d10))/cSpeed
     endif
     TTauriKeplerianVelocity = v * vVec
   end function TTauriKeplerianVelocity

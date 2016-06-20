@@ -72,7 +72,7 @@ contains
      call writeInfo("Done.",TRIVIAL)
    endif
 #ifdef CHEMISTRY
-   if (doChemistry)
+   if (doChemistry) then
        call initializeKrome()
     endif
 #endif
@@ -462,11 +462,6 @@ contains
        endif
     endif
 
-#ifdef CHEMISTRY
-    if (doChemistry) then
-       call doChem(grid)
-    endif
-#endif
 
     if (bioPhysics) then
        call photonLoop(grid)
@@ -518,6 +513,13 @@ contains
         endif
      endif
 
+#ifdef CHEMISTRY
+    if (doChemistry) then
+       call doChem(grid)
+    endif
+#endif
+
+
 #ifdef MOLECULAR
      if (molecularPhysics.and.(statisticalEquilibrium.or.setupMolecularLteOnly)) then
 #ifdef MPI
@@ -547,6 +549,8 @@ contains
         call atomLoop(grid, nAtom, globalAtomArray, globalnsource, globalsourcearray)
      endif
 #endif
+
+
 #ifdef STATEQ
      if (atomicPhysics.and.statisticalEquilibrium.and.(.not.cmf)) then
         call amrStateqnew(grid, .false., nLower, nUpper, globalSourceArray(1)%surface,&
@@ -617,6 +621,8 @@ contains
      endif
   endif
 #endif
+
+
 
 #ifdef HYDRO
   if (nbodyPhysics.and.(.not.hydrodynamics)) then

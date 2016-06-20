@@ -1,6 +1,7 @@
 module dust_mod
 
   use constants_mod
+  use citations_mod
   use messages_mod
   use vector_mod
   use gridtype_mod, only: GRIDTYPE
@@ -184,6 +185,7 @@ contains
 
 
     case("sil_dl")
+       call addBibcode("1984ApJ...285...89D","Silicite grain optical properties")
        call unixGetenv("TORUS_DATA", dataDirectory, i)
        filename = trim(dataDirectory)//"/"//"eps_Sil.txt"
        if (writeoutput) write(*,'(a,a)') "Reading grain properties from: ",trim(filename)
@@ -1971,6 +1973,127 @@ subroutine readLambdaFile(lamFilename, lamArray, nLambda)
   close(77)
 
 end subroutine readLambdaFile
+
+real(double) function dustToGasNumber(thisoctal, subcell, porousFillingFactor, aMin, aMax, &
+     a0, qDist, pDist, graintype, grainDensity, nbins, binID)
+
+  use inputs_mod, only : photoionPhysics, grainfrac
+  use ion_mod, only : nGlobalIon, globalIonArray, returnMu
+
+  type(octal) :: thisoctal
+  integer :: subcell
+  real(double) :: mu  !mean gas mass
+  real(double) :: grainMass !mass of a single grain in the bin of interest
+  real(double) :: massfrac  !fraction of the total dust mass in this bin
+
+  !dust distribution properties
+  real(double) :: porousFillingFactor, amin, amax, a0, qdist, pdist
+  character(len=*) :: grainType
+  real(double) :: grainDensity  
+
+  integer :: binID, nbins
+  
+
+  !return the fraction of the dust to gas ratio in the bin of interest, as well
+  !as the mass of a grain in that bin
+
+  call getBinMassFraction(porousFillingFactor, aMin, aMax, a0, qDist, pDist, graintype, &
+       grainDensity, nbins, binID, massfrac, grainMass)
+
+  !mean gas mass
+  if (photoionPhysics) then
+     mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
+  else
+     mu = 1.d0
+  endif
+
+
+  dustToGasNumber = (massFrac*grainfrac(1))*(mu*mHydrogen/grainmass)
+
+  ! Md = total dust mass, md = mass of single grain
+  !
+  ! dust to gas number ratio = eta = nd / ng
+  ! dust to gas mass ratio = delta = Md / Mg = eta * md/mu/mHydrogen
+  ! therefore eta = delta*mu*mH/md
+  !
+end function dustToGasNumber
+
+
+
+subroutine getBinMassFraction(porousFillingFactor, aMin, aMax, a0, qDist, pDist, graintype, &
+     grainDensity, nbins, binID, massfrac, thisMass)  
+
+  use constants_mod
+  use mieDistCrossSection_mod, only: PowerInt
+
+  implicit none
+  real(double), intent(in) :: aMin, aMax, a0, qDist, pDist, porousFillingFactor
+  real(double) :: a1, a2, vol
+  integer, intent(in) :: nBins
+  integer :: i, binID
+!  integer, parameter :: n = 1000
+  real(double) :: a(nBins)     ! grain sizes (log spaced)
+  real(double) :: f(nBins)     ! distribution function (normalized)
+  real(double) :: mass(nBins)  ! 
+  real(double) :: normFac
+  character(len=*) :: grainType
+  real(double) :: grainDensity
+  real(double) :: density, massfrac, thismass
+
+  select case(grainType)
+  case("am_olivine", "am_pyroxene")
+     density = 3.71
+  case("forsterite")
+     density = 3.33
+  case("enstatite")
+     density = 2.8
+  case("sio2")
+     density = 2.21
+  case("sil_dl")
+     density = 3.6
+  case("draine_sil")
+     density = 3.5
+  case("pinteISM")
+     density = 0.5
+  case DEFAULT
+     density = grainDensity
+  end select
+
+  grainDensity = grainDensity * (1. - porousFillingFactor)
+
+  if (aMin == aMax) then
+     vol = real((4./3.)* pi * (aMin*microntocm)**3)
+     Massfrac = 1.d0
+     thisMass = vol * density 
+  else
+     a1 = log(aMin)
+     a2 = log(aMax)
+     !
+     ! setting up the grain sizes
+     do i = 1, nBins
+        a(i) = (a1 + (a2 - a1) * real(i-1)/real(nBins-1))
+        a(i) = exp(a(i))
+        f(i) = a(i)**(-qDist) * exp(-(a(i)/a0)**pDist) 
+     end do
+     
+     !
+     ! normalize the dist function
+     call PowerInt(nBins, 1, nBins, real(a), real(f), real(normFac))
+     f(:) = f(:)/normFac
+     
+     !
+     ! Finding the mean mass now.
+     do i = 1, nBins
+        vol = real((4./3.)* pi * (a(i)*microntocm)**3)
+        mass(i) = vol * density * f(i)    ! weighted by dist function
+     end do
+
+     Massfrac = mass(binID)/sum(mass)
+     thisMass = mass(binID)
+    
+  endif
+
+end subroutine getBinMassFraction
 
 end module dust_mod
 

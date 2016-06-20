@@ -7,6 +7,7 @@ module molecular_mod
  ! 01/X/07
 
   use kind_mod
+  use citations_mod
    use constants_mod
    use utils_mod
    use messages_mod
@@ -73,6 +74,8 @@ module molecular_mod
    type MOLECULETYPE
 
       character(len=10) :: molecule
+      character(len=10) :: kromeLabel
+      real(double) :: isotopologueFraction
       real :: molecularweight
       real(double) :: abundance
       integer :: nLevels
@@ -220,6 +223,7 @@ module molecular_mod
         if (writeoutput) write(*,*) "Number of collisional transitions removed for partner ",icoll,": ", &
              thisMolecule%nCollTrans(iColl)-newNCollTrans
         thisMolecule%nCollTrans(iColl) = newNCollTrans
+        deallocate(keep)
      end do
 
      thisMolecule%nLevels = maxLevel
@@ -282,6 +286,8 @@ module molecular_mod
      logical :: preprocess1 = .true.
      logical :: preprocess2 = .true.
      integer :: maxnCollTrans, maxnCollTemps
+
+     call addBibcode("2005A&A...432..369S","LAMDA database reference")
 
      if (trim(molFilename) == "hco_benchmark.mol") then
         call readBenchmarkMolecule(thisMolecule, molFilename)
@@ -427,11 +433,63 @@ module molecular_mod
         endif
         preprocess1 = .false.
      enddo
-
+     call setKromeLabel(thisMolecule)
+     call addMolecularDataReferences(thisMolecule%kromeLabel)
      call writeInfo("Done.", IMPORTANT)
 666 continue
    end subroutine readMolecule
 
+   subroutine addMolecularDataReferences(label)
+     character(len=*) :: label
+
+     select case(label)
+        case("CO")
+           call addBibcode("2005JMoSt.742..215M","CO energy levels and Einstein A coeffs")
+           call addBibcode("2010ApJ...718.1062Y","CO collisional rates with H2")
+        case DEFAULT
+           call writeWarning("You should look up the citations for the rates for this molecule")
+     end select
+   end subroutine addMolecularDataReferences
+
+   subroutine setKromeLabel(thisMolecule)
+     use inputs_mod, only : isotopologueFraction
+     type(MOLECULETYPE) :: thisMolecule
+
+     thisMolecule%kromeLabel = thisMolecule%molecule
+     thisMolecule%isotopologueFraction = 1.d0
+
+     select case (thisMolecule%molecule)
+        case("13C16O")
+           thisMolecule%kromeLabel = "CO"
+           thisMolecule%isotopologueFraction = 1.d0
+        case("C18O")
+           thisMolecule%kromeLabel = "CO"
+           thisMolecule%isotopologueFraction = 1.d0
+        case("C17O")
+           thisMolecule%kromeLabel = "CO"
+           thisMolecule%isotopologueFraction = 1.d0
+        case("H13CO+")
+           thisMolecule%kromeLabel = "HCO+"
+           thisMolecule%isotopologueFraction = 1.d0
+        case("HC18O+")
+           thisMolecule%kromeLabel = "HCO+"
+           thisMolecule%isotopologueFraction = 1.d0
+        case("C+ (atomic ion)")
+           thisMolecule%kromeLabel = "C+"
+           thisMolecule%isotopologueFraction = 1.d0
+        case("13CS")
+           thisMolecule%kromeLabel = "CS"
+           thisMolecule%isotopologueFraction = 1.d0
+        case("C  (neutral atom)")
+           thisMolecule%kromeLabel = "C"
+           thisMolecule%isotopologueFraction = 1.d0
+        end select
+        if (isotopologueFraction > 0.d0) then
+           thisMolecule%isotopologueFraction = isotopologueFraction
+        endif
+
+
+      end subroutine setKromeLabel
    subroutine parseCollisionPartner(cstring, iPart, thisMolecule)
      type(MOLECULETYPE) :: thisMolecule
      integer :: iPart
@@ -1055,6 +1113,11 @@ module molecular_mod
           debug, restart, isinlte, quasi, dongstep, initnray, outputconvergence, dotune, &
           forceIniRay, setupMolecularLteOnly, renewinputrays, molRestartTest
      use dust_mod
+#ifdef CHEMISTRY
+     use chemistry_mod, only : setMolAbundanceToKrome
+     use inputs_mod, only : useKromeAbundance
+#endif
+
      use parallel_mod
      use vtk_mod
      use gridio_mod, only: writeamrgrid
@@ -1128,6 +1191,7 @@ module molecular_mod
 
 ! Have we written a restart dump yet?
      logical, save :: firstDumpWritten=.false.
+
 
      call writeinfo("molecular_mod 20100428.1400",TRIVIAL)
 
@@ -1210,6 +1274,13 @@ module molecular_mod
      call checkamrgrid(grid, .false.)
      call writeinfo("Allocating and initialising molecular levels", FORINFO)
      call allocateMolecularLevels(grid, grid%octreeRoot, thisMolecule)
+
+#ifdef CHEMISTRY
+     if (useKromeAbundance) then
+        call  setMolAbundanceToKrome(grid%octreeRoot, thisMolecule%kromeLabel, &
+             thisMolecule%isotopologueFraction)
+     endif
+#endif
 
       call writeVTKfile(grid, "initial.vtk", valueTypeString=(/"J=0         ",&
            "J=1         ", "J=2         ", "J=3         ", "J=4         ", "rho         ", &
@@ -5779,7 +5850,7 @@ endif
          do iv = 1,nv
 
             if(cube%intensity(ipixel, jpixel, iv) == 0.0) then
-               cube%intensity(ipixel, jpixel, iv) =real(Bnu(thisMolecule%transfreq(itrans), Tcbr))
+               cube%intensity(ipixel, jpixel, iv) = real(Bnu(thisMolecule%transfreq(itrans), Tcbr))
             endif
 
             cube%intensity(ipixel,jpixel,iv) = real(cube%intensity(ipixel,jpixel,iv) &

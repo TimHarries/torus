@@ -2729,6 +2729,15 @@ contains
             "Use a constant abundance: ", "(a,1l,1x,a)", .false., ok, .true.)
        call getReal("molAbundance", molAbundance, 1., cLine, fLine, nLines, &
             "Molecular Abundance:","(a,e12.5,1x,a)", 1e-9, ok, .false.)
+
+       call getLogical("usekromeabundance", useKromeAbundance, cLine, fLine, nLines, &
+            "Use previously calculated KROME abundances: ", "(a,1l,1x,a)", .false., ok, .false.)
+
+       if (useKromeAbundance) then
+          call getDouble("isotopologuefrac", isotopologueFraction, 1.d0, cLine, fLine, nLines, &
+               "Fractional abundance of this isotopologue: ", "(a,f8.3,1x,a)", 0.d0, ok, .false.)
+       endif
+
        call getLogical("removehotmolecular", removeHotMolecular, cLine, fLine, nLines, &
             "Remove molecular material above 100K: ", "(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("isinlte", isinlte, cLine, fLine, nLines, &

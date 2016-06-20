@@ -22,6 +22,7 @@
 program torus
   use torus_version_mod
   use inputs_mod         ! variables filled by inputs subroutine
+  use citations_mod
   use dimensionality_mod
   use constants_mod
   use messages_mod
@@ -103,6 +104,7 @@ program torus
 
   call writeTorusBanner()
 
+  call initBibCode()
   call setVersion("V3.0.1")
   grid%version = torusVersion
   currentlyDoingHydroStep = .false.
@@ -113,6 +115,8 @@ program torus
   if (doTuning) call tune(6, "Torus Main") ! start a stopwatch  
 
   call inputs()
+
+  call setUpBibcodesOnParametersFile()
 
 #ifdef MPI
   ! Set up amrCOMMUNICATOR and global mpi groups
@@ -230,6 +234,10 @@ program torus
   if (hydrodynamics) call freeAMRCOMMUNICATOR
   call MPI_FINALIZE(ierr)
 #endif
+
+  if (Writeoutput) call writeBibtex("torus.bib")
+
+
   call writeBanner("Torus completed","o",TRIVIAL)
 
 contains 
@@ -342,6 +350,8 @@ contains
        enddo
     enddo
  end do
+
+ 
 end subroutine calculategrid
 
 

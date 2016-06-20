@@ -793,6 +793,9 @@ contains
           call writeAttributePointerFlexi(20, "scatteredIntensity", thisOctal%scatteredIntensity, fileFormatted)
 
           call writeAttributePointerFlexi(20, "meanIntensity", thisOctal%meanIntensity, fileFormatted)
+
+          call writeAttributePointerFlexi(20, "kromeIntensity", thisOctal%kromeIntensity, fileFormatted)
+          call writeAttributePointerFlexi(20, "kromeSpeciesX", thisOctal%kromeSpeciesX, fileFormatted)
           
           
           call writeAttributePointerFlexi(20, "atomAbundance", thisOctal%atomAbundance, fileFormatted)
@@ -4654,6 +4657,10 @@ contains
             call readPointerFlexi(20, thisOctal%departCoeff, fileFormatted)
          case("atomAbundance")
             call readPointerFlexi(20, thisOctal%atomAbundance, fileFormatted)
+         case("kromeIntensity")
+            call readPointerFlexi(20, thisOctal%kromeIntensity, fileFormatted)
+         case("kromeSpeciesX")
+            call readPointerFlexi(20, thisOctal%kromeSpeciesX, fileFormatted)
          case("atomLevel")
             call readPointerFlexi(20, thisOctal%atomLevel, fileFormatted)
          case("jnuCont")
@@ -5040,6 +5047,10 @@ contains
             call receivePointerFlexi(thisOctal%departCoeff, ithread)
          case("atomAbundance")
             call receivePointerFlexi(thisOctal%atomAbundance, ithread)
+         case("kromeIntensity")
+            call receivePointerFlexi(thisOctal%kromeIntensity, ithread)
+         case("kromeSpeciesX")
+            call receivePointerFlexi(thisOctal%kromeSpeciesX, ithread)
          case("atomLevel")
             call receivePointerFlexi(thisOctal%atomLevel, ithread)
          case("jnuCont")
@@ -5326,6 +5337,8 @@ contains
 
       call sendAttributePointerFlexi(iThread, "meanIntensity", thisOctal%meanIntensity)
 
+      call sendAttributePointerFlexi(iThread, "kromeIntensity", thisOctal%kromeIntensity)
+      call sendAttributePointerFlexi(iThread, "kromeSpeciesX", thisOctal%kromeSpeciesX)
 
       call sendAttributePointerFlexi(iThread, "atomAbundance", thisOctal%atomAbundance)
       call sendAttributePointerFlexi(iThread, "atomLevel", thisOctal%atomLevel)

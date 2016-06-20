@@ -278,6 +278,7 @@ MODULE octal_mod
     real(double), pointer :: atomLevel(:,:,:) => null() ! atom level populations
     real(double), pointer :: atomAbundance(:,:) => null() ! abundances
     real(double), pointer :: kromeSpeciesX(:,:) => null() ! krome abundances
+    real(double), pointer :: kromeIntensity(:,:) => null() ! krome intensities for photochemistry
     real(double), pointer :: newatomLevel(:,:,:) => null() ! atom level populations
     real(double), pointer :: jnu(:,:) => null() ! Molecular radiation field
     real(double), pointer :: jnuCont(:,:) => null()
