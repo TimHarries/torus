@@ -225,6 +225,9 @@ CONTAINS
 
        ! now store the 'base level' values
 
+       if (.not.associated(thisOctal%cornerVelocity)) then
+          allocate(thisOctal%cornerVelocity(1:9))
+       endif
        thisOctal%cornerVelocity(1) = discwind_velocity(this,vector(x1,0.d0,z1))
        thisOctal%cornerVelocity(2) = discwind_velocity(this,vector(x2,0.d0,z1))
        thisOctal%cornerVelocity(3) = discwind_velocity(this,vector(x3,0.d0,z1))
@@ -6198,6 +6201,9 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 
        ! now store the 'base level' values
 
+       if (.not.associated(thisOctal%cornervelocity)) then
+          allocate(thisOctal%cornerVelocity(1:9))
+       endif
        thisOctal%cornerVelocity(1) = velocityFunc(vector(x1,0.d0,z1))
        thisOctal%cornerVelocity(2) = velocityFunc(vector(x2,0.d0,z1))
        thisOctal%cornerVelocity(3) = velocityFunc(vector(x3,0.d0,z1))
