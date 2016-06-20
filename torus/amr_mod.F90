@@ -10219,13 +10219,8 @@ endif
 
     Sigma = SigmaO*(abs(rvec%x)/Ro)**(0.23)*exp(-(abs(rvec%x)/Rc)**(2.23))
 
-<<<<<<< .mine
     Tatm = max(280.d0*(abs(rvec%x)/(5.d-10*autocm))**(-0.44d0), 10.d0)
     Tmid = max(110.d0*(abs(rvec%x)/(5.d-10*autocm))**(-0.569d0), 10.d0)
-=======
-    Tatm = max(280.*(abs(rvec%x)/(5.d-10*autocm))**(-0.44), 10._db)
-    Tmid = max(real(110.*(abs(rvec%x)/(5.d-10*autocm))**(-0.569)), 10.)
->>>>>>> .r4879
 
     if(abs(rvec%x) < router .and. abs(rvec%x) > rinner) then
 
