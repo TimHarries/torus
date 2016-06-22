@@ -15200,7 +15200,7 @@ end function readparameterfrom2dmap
 
   recursive subroutine assignDensitiesAlphaDisc(grid, thisOctal)
     use magnetic_mod, only : rhoAlphaDisc, velocityAlphaDisc
-    use inputs_mod, only : rSublimation, alphaDiscTemp, grainFrac, rinner, router
+    use inputs_mod, only : rSublimation, alphaDiscTemp, grainFrac, rinner, router, smallestCellSize
     type(GRIDTYPE) :: grid
     real(double) :: thisRho, r, fac
     type(octal), pointer   :: thisOctal
@@ -15222,8 +15222,11 @@ end function readparameterfrom2dmap
           cellCentre = subcellCentre(thisOctal, subcell)
           thisRho  = rhoAlphaDisc(grid, cellCentre)
           r = sqrt(cellCentre%x**2 + cellCentre%y**2)
-!          thisOctal%dustTypeFraction(subcell,:) = 0.d0
-!          thisOctal%fixedTemperature(subcell) = .true.
+          if (r < rSublimation) then
+             thisOctal%dustTypeFraction(subcell,:) = 1.d-30
+             thisOctal%temperature(subcell) = real(alphaDiscTemp * (r/rInner)**(-0.750))
+             thisOctal%fixedTemperature(subcell) = .true.
+          endif
           if ((r > rSublimation).and.(thisRho >= thisOctal%rho(subcell))) then
              thisOctal%dustTypeFraction(subcell,1) = grainFrac(1)
              thisOctal%fixedTemperature(subcell) = .false.
@@ -15235,8 +15238,11 @@ end function readparameterfrom2dmap
              endif
           endif
           if ((thisRho > thisOctal%rho(subcell)).and.(r < rSublimation)) then
-             thisOctal%temperature(subcell) = alphaDiscTemp
-             thisOctal%blackBody(subcell) = .true. ! this means there is blackbody emission from here
+             cellcentre = subcellCentre(thisOctal,subcell)
+             if ( (abs(cellcentre%z + thisOctal%subcellSize/2.d0) < 0.1d0*smallestcellSize).or. &
+                  (abs(cellcentre%z - thisOctal%subcellSize/2.d0) < 0.1d0*smallestcellSize) ) then
+                thisOctal%blackBody(subcell) = .true. ! this means there is blackbody emission from here
+             endif
           endif
           if ( (r > Rinner).and.(r < rOuter).and.(thisRho > thisOctal%rho(subcell))) then
              thisOctal%velocity(subcell) = velocityAlphaDisc(cellcentre)

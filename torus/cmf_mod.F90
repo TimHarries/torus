@@ -3034,7 +3034,7 @@ contains
     integer :: ilambda, iomp
     real(double) :: transitionLambda, kappaSca, kappaAbs, kappaExt
     
-    real(double) :: tauStep, tauTmp, iStep, blackbodyIntensity
+    real(double) :: tauStep, tauTmp, iStep
     logical :: passThroughResonance, ok, closeToResonance, hitgrid
 #ifdef _OPENMP
     integer :: omp_get_thread_num
@@ -3158,7 +3158,6 @@ contains
 
           call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
 
-
           if ((totDist + tval) > distTosource) then
              tVal = distToSource - totDist
              endLoopAtPhotosphere = .true.
@@ -3167,6 +3166,7 @@ contains
           if (thisOctal%blackBody(subcell)) then
              i0 = i0 + bnu(transitionFreq, dble(thisOctal%temperature(subcell))) * exp(-tau)
              tau = 1.d10
+!             write(*,*) "hit blackbody ",i0
           else
 
 

@@ -780,6 +780,7 @@ contains
 
           call writeAttributePointerFlexi(20, "jnu", thisOctal%jnu, fileFormatted)
           call writeAttributePointerFlexi(20, "bnu", thisOctal%bnu, fileFormatted)
+          call writeAttributePointerFlexi(20, "blackbody", thisOctal%blackbody, fileFormatted)
           call writeAttributePointerFlexi(20, "molAbundance", thisOctal%molAbundance, fileFormatted)
           call writeAttributePointerFlexi(20, "nsplit", thisOctal%nsplit, fileFormatted)
           call writeAttributePointerFlexi(20, "nh2", thisOctal%nh2, fileFormatted)
