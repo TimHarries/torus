@@ -2530,12 +2530,12 @@ contains
 
              do i = 1, thisAtom(iatom)%nLevels-1
 
-                thisOctal%atomLevel(subcell, iAtom,i) = boltzSahaEquationAbsolute(thisAtom(iAtom), nTot, i, &
+                thisOctal%atomLevel(subcell, iAtom,i) = max(1.d-20,boltzSahaEquationAbsolute(thisAtom(iAtom), nTot, i, &
                      thisOctal%ne(subcell), &
-                     dble(thisOctal%temperature(subcell)))
+                     dble(thisOctal%temperature(subcell))))
              enddo
              thisOctal%atomLevel(subcell, iAtom, thisAtom(iatom)%nLevels) = &
-                  sahaEquationNextIon(thisAtom(iatom), nTot, thisOctal%ne(subcell), dble(thisOctal%temperature(subcell)))
+                  max(1.d-20,sahaEquationNextIon(thisAtom(iatom), nTot, thisOctal%ne(subcell), dble(thisOctal%temperature(subcell))))
           enddo
           thisOctal%ne(subcell) = returnNe(thisOctal%atomLevel(subcell,:,:),thisAtom)
           
