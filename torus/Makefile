@@ -58,7 +58,7 @@ MPIFLAG =
 
 ifeq ($(SYSTEM), nagfor)
     F95COMP  = nagfor
-    F95FLAG  = -colour -kind=byte -fpp -dcfuns -f2003 -DUSEIEEEISNAN -DUSEUNIXENV
+    F95FLAG  = -colour -kind=byte -fpp -dcfuns -f2008 -DUSEIEEEISNAN -DUSEUNIXENV
     DEBUGFLAG= -C=all -g -gline -info -nocheck_modtime
     FASTFLAG = -O4
     CFITSIOLIBS = -L/Users/${USER}/cfitsio_nagfor/lib -lcfitsio 
@@ -120,9 +120,9 @@ ifeq ($(SYSTEM), gfortran)
         F95COMP = gfortran
     endif
      ZLIBLIBS = -lz
-    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Wno-surprising -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
-#    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-surprising -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
-#    DEBUGFLAG= -ggdb -fbacktrace -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
+    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Wno-surprising -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
+#    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-surprising -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
+#    DEBUGFLAG= -ggdb -fbacktrace -Wunderflow -Wall -Werror -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
     FASTFLAG = -O3
 #    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
     EXE = torus.gfortran
@@ -144,9 +144,9 @@ ifeq ($(SYSTEM), thaw)
 #        F95COMP = gfortran
 #    endif
      ZLIBLIBS = -lz
-#    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormalx
-#    DEBUGFLAG= -ggdb -fbacktrace -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
-    DEBUGFLAG= -ggdb -fbacktrace -Wunderflow -Wall -Werror -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
+#    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormalx
+#    DEBUGFLAG= -ggdb -fbacktrace -Wunderflow -Wall -Werror -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
+    DEBUGFLAG= -ggdb -fbacktrace -Wunderflow -Wall -Werror -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
 
 
     FASTFLAG = -O3
@@ -159,7 +159,7 @@ endif
 # MPI build with the gfortran compiler. 
 ifeq ($(SYSTEM), ompiosx)
     F95COMP  = mpif90 
-    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-surprising -Wno-error=maybe-uninitialized -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
+    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-surprising -Wno-error=maybe-uninitialized -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
     FASTFLAG = -O3
     CFITSIOLIBS = -L${HOME}/cfitsio/lib -lcfitsio
     EXE = torus.ompiosx
@@ -180,7 +180,7 @@ ifeq ($(SYSTEM), testsuite)
     else
         F95COMP = gfortran 
     endif
-    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-surprising -Wno-error=maybe-uninitialized -pedantic-errors -std=f2003 -fall-intrinsics -ffpe-trap=invalid,zero,overflow
+    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-surprising -Wno-error=maybe-uninitialized -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow
     FASTFLAG = -O3
     CFITSIOLIBS = -L/home/torustest/cfitsio/lib -lcfitsio
     EXE = torus.testsuite
