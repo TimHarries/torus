@@ -357,7 +357,6 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
                      minRCubedRhoSquared)
           endif
 !          if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
-          if (ttauriwind)  call addDiscWind(grid)
              
           call checkAMRgrid(grid, .false.)
 #ifdef ATOMIC
@@ -366,9 +365,9 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           call writeInfo("Done.",TRIVIAL)
 #endif
           if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
+          if (ttauriwind)  call addDiscWind(grid)
 
           if (TTauriStellarWind) call assignDensitiesStellarWind(grid, grid%octreeRoot)
-
 
           if (ttauriwarp) call addWarpedDisc(grid%octreeRoot)
           ! Finding the total mass in the accretion flow

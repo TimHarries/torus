@@ -533,6 +533,7 @@
   real :: mCore, diskTemp, mDisc
   real :: epsilonDisc
   real :: alphaDisc, betaDisc, alphaDiscTemp
+  real :: alphaDiscPower, midplaneDiscTemp, midplaneDiscPower
   real :: scaleDensity
   real :: vRot
   real :: mdot

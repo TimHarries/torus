@@ -292,7 +292,7 @@ endif
 
 ifeq ($(SYSTEM), zen)
     F95COMP= mpif90
-    FASTFLAG= 
+    FASTFLAG= -mcmodel medium -shared-intel
 #    FASTFLAG= -O3 -xS #-fp-model fast=2 -no-prec-div -no-prec-sqrt -auto
 #    FASTFLAG= -fp-model fast=2 -no-prec-div -no-prec-sqrt -O3 -xT #-ipo 
 
@@ -327,6 +327,10 @@ ifeq ($(SYSTEM), zen)
     ZLIBLIBS = -lz	
     MKLIBS = -lmkl_lapack95 -lmkl_def -lmkl_em64t -lmkl_intel -lmkl_sequential -lmkl_core -lguide -lpthread #pthread for macs    
     MPIFLAG = -DMPI
+    KROMELIBS = -L${HOME}/krome/build -lkrome
+    ifeq ($(chemistry), yes)
+       F95COMP+=-I${HOME}/krome/build
+    endif
     KNOWN_SYSTEM=yes
 endif
 

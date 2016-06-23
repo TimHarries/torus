@@ -15200,7 +15200,8 @@ end function readparameterfrom2dmap
 
   recursive subroutine assignDensitiesAlphaDisc(grid, thisOctal)
     use magnetic_mod, only : rhoAlphaDisc, velocityAlphaDisc
-    use inputs_mod, only : rSublimation, alphaDiscTemp, grainFrac, rinner, router, smallestCellSize
+    use inputs_mod, only : rSublimation, alphaDiscTemp, grainFrac, rinner, router, smallestCellSize, alphaDiscPower
+    use inputs_mod, only : midplaneDiscTemp, midplaneDiscPower
     type(GRIDTYPE) :: grid
     real(double) :: thisRho, r, fac
     type(octal), pointer   :: thisOctal
@@ -15221,10 +15222,10 @@ end function readparameterfrom2dmap
        else
           cellCentre = subcellCentre(thisOctal, subcell)
           thisRho  = rhoAlphaDisc(grid, cellCentre)
-          r = sqrt(cellCentre%x**2 + cellCentre%y**2)
+          r = modulus(cellCentre)
           if (r < rSublimation) then
              thisOctal%dustTypeFraction(subcell,:) = 1.d-30
-             thisOctal%temperature(subcell) = real(alphaDiscTemp * (r/rInner)**(-0.750))
+             thisOctal%temperature(subcell) = real(alphaDiscTemp * (r/rInner)**alphaDiscpower)
              thisOctal%fixedTemperature(subcell) = .true.
           endif
           if ((r > rSublimation).and.(thisRho >= thisOctal%rho(subcell))) then
@@ -15241,7 +15242,8 @@ end function readparameterfrom2dmap
              cellcentre = subcellCentre(thisOctal,subcell)
              if ( (abs(cellcentre%z + thisOctal%subcellSize/2.d0) < 0.1d0*smallestcellSize).or. &
                   (abs(cellcentre%z - thisOctal%subcellSize/2.d0) < 0.1d0*smallestcellSize) ) then
-!                thisOctal%blackBody(subcell) = .true. ! this means there is blackbody emission from here
+                thisOctal%blackBody(subcell) = .true. ! this means there is blackbody emission from here
+                thisOctal%temperature(subcell) = real(midplaneDiscTemp * (r/rInner)**(midplaneDiscpower))
              endif
           endif
           if ( (r > Rinner).and.(r < rOuter).and.(thisRho > thisOctal%rho(subcell))) then

@@ -3014,7 +3014,7 @@ contains
     real(double) :: costheta
     type(VECTOR) :: currentPosition, thisPosition, thisVel, oldposition
     type(VECTOR) :: rayVel, startVel, endVel, endPosition !, rvec
-    real(double) :: alphanu, snu, jnu
+    real(double) :: alphanu, snu, jnu, alphanuLine
     real(double) :: dv, deltaV
     integer :: i, icount
     real(double) :: tval
@@ -3237,6 +3237,7 @@ contains
              else
                 alphanu = 0.d0
              endif
+             alphaNuLine = alphaNu
 
              if (i == 2) then
                 bfOpac = thisOctal%kappaAbs(subcell,1)
@@ -3321,6 +3322,7 @@ contains
              if ((.not. ok).and.(ntau > 100000)) then
                 write(*,*) "ntau cap limit reached ",alphanu, " dust ",dustopac, &
                      " tau ",tau, " dtau ",dtau, " temp ",thisOctal%temperature(subcell)
+                write(*,*) "line, continuum opac ",alphanuLine, bfOpac
                 ok = .true.
              endif
           enddo
