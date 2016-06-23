@@ -15241,7 +15241,7 @@ end function readparameterfrom2dmap
              cellcentre = subcellCentre(thisOctal,subcell)
              if ( (abs(cellcentre%z + thisOctal%subcellSize/2.d0) < 0.1d0*smallestcellSize).or. &
                   (abs(cellcentre%z - thisOctal%subcellSize/2.d0) < 0.1d0*smallestcellSize) ) then
-                thisOctal%blackBody(subcell) = .true. ! this means there is blackbody emission from here
+!                thisOctal%blackBody(subcell) = .true. ! this means there is blackbody emission from here
              endif
           endif
           if ( (r > Rinner).and.(r < rOuter).and.(thisRho > thisOctal%rho(subcell))) then

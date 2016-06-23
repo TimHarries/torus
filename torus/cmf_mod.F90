@@ -2535,7 +2535,8 @@ contains
                      dble(thisOctal%temperature(subcell))))
              enddo
              thisOctal%atomLevel(subcell, iAtom, thisAtom(iatom)%nLevels) = &
-                  max(1.d-20,sahaEquationNextIon(thisAtom(iatom), nTot, thisOctal%ne(subcell), dble(thisOctal%temperature(subcell))))
+                  max(1.d-20,sahaEquationNextIon(thisAtom(iatom), nTot, &
+                  thisOctal%ne(subcell), dble(thisOctal%temperature(subcell))))
           enddo
           thisOctal%ne(subcell) = returnNe(thisOctal%atomLevel(subcell,:,:),thisAtom)
           
@@ -4387,7 +4388,7 @@ contains
        enddo
     endif
 
-
+    npoints = 0 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     dx = cube%xAxis(2) - cube%xAxis(1)
     dy = cube%yAxis(2) - cube%yAxis(1)
