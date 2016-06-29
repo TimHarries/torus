@@ -993,7 +993,7 @@ contains
     real(double) :: dv, nu
     type(MODELATOM) :: thisAtom
     
-    if (thisAtom%name=="HI") then
+    if ((thisAtom%name=="HI").and.(thisOctal%microturb(subcell)==0.d0)) then
        phiProf = phiProfStark(dv, thisOctal, subcell, nu, thisAtom)
     else
        phiProf = phiProfTurb(dv, thisOctal%microturb(subcell))
@@ -2428,7 +2428,7 @@ contains
           if (thisOctal%inflow(subcell).and.(thisOctal%temperature(subcell) > 2000.0)) then
           do iatom = 1, size(thisAtom)
              do iLevel = 1, thisAtom(iatom)%nLevels-1
-                nStar = boltzSahaGeneral(thisAtom(iAtom), iLevel, thisOctal%ne(subcell), &
+                nStar(iatom,ilevel) = boltzSahaGeneral(thisAtom(iAtom), iLevel, thisOctal%ne(subcell), &
                      dble(thisOctal%temperature(subcell))) * &
                      thisOctal%atomLevel(subcell, iatom, thisAtom(iAtom)%nLevels)
              enddo
@@ -3594,7 +3594,7 @@ contains
 
 #endif
      if (myrankiszero) then
-        write(*,*) "Solid angle check: ", totalOmega, pi* globalSourceArray(1)%radius**2/(distance/1.d10)**2
+!        write(*,*) "Solid angle check: ", totalOmega, pi* globalSourceArray(1)%radius**2/(distance/1.d10)**2
      endif
 
     if (myRankIsZero) then
@@ -4270,6 +4270,7 @@ contains
   subroutine createRayGridGeneric(cube, SourceArray, xPoints, yPoints, nPoints, xProj, yProj)
     use inputs_mod, only :  ttaurirouter, amrgridsize, ttauriStellarWind, SW_Rmin, SW_rmax, &
          ttauriWind
+    use inputs_mod,only : nr1,nr2,nr3,nr4,nphi1,nphi2,nphi3,nphi4
     use source_mod, only : globalnSource
     use amr_mod, only : countVoxels
     use datacube_mod, only : datacube
@@ -4280,37 +4281,23 @@ contains
     real(double), pointer :: xPoints(:), yPoints(:)
     integer :: nphi
     real(double) :: r, phi, dphi, dx, dy, rMin, rMax, r1, r2, dxOffset, dyOffset
-    integer :: ix, iy, iSource, nr1, nr2, nr3, nr4
+    integer :: ix, iy, iSource
     logical :: enhanced
     enhanced = .true.
 
-    nphi = 200
-    nr1 = 100
-
-    nr2 = 100
-
-    nr3 = 0
-    if (tTauriWind) nr3 = 100
-
-    nr4 = 0
-    if (ttauriStellarWind) nr4 = 100
-
-    nPoints = (nr1 + nr2 + nr3 + nr4) * nphi +  globalnSource * nr1 * nphi
+    nPoints = (nr1*nphi1 + nr2*nphi2 + nr3*nphi3 + nr4*nphi4) +  globalnSource * nr1 * nphi1
     nPoints = nPoints + 4*cube%nx*cube%ny
 
     allocate(xPoints(1:nPoints),yPoints(1:nPoints))
     npoints = 0
-
-    nr1 = 100
-    nphi = 200
 
     do iSource = 1, globalnSource
        do i = 1, nr1
           r = (dble(i)/dble(nr1)) * sourceArray(iSource)%radius
           call randomNumberGenerator(getDouble=dphi)
           dphi = dphi * twoPi
-          do j = 1, nphi
-             phi = twoPi * dble(j-1)/dble(nPhi)+dphi
+          do j = 1, nphi1
+             phi = twoPi * dble(j-1)/dble(nPhi1)+dphi
              rVec = VECTOR(r*cos(phi),r*sin(phi),0.d0)
              nPoints = nPoints + 1
              xPoints(nPoints) = (sourceArray(isource)%position.dot.xproj) + r * cos (phi)
@@ -4321,8 +4308,6 @@ contains
 
        rmin = sourceArray(1)%radius 
        rMax = ttauriRouter/1.d10
-       nr2 = 100
-       nphi = 200
 
        do i = 1, nr2
           r1 = rMin + (rMax-rMin) * (dble(i-1)/dble(nr2))**3
@@ -4330,8 +4315,8 @@ contains
           r = 0.5d0*(r1+r2)
           call randomNumberGenerator(getDouble=dphi)
           dphi = dphi * twoPi
-          do j = 1, nphi
-             phi = twoPi * dble(j-1)/dble(nPhi)+dphi
+          do j = 1, nphi2
+             phi = twoPi * dble(j-1)/dble(nPhi2)+dphi
              rVec = VECTOR(r*cos(phi),r*sin(phi),0.d0)
              nPoints = nPoints + 1
 !             xPoints(nPoints) = (sourceArray(isource)%position + rVec).dot.xproj
@@ -4346,16 +4331,14 @@ contains
     if (ttauriWind) then
        rmin = ttaurirOuter/1.d10 !dw_rmin
        rMax = amrGridSize
-       nr3 = 100
-       nphi = 100
        do i = 1, nr3
           r1 = rMin + (rMax-rMin) * (dble(i-1)/dble(nr3))**3
           r2 = rMin + (rMax-rMin) * (dble(i)/dble(nr3))**3
           r = 0.5d0*(r1+r2)
           call randomNumberGenerator(getDouble=dphi)
           dphi = dphi * twoPi
-          do j = 1, nphi
-             phi = twoPi * dble(j-1)/dble(nPhi)+dphi
+          do j = 1, nphi3
+             phi = twoPi * dble(j-1)/dble(nPhi3)+dphi
              rVec = VECTOR(r*cos(phi),r*sin(phi),0.d0)
              nPoints = nPoints + 1
 !             xPoints(nPoints) = (sourceArray(isource)%position + rVec).dot.xproj
@@ -4370,16 +4353,14 @@ contains
     if (ttauriStellarwind) then
        rmin = SW_rMin
        rMax = SW_rMax
-       nr4 = 100
-       nphi = 100
        do i = 1, nr4
           r1 = rMin + (rMax-rMin) * (dble(i-1)/dble(nr4))**3
           r2 = rMin + (rMax-rMin) * (dble(i)/dble(nr4))**3
           r = 0.5d0*(r1+r2)
           call randomNumberGenerator(getDouble=dphi)
           dphi = dphi * twoPi
-          do j = 1, nphi
-             phi = twoPi * dble(j-1)/dble(nPhi)+dphi
+          do j = 1, nphi4
+             phi = twoPi * dble(j-1)/dble(nPhi4)+dphi
              rVec = VECTOR(r*cos(phi),r*sin(phi),0.d0)
              nPoints = nPoints + 1
 !             xPoints(nPoints) = (sourceArray(isource)%position + rVec).dot.xproj
@@ -4389,8 +4370,6 @@ contains
          enddo
        enddo
     endif
-
-    npoints = 0 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     dx = cube%xAxis(2) - cube%xAxis(1)
     dy = cube%yAxis(2) - cube%yAxis(1)

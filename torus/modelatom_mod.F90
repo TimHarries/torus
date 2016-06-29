@@ -1167,7 +1167,6 @@ contains
             alpkk_hyd(freq,dble(temperature)) * (1.d0-exp(-(hcgs*freq)/(kerg*temperature)))
        kappa = kappa + ne * sigmae
 
-       kappa = kappa /2.
 
        if (kappa < 0.d0) then
           if (firstTime) then

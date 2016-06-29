@@ -28,7 +28,7 @@ contains
     use grid_mod
     use turbulence_mod
     use inputs_mod, only : readgrid, gridinputfilename, geometry!, mdot
-    use inputs_mod, only : amrGridCentreX, amrGridCentreY, amrGridCentreZ
+    use inputs_mod, only : amrGridCentreX, amrGridCentreY, amrGridCentreZ, flatdisc
     use inputs_mod, only : amr1d, amr2d, amr3d, splitOverMPI, atomicPhysics, molecularPhysics, variableDustSublimation
     use inputs_mod, only : amrGridSize, doSmoothGrid, ttauriMagnetosphere, discWind
     use inputs_mod, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp, ttauriStellarWind
@@ -366,7 +366,7 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
 #endif
           if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
           if (ttauriwind)  call addDiscWind(grid)
-
+          if (flatdisc) call assignDensitiesFlatDisc(grid, grid%octreeRoot)
           if (TTauriStellarWind) call assignDensitiesStellarWind(grid, grid%octreeRoot)
 
           if (ttauriwarp) call addWarpedDisc(grid%octreeRoot)

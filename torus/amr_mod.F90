@@ -3544,7 +3544,7 @@ CONTAINS
     use inputs_mod, only : dorefine, dounrefine, maxcellmass
     use inputs_mod, only : inputnsource, sourcepos, logspacegrid
     use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize, ttauriMagnetosphere, rCavity
-    use inputs_mod, only : cavdens, limitscalar, addDisc
+    use inputs_mod, only : cavdens, limitscalar, addDisc, flatdisc
     use inputs_mod, only : discWind, planetDisc, sourceMass, rGapInner1, ttauristellarwind, SW_rMax, SW_rmin
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
@@ -4028,6 +4028,16 @@ CONTAINS
           cellSize = thisOctal%subcellSize
           r0 = modulus(cellCentre)
 
+
+          if (flatdisc) then
+             r = sqrt(cellCentre%x**2 + cellCentre%y**2)
+             if ((r > rinner).and.(r < rOuter)) then
+                if ( (abs(cellcentre%z + thisOctal%subcellSize/2.d0) < 0.1d0*smallestcellSize).or. &
+                     (abs(cellcentre%z - thisOctal%subcellSize/2.d0) < 0.1d0*smallestcellSize) ) then
+                   split = .true.
+                endif
+             endif
+          endif
 
 
           if (ttauriStellarWind) then
@@ -15242,8 +15252,8 @@ end function readparameterfrom2dmap
              cellcentre = subcellCentre(thisOctal,subcell)
              if ( (abs(cellcentre%z + thisOctal%subcellSize/2.d0) < 0.1d0*smallestcellSize).or. &
                   (abs(cellcentre%z - thisOctal%subcellSize/2.d0) < 0.1d0*smallestcellSize) ) then
-                thisOctal%blackBody(subcell) = .true. ! this means there is blackbody emission from here
-                thisOctal%temperature(subcell) = real(midplaneDiscTemp * (r/rInner)**(midplaneDiscpower))
+!                thisOctal%blackBody(subcell) = .true. ! this means there is blackbody emission from here
+!                thisOctal%temperature(subcell) = real(midplaneDiscTemp * (r/rInner)**(midplaneDiscpower))
              endif
           endif
           if ( (r > Rinner).and.(r < rOuter).and.(thisRho > thisOctal%rho(subcell))) then
@@ -15256,6 +15266,45 @@ end function readparameterfrom2dmap
        endif
     enddo
   end subroutine assignDensitiesAlphaDisc
+
+  recursive subroutine assignDensitiesFlatDisc(grid, thisOctal)
+    use magnetic_mod, only : rhoAlphaDisc, velocityAlphaDisc
+    use inputs_mod, only : rSublimation, alphaDiscTemp, grainFrac, rinner, router, smallestCellSize, alphaDiscPower
+    use inputs_mod, only : midplaneDiscTemp, midplaneDiscPower
+    type(GRIDTYPE) :: grid
+    real(double) :: thisRho, r, fac
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    type(VECTOR) :: cellCentre
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call assignDensitiesFlatDisc(grid, child)
+                exit
+             end if
+          end do
+       else
+          cellCentre = subcellCentre(thisOctal, subcell)
+          r = sqrt(cellCentre%x**2 + cellCentre%y**2)
+          if ((r > rInner).and.(r < rOuter)) then
+             cellcentre = subcellCentre(thisOctal,subcell)
+             if ( (abs(cellcentre%z + thisOctal%subcellSize/2.d0) < 0.1d0*smallestcellSize).or. &
+                  (abs(cellcentre%z - thisOctal%subcellSize/2.d0) < 0.1d0*smallestcellSize) ) then
+                thisOctal%blackBody(subcell) = .true. ! this means there is blackbody emission from here
+                thisOctal%temperature(subcell) = real(midplaneDiscTemp * (r/rInner)**(midplaneDiscpower))
+                thisOctal%velocity(subcell) = velocityAlphaDisc(cellcentre)
+                CALL fillVelocityCorners(thisOctal,velocityAlphaDisc)
+                thisOctal%iAnalyticalVelocity(subcell) = 2
+             endif
+          endif
+       endif
+    enddo
+  end subroutine assignDensitiesFlatDisc
 
   recursive subroutine assignDensitiesStellarWind(grid, thisOctal)
     use analytical_velocity_mod

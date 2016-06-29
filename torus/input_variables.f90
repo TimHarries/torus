@@ -595,7 +595,7 @@
   real :: MdotParameter5, MdotParameter6
   real :: TTauriRinner, TTauriRouter ! disc sizes (in R_star units)
   real :: Thotspot
-  logical :: ttauriwarp, ttauriwind, ttauridisc, ttauriMagnetosphere
+  logical :: ttauriwarp, ttauriwind, ttauridisc, ttauriMagnetosphere, flatDisc
   logical :: discWind
   real :: TTauriRstar ! stellar radius (in R_sol units)
   real(double) :: holeRadius ! radius of inner hole to geometrically thin, optically thick disc
@@ -606,6 +606,7 @@
   real :: ThinDiskRin      ! (in R_star units)
   real :: curtainsPhi1s ! accretion curtains from (s)tart... 
   real(double) :: phiRefine, dphiRefine, minPhiResolution
+  integer :: nr1, nr2, nr3, nr4, nphi1, nphi2, nphi3, nphi4
   real :: curtainsPhi1e ! ... to (e)nd angle
   real :: curtainsPhi2s ! (all in degrees)
   real :: curtainsPhi2e ! must be: phi1s<phi1e<phi2s<phi2e

@@ -897,6 +897,20 @@ contains
        call getLogical("ttauridisc", ttauriDisc, cLine, fLine, nLines, &
             "Dusty disc around magnetosphere: ","(a,1l,1x,a)", .false., ok, .false.)
 
+       call getLogical("flatdisc", flatDisc, cLine, fLine, nLines, &
+            "Geometrically flat blackbody disc: ","(a,1l,1x,a)", .false., ok, .false.)
+
+       if (flatDisc) then
+          call getReal("rinner", rInner, ttauriRstar/1.e10, cLine, fLine, nLines, &
+               "Inner Radius (stellar radii): ","(a,f7.3,a)", 12., ok, .true.)
+          call getReal("router", rOuter, real(autocm/1.e10), cLine, fLine, nLines, &
+               "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
+          call getReal("midplanetemp", midplaneDiscTemp, 1., cLine, fLine, nLines, &
+               "Blackbody Disc temperature inside sub radius: ","(a,f8.1,a)", 0., ok, .true.)
+
+          call getReal("midplanepower", midplaneDiscPower, 1., cLine, fLine, nLines, &
+               "Blackbody disc power law index inside sub radius: ","(a,f8.1,a)", 0., ok, .true.)
+       endif
        if (ttauriDisc) then
           call getReal("rinner", rInner, ttauriRstar/1.e10, cLine, fLine, nLines, &
                "Inner Radius (stellar radii): ","(a,f7.3,a)", 12., ok, .true.)
@@ -2506,7 +2520,7 @@ contains
                "Line emission wavelength: ","(a,f8.1,1x,a)", 850., ok, .true.)          
 
     call getReal("vturb", vturb, real(kmstoc), cLine, fLine, nLines, &
-               "Turbulent velocity (km/s):","(a,f6.1,1x,a)", 50., ok, .true.)
+               "Turbulent velocity (km/s):","(a,f6.1,1x,a)", 0., ok, .true.)
     !
     ! Voigt profile prameters
     !
@@ -3428,6 +3442,37 @@ contains
 
           call getReal("vturb", vturb, real(kmstoc), cLine, fLine, nLines, &
                "Turbulent velocity (km/s):","(a,f6.1,1x,a)", 50., ok, .true.)
+
+          call  getInteger("nr1", nr1,cLine, fLine, nLines, &
+               "Number of radial rays to capture stellar photosphere: ","(a,i2,1x,a)", 200, ok, .false.)          
+          call  getInteger("nphi1", nphi1,cLine, fLine, nLines, &
+               "Number of azimuthal rays to capture stellar photosphere: ","(a,i2,1x,a)", 100, ok, .false.)          
+          nr2 = 0 
+          nphi2 = 0
+          if (ttauriMagnetosphere) then
+             call  getInteger("nr2", nr2,cLine, fLine, nLines, &
+                  "Number of radial rays to capture stellar magnetosphere: ","(a,i2,1x,a)", 200, ok, .false.)          
+             call  getInteger("nphi2", nphi2,cLine, fLine, nLines, &
+                  "Number of azimuthal rays to capture stellar magnetosphere: ","(a,i2,1x,a)", 100, ok, .false.)          
+          endif
+          nr3 = 0 
+          nphi3 = 0
+          if (ttauriWind) then
+             call  getInteger("nr3", nr3,cLine, fLine, nLines, &
+                  "Number of radial rays to capture disc wind: ","(a,i2,1x,a)", 200, ok, .false.)          
+             call  getInteger("nphi3", nphi3,cLine, fLine, nLines, &
+                  "Number of azimuthal rays to capture disc wind: ","(a,i2,1x,a)", 100, ok, .false.)          
+          endif
+          nr4 = 0 
+          nphi4 = 0
+
+          if (ttauristellarWind) then
+             call  getInteger("nr4", nr4,cLine, fLine, nLines, &
+                  "Number of radial rays to capture stellar wind: ","(a,i2,1x,a)", 200, ok, .false.)          
+             call  getInteger("nphi4", nphi4,cLine, fLine, nLines, &
+                  "Number of azimuthal rays to capture stellar wind: ","(a,i2,1x,a)", 100, ok, .false.) 
+          endif
+
     endif
 
     call getLogical("internalView", internalView, cLine, fLine, nLines, &
