@@ -55,6 +55,7 @@ module zlib_mod
      module procedure writeCompressedFileRealArray1d
      module procedure writeCompressedFileRealArray2d
      module procedure writeCompressedFileIntegerArray1d
+     module procedure writeCompressedFileBigIntegerArray1d
   end interface
 
 
@@ -73,6 +74,7 @@ module zlib_mod
      module procedure readCompressedFileRealArray1d
      module procedure readCompressedFileRealArray2d
      module procedure readCompressedFileIntegerArray1d
+     module procedure readCompressedFileBigIntegerArray1d
   end interface
 
 
@@ -262,6 +264,13 @@ contains
     call writeCompressedFileGeneric(lunit, integerArray1d=integerArray1d)
   end subroutine writeCompressedFileIntegerArray1d
 
+  subroutine writeCompressedFileBigIntegerArray1d(lunit, bigIntegerArray1d)
+    integer :: lunit
+    integer(bigInt) :: bigIntegerArray1d(:)
+
+    call writeCompressedFileGeneric(lunit, bigIntegerArray1d=bigIntegerArray1d)
+  end subroutine writeCompressedFileBigIntegerArray1d
+
   subroutine writeCompressedFileDoubleArray1d(lunit, doubleArray1d)
     integer :: lunit
     real(double) :: doubleArray1d(:)
@@ -330,13 +339,14 @@ contains
 
   subroutine writeCompressedFileGeneric(lunit, doubleArray1d, doubleArray2d, doubleArray3d, doubleValue, &
        cString, intValue, integerArray1d, realValue, logicalArray1d, realArray1d, realArray2d, &
-       vectorArray1d, logicalValue, vectorValue)
+       vectorArray1d, logicalValue, vectorValue, bigIntegerArray1d)
     integer :: lunit
     integer, optional :: intValue
     logical, optional :: logicalValue
     real, optional :: realValue
     type(VECTOR), optional :: vectorValue
     integer, optional :: integerArray1d(:)
+    integer(bigInt), optional :: bigIntegerArray1d(:)
     type(VECTOR), optional :: vectorArray1d(:)
     logical, optional :: logicalArray1d(:)
     real, optional :: realArray1d(:)
@@ -353,16 +363,19 @@ contains
     real(double), parameter :: testDouble  = 0.d0
     real, parameter :: testReal = 0.
     integer, parameter :: testInteger = 0
-    integer :: nBytesDouble, nBytesReal, nBytesInteger
+    integer(bigInt), parameter :: testBigInteger = 0
+    integer :: nBytesDouble, nBytesReal, nBytesInteger, nBytesBigInteger
 
     nBytesReal = 4
     nBytesDouble = 8
     nBytesInteger = 4
+    nBytesBigInteger = 8
     
 #ifdef MEMCHECK
        nbytesReal = int(sizeof(testreal))
        nbytesDouble = int(sizeof(testDouble))
        nbytesInteger = int(sizeof(testInteger))
+       nbytesBigInteger = int(sizeof(testBigInteger))
 #endif
 
     
@@ -429,6 +442,11 @@ contains
        inputBuffer(1:nBytes) = transfer(integerArray1d, inputBuffer(1:nBytes))
     endif
 
+    if (present(bigIntegerArray1d)) then
+       nbytes = size(bigIntegerArray1d)*nBytesBigInteger
+       allocate(inputBuffer(1:nBytes))
+       inputBuffer(1:nBytes) = transfer(bigIntegerArray1d, inputBuffer(1:nBytes))
+    endif
 
     if (present(doubleArray1d)) then
        nbytes = size(doubleArray1d)*nBytesDouble
@@ -551,6 +569,13 @@ contains
     call readCompressedFileGeneric(lunit, integerArray1d=value)
   end subroutine readCompressedFileIntegerArray1d
 
+  subroutine readCompressedFileBigIntegerArray1d(lunit, value)
+    integer :: lunit
+    integer(bigInt) :: value(:)
+
+    call readCompressedFileGeneric(lunit, bigIntegerArray1d=value)
+  end subroutine readCompressedFileBigIntegerArray1d
+
   subroutine readCompressedFileRealArray2d(lunit, value)
     integer :: lunit
     real :: value(:,:)
@@ -604,12 +629,13 @@ contains
 
   subroutine readCompressedFileGeneric(lunit, doubleValue, doubleArray1d, doubleArray2d, doubleArray3d, &
        vectorValue, logicalValue, integerValue, realValue, realArray1d, integerArray1d, realArray2d, cString, &
-       logicalArray1d, vectorArray1d)
+       logicalArray1d, vectorArray1d, bigIntegerArray1d)
     integer :: lunit
     real, optional :: realValue, realArray1d(:), realArray2d(:,:)
     logical, optional :: logicalValue, logicalArray1d(:)
     type(VECTOR), optional :: vectorvalue, vectorArray1d(:)
     integer, optional :: integerValue, integerArray1d(:)
+    integer(bigInt), optional :: bigIntegerArray1d(:)
     character(len=*), optional :: cString
     real(double), optional :: doubleValue
     real(double), optional :: doubleArray1d(:)
@@ -689,6 +715,11 @@ contains
        allocate(inputBuffer(1:nBytes))
     endif
 
+    if (present(bigIntegerArray1d)) then
+       nBytes = size(bigIntegerArray1d)*8
+       allocate(inputBuffer(1:nBytes))
+    endif
+
     if (present(logicalArray1d)) then
 #ifdef MEMCHECK
        nBytes = int(size(logicalArray1d)*sizeof(logicalArray1d(1)))
@@ -750,6 +781,10 @@ contains
 
     if (present(integerArray1d)) then
        integerArray1d = transfer(inputBuffer(1:nBytes), integerArray1d)
+    endif
+
+    if (present(bigIntegerArray1d)) then
+       bigIntegerArray1d = transfer(inputBuffer(1:nBytes), bigIntegerArray1d)
     endif
 
     if (present(logicalArray1d)) then

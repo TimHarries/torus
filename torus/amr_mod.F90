@@ -825,6 +825,9 @@ CONTAINS
 !    write(*,'(a,a,a)') "trim(grid%geometry):",trim(grid%geometry),"*"
     SELECT CASE (geometry)!trim(grid%geometry))
 
+    CASE ("uniformden")
+       call calcUniformDensityGrid(thisOctal,subcell)
+
     CASE("pathtest")
        call calcPathTestDensity(thisOctal,subcell)
 
@@ -1001,6 +1004,16 @@ CONTAINS
     CASE("sphere")
        call calcSphere(thisOctal, subcell)
 
+    CASE("krumholz") 
+       ! uniform-density sphere with power-law falloff
+       ! Krumholz et al 2011, ApJ, 740, 74 / Krumholz et al 2012, ApJ, 754, 71
+       call calckrumholz(thisOctal, subcell)
+
+    CASE("3dgaussian")
+       call calcGaussianSphere(thisOctal, subcell)
+
+    CASE("arthur06") ! Arthur & Hoare 2006, ApJ, 165, 283
+       call calcArthurHoareTest(thisOctal, subcell)
 
     CASE("triangle")
        call calcTriangle(thisOctal, subcell)
@@ -4438,7 +4451,8 @@ CONTAINS
 
        case("bonnor", "empty", "unimed", "SB_WNHII", "SB_instblt", "SB_CD_1Da" &
             ,"SB_CD_2Da" , "SB_CD_2Db", "SB_offCentre", "SB_isoshck", &
-            "SB_coolshk", "SB_gasmix", "bubble", "SB_Dtype")
+            "SB_coolshk", "SB_gasmix", "bubble", "SB_Dtype", "uniformden", &
+            "arthur06", "3dgaussian", "krumholz")
 
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
@@ -9357,7 +9371,20 @@ endif
     thisOctal%nhii(subcell) = thisOctal%ne(subcell)
 
   end subroutine calcUnimed
+  
+  subroutine calcUniformDensityGrid(thisOctal,subcell)
+    use inputs_mod, only : gridDensity, decoupleGasDustTemperature
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
 
+    thisOctal%rho(subcell) = gridDensity
+    thisOctal%temperature(subcell) = 10.d0
+    if (decoupleGasDustTemperature) thisOctal%tdust(subcell) = 10.d0
+    thisOctal%iequationOfState(subcell) = 1 ! isothermal
+
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+
+  end subroutine calcUniformDensityGrid
 
 
   subroutine calcSphere(thisOctal,subcell)
@@ -9418,6 +9445,121 @@ endif
     endif
 
   end subroutine calcSphere
+
+  ! geometry krumholz: uniform-density sphere with power-law falloff
+  ! Krumholz et al 2011, ApJ, 740, 74 / Krumholz et al 2012, ApJ, 754, 71
+  subroutine calcKrumholz(thisOctal,subcell)
+    use inputs_mod, only : sphereRadius, sphereMass, spherePosition, rhoFloor
+    use inputs_mod, only : beta, hydrodynamics
+    use inputs_mod, only : surfacedensity, decoupleGasDustTemperature
+!    use inputs_mod, only : smallestCellSize
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: eThermal, rMod,  rhoSphere
+    logical, save :: firsttime = .true.
+    real(double) :: rhoCore
+
+
+    rVec = subcellCentre(thisOctal, subcell)
+    rMod = modulus(rVec-spherePosition)
+
+    rhoSphere = sphereMass * 3.d0 / (fourPi * sphereRadius**3 * 1.d30)
+    if (firstTime.and.writeoutput) then
+       write(*,*) "Average rho sphere ",rhosphere
+       write(*,*) "Free fall time (years): ",secstoyears* sqrt(3.d0 * pi / (32.d0 * rhosphere * bigg))
+       firstTime = .false.
+    endif
+    if (hydrodynamics) thisOctal%phi_gas(subcell) = -bigG *sphereMass / (rMod * 1.d10)
+
+    rhoCore = 6.d0 * surfaceDensity / ((2.d0**2.5d0 - 1.d0) * sphereRadius*1.d10)
+
+    if (rMod < sphereRadius/2.d0) then
+       ! inner core (uniform density)
+       thisOctal%rho(subcell) = rhoCore
+    elseif ((rMod >= sphereRadius/2.d0) .and. (rMod < sphereRadius)) then
+       ! outer envelope (power law)
+       thisOctal%rho(subcell) = rhoCore * (2.d0 * rMod/sphereRadius)**beta
+    else
+       ! outside sphere
+       thisOctal%rho(subcell) = 1.d-2 * 2.d0**beta * rhoCore
+    endif
+    thisOctal%rho(subcell) = max(rhoFloor, thisOctal%rho(subcell))
+    thisOctal%temperature(subcell) = 10.d0 
+    if (decoupleGasDustTemperature) thisOctal%tDust(subcell) = 10.d0
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+
+    if (hydrodynamics) then
+       thisOctal%iequationOfState(subcell) = 1 ! isothermal
+       ethermal = 1.5d0*(1.d0/(2.33d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+       thisOctal%energy(subcell) = eThermal
+       thisOctal%gamma(subcell) = 2.d0
+    endif
+
+  end subroutine calcKrumholz 
+
+  ! geometry 3dgaussian
+  subroutine calcGaussianSphere(thisOctal,subcell)
+
+    use inputs_mod, only : sphereRadius, sphereMass, spherePosition, rhoFloor
+    use inputs_mod, only : hydrodynamics, rhoThreshold
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: eThermal, rMod,  rhoSphere
+    real(double) :: sphereRho0, sigma
+    logical, save :: firsttime = .true.
+
+    rVec = subcellCentre(thisOctal, subcell)
+    rMod = modulus(rVec-spherePosition)
+
+    rhoSphere = sphereMass * (3.d0) / (fourPi * sphereRadius**3 * 1.d30)
+    if (firstTime.and.writeoutput) then
+       write(*,*) "Rho sphere ",rhosphere
+       write(*,*) "Free fall time (years): ",secstoyears* 1.d0/sqrt(rhosphere*bigg)
+       firsttime=.false.
+    endif
+!    if (hydrodynamics) thisOctal%phi_gas(subcell) = -bigG *sphereMass / (rMod * 1.d10)
+    if (rMod < sphereRadius) then
+       ! ratio of max/min density ~ 3
+       sigma = sphereRadius / sqrt(2.d0 * log(3.d0))
+       sphereRho0 = sphereMass / (sigma * sqrt(2.d0 * pi)) 
+       thisOctal%rho(subcell) = sphereRho0 * exp(-((rVec%x-spherePosition%x)**2 + & 
+            (rVec%y-spherePosition%y)**2 + (rVec%z-spherePosition%z)**2) / (2 * sigma**2)) 
+       thisOctal%rho(subcell) = min(rhoThreshold,thisOctal%rho(subcell))
+! set up density outside sphere
+    else
+       thisOctal%rho(subcell) = rhoFloor 
+       thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+    endif
+    thisOctal%rho(subcell) = max(rhoFloor, thisOctal%rho(subcell))
+    thisOctal%temperature(subcell) = 20.d0
+    if (hydrodynamics) then
+       thisOctal%iequationOfState(subcell) = 1 ! isothermal
+       ethermal = 1.5d0*(1.d0/(2.33d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+       thisOctal%energy(subcell) = eThermal
+       thisOctal%gamma(subcell) = 2.d0
+    endif
+
+  end subroutine calcGaussianSphere
+
+  ! Arthur and Hoare 2006, exponential density distribution
+  subroutine calcArthurHoareTest(thisOctal,subcell)
+    use inputs_mod, only : arthurScaleHeight, arthurN0
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: rho_0 
+
+    rVec = subcellCentre(thisOctal, subcell)
+
+    rho_0 = arthurN0 * mHydrogen 
+    thisOctal%rho(subcell) = rho_0 * exp(rVec%z / arthurScaleHeight)
+
+    thisOctal%temperature(subcell) = 300.d0
+    thisOctal%iequationOfState(subcell) = 1 ! isothermal
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+  end subroutine calcArthurHoareTest
 
   subroutine addDiscDensity(thisOctal,subcell)
     use inputs_mod, only : height, alphaDisc, betaDisc, rho0, rinner, rOuter

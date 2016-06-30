@@ -4415,7 +4415,7 @@ contains
     integer :: subcell, i
     real(double) :: biggamma,eta
     logical :: withViscosity
-!    logical :: useviscosity                                                                                                                                                                                             
+!    logical :: useviscosity 
 
 
     eta = etaViscosity
@@ -4437,7 +4437,7 @@ contains
           if (.not.thisOctal%ghostCell(subcell)) then
              !Get pressure, independent of viscosity
              thisoctal%pressure_i(subcell) = getpressure(thisoctal, subcell)
-             
+
              !          if(0 == 1) then
              if (.not.useTensorViscosity) then
                 !Calculate viscosity contribution to cell pressure
@@ -4501,6 +4501,8 @@ contains
     real(double) :: x_i_plus_half, x_i_minus_half, p_i_plus_half, p_i_minus_half, u_i_minus_half, u_i_plus_half
     real(double) :: phi_i_plus_half, phi_i_minus_half, fac1, fac2
     real(double) :: iniRhoe
+    type(VECTOR) :: pos
+!    real(double) :: debugPressure, bigGamma
 
     eps = smallestCellSize * 1.d10
     
@@ -4564,7 +4566,7 @@ contains
                   thisOctal%phi_i(subcell)) * fac2
 
              dx = x_i_plus_half - x_i_minus_half
-
+             pos = subcellcentre(thisoctal,subcell)
              if (direction%x > 0.d0) then
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * &
                      (p_i_plus_half - p_i_minus_half) / dx
@@ -4573,6 +4575,7 @@ contains
                 endif
                 thisoctal%rhou(subcell) = thisoctal%rhou(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
+
                 if (radiationPressure) then
                    if (RadForceMonte) then
                       thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
@@ -4581,17 +4584,20 @@ contains
                       thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
                            dt * thisOctal%radiationMomentum(subcell)%x
                    endif
-
                 endif
+
 
              else if (direction%y > 0.d0) then
                 thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - dt * &
                      (p_i_plus_half - p_i_minus_half) / dx
+
                 if (useTensorViscosity) then
 !                   thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - divQ(thisOctal, subcell, 1, grid)*dt
                 endif
+
                 thisoctal%rhov(subcell) = thisoctal%rhov(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
+
                 if (radiationPressure) then
                    if (RadForceMonte) then
                       thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + &
@@ -4601,14 +4607,18 @@ contains
                            dt * thisOctal%radiationMomentum(subcell)%y
                    endif
                 endif
+
              else
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * &
                      (p_i_plus_half - p_i_minus_half) / dx
+
                 if (useTensorViscosity) then
 !                   thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - divQ(thisOctal, subcell, 1, grid)*dt
                 endif
+
                 thisoctal%rhow(subcell) = thisoctal%rhow(subcell) - dt * & !gravity due to gas
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
+
                 if (radiationPressure) then
                    if (RadForceMonte) then
                       thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
@@ -4618,6 +4628,7 @@ contains
                            dt * thisOctal%radiationMomentum(subcell)%z
                    endif
                 endif
+
              endif
 
 
@@ -7170,7 +7181,6 @@ end subroutine sumFluxes
     use mpi
     use inputs_mod, only : nBodyPhysics, severeDamping, dirichlet, doGasGravity, useTensorViscosity, &
          moveSources, hydroSpeedLimit, nbodyTest
-    use inputs_mod, only : pressureSupport
     use starburst_mod, only : updateSourceProperties
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
@@ -7251,6 +7261,7 @@ end subroutine sumFluxes
              if (myrankWorldglobal == 1) call tune(6,"X-direction step")
        end select
 
+        
        !set up the grid values
        call setupX(grid%octreeRoot, grid, direction)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
@@ -7322,8 +7333,7 @@ end subroutine sumFluxes
 
        !modify rhou and rhoe due to pressure/graviational potential gradient
        call pressureForce(grid%octreeRoot, dt, grid, direction)
-       if (pressuresupport) call calculateTemperatureFromEnergy(grid%octreeRoot)
-
+       
        select case(idir)
          case(1)
             if (myrankWorldglobal == 1) call tune(6,"X-direction step")
@@ -7334,7 +7344,8 @@ end subroutine sumFluxes
          case(4)
             if (myrankWorldglobal == 1) call tune(6,"X-direction step")
       end select
-
+       
+       
 !      write(cfile,'(a,i1.1,a)') "afterhydro",idir,".vtk"
 !      call writeVtkFile(grid, cfile, &
 !           valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
@@ -8221,7 +8232,6 @@ end subroutine sumFluxes
     dt = 1.d30
     
     direction = VECTOR(1.d0, 0.d0, 0.d0)
-
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
     if (amr2d) then
        call setupUi_amr(grid%octreeRoot, grid, direction, dt)
@@ -8355,25 +8365,19 @@ end subroutine sumFluxes
     dt = 1.d30
     
     direction = VECTOR(1.d0, 0.d0, 0.d0)
-    call computepressureGeneral(grid, grid%octreeroot, .true.) 
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
-    call setuppressure(grid%octreeroot, grid, direction)
     call setuprhoPhi(grid%octreeroot, grid, direction)    
     call gravityTimeStep(grid%octreeRoot, dt)
 
     if (amr3d) then
        direction = VECTOR(0.d0, 1.d0, 0.d0)
-       call computepressureGeneral(grid, grid%octreeroot, .true.) 
        call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=5)
-       call setuppressure(grid%octreeroot, grid, direction)
        call setuprhoPhi(grid%octreeroot, grid, direction)
        call gravityTimeStep(grid%octreeRoot, dt)
     endif
 
     direction = VECTOR(0.d0, 0.d0, 1.d0)
-    call computepressureGeneral(grid, grid%octreeroot, .true.) 
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
-    call setuppressure(grid%octreeroot, grid, direction)
     call setuprhoPhi(grid%octreeroot, grid, direction)
     call gravityTimeStep(grid%octreeRoot, dt)
 
@@ -16659,7 +16663,7 @@ end subroutine refineGridGeneric2
 
   end subroutine selfGrav
 
-  real(double) function getPressure(thisOctal, subcell)
+  real(double) function getPressure(thisOctal, subcell, debug)
 #ifdef PHOTOION
     use inputs_mod, only : photoionPhysics, honly, simpleMu, radpressureTest, mu, ndensity
     use ion_mod, only : nGlobalIon, globalIonArray, returnMu, returnmusimple
@@ -16671,6 +16675,7 @@ end subroutine refineGridGeneric2
     real(double) :: rhoPhys, gamma, cs, rhoNorm, rhov
     type(VECTOR) :: rVec
     logical, save :: firstTime = .true.
+    logical, optional :: debug
 
     select case(thisOctal%iEquationOfState(subcell))
        case(0) ! adiabatic
@@ -16735,6 +16740,12 @@ end subroutine refineGridGeneric2
 
           if (radPressureTest) getPressure =  min(getPressure,nDensity * kerg * thisOctal%temperature(subcell))
 
+          ! write outputs for this particular cell, if debug is true
+          if (present(debug)) then
+            if (debug) then
+               write(*,'(1pe8.1,1pe8.1,1pe8.1,a22)') getPressure,thisOctal%temperature(subcell),mu, " p, T, mu"
+            endif
+          endif
 
           !if(getPressure < 1.d-60) then
           !   print *, "LOW PRESSURE - halting"
@@ -19152,8 +19163,11 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
           nSourcesInAccretionRadius = 0
           allocate(iSource(1:nSource))
           do i = 1, nSource
+             ! check if this cell is inside the accretion radius of a source
              if (modulus(source(i)%position - cellCentre)*1.d10 < source(i)%accretionRadius) then
+                ! increment number of sources that this cell is associated with
                 nSourcesInAccretionRadius = nSourcesInAccretionRadius + 1
+                ! record the index of the associated source
                 iSource(nSourcesInAccretionRadius) = i
              endif
           enddo
@@ -19161,21 +19175,26 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
           if (nSourcesInAccretionRadius >= 1) then
 
              if (nSourcesInAccretionRadius == 1) then
+                ! index of the source accreting this cell
                 thisSource = iSource(1)
              else
+                ! find the source that this cell is most bound to
                 eMin = 1.d30
                 thisSource = 0
+                ! loop through all the accreting sources 
                 do i = 1, nSourcesInAccretionRadius
                    r = modulus(source(iSource(i))%position-cellCentre)*1.d10
                    eGrav = -bigG*cellMass*source(isource(i))%mass / r
                    eKin = 0.5d0 * cellMass * modulus(cellVelocity)**2
                    if ((eGrav + eKin) < eMin) then
+                      ! index of the accreting source
                       thisSource = isource(i)
                       eMin = eGrav + eKin
                    endif
                 enddo
              endif
              
+             ! index (in the original source array) of the source accreting this cell
              thisOctal%chiLine(subcell) = thisSource
           endif
           deallocate(iSource)
@@ -19484,6 +19503,10 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
           call findStellarWindVolume(grid%octreeRoot, sourceArray(i), totalVolume)
           call MPI_ALLREDUCE(totalVolume, temp, 1, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
           totalVolume = temp
+          if (writeoutput .and. sourceArray(i)%mDotWind*dt > 0.d0) then
+             write(*,'(a,i4,a,es12.5)') "Source ", i, & 
+                " adding wind, total mass (msol): ", sourceArray(i)%mDotWind * dt / msol
+          endif
           call addStellarWindRecur(grid%octreeRoot, sourceArray(i), dt, totalVolume)
     enddo
   end subroutine addStellarWind
@@ -19509,6 +19532,8 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
           call findStellarWindVolume(grid%octreeRoot, sourceArray(supernovaIndex(i)), totalVolume)
           call MPI_ALLREDUCE(totalVolume, temp, 1, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
           totalVolume = temp
+          if (writeoutput) write(*,*) "Adding supernova: ejecta mass (msol) ", ejectaMass(i)/msol, & 
+             " density (g/cm^3): ", ejectaMass(i)/totalVolume, " ke (erg) ", ke(i)
           call addSupernovaRecur(grid%octreeRoot, sourceArray(supernovaIndex(i)), dt, totalVolume, ejectaMass(i),ke(i))
        enddo
 
@@ -19527,7 +19552,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
 
   recursive subroutine addStellarWindRecur(thisOctal, source, dt, totalVolume)
     use mpi
-    use inputs_mod, only : smallestCellSize
+    use inputs_mod, only : smallestCellSize, stellarWindRadius
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     type(SOURCETYPE) :: source
@@ -19566,7 +19591,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
 
           totalMassThisInterval = mDot * dt
 
-          if (r < smallestCellSize*5.d0) then
+          if (r < smallestCellSize*stellarWindRadius) then
              thisOctal%boundaryCell(subcell) = .true.
              v = cellVolume(thisOctal, subcell) * 1.d30 
              thisRho = totalMassThisInterval / totalVolume
@@ -19584,7 +19609,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
 
   recursive subroutine addSuperNovaRecur(thisOctal, source, dt, totalVolume, ejectaMass, ke)
     use mpi
-    use inputs_mod, only : smallestCellSize
+    use inputs_mod, only : smallestCellSize, stellarWindRadius
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     type(SOURCETYPE) :: source
@@ -19623,7 +19648,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
 
           vterm = sqrt(2.d0 * ke / totalMassThisInterval)
 
-          if (r < smallestCellSize*5.d0) then
+          if (r < smallestCellSize*stellarWindRadius) then
              thisOctal%boundaryCell(subcell) = .true.
              v = cellVolume(thisOctal, subcell) * 1.d30
              thisRho = totalMassThisInterval / totalVolume
@@ -19641,7 +19666,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
 
   recursive subroutine findStellarWindVolume(thisOctal, source, totalVolume)
     use mpi
-    use inputs_mod, only : smallestCellSize
+    use inputs_mod, only : smallestCellSize, stellarWindRadius
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     type(SOURCETYPE) :: source
@@ -19668,8 +19693,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
           cellCentre = subcellCentre(thisOctal, subcell)
           rVec = cellCentre - source%position
           r = modulus(rVec)
-          rVec = rVec / r
-          if (r < smallestCellSize*5.d0) then
+          if (r < smallestCellSize*stellarWindRadius) then
              totalVolume = totalVolume + cellVolume(thisOctal, subcell)*1.d30
           endif
 
@@ -20076,7 +20100,6 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
        endif
     enddo
   end subroutine setEquationOfState
-
 
 #endif
 

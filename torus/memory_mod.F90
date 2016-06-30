@@ -15,6 +15,7 @@ module memory_mod
      module procedure mySizeOfReal
      module procedure mySizeOfReal2D
      module procedure mySizeOfInteger
+     module procedure mySizeOfBigInteger
      module procedure mySizeOfOctal3d
      module procedure mySizeOfInteger2D
      module procedure mySizeOfInteger3D
@@ -266,6 +267,13 @@ module memory_mod
       i = 0
       if (associated(p)) i = int(sizeof(p))
     end function mySizeOfInteger
+
+    function mySizeOfBigInteger(p) result (i)
+      integer(bigint), pointer :: p(:)
+      integer :: i
+      i = 0
+      if (associated(p)) i = int(sizeof(p))
+    end function mySizeOfBigInteger
 
     function mySizeOfReal(p) result (i)
       real, pointer :: p(:)

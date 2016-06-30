@@ -172,6 +172,10 @@ contains
             "Number of threads for domain decomposition: ","(a,i3,a)", 0, ok, .true.)
        call getLogical("loadbalancing", loadBalancing, cLine, fLine, nLines, &
             "Employ load balancing MPI methods: ","(a,1l,1x,a)", .true., ok, .false.)
+       if (loadBalancing) then
+          call getString("loadmethod", loadBalancingMethod, cLine, fLine, nLines, &
+               "Load-balancing photoionization step by: ","(a,a,1x,a)", "crossings", ok, .false.)
+       endif
     endif
 
 
@@ -297,12 +301,14 @@ contains
          "Generate sources as starburst: ", "(a,1l,1x,a)", .false., ok, .false.)
 
     if (starburst) then
+       call getDouble("feedbackdelay", feedbackDelay, 1.d0, cLine, fLine, nLines, &
+            "Delay feedback after starburst (tff): ","(a,f6.1,a)", 0.1d0, ok, .false.)
+
        call getDouble("mstarburst", mStarburst, 1.d0, cLine, fLine, nLines, &
             "Starburst mass (solar masses): ","(a,f6.1,a)", 1000.d0, ok, .true.)
 
        call getDouble("burstage", burstAge, 1.d0, cLine, fLine, nLines, &
             "Starburst age (years): ","(a,f10.1,a)", 1000.d0, ok, .true.)
-
 
        call getDouble("bursttime", burstTime, yearstoSecs, cLine, fLine, nLines, &
             "Starburst time (years): ","(a,f10.1,a)", 0.d0, ok, .false.)
@@ -312,6 +318,12 @@ contains
 
        call getString("bursttype", burstType, cLine, fLine, nLines, &
             "Star burst type: ","(a,a,1x,a)","none", ok, .true.)
+
+       if (burstType == 'singlestartest') then
+          call getVector("burstposition", burstPosition, 1.d0, cLine, fLine, nLines, &
+               "Star position (10^10 cm): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .false.)
+       endif
+
     endif
 
 #ifdef CHEMISTRY
@@ -791,6 +803,17 @@ contains
        call getDouble("centralmass", centralMass, msol, cLine, fLine, nLines, &
             "Central mass (in M_sol): ","(a,f7.1,1x,a)", 1.d-30, ok, .true.)
 
+     case("uniformden")
+       call getDouble("griddensity", gridDensity, 1.d0, cLine, fLine, nLines, &
+            "Initial density of grid (in g cm^-3): ","(a,e12.3,1x,a)", 1.d-18, ok, .false.)
+
+     case("arthur06")
+       call getDouble("arthurn", arthurN0, 1.d0, cLine, fLine, nLines, &
+            "Density at origin (in cm^-3): ","(a,e12.3,1x,a)", 8.d3 , ok, .false.)
+
+       call getDouble("arthurscaleheight", arthurScaleHeight, pctocm/1.d10, cLine, fLine, nLines, &
+            "Scale height (in pc): ","(a,e12.3,1x,a)", 0.05d0 , ok, .false.)
+
      case("unisphere","gravtest")
        call getDouble("mass", sphereMass, msol, cLine, fLine, nLines, &
             "Sphere mass (in M_sol): ","(a,f7.1,1x,a)", 1.d-30, ok, .true.)
@@ -803,6 +826,38 @@ contains
 
        call getVector("velocity", sphereVelocity, 1.d5/cspeed, cLine, fLine, nLines, &
             "Sphere velocity (km/s): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
+
+     case("3dgaussian")
+       call getDouble("mass", sphereMass, msol, cLine, fLine, nLines, &
+            "Sphere mass (in M_sol): ","(a,f7.1,1x,a)", 1.d-30, ok, .true.)
+
+       call getDouble("radius", sphereRadius, pctocm/1.d10, cLine, fLine, nLines, &
+            "Sphere radius (in pc): ","(a,e12.3,1x,a)", 1.d-30, ok, .true.)
+
+       call getVector("position", spherePosition, 1.d0, cLine, fLine, nLines, &
+            "Sphere position (10^10 cm): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
+
+       call getVector("velocity", sphereVelocity, 1.d5/cspeed, cLine, fLine, nLines, &
+            "Sphere velocity (km/s): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
+
+     case("krumholz")
+       call getDouble("surfacedensity", surfacedensity, 1.d0, cLine, fLine, nLines, &
+            "Sphere surface density (in g cm^-2): ","(a,f7.1,1x,a)", 1.d0, ok, .true.)
+
+       call getDouble("mass", sphereMass, msol, cLine, fLine, nLines, &
+            "Sphere mass (in M_sol): ","(a,f7.1,1x,a)", 1.d-30, ok, .true.)
+
+       call getDouble("radius", sphereRadius, pctocm/1.d10, cLine, fLine, nLines, &
+            "Sphere radius (in pc): ","(a,e12.3,1x,a)", 1.d-30, ok, .true.)
+
+       call getVector("position", spherePosition, 1.d0, cLine, fLine, nLines, &
+            "Sphere position (10^10 cm): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
+
+       call getVector("velocity", sphereVelocity, 1.d5/cspeed, cLine, fLine, nLines, &
+            "Sphere velocity (km/s): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
+
+       call getReal("beta", beta, 1.0, cLine, fLine, nLines, &
+            "Density power law: ","(a,f7.2,a)",-1.5, ok, .true.)
 
      case("sphere")
        call getDouble("mass", sphereMass, msol, cLine, fLine, nLines, &
@@ -2869,8 +2924,13 @@ contains
     call getLogical("quickthermal", quickThermal, cLine, fLine, nLines, &
          "Compute photoionization equilibrium: ","(a,1l,a)", .false., ok, .false.)
 
-       call getLogical("isothermal", isoThermal, cLine, fLine, nLines, &
-            "Isothermal (no photoionization loop): ","(a,1l,1x,a)", .false., ok, .false.)
+    if (.not. quickthermal) then
+       call getLogical("decouplegasdust", decoupleGasDustTemperature, cLine, fLine, nLines, &
+            "Decouple gas and dust temperature: ","(a,1l,1x,a)", .false., ok, .false.)
+    endif
+
+    call getLogical("isothermal", isoThermal, cLine, fLine, nLines, &
+         "Isothermal (no photoionization loop): ","(a,1l,1x,a)", .false., ok, .false.)
 
 
     call getLogical("usemetals", usemetals, cLine, fLine, nLines, &
@@ -2884,6 +2944,9 @@ contains
 
     call getLogical("nodiffuse", noDiffuseField, cLine, fLine, nLines, &
          "Ignore diffuse radiation field: ","(a,1l,a)", .false., ok, .false.)
+
+    call getLogical("noionization", noIonization, cLine, fLine, nLines, &
+         "Don't ionize (set ionization potentials to high number): ","(a,1l,a)", .false., ok, .false.)
 
     call getLogical("radpresstest", radPressureTest, cLine, fLine, nLines, &
          "Radiation-pressure test (on-the-spot absorption): ","(a,1l,a)", .false., ok, .false.)
@@ -2950,7 +3013,10 @@ contains
     call getLogical("supernovae", supernovae, cLine, fline, nLines, &
          "Include supernova feedback: ", "(a,1l,1x,a)", .false., ok, .false.)
 
-
+    if (stellarWinds .or. supernovae) then
+      call getDouble("windradius", stellarWindRadius, 1.d0, cLine, fLine, nLines, &
+            "Stellar wind radius (smallestCellSize): ","(a,f5.2,1x,a)", 5.d0, ok, .false.)
+    endif
 
     call getReal("tminglobal", TMinGlobal, 1., cLine, fLine, nLines, &
          "Minimum Temperature (K): ","(a,f4.1,1x,a)", 10., ok, .false.)
@@ -2964,6 +3030,9 @@ contains
        
        call getInteger("dstack", dstack, cLine, fLine, nLines, &
             "Optimization tweak level","(a,i8,a)", 100, ok, .false.)
+
+       call getLogical("bufferedsend", bufferedSend, cLine, fLine, nLines, &
+            "Use buffered send for photon stacks: ","(a,1l,1x,a)", .true., ok, .false.)
 
        call getLogical("customstacks", customStacks, cLine, fLine, nLines, &
             "Specify stack limits on a thread by thread basis: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -3279,11 +3348,10 @@ contains
          "Include pressure source terms: ","(a,1l,1x,a)", .true., ok, .false.)
 
     call getLogical("readturb", readTurb, cLine, fLine, nLines, &
-         "read in a turbulent velocity field from file: ","(a,1l,1x,a)", .false., ok, .false.)
-
-    if (geometry == "sphere") then
-        call getLogical("pressuresupport", pressureSupport, cLine, fLine, nLines, &
-            "Provide pressure support for sphere: ","(a,1l,1x,a)", .false., ok, .false.)
+         "Read in a turbulent velocity field from file: ","(a,1l,1x,a)", .false., ok, .false.)
+    if (readTurb) then
+       call getReal("virialalpha", virialAlpha, 1.0, cLine, fLine, nLines, &
+            "Virial parameter alpha: ","(a,f7.2,a)", 2.0, ok, .true.)
     endif
 
     call getLogical("useviscosity", useViscosity, cLine, fLine, nLines, &
@@ -3869,6 +3937,9 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
 
     call getLogical("forcefirstscat", forceFirstScat, cLine, fLine, nLines, &
          "Force first scattering: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getLogical("noscatlight", excludeScatteredLight, cLine, fLine, nLines, &
+         "Exclude dust-scattered light from image: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getReal("lambdaimage", lambdaImage, 1., cLine, fLine, nLines, &
          "Wavelength for monochromatic image (A):","(a,f12.2,1x,a)", 6562.8, ok, .false.)

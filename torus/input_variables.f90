@@ -132,9 +132,12 @@
   logical :: stellarWinds      ! include stellar winds in hydro calc
   logical :: supernovae        ! include supernovae in hydro calc
   logical :: starburst         ! set sources from starburst
+  real(double) :: stellarWindRadius ! radius for stellar wind/SNe momentum input 
   real(double) :: burstAge
   real(double) :: burstTime
+  real(double) :: feedbackDelay ! after starburst, delay feedback mechanisms by this fraction of free-fall time
   character(len=20) :: burstType
+  type(VECTOR) :: burstPosition ! pos of star for burstType 'singlestartest'
   logical :: dumpregularVTUS   !dump vtu after every photo step
   ! Parameters  specific to domain decomposed photoionisation 
 
@@ -143,14 +146,16 @@
   integer :: dStack            !Stack increment for run-time photon stack size optimization 
   integer :: stackLimit        !Maximum stack size for run-time photon stack size optimization
   integer, allocatable :: stackLimitArray(:)   !Maximum stack size for run-time photon stack size optimization
+  logical :: bufferedSend      !use mpi_bsend for photon stacks on photoionAMR_mod
   logical :: customStacks      !use custom stack sizes
 
   integer :: bufferCap         !Number of photon stacks to accomodate in buffer
 
   logical :: binPhotons        !Dump a spectrum of propagated photon packets
   logical :: noDiffuseField    !Use the on the spot approximation
+  logical :: noIonization      !Don't ionize - set ionization potentials to high number
   logical :: dustOnly          !Consider dust physics only
-  integer(bigInt) :: inputNMonte       !Number of photon packets to propagate
+  integer(bigInt) :: inputNMonte  !Number of photon packets to propagate
   integer :: maxPhotoIonIter   !Maximimum interation number
 
   logical :: periodicX, periodicY, periodicZ ! Periodic photon boundary conditions
@@ -163,6 +168,7 @@
 
   integer, protected :: nHydroThreadsInput !Number of hydrothreads for domain decomposition
   logical :: loadBalancing            ! Use load balancing MPI methods
+  character(len=20) :: loadBalancingMethod ! Method used to load-balance photoionization calculation
   logical :: rhieChow                 !Use Rhie-Chow interpolation
   logical :: doSelfGrav               !Do self gravity calculation
   real(double) :: gravTol             !Tolerance for gravity solver
@@ -200,13 +206,13 @@
   real(double) :: gridDistanceScale   !Scale of grid
   integer :: CD_version               !Which version of contact discontinuity test to run? (1,2,3 or 4, StarBench)
 
-  logical :: pressureSupport ! include pressure support for sphere geometry
 
   logical :: readTurb !read in a turbulent velocity grid
   character(len=20) :: turbvelfilex    !file for tubrulent velocty field (x)
   character(len=20) :: turbvelfiley    !file for tubrulent velocty field (y)
   character(len=20) :: turbvelfilez    !file for tubrulent velocty field (z)
   integer :: nTurbLines                !No. of lines in turbvel files
+  real :: virialAlpha ! virial parameter
 
 !inflow condition parameteres
   real(double) :: inflowPressure
@@ -406,6 +412,7 @@
   logical :: includeGasOpacity
   logical :: isotropicScattering
   logical :: henyeyGreensteinPhaseFunction
+  logical :: decoupleGasDustTemperature
   real(double) :: inputgFac
   logical :: writePolar
   character(len=80) :: polarFilename
@@ -492,6 +499,15 @@
   real(double) :: omega
   integer :: nSphereSurface ! number of points on spherical surface
   real :: rpower ! radial density power  r^-rpower. For proto geometry
+
+  ! uniformden geometry
+  real(double) :: gridDensity
+   
+  ! arthur06 geometry (arthur & hoare 2006)
+  real(double) :: arthurScaleHeight, arthurN0
+
+  ! krumholz geometry (krumholz et al 2011)
+  real(double) :: surfaceDensity
 
   ! whitney stuff
   real(double) :: erInner, erOuter, mDotEnv, cavAngle, cavDens, rhoAmbient
@@ -922,6 +938,7 @@
   real(double) :: tauSlab 
 
   type(VECTOR) :: bondiCentre
+  
 
 ! Parameters which control Torus behaviour
   logical           :: debug
@@ -940,6 +957,7 @@
   integer :: maxScat ! maximum number of scatterings a photon undergoes in phaseloop
   logical :: radPressureTest ! perform on the spot absorption for radiation pressure tests
   logical :: UV_vector
+  logical :: excludeScatteredLight ! don't include dust-scattered light in images
 
 ! Other physical parameters
   real    :: vturb        ! Subsonic turbulent velocity

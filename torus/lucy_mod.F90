@@ -2368,7 +2368,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     type(octal), pointer  :: child 
     integer :: subcell, i
     ! data space to store values from all processors
-    real  :: buffer_ncrossings(nThreadsGlobal)     
+    real(double)  :: buffer_ncrossings(nThreadsGlobal)     
     real(double) :: buffer_distanceGrid(nThreadsGlobal) 
 #ifdef CHEMISTRY
     real(double) :: buffer_pathlength(nThreadsGlobal) 
@@ -2408,12 +2408,12 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
           
           
-          call MPI_ALLGATHER(REAL(thisOctal%ncrossings(subcell)), 1, MPI_REAL, &
-               buffer_ncrossings, 1, MPI_REAL, MPI_COMM_WORLD, ierr)  
+          call MPI_ALLGATHER(DBLE(thisOctal%ncrossings(subcell)), 1, MPI_DOUBLE_PRECISION, &
+               buffer_ncrossings, 1, MPI_DOUBLE_PRECISION, MPI_COMM_WORLD, ierr)  
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
           
           thisOctal%distanceGrid(subcell) = SUM(buffer_distanceGrid)
-          thisOctal%nCrossings(subcell) = INT(SUM(buffer_ncrossings))
+          thisOctal%nCrossings(subcell) = INT(SUM(buffer_ncrossings), kind=bigint)
           
        endif
     enddo
@@ -2427,7 +2427,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
     type(gridtype) :: grid
     integer :: nOctals, nVoxels
-    real, allocatable :: nCrossings(:)
+    real(double), allocatable :: nCrossings(:)
     real, allocatable :: tempRealArray(:)
     real(double), allocatable :: distanceGrid(:),tempDoubleArray(:), meanIntensity(:)
     real, allocatable :: nDiffusion(:)
@@ -2475,10 +2475,10 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
          MPI_SUM,MPI_COMM_WORLD,ierr)
     meanIntensity = tempDoubleArray 
 
-    tempRealArray = 0.0
-    call MPI_ALLREDUCE(nCrossings,tempRealArray,nVoxels,MPI_REAL,&
+    tempDoubleArray = 0.0
+    call MPI_ALLREDUCE(nCrossings,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
          MPI_SUM,MPI_COMM_WORLD,ierr)
-    nCrossings = tempRealArray 
+    nCrossings = tempDoubleArray 
 
     tempRealArray = 0.0
     call MPI_ALLREDUCE(nDiffusion,tempRealArray,nVoxels,MPI_REAL,&
@@ -2681,7 +2681,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
   type(octal), pointer  :: child 
   real(double) :: distanceGrid(:)
   real(double) :: meanIntensity(:)
-  real :: nCrossings(:)
+  real(double) :: nCrossings(:)
   real :: nDiffusion(:)
   integer :: nIndex, nIndexScattered
   integer :: subcell, i !, j , k
@@ -2701,7 +2701,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           nIndex = nIndex + 1
           distanceGrid(nIndex) = thisOctal%distanceGrid(subcell)
           meanIntensity(nIndex) = thisOctal%meanIntensity(subcell)
-          nCrossings(nIndex) = real(thisOctal%nCrossings(subcell))
+          nCrossings(nIndex) = dble(thisOctal%nCrossings(subcell))
           nDiffusion(nIndex) = thisOctal%nDiffusion(subcell)
 !          if (storeScattered) then
 !             do j = 1, nTheta
@@ -2721,7 +2721,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: distanceGrid(:), meanIntensity(:)
-  real :: ncrossings(:)
+  real(double) :: ncrossings(:)
   real :: ndiffusion(:)
   integer :: nIndex
   integer :: subcell, i !, j, k
@@ -2743,7 +2743,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           nIndex = nIndex + 1
           thisOctal%distanceGrid(subcell) = distanceGrid(nIndex)
           thisOctal%meanIntensity(subcell) = meanIntensity(nIndex)
-          thisOctal%nCrossings(subcell) = int(nCrossings(nIndex))
+          thisOctal%nCrossings(subcell) = int(nCrossings(nIndex), kind=bigint)
           thisOctal%nDiffusion(subcell) = nDiffusion(nIndex)
 !          if (storescattered) then
 !             do j = 1, nTheta
@@ -2766,7 +2766,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     logical :: converged
     real(double) :: r
     type(VECTOR) :: dirVec(6), centre, octVec
-    real :: thisFac, neighbourFac
+    real(double) :: thisFac, neighbourFac
     integer :: neighbourSubcell, j
     dirVec(1) = VECTOR( 0.d0, 0.d0, +1.d0)
     dirVec(2) = VECTOR( 0.d0,+1.d0,  0.d0)
@@ -2790,7 +2790,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
        else
 
           if (thisOctal%nCrossings(subcell) > 0)  then
-             thisFac = real(thisOctal%nDirectPhotons(subcell)) / real(thisOctal%ncrossings(subcell))
+             thisFac = dble(thisOctal%nDirectPhotons(subcell)) / dble(thisOctal%ncrossings(subcell))
           else
              thisFac = 0.
           endif
@@ -2804,8 +2804,8 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
                 call amrGridValues(grid%octreeRoot, octVec, grid=grid, startOctal=startOctal, &
                      foundOctal=neighbourOctal, foundsubcell=neighbourSubcell)
                 if (neighbourOctal%nCrossings(neighboursubcell) > 0)  then
-                   neighbourFac = real(neighbourOctal%nDirectPhotons(neighboursubcell)) &
-                        / real(neighbourOctal%ncrossings(neighboursubcell))
+                   neighbourFac = dble(neighbourOctal%nDirectPhotons(neighboursubcell)) &
+                        / dble(neighbourOctal%ncrossings(neighboursubcell))
                 else
                    neighbourFac = 0.
                 endif
@@ -2931,7 +2931,8 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           end do
        else
           thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont)
-          if ((thisOctal%temperature(subcell) > 1.d-3).and.(thisOctal%rho(subcell) > 1.d-30)) then
+          if ((thisOctal%temperature(subcell) > 1.d-3).and.(thisOctal%tdust(subcell) > 1.d-3) & 
+             .and.(thisOctal%rho(subcell) > 1.d-30)) then
 
              call addDustContinuumLucyMonoAtDustTemp(thisOctal, subcell, grid, lambda, iPhotonLambda)
              

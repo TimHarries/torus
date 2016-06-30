@@ -155,6 +155,7 @@ contains
           thisOctal%ne(subcell) = 1.d-10
           thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
           thisOctal%temperature(subcell) = max(tminglobal, thisOctal%temperature(subcell))
+          thisOctal%tdust(subcell) = max(dble(tminglobal), thisOctal%tdust(subcell))
           if (SIZE(thisOctal%ionFrac,2)>2) then
              thisOctal%ionFrac(subcell,3) = 1.
              thisOctal%ionFrac(subcell,4) = 1.e-10       
@@ -1013,7 +1014,7 @@ subroutine getCollisionalRates(thisIon, iTransition, temperature, excitation, de
     if(firstTime) then
         firstTime = .false.
         write(*,*) "Warning: Temperature Exceeds Scope Of Atomic Data"
-        write(*,*) "         Proceeding With The Maximum Known Value..."
+        write(*,*) "   Proceeding With The Maximum Known Value... ", maxTemp
      end if
 
      t = maxTemp
@@ -1623,13 +1624,14 @@ function recombToGround(temperature) result (alpha1)
   alpha1 = 1.58d-13 * (temperature/1.d4)**(-0.53d0)  ! kenny's photo paper equation 24
 end function recombToGround
 
+! eq 3.25, Hollenbach & McKee 1979, ApJS, 41, 555
 function gasGrainCoolingRate(rhoGas, ionizationFraction, tGas, tDust) result (Gamma)
   use inputs_mod, only : grainFrac
   real(double) :: rhoGas, ionizationFraction, tGas, tDust, gamma
   real(double) :: vProton, nGrain, sigmaGrain, f, rGrain, dustToGas, grainVolume, grainDensity
   real(double) :: nHydrogen
 ! Hollenbach & McKee 1979, ApJS 41 555
-  rGrain  = 1.d-4
+  rGrain  =  1.d-4
   sigmaGrain = pi * rGrain**2
   grainVolume = (4.d0/3.d0)*pi*rGrain**3
   grainDensity = 3.5d0
@@ -1638,9 +1640,10 @@ function gasGrainCoolingRate(rhoGas, ionizationFraction, tGas, tDust) result (Ga
   if (ionizationFraction > 0.5d0) then
      f = 11.8d0
   else  if (tGas > 1000.d0)  then
-     f = 0.16
+     f = 0.16 ! atomic
   else 
-     f = 0.37
+!     f = 1.   ! atomic
+     f = 0.37 ! molecular
   endif
 
   vproton = sqrt(2.d0*(1.5d0*kerg*tGas)/mHydrogen)

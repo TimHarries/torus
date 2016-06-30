@@ -34,7 +34,7 @@ contains
     use inputs_mod, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp, ttauriStellarWind
     use inputs_mod, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, mDisc
-    use inputs_mod, only : rCore, rInner, rOuter, lamline,gridDistance, massEnvelope, readTurb
+    use inputs_mod, only : rCore, rInner, rOuter, lamline,gridDistance, massEnvelope, readTurb, virialAlpha
     use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, logspacegrid, nmag, dospiral, sphereMass,sphereRadius
     use disc_class, only:  new
 #ifdef ATOMIC
@@ -560,6 +560,33 @@ doGridshuffle: if(gridShuffle) then
              if (writeoutput) write(*,*) "Total mass in spiral (solar masses): ",totalMass/msol
           case("turbbox")
              call turbulentVelocityField(grid, 1.d0)
+          case("krumholz")
+             if (readTurb) then
+                call readgridTurbulence(nGrid, xvel, yvel, zvel)
+                call assignTurbVelocity(grid%octreeRoot, xvel, yvel, zvel, nGrid)
+                deallocate(xVel, yVel, zVel)
+                ke = 0.d0
+#ifdef MPI
+                call findkeOverAllThreads(grid, ke)
+#endif
+!                gpe = (3.d0/5.d0)*bigG * sphereMass**2/(sphereRadius*1.d10)
+                gpe = 0.43d0 * bigG * sphereMass**2/(sphereRadius*1.d10) ! for beta = -1.5
+                requiredKE = 0.5d0 * virialAlpha * gpe  
+                if (writeoutput) write(*,*) "Gravitational potential ", gpe
+                if (ke /= 0.d0) then 
+                    vScaleFac = sqrt(requiredKe / ke)
+                else
+                    vscaleFac = 1.d0
+                endif
+                if (writeoutput) write(*,*) "scale fac ",vScaleFac
+                call scaleVelocityAMR(grid%octreeRoot, vScaleFac)
+                ke = 0.d0
+#ifdef MPI
+                call findkeOverAllThreads(grid, ke)
+#endif
+!                if (writeoutput) write(*,*) "Kinetic energy ", ke
+                if (writeoutput) write(*,*) "KE/GPE = ", ke/gpe
+             endif
           case("sphere")
              if (readTurb) then
                 call readgridTurbulence(nGrid, xvel, yvel, zvel)
@@ -570,7 +597,7 @@ doGridshuffle: if(gridShuffle) then
                 call findkeOverAllThreads(grid, ke)
 #endif
                 gpe = (3.d0/5.d0)*bigG * sphereMass**2/(sphereRadius*1.d10)
-                requiredKE = gpe  
+                requiredKE = 0.5d0 * virialAlpha * gpe  
                 if (writeoutput) write(*,*) "Gravitational potential ", gpe
                 if (ke /= 0.d0) then 
                     vScaleFac = sqrt(requiredKe / ke)
@@ -2399,8 +2426,7 @@ end subroutine addSpiralWake
 
 
 recursive subroutine assignTurbVelocity(thisOctal, xvel, yvel, zvel, n)
-  use inputs_mod, only : amrGridSize
-  use inputs_mod, only : geometry, spherePosition, sphereRadius
+  use inputs_mod, only : spherePosition, sphereRadius
   integer, intent(in) :: n
   type(octal), pointer   :: thisOctal
   real, pointer :: xVel(:,:,:), yVel(:,:,:), zVel(:,:,:)
@@ -2426,15 +2452,15 @@ recursive subroutine assignTurbVelocity(thisOctal, xvel, yvel, zvel, n)
            xArray(i1) = 0.5d0/64.d0+dble(i1-1)/64.d0
         enddo
 
-        if (geometry == "sphere") then
+!        if (geometry == "sphere") then
           ! assign turbulence to a box containing the sphere
           rVec  = subcellCentre(thisOctal, subcell) - spherePosition
           boxsize = 2.d0 * sphereRadius
-        else
-          ! assign turbulence to entire grid
-          rVec  = subcellCentre(thisOctal, subcell)
-          boxsize = amrGridSize
-        endif
+!        else
+!          ! assign turbulence to entire grid
+!          rVec  = subcellCentre(thisOctal, subcell)
+!          boxsize = amrGridSize
+!        endif
 
         if (modulus(rVec) .lt. sphereRadius) then
           ! calculate normalised distances

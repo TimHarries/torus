@@ -34,7 +34,7 @@ contains
 
 #ifdef PHOTOION
     use ion_mod, only: addIons, globalIonArray, nGlobalIon
-    use inputs_mod, only : photoionization, photoionPhysics, usemetals, hOnly, usexraymetals
+    use inputs_mod, only : photoionization, photoionPhysics, usemetals, hOnly, usexraymetals, noIonization
 !    use inputs_mod, only : startFromNeutral
 #endif
 
@@ -60,8 +60,8 @@ contains
 
 #ifdef PHOTOION
   if (photoionPhysics) then
-     call addIons(grid%ion, grid%nion, usemetals, hOnly, usexraymetals)
-     call addIons(globalIonArray, nGlobalIon, usemetals, hOnly, usexraymetals)
+     call addIons(grid%ion, grid%nion, usemetals, hOnly, usexraymetals, noIonization)
+     call addIons(globalIonArray, nGlobalIon, usemetals, hOnly, usexraymetals, noIonization)
      photoionization = .true.
   endif
 #endif
@@ -740,7 +740,8 @@ contains
        if (photoion) then
           nLambda = 1000
           allocate(xarray(1:nLambda))
-          lamStart = 10.d0
+!          lamStart = 10.d0
+          lamStart = 100.d0
           lamEnd = 1.d7
           logLamStart = log10(lamStart)
           logLamEnd = log10(lamEnd)

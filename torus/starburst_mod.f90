@@ -88,12 +88,13 @@ contains
     real(double) :: burstAge
     real(double) :: burstMass, totMass
     real(double) :: sfRate
-    integer :: i
+    real(double), allocatable :: initialMasses(:), temp(:)
+    integer :: i, j
     integer :: nDead, nSupernova, nOB
     integer, parameter :: nKurucz = 410
     logical :: thirtyFound
     type(SPECTRUMTYPE) :: kSpectrum(nKurucz)
-    character(len=80) :: klabel(nKurucz)
+    character(len=80) :: klabel(nKurucz), filename
 
    
     call  readKuruczGrid(klabel, kspectrum, nKurucz)
@@ -116,19 +117,30 @@ contains
           enddo
 
        case("instantaneous")
+          allocate(initialMasses(1:1000))
           thirtyFound = .false.
           do while(.not.thirtyFound)
+             initialMasses = 0.d0
              totMass = 0.d0
              nSource = 0
              do while (totMass < burstMass)
                 nSource = nSource + 1
-                source(nSource)%initialMass = randomMassFromIMF("salpeter", 0.8d0, 120.d0, -2.35d0)
-                if (source(nSource)%initialMass > 30.d0) thirtyFound = .true.
-                totMass = totMass + source(nSource)%initialMass
+                initialMasses(nSource) =  randomMassFromIMF("salpeter", 0.8d0, 120.d0, -2.35d0)
+                if (initialMasses(nSource) >= 30.d0) thirtyFound = .true.
+                totMass = totMass + initialMasses(nSource)
              enddo
           enddo
+          allocate(temp(1:nSource))
+          temp = pack(initialMasses, initialMasses /= 0.d0) ! pick out non-zero elements (i.e. actual masses) 
+          call sort(nSource, temp) ! sort in ascending order
+          temp = temp(nSource:1:-1) ! reverse, i.e. sort in descending order
+          do i = 1, nSource
+             source(i)%initialMass = temp(i)
+          enddo
           source(1:nSource)%age = burstAge
-
+          deallocate(initialMasses)
+          deallocate(temp)
+          
        case("supernovatest")
              nSource = 1
              source(1)%initialMass = 40.d0
@@ -138,7 +150,8 @@ contains
        case("singlestartest")
              nSource = 1
              source(1)%initialMass = burstMass
-             source(1:nSource)%age = burstAge
+             totmass = burstmass
+             source(1)%age = burstAge
 
        case DEFAULT
          write(message,'(a,a)') "Burst type not recognised: ", trim(burstType)
@@ -160,7 +173,7 @@ contains
       nSupernova = 0
       do while (i <= nSource)
          if (.not.isSourceDead(source(i), thisTable)) then
-            call setSourceProperties(source(i), thisTable)
+            call setSourceProperties(source(i))
             i = i + 1
          else
             nDead = nDead + 1
@@ -193,6 +206,17 @@ contains
          endif
       enddo
 
+      if (writeoutput) then
+         do i = 1, nSource
+            write(filename,'(a, i3.3, a)') "spectrum_source", i,".dat"
+            open(67,file=filename,status="replace",form="formatted")
+            do j = 1, source(i)%spectrum%nlambda
+               write(67,'(2es12.5)') source(i)%spectrum%lambda(j), source(i)%spectrum%flux(j)
+            enddo
+            close(67)
+         enddo
+      endif
+
       do i = 1, nSource
          if (source(i)%mass/msol > 15.d0) then
             source(i)%mDot = 1.d-6 * msol / (365.25d0 * 24.d0 * 3600.d0)
@@ -207,20 +231,26 @@ contains
       source(:)%outsideGrid = .false.
       source(:)%prob = 0.d0 ! 1.d0/dble(nsource)
       call writeInfo("Photons will be sampled according to source luminosity", TRIVIAL)
-      call dumpSources(source, nSource)
     end subroutine createSources
 
-    subroutine dumpSources(source, nsource)
+    subroutine dumpSources(source, nsource, label)
       type(SOURCETYPE) :: source(:)
       integer :: nSource
-      integer :: i 
+      integer :: i
+      integer, optional :: label
+      character(len=80) :: filename
 
       if (writeoutput) then
-         open(32, file="starburst.dat", form="formatted", status="unknown")
-         write(32,'(a)') "    #   mass    teff  radius  luminosity    position "
-         write(32,'(a)') "    # (Msol)     (K)  (Rsol)      (Lsol)   (10^10cm)"
+         if (present(label)) then
+            write(filename,'(a, i4.4, a)') "starburst_", label, ".dat"
+            open(32, file=filename, form="formatted", status="unknown")
+         else
+            open(32, file="starburst.dat", form="formatted", status="unknown")
+         endif
+         write(32,'(a)') "    #      mass    teff  radius  luminosity    position "
+         write(32,'(a)') "    #    (Msol)     (K)  (Rsol)      (Lsol)   (10^10cm)"
          do i = 1, nSource
-            write(32, '(i5,  f7.1, i8, f8.1, 1pe12.2, 1p, 3e12.2)') i, source(i)%mass/msol, nint(source(i)%teff), &
+            write(32, '(i5,  f10.3, i8, f8.1, 1pe12.2, 1p, 3e12.2)') i, source(i)%mass/msol, nint(source(i)%teff), &
                  source(i)%radius*1.d10/rsol, source(i)%luminosity/lsol, source(i)%position
          enddo
          close(32)
@@ -285,7 +315,7 @@ contains
          t = (source(i)%initialMass - thisTable%initialMass(j))/(thisTable%initialMass(j+1) - thisTable%initialMass(j))
          deadAge = t1 + t * (t2 - t1)
          if (source(i)%initialMass > 8.d0 .and. writeoutput) then
-           write(*,'(a, i4, a, 1pe12.1)') "Source ", i, " t(SNe) ", deadAge
+           write(*,'(a, i4, a, 1pe12.5)') "Source ", i, " Time until supernova (yr): ", deadAge-source(i)%age
          endif
          ! checks if each source is dead and initially > 8 solar mass, adds to SN count, tabulates index                                  
 
@@ -354,18 +384,59 @@ contains
 
 
 
-    subroutine setSourceProperties(source, thisTable)
-      use inputs_mod, only : mStarburst, clusterRadius, smallestCellSize, burstType
+    subroutine setSourceProperties(source)
+      use inputs_mod, only : mStarburst, clusterRadius, accretionRadius, smallestCellSize, burstType, burstPosition
       type(SOURCETYPE) :: source
-      type(TRACKTABLE) :: thisTable
-      integer :: i, j
-      real(double) :: r, t, u, mass1, logL1, logT1, logmdot1, logmdot2
+      real(double) :: r
       type(VECTOR) :: vVec
       real(double) :: sigmaVel
-      real(double) :: mass2, logL2, logT2
 
+      ! set source mass, age, luminosity, Teff, radius, mass-loss rate
+      call updateSourceProperties(source)
+
+      source%position = randomUnitVector()
+      call randomNumberGenerator(getDouble=r)
+      r = r**2
+      source%position = source%position * (clusterRadius / 1.d10) * r
+      sigmaVel = sqrt(bigG * ((Mstarburst+1000.d0)*mSol)/(2.d0*clusterRadius))
+!      if (writeoutput) write(*,*) "Sigma velocity ",sigmaVel/1.e5
+      vVec = randomUnitVector()
+      r = gasdev()
+      source%velocity = r * sigmaVel * vVec
+!      source%accretionRadius = 2.5d0*smallestCellsize*1.d10
+      source%accretionRadius = accretionRadius*smallestCellsize*1.d10
+
+      select case(burstType)
+         case("supernovatest")
+            source%position = VECTOR(0.d0, 0.d0, 0.25d0*clusterRadius/1.d10)
+            source%velocity = VECTOR(0.d0, 0.d0, 0.d0)
+         case("singlestartest")
+            source%position = burstPosition 
+            source%velocity = VECTOR(0.d0, 0.d0, 0.d0)
+         case DEFAULT
+      end select
+
+    end subroutine setSourceProperties
+
+    subroutine updateSourceProperties(source)
+      type(SOURCETYPE) :: source
+      type(TRACKTABLE),save :: thisTable
+      logical,save :: firstTime = .true.
+      integer :: i, j
+      real(double) :: t, u, mass1, logL1, logT1, logmdot1
+      real(double) :: mass2, logL2, logT2, logmdot2
+
+
+      if (firstTime) then
+         call readinTracks("schaller", thisTable)
+         firstTime = .false.
+         call writeInfo("Schaller tracks successfully read", FORINFO)
+      endif
+
+      ! find relevant Schaller track file given source's initial mass 
       call locate(thisTable%initialMass, thisTable%nMass, source%initialmass, i)
-
+      
+      ! interpolate between rows j,j+1 in lower mass boundary file (i)
       call locate(thisTable%age(i,1:thisTable%nAges(i)), thisTable%nAges(i), source%age, j)
       t = (source%age - thisTable%age(i, j))/(thisTable%age(i,j+1)-thisTable%age(i,j))
       mass1 = thisTable%massAtAge(i,j) + t * (thisTable%massAtAge(i,j+1)-thisTable%massAtAge(i,j))
@@ -373,14 +444,24 @@ contains
       logT1 = thisTable%logTeff(i,j) + t * (thisTable%logTeff(i,j+1)-thisTable%logTeff(i,j))
       logMdot1 = thisTable%mdot(i,j) + t * (thisTable%mdot(i,j+1)-thisTable%mdot(i,j))
 
-
+      ! interpolate between rows j,j+1 in upper mass boundary file (i+1)
       call locate(thisTable%age(i+1,1:thisTable%nAges(i+1)), thisTable%nAges(i+1), source%age, j)
-      t = (source%age - thisTable%age(i+1, j))/(thisTable%age(i+1,j+1)-thisTable%age(i+1,j))
-      mass2 = thisTable%massAtAge(i+1,j) + t * (thisTable%massAtAge(i+1,j+1)-thisTable%massAtAge(i+1,j))
-      logL2 = thisTable%logL(i+1,j) + t * (thisTable%logL(i+1,j+1)-thisTable%logL(i+1,j))
-      logT2 = thisTable%logTeff(i+1,j) + t * (thisTable%logTeff(i+1,j+1)-thisTable%logTeff(i+1,j))
-      logMdot2 = thisTable%mdot(i+1,j) + t * (thisTable%mdot(i+1,j+1)-thisTable%mdot(i+1,j))
+      if (source%age < thisTable%age(i+1, thisTable%nAges(i+1))) then
+         ! if source age < final age of reference star, interpolate as normal
+         t = (source%age - thisTable%age(i+1, j))/(thisTable%age(i+1,j+1)-thisTable%age(i+1,j))
+         mass2 = thisTable%massAtAge(i+1,j) + t * (thisTable%massAtAge(i+1,j+1)-thisTable%massAtAge(i+1,j))
+         logL2 = thisTable%logL(i+1,j) + t * (thisTable%logL(i+1,j+1)-thisTable%logL(i+1,j))
+         logT2 = thisTable%logTeff(i+1,j) + t * (thisTable%logTeff(i+1,j+1)-thisTable%logTeff(i+1,j))
+         logMdot2 = thisTable%mdot(i+1,j) + t * (thisTable%mdot(i+1,j+1)-thisTable%mdot(i+1,j))
+      else
+         ! otherwise just set to final values (EOF) 
+         mass2 = thisTable%massAtAge(i+1, thisTable%nAges(i+1)) 
+         logL2 = thisTable%logL(i+1, thisTable%nAges(i+1)) 
+         logT2 = thisTable%logTeff(i+1, thisTable%nAges(i+1)) 
+         logMdot2 = thisTable%mdot(i+1, thisTable%nAges(i+1)) 
+      endif
 
+      ! interpolate between the two files and set source properties
       u = (source%initialmass - thisTable%initialMass(i))/(thisTable%initialMass(i+1) - thisTable%initialMass(i))
       
       source%mass = (mass1 + (mass2 - mass1) * u) * mSol
@@ -394,75 +475,9 @@ contains
          source%mdotWind = 10.d0**(logmdot1 + (logmdot2  - logmdot1) * u)
          source%mDotWind = source%mDotWind * msol/(365.25*24.d0*3600.d0)
       endif
-      source%position = randomUnitVector()
-      call randomNumberGenerator(getDouble=r)
-      r = r**2
-      source%position = source%position * (clusterRadius / 1.d10) * r
-      sigmaVel = sqrt(bigG * ((Mstarburst+1000.d0)*mSol)/(2.d0*clusterRadius))
-!      if (writeoutput) write(*,*) "Sigma velocity ",sigmaVel/1.e5
-      vVec = randomUnitVector()
-      r = gasdev()
-      source%velocity = r * sigmaVel * vVec
-      source%accretionRadius = 2.5d0*smallestCellsize*1.d10
-
-      select case(burstType)
-         case("supernovatest")
-            source%position = VECTOR(0.d0, 0.d0, 0.25d0*clusterRadius/1.d10)
-            source%velocity = VECTOR(0.d0, 0.d0, 0.d0)
-         case DEFAULT
-      end select
-
-         
-
-
-      call buildSphereNBody(source%position, 2.5d0*smallestCellSize, source%surface, 20)
-
-
-
-    end subroutine setSourceProperties
-
-    subroutine updateSourceProperties(source)
-      use inputs_mod, only : smallestCellSize
-      type(SOURCETYPE) :: source
-      type(TRACKTABLE),save :: thisTable
-      logical,save :: firstTime = .true.
-      integer :: i, j
-      real(double) :: t, u, mass1, logL1, logT1
-      real(double) :: mass2, logL2, logT2
-
-
-      if (firstTime) then
-         call readinTracks("schaller", thisTable)
-         firstTime = .false.
-         call writeInfo("Schaller tracks successfully read", FORINFO)
-      endif
-
-      call locate(thisTable%initialMass, thisTable%nMass, source%initialmass, i)
-      
-      call locate(thisTable%age(i,1:thisTable%nAges(i)), thisTable%nAges(i), source%age, j)
-      t = (source%age - thisTable%age(i, j))/(thisTable%age(i,j+1)-thisTable%age(i,j))
-      mass1 = thisTable%massAtAge(i,j) + t * (thisTable%massAtAge(i,j+1)-thisTable%massAtAge(i,j))
-      logL1 = thisTable%logL(i,j) + t * (thisTable%logL(i,j+1)-thisTable%logL(i,j))
-      logT1 = thisTable%logTeff(i,j) + t * (thisTable%logTeff(i,j+1)-thisTable%logTeff(i,j))
-
-      call locate(thisTable%age(i+1,1:thisTable%nAges(i+1)), thisTable%nAges(i+1), source%age, j)
-      t = (source%age - thisTable%age(i+1, j))/(thisTable%age(i+1,j+1)-thisTable%age(i+1,j))
-      mass2 = thisTable%massAtAge(i+1,j) + t * (thisTable%massAtAge(i+1,j+1)-thisTable%massAtAge(i+1,j))
-      logL2 = thisTable%logL(i+1,j) + t * (thisTable%logL(i+1,j+1)-thisTable%logL(i+1,j))
-      logT2 = thisTable%logTeff(i+1,j) + t * (thisTable%logTeff(i+1,j+1)-thisTable%logTeff(i+1,j))
-
-      u = (source%initialmass - thisTable%initialMass(i))/(thisTable%initialMass(i+1) - thisTable%initialMass(i))
-      
-      source%mass = (mass1 + (mass2 - mass1) * u) * mSol
-      source%luminosity = logL1 + (logL2 - logL1) * u
-      source%luminosity = (10.d0**source%luminosity) * lSol
-      source%teff = logT1 + (logT2  - logT1) * u
-      source%teff = 10.d0**source%teff
-      source%radius = sqrt(source%luminosity / (fourPi * stefanBoltz * source%teff**4))/1.d10
-
       
       call emptySurface(source%surface)
-      call buildSphereNBody(source%position, 2.5d0*smallestCellSize, source%surface, 20)
+      call buildSphereNBody(source%position, source%accretionRadius/1.d10, source%surface, 20)
 
     end subroutine updateSourceProperties
 

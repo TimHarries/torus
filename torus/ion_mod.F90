@@ -100,6 +100,15 @@ contains
 
   end subroutine createIon
 
+  subroutine setIonizationPotential(thisIon, ipot)
+    type(IONTYPE) :: thisIon
+    real :: iPot
+
+    thisIon%iPot = iPot
+    thisIon%nuThresh = (thisIon%iPot / dble(ergtoev)) / dble(hCgs)
+
+  end subroutine setIonizationPotential
+   
   subroutine addxSectionArray(thisIon, nfreq, freq)
     use phfit_mod, only : phfit2
     type(IONTYPE) :: thisIon
@@ -144,9 +153,9 @@ contains
        endif
   end function returnXsec
 
-  subroutine addIons(ionArray, nIon, usemetals, usexraymetals, hOnly)
-    logical, intent(in) :: usemetals, hOnly, usexraymetals
-    integer :: nIon
+  subroutine addIons(ionArray, nIon, usemetals, usexraymetals, hOnly, noIonization)
+    logical, intent(in) :: usemetals, hOnly, usexraymetals, noIonization
+    integer :: nIon, i
     type(IONTYPE) :: ionArray(:)
 
 
@@ -330,6 +339,13 @@ contains
     endif
     if (writeoutput) &
          write(*,*) "Added ",nion," species to photoionization calculation"
+
+    if (noIonization) then
+       do i = 1, nIon
+          call setIonizationPotential(ionArray(i), 1.e30)
+          if (writeoutput) write(*,'(a,i2.2,es9.2)') "Ionization potential for ion ", i, ionArray(i)%iPot
+       enddo
+    endif
 
   end subroutine addIons
     
@@ -1364,6 +1380,8 @@ function returnNe(thisOctal, subcell, ionArray, nion) result (ne)
           thisOctal%ionFrac(subcell, i) * dble(ionArray(i)%z-ionArray(i)%n)
   enddo
   ne = tot
+
+  if (isnan(ne)) write(*,*) "ne is nan ", subcellCentre(thisOctal, subcell)
 end function returnNe
 
 end module ion_mod

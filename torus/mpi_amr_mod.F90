@@ -26,6 +26,7 @@ module mpi_amr_mod
      module procedure packAttributeRealArray1Dpointer
      module procedure packAttributeVectorArray1Dpointer
      module procedure packAttributeIntegerArray1Dpointer
+     module procedure packAttributeBigIntegerArray1Dpointer
      module procedure packAttributeLogicalArray1Dpointer
      module procedure packAttributeDoubleArray2Dpointer
      module procedure packAttributeDoubleArray3Dpointer
@@ -37,6 +38,7 @@ module mpi_amr_mod
      module procedure unpackAttributeVectorArray1Dpointer
      module procedure unpackAttributeLogicalArray1Dpointer
      module procedure unpackAttributeIntegerArray1Dpointer
+     module procedure unpackAttributeBigIntegerArray1Dpointer
      module procedure unpackAttributeDoubleArray2Dpointer
      module procedure unpackAttributeDoubleArray3Dpointer
   end interface
@@ -4822,7 +4824,7 @@ end subroutine writeRadialFile
 
   subroutine dumpValuesAlongLine(grid, thisFile, startPoint, endPoint, nPoints)
     use mpi
-    use inputs_mod, only : inputgfac, dustPhysics, hydrodynamics
+    use inputs_mod, only : inputgfac, dustPhysics, hydrodynamics, decoupleGasDustTemperature
     use source_mod, only : globalSourceArray
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, soctal
@@ -4830,10 +4832,10 @@ end subroutine writeRadialFile
     integer :: nPoints
     type(VECTOR) :: startPoint, endPoint, position, direction, cen, rVec
     real(double) :: loc(3), rho, rhou , rhoe, p, phi_stars, phi_gas
-    real(double) :: temperature, r
+    real(double) :: temperature, r, tdust
     character(len=*) :: thisFile
     integer :: ierr
-    integer, parameter :: nStorage = 16
+    integer, parameter :: nStorage = 17
     real(double) :: tempSTorage(nStorage), tval, kappaTimesFlux, rpress, radmom
     real(double) :: kappaSca, kappaAbs, kappaAbsDust, kappaScaDust
     integer, parameter :: tag = 30
@@ -4884,6 +4886,7 @@ end subroutine writeRadialFile
                 ghostCell = .true.
              endif
           endif
+          tdust = tempStorage(17)
 
           if (.not.ghostCell) then
           if(grid%geometry == "SB_CD_1Da" .or. grid%geometry == "SB_CD_1Db") then
@@ -4896,8 +4899,8 @@ end subroutine writeRadialFile
           else
              rpress = globalSourceArray(1)%luminosity * ((kappaAbs+(1.d0-inputgFac)*kappaSca)/1.d10)/ &
                   (cSpeed * fourPi * modulus(cen)**2 * 1.d20)
-             write(20,'(1p,11e12.4)') modulus(cen), rho, rhou/rho, rhoe,p, phi_stars, phi_gas, kappaTimesFlux, radmom, rpress, &
-                  temperature
+             write(20,'(1p,12e12.4)') modulus(cen), rho, rhou/rho, rhoe,p, phi_stars, phi_gas, kappaTimesFlux, radmom, rpress, &
+                  temperature, tdust
 !             write(20,'(1p,7e14.5)') modulus(cen), rho, rhou/rho, rhoe,p, temperature
           end if
           endif
@@ -4961,6 +4964,11 @@ end subroutine writeRadialFile
                 else
                    tempStorage(16) = 0
                 endif
+             endif
+             if (decoupleGasDustTemperature) then
+                tempStorage(17) = thisOctal%tdust(subcell)
+             else
+                tempStorage(17) = thisOctal%temperature(subcell) 
              endif
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           endif
@@ -8656,6 +8664,7 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     call packAttributeStatic(thisOctal%inflow)
 
 
+    call packAttributePointer(thisOctal%tDust)
     call packAttributePointer(thisOctal%dustTypeFraction)
     call packAttributePointer(thisOctal%diffusionApprox)
     call packAttributePointer(thisOctal%changed)
@@ -8710,6 +8719,7 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     call unpackAttributeStatic(thisOctal%temperature)
     call unpackAttributeStatic(thisOctal%inflow)
 
+    call unpackAttributePointer(thisOctal%tDust)
     call unpackAttributePointer(thisOctal%dustTypeFraction)
     call unpackAttributePointer(thisOctal%diffusionApprox)
     call unpackAttributePointer(thisOctal%changed)
@@ -8746,36 +8756,37 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     type(GRIDTYPE) :: grid
     integer :: communicator
     integer :: ierr, i
+    integer :: packednBuffer
 
     if (allocated(buffer)) deallocate(buffer)
     maxBuffer = 0
+    nBuffer = 1
     if (myrankGlobal == fromThread) then
        call countVoxels(grid%octreeRoot, nOctals, maxBuffer)
        maxBuffer = maxBuffer * 1000
-    endif
-    call MPI_BCAST(maxBuffer, 1, MPI_INTEGER, 0, communicator, ierr)
-    allocate(buffer(1:maxBuffer))
-    nBuffer = 1
-
-    if (myrankGlobal == fromThread) then
+       allocate(buffer(1:maxBuffer))
 !       CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
-       call packBranch(grid%octreeRoot)
-    endif
-
-! NB fromThread is the zeroth rank of the communicator
-
-    call MPI_BCAST(nBuffer, 1, MPI_INTEGER, 0, communicator, ierr)
-    call MPI_BCAST(buffer(1:nBuffer), nBuffer, MPI_DOUBLE_PRECISION, 0, communicator, ierr)
-
-    if (myrankGlobal /= fromThread) then
-
+       call packBranch(grid%octreeRoot) ! populate buffer, increment nBuffer
+    else
        call deleteOctreeBranch(thisOctal=grid%octreeroot,                      &
                onlyChildren=.FALSE.,                                           &
                adjustParent=.FALSE.)
+    endif
 
+! NB fromThread is the zeroth rank of the communicator
+    call MPI_BCAST(nBuffer, 1, MPI_INTEGER, 0, communicator, ierr)
+    if (myrankGlobal /= fromThread) then
+       allocate(buffer(1:nBuffer))
+    endif
+    call MPI_BCAST(buffer(1:nBuffer), nBuffer, MPI_DOUBLE_PRECISION, 0, communicator, ierr)
+
+    if (myrankGlobal /= fromThread) then
+       packednBuffer = nBuffer ! from fromThread
        nBuffer = 1
 
-       call unpackbranch(grid%octreeRoot, null())
+       call unpackbranch(grid%octreeRoot, null()) ! populate octal properties, increment nBuffer
+       if (nBuffer /= packedNbuffer) write(*,*) "Warning: unpacked nBuffer doesn't match packed nBuffer!"
+       deallocate(buffer)
 
        CALL updateMaxDepth(grid)
        CALL setSmallestSubcell(grid)
@@ -8783,8 +8794,9 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
 
 !       CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
        copyOfThread = fromThread
+    else
+       deallocate(buffer)
     endif
-    deallocate(buffer)
     call MPI_BARRIER(communicator,ierr)
 
   end subroutine broadcastBranch
@@ -8881,6 +8893,16 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     nBuffer = nBuffer + m
   end subroutine packAttributeIntegerArray1Dpointer
 
+  subroutine packAttributeBigIntegerArray1Dpointer(array)
+    integer(bigint) :: array(:)
+    integer :: m
+    m = SIZE(array)
+    buffer(nBuffer) = dble(m)
+    nBuffer = nBuffer + 1
+    buffer(nBuffer:(nBuffer+m-1)) = dble(array)
+    nBuffer = nBuffer + m
+  end subroutine packAttributeBigIntegerArray1Dpointer
+
   subroutine unpackAttributeDoubleArray2Dpointer(array)
     real(double), pointer :: array(:,:)
     integer :: m, n, dim(2)
@@ -8969,6 +8991,15 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     nBuffer = nBuffer + m
   end subroutine unpackAttributeIntegerArray1Dpointer
 
+  subroutine unpackAttributeBigIntegerArray1Dpointer(array)
+    integer(bigint), pointer :: array(:)
+    integer :: m
+    m = nint(buffer(nBuffer))
+    nBuffer = nBuffer + 1
+    allocate(array(1:m))
+    array = nint(buffer(nBuffer:(nBuffer+m-1)))
+    nBuffer = nBuffer + m
+  end subroutine unpackAttributeBigIntegerArray1Dpointer
 
 
 

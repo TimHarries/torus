@@ -1145,7 +1145,7 @@ contains
 
   recursive subroutine sublimateDust(grid, thisOctal, totFrac, nFrac, tauMax, subTemp, minLevel)
 
-    use inputs_mod, only : grainFrac, nDustType, tThresh, tSub
+    use inputs_mod, only : grainFrac, nDustType, tThresh, tSub, decoupleGasDustTemperature
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -1185,7 +1185,11 @@ contains
        else
 
           do j = 1, nDustType
-             temperature = thisOctal%temperature(subcell)
+             if (decoupleGasDustTemperature) then
+                temperature = real(thisOctal%tDust(subcell))
+             else
+                temperature = thisOctal%temperature(subcell)
+             endif
              if (present(subTemp)) then
                 sublimationTemp = real(subTemp)
              else

@@ -67,6 +67,7 @@ MODULE octal_mod
      module procedure allocateAttributeDouble3D
      module procedure allocateAttributeReal
      module procedure allocateAttributeInteger
+     module procedure allocateAttributeBigInteger
      module procedure allocateAttributeLogical
      module procedure allocateAttributeVector
   end interface
@@ -80,6 +81,7 @@ MODULE octal_mod
      module procedure deallocateAttributeDouble3D
      module procedure deallocateAttributeReal
      module procedure deallocateAttributeInteger
+     module procedure deallocateAttributeBigInteger
      module procedure deallocateAttributeInteger3D
      module procedure deallocateAttributeOctalPointer3D
      module procedure deallocateAttributeVector
@@ -93,6 +95,7 @@ MODULE octal_mod
      module procedure copyAttributeDoublePointer3d
      module procedure copyAttributeRealPointer
      module procedure copyAttributeIntegerPointer
+     module procedure copyAttributeBigIntegerPointer
      module procedure copyAttributeLogicalPointer
      module procedure copyAttributeVectorPointer
   end interface
@@ -101,6 +104,7 @@ MODULE octal_mod
      module procedure readAttributeDoublePointer
      module procedure readAttributeRealPointer
      module procedure readAttributeIntegerPointer
+     module procedure readAttributeBigIntegerPointer
      module procedure readAttributeVectorPointer
   end interface
 
@@ -218,7 +222,7 @@ MODULE octal_mod
     REAL(double), DIMENSION(:), pointer         :: kappaP  => null()
     real(double), dimension(:,:,:), pointer       :: scatteredIntensity => null()
     real(double), dimension(:), pointer       :: meanIntensity => null()
-    INTEGER, DIMENSION(:), pointer              :: nCrossings  => null()    ! no of photon crossings used by lucy R Eq
+    INTEGER(bigint), DIMENSION(:), pointer      :: nCrossings  => null()    ! no of photon crossings used by lucy R Eq
     real(double), DIMENSION(:), pointer :: nTot => null()          ! total density
     real, dimension(:), pointer :: oldFrac  => null() ! Previous value of dust sublimation fraction
 
@@ -945,6 +949,16 @@ CONTAINS
     endif
   end subroutine allocateAttributeInteger
 
+  subroutine allocateAttributeBigInteger(array, nSize)
+    integer :: nSize
+    integer(bigInt), pointer :: array(:)
+
+    if (.not.associated(array)) then
+       allocate(array(1:nSize))
+       array = 0
+    endif
+  end subroutine allocateAttributeBigInteger
+
   subroutine allocateAttributeLogical(array, nSize)
     integer :: nSize
     logical, pointer :: array(:)
@@ -1030,6 +1044,15 @@ CONTAINS
 
   end subroutine copyAttributeIntegerPointer
 
+  subroutine copyAttributeBigIntegerPointer(dest, source)
+    integer(bigint), pointer :: dest(:), source(:)
+
+    if (associated(source)) then
+       allocate(dest(SIZE(source)))
+       dest = source
+    endif
+
+  end subroutine copyAttributeBigIntegerPointer
 
   subroutine copyAttributeLogicalPointer(dest, source)
     logical, pointer :: dest(:), source(:)
@@ -1132,6 +1155,15 @@ CONTAINS
     endif
   end subroutine deallocateAttributeInteger
 
+  subroutine deallocateAttributeBigInteger(array)
+    integer(bigint), pointer :: array(:)
+
+    if (associated(array)) then
+       deallocate(array)
+       nullify(array)
+    endif
+  end subroutine deallocateAttributeBigInteger
+
   subroutine deallocateAttributeInteger3D(array)
     integer, pointer :: array(:,:,:)
 
@@ -1214,6 +1246,33 @@ CONTAINS
     endif
 
   end subroutine readAttributeIntegerPointer
+
+  subroutine readAttributeBigIntegerPointer(lUnit, array, fileFormatted)
+    integer :: lUnit
+    integer :: nSize
+    logical :: valPresent
+    integer(bigint), pointer :: array(:)
+    logical :: fileFormatted
+    
+    if (fileFormatted) then
+       read(lUnit,*) valPresent
+    else
+       read(lUnit) valPresent
+    endif
+
+    if (valPresent) then
+       if (fileFormatted) then
+          read(lunit,*) nSize
+          allocate(array(1:nSize))
+          read(lUnit,*) array(1:nSize)
+       else
+          read(lunit) nSize
+          allocate(array(1:nSize))
+          read(lUnit) array(1:nSize)
+       endif
+    endif
+
+  end subroutine readAttributeBigIntegerPointer
 
   subroutine readAttributeRealPointer(lUnit, array, fileFormatted)
     integer :: lUnit

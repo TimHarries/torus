@@ -60,7 +60,7 @@ contains
     do i = 1, PAHtable%nu
 
        if (PAHtable%u(i) <= 10.d0) then
-          write(cval,'(f4.2)') PAHtable%u(i)
+          write(cval,'(f5.2)') PAHtable%u(i)
        else if ((PAHtable%u(i) > 10.d0).and.(PAHtable%u(i) < 100.d0)) then
           write(cval, '(f4.1)') PAHtable%u(i)
        else

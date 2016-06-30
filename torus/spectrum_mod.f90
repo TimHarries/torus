@@ -779,6 +779,7 @@ module spectrum_mod
          if (ok1.and.ok2) then
             call createInterpolatedSpectrum(spectrum, spec1, spec2, t)
          else
+            if (writeoutput) write(*,*) "Using blackbody spectrum instead."
             call fillSpectrumBB(spectrum, teff, 10.d0, 1.d7, 200)
          endif
       else

@@ -13,11 +13,72 @@ module loadbalance_mod
   integer,pointer :: listCounter(:) => null()
 contains
 
+  subroutine assignLoadBalancingThreads(grid, frac, method) 
+    type(GRIDTYPE) :: grid
+    real(double) :: frac(:)
+    character(len=*) :: method
+    integer :: i, iThread, j
+
+    ! allocate and initilialise arrays
+    if (associated(nLoadBalanceList)) then
+       deallocate(nloadBalanceList)
+       nullify(nloadBalanceList)
+    endif
+    if (associated(LoadBalanceList)) then
+       deallocate(loadBalanceList)
+       nullify(loadBalanceList)
+    endif
+    allocate(nLoadBalanceList(1:nHydroThreadsGlobal))
+    nLoadBalanceList = 1
+
+    if (associated(listCounter)) then
+       deallocate(listCounter)
+       nullify(listCounter)
+    endif
+    allocate(listCounter(1:nHydroThreadsGlobal))
+    listCounter = 1
+
+    allocate(loadBalanceList(1:nHydroThreadsGlobal,1:(nLoadBalancingThreadsGlobal+1)))
+    do i = 1, nHydroThreadsGlobal
+       loadBalanceList(i,1) = i
+    enddo
+
+    ! calculate how many LB threads should be assigned to each hydro thread based on frac array 
+    call normaliseLoadBalanceThreads(nHydroThreadsGlobal,  nLoadBalancingThreadsGlobal, nLoadBalanceList, frac)
+
+    ! assign LB rank numbers to hydro threads 
+    iThread = nHydroThreadsGlobal+1
+    do i = 1, nHydroThreadsGlobal
+       if (nLoadBalanceList(i) > 1) then
+          do j  = 2, nLoadBalanceList(i)
+             if (iThread > nThreadsGlobal-1) then
+                write(*,*) "Error assigning load balancing threads ", iThread, myrankglobal 
+                stop
+             endif
+             loadBalanceList(i,j) = iThread
+             iThread = iThread + 1
+          enddo
+       endif
+    enddo
+
+    if (writeoutput) then
+       write(*,*) "Load balancing thread list (balanced by "//method//")"
+       do i = 1, nHydroThreadsGlobal
+          if (nLoadbalanceList(i) > 1) &
+               write(*,'(20i4)') i, nLoadBalanceList(i), loadBalanceList(i,1:nLoadBalanceList(i))
+       enddo
+    end if
+
+    ! mpi and grid copying
+    call createLoadBalanceCommunicator
+    call createLoadThreadDomainCopies(grid)
+
+  end subroutine assignLoadBalancingThreads 
 
   subroutine setLoadBalancingThreadsBySources(grid)
     use mpi
     type(GRIDTYPE) :: grid
-    integer :: i, iThread, j
+    integer :: i
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     integer, allocatable :: numberOfSourcesonThread(:), itemp(:)
@@ -46,62 +107,50 @@ contains
     endif
     call MPI_BCAST(numberOfSourcesOnThread, nHydroThreadsGlobal, MPI_INTEGER, 1, localWorldCommunicator, ierr)
 
-    if (associated(nLoadBalanceList)) then
-       deallocate(nloadBalanceList)
-       nullify(nloadBalanceList)
-    endif
-    if (associated(LoadBalanceList)) then
-       deallocate(loadBalanceList)
-       nullify(loadBalanceList)
-    endif
-    allocate(nLoadBalanceList(1:nHydroThreadsGlobal))
-    nLoadBalanceList = 1
-
-    if (associated(listCounter)) then
-       deallocate(listCounter)
-       nullify(listCounter)
-    endif
-    allocate(listCounter(1:nHydroThreadsGlobal))
-    listCounter = 1
-
-    allocate(loadBalanceList(1:nHydroThreadsGlobal,1:(nLoadBalancingThreadsGlobal+1)))
-    do i = 1, nHydroThreadsGlobal
-       loadBalanceList(i,1) = i
-    enddo
-
     allocate(frac(1:nHydroThreadsGlobal))
     frac = dble(numberOfSourcesOnThread(1:nHydroThreadsGlobal))/dble(globalnsource)
-    nLoadBalanceList(1:nHydroThreadsGlobal) = nLoadBalanceList(1:nHydroThreadsGlobal) + &
-         int(dble(nLoadBalancingThreadsGlobal)*dble(numberOfSourcesOnThread(1:nHydroThreadsGlobal))/dble(globalnSource))
 
-
-    call normaliseLoadBalanceThreads(nHydroThreadsGlobal, nLoadBalancingThreadsGlobal, nLoadBalanceList, frac)
-
-    iThread = nHydroThreadsGlobal+1
-    do i = 1, nHydroThreadsGlobal
-       if (nLoadBalanceList(i) > 1) then
-          do j  = 2, nLoadBalanceList(i)
-             if (iThread > nThreadsGlobal-1) then
-                write(*,*) "Error assigning load balancing threads ",ithread
-             endif
-             loadBalanceList(i,j) = iThread
-             iThread = iThread + 1
-          enddo
-       endif
-    enddo
-
-!    if (writeoutput) then
-!       write(*,*) "Load balancing thread list"
-!       do i = 1, nHydroThreadsGlobal
-!          if (nLoadbalanceList(i) > 1) &
-!               write(*,'(20i4)') i, nLoadBalanceList(i), loadBalanceList(i,1:nLoadBalanceList(i))
-!       enddo
-!    end if
-
-    call createLoadBalanceCommunicator
-    call createLoadThreadDomainCopies(grid)
+    call assignLoadBalancingThreads(grid, frac, "sources")
 
   end subroutine setLoadBalancingThreadsBySources
+
+  subroutine setLoadBalancingThreadsByLum(grid)
+    use mpi
+    type(GRIDTYPE) :: grid
+    integer :: i
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    real(double), allocatable :: luminosityOnThread(:), itemp(:)
+    integer :: ierr
+    real(double), allocatable :: frac(:)
+
+    allocate(luminosityOnThread(1:nHydroThreadsGlobal))
+    luminosityOnThread = 0.d0
+
+
+    if ((.not.loadBalancingThreadGlobal).and.(myrankGlobal /= 0)) then
+       do i = 1, globalnSource
+          thisOctal => grid%octreeRoot
+          call findSubcellTD(globalSourcearray(i)%position, grid%octreeRoot,thisOctal, subcell)
+          if (octalOnThread(thisOctal, subcell, myrankGlobal)) then
+             luminosityOnThread(myrankGlobal) = luminosityOnThread(myrankGlobal) + globalSourceArray(i)%luminosity
+          endif
+       enddo
+       allocate(itemp(1:nHydroThreadsGlobal))
+       call MPI_ALLREDUCE(luminosityOnThread, itemp, nHydroThreadsGlobal, & 
+               MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
+       luminosityOnThread = itemp
+       deallocate(itemp)
+    endif
+    call MPI_BCAST(luminosityOnThread, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, 1, localWorldCommunicator, ierr)
+
+    allocate(frac(1:nHydroThreadsGlobal))
+    frac = luminosityOnThread(1:nHydroThreadsGlobal)/sum(luminosityOnThread(1:nHydroThreadsGlobal))
+    if (writeoutput) write(*,*) "LB total lum: ", sum(luminosityOnThread(1:nHydroThreadsGlobal))/msol
+
+    call assignLoadBalancingThreads(grid, frac, "luminosity")
+
+  end subroutine setLoadBalancingThreadsByLum
 
   subroutine checkLoadBalance(grid)
     type(GRIDTYPE) :: grid
@@ -118,16 +167,15 @@ contains
   
   subroutine setLoadBalancingThreadsByCrossings(grid)
     use mpi
-    use utils_mod, only : median
     type(GRIDTYPE) :: grid
-    integer :: i, iThread, j
+    integer :: i
     integer(bigint), allocatable :: itemp(:)
     integer(bigint), allocatable :: numberOfCrossingsOnThread(:)
     real(double), allocatable :: frac(:)
     integer :: ierr
 
-    allocate(numberOfCrossingsOnThread(1:nHydroThreadsGlobal))
 
+    allocate(numberOfCrossingsOnThread(1:nHydroThreadsGlobal))
     numberOfCrossingsOnThread = 0
     if ((.not.loadBalancingThreadGlobal).and.(myrankGlobal /=0)) then
        call sumCrossings(grid%octreeRoot, numberOfCrossingsOnThread(myRankGlobal))
@@ -140,7 +188,15 @@ contains
     call MPI_BCAST(numberOfCrossingsOnThread, nHydroThreadsGlobal, MPI_INTEGER8, 1, localWorldCommunicator, ierr)
 
     if (writeoutput) write(*,*) "Total number of crossings: ", sum(numberOfCrossingsOnThread)
-    if (sum(numberOfCrossingsOnThread) .le. 0) then
+
+    ! overflow check
+    if (any(numberOfCrossingsOnThread < 0)) then 
+       if (writeoutput) write(*,*) "WARNING: negative crossings on thread ", minloc(numberOfCrossingsOnThread), &
+          minval(numberOfCrossingsOnThread)
+    endif 
+    
+    ! if there are no crossings at all (e.g. grid hasn't had a photoion loop before)
+    if (sum(numberOfCrossingsOnThread) <= 0) then  
        if (writeoutput) write(*,*) "Setting load balancing threads by cells instead."
        call setLoadBalancingThreadsByCells(grid)
        goto 666
@@ -149,65 +205,17 @@ contains
     allocate(frac(1:nHydroThreadsGlobal))
     frac = dble(numberOfCrossingsOnThread)/dble(SUM(numberOfCrossingsOnThread))
 
-    if (associated(nLoadBalanceList)) then
-       deallocate(nloadBalanceList)
-       nullify(nloadBalanceList)
-    endif
-    if (associated(LoadBalanceList)) then
-       deallocate(loadBalanceList)
-       nullify(loadBalanceList)
-    endif
-    allocate(nLoadBalanceList(1:nHydroThreadsGlobal))
-    nLoadBalanceList = 1
-
-    if (associated(listCounter)) then
-       deallocate(listCounter)
-       nullify(listCounter)
-    endif
-    allocate(listCounter(1:nHydroThreadsGlobal))
-    listCounter = 1
-
-    allocate(loadBalanceList(1:nHydroThreadsGlobal,1:(nLoadBalancingThreadsGlobal+1)))
-    do i = 1, nHydroThreadsGlobal
-       loadBalanceList(i,1) = i
-    enddo
-
-    call normaliseLoadBalanceThreads(nHydroThreadsGlobal,  nLoadBalancingThreadsGlobal, nLoadBalanceList, frac)
-
-    iThread = nHydroThreadsGlobal+1
-    do i = 1, nHydroThreadsGlobal
-       if (nLoadBalanceList(i) > 1) then
-          do j  = 2, nLoadBalanceList(i)
-             if (iThread > nThreadsGlobal-1) then
-                write(*,*) "Error assigning load balancing threads"
-             endif
-             loadBalanceList(i,j) = iThread
-             iThread = iThread + 1
-          enddo
-       endif
-    enddo
-
-    if (writeoutput) then
-       write(*,*) "Load balancing thread list (balanced by crossings)"
-       do i = 1, nHydroThreadsGlobal
-          if (nLoadbalanceList(i) > 1) &
-               write(*,'(20i4)') i, nLoadBalanceList(i), loadBalanceList(i,1:nLoadBalanceList(i))
-       enddo
-    end if
-
-    call createLoadBalanceCommunicator
-    call createLoadThreadDomainCopies(grid)
+    call assignLoadBalancingThreads(grid, frac, "crossings")
 
     deallocate(frac)
 666 continue
     deallocate(numberOfCrossingsOnThread)
   end subroutine setLoadBalancingThreadsByCrossings
 
+
   subroutine setLoadBalancingThreadsByCells(grid)
     use mpi
-    use utils_mod, only : median
     type(GRIDTYPE) :: grid
-    integer :: i, iThread, j
     integer, allocatable :: itemp(:)
     integer, allocatable :: numberOfCellsOnThread(:)
     real(double), allocatable :: frac(:)
@@ -230,54 +238,7 @@ contains
     call MPI_BCAST(numberOfCellsOnThread, nHydroThreadsGlobal, MPI_INTEGER, 1, localWorldCommunicator, ierr)
     frac = dble(numberOfCellsOnThread)/dble(SUM(numberOfCellsOnThread))
 
-    if (associated(nLoadBalanceList)) then
-       deallocate(nloadBalanceList)
-       nullify(nloadBalanceList)
-    endif
-    if (associated(LoadBalanceList)) then
-       deallocate(loadBalanceList)
-       nullify(loadBalanceList)
-    endif
-    allocate(nLoadBalanceList(1:nHydroThreadsGlobal))
-    nLoadBalanceList = 1
-
-    if (associated(listCounter)) then
-       deallocate(listCounter)
-       nullify(listCounter)
-    endif
-    allocate(listCounter(1:nHydroThreadsGlobal))
-    listCounter = 1
-
-    allocate(loadBalanceList(1:nHydroThreadsGlobal,1:(nLoadBalancingThreadsGlobal+1)))
-    do i = 1, nHydroThreadsGlobal
-       loadBalanceList(i,1) = i
-    enddo
-
-    call normaliseLoadBalanceThreads(nHydroThreadsGlobal,  nLoadBalancingThreadsGlobal, nLoadBalanceList, frac)
-
-    iThread = nHydroThreadsGlobal+1
-    do i = 1, nHydroThreadsGlobal
-       if (nLoadBalanceList(i) > 1) then
-          do j  = 2, nLoadBalanceList(i)
-             if (iThread > nThreadsGlobal-1) then
-                write(*,*) "Error assigning load balancing threads"
-             endif
-             loadBalanceList(i,j) = iThread
-             iThread = iThread + 1
-          enddo
-       endif
-    enddo
-
-    if (writeoutput) then
-       write(*,*) "Load balancing thread list (balanced by cells)"
-       do i = 1, nHydroThreadsGlobal
-          if (nLoadbalanceList(i) > 1) &
-               write(*,'(20i4)') i, nLoadBalanceList(i), loadBalanceList(i,1:nLoadBalanceList(i))
-       enddo
-    end if
-
-    call createLoadBalanceCommunicator
-    call createLoadThreadDomainCopies(grid)
+    call assignLoadBalancingThreads(grid, frac, "cells")
 
     deallocate(numberOfCellsOnThread)
     deallocate(frac)
@@ -412,6 +373,11 @@ recursive subroutine sumCrossings(thisOctal, n)
         end do
      else
         if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+
+        if (thisOctal%nCrossings(subcell) < 0) then
+           write(*,*) myrankglobal, " %ncrossings(subcell) negative ", thisOctal%nCrossings(subcell)
+           write(*,*) myrankglobal, " negative location ", subcellCentre(thisOctal, subcell)
+        endif
         n = n + thisOctal%nCrossings(subcell)
      end if
   end do

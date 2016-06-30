@@ -951,10 +951,28 @@ contains
                           0.
                   endif
 
+               case("radforce")
+                  if (thisOctal%threed) then
+                     write(lunit, *) real(thisOctal%kappaTimesFlux(subcell)%x/cSpeed), & 
+                                     real(thisOctal%kappaTimesFlux(subcell)%y/cSpeed), &
+                                     real(thisOctal%kappaTimesFlux(subcell)%z/cSpeed)
+                  else
+                     write(lunit, *) real(thisOctal%kappaTimesFlux(subcell)%x/cSpeed), &
+                                     real(thisOctal%kappaTimesFlux(subcell)%z/cSpeed), &
+                                     0.
+                  endif
+
                case("radmom")
-                     write(lunit, *) real(thisOctal%radiationMomentum(subcell)%x/1.d20), &
-                          real(thisOctal%radiationMomentum(subcell)%y/1.d20), &
-                          real(thisOctal%radiationMomentum(subcell)%z/1.d20)
+                  if (thisOctal%threed) then
+                     write(lunit, *) real(thisOctal%radiationMomentum(subcell)%x), &
+                                     real(thisOctal%radiationMomentum(subcell)%y), &
+                                     real(thisOctal%radiationMomentum(subcell)%z)
+                  else
+                     write(lunit, *) real(thisOctal%radiationMomentum(subcell)%x), &
+                                     real(thisOctal%radiationMomentum(subcell)%z), &
+                                     0.
+                  endif
+                  
                case("velocity")
                      ! stop vectors from showing up in visit if too big
                      if(thisoctal%velocity(subcell)%x .ge. 1.d0) then
@@ -1141,7 +1159,7 @@ contains
                   write(lunit, *) real(thisOctal%etaCont(subcell))
 
                case("crossings")
-                  value = thisOctal%ncrossings(subcell)
+                  value = real(thisOctal%ncrossings(subcell))
                   if (thisOctal%diffusionApprox(subcell)) value = 1.e6
                   write(lunit, *) real(value)
                   
@@ -1539,6 +1557,7 @@ contains
 
     call findMultiFilename(rootVTKFilename, iModel, vtkfilename)
 
+    call writeInfo("Writing vtk file to: "//trim(vtkfilename),TRIVIAL)
 
     if (useBinaryXMLVtkFiles) then
        xmlFilename = adjustl(vtkFilename)
@@ -1806,6 +1825,8 @@ endif
 
 
 666 continue
+
+  call writeInfo("Vtk file written and closed",TRIVIAL)
 
   end subroutine writeVtkFileAMR
 
@@ -2583,6 +2604,16 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
      buffer = '<VTKFile type="UnstructuredGrid" version="0.1" byte_order="LittleEndian" compressor="vtkZLibDataCompressor">'//lf
      write(lunit) trim(buffer)
      buffer = '  <UnstructuredGrid>'//lf 
+     write(lunit) trim(buffer)
+     buffer = '    <FieldData>'//lf
+     write(lunit) trim(buffer)
+     buffer = '      <DataArray type="Float32" Name="TIME" NumberOfTuples="1" format="ascii">'//lf
+     write(lunit) trim(buffer)
+     write(buffer,*) '        ', real(grid%currentTime*secsToYears), lf
+     write(lunit) trim(buffer)
+     buffer = '      </DataArray>'//lf
+     write(lunit) trim(buffer)
+     buffer = '    </FieldData>'//lf
      write(lunit) trim(buffer)
      write(str1(1:12),'(i10)') nPointsGlobal
      write(str2(1:12),'(i10)') nCellsGlobal
@@ -3367,12 +3398,12 @@ end subroutine writeXMLVtkFileAMR
                   rArray(1, n) = real(thisOctal%etaCont(subcell))
 
                case("crossings")
-                  value = thisOctal%ncrossings(subcell)
+                  value = dble(thisOctal%ncrossings(subcell))
                   if (thisOctal%diffusionApprox(subcell)) value = 1.e6
                   rArray(1, n) = real(value)
 
                case("ncrossings")
-                  value = thisOctal%ncrossings(subcell)
+                  value = dble(thisOctal%ncrossings(subcell))
                   rArray(1, n) = real(value)
 
                case("tissue")

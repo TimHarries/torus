@@ -34,6 +34,7 @@ module gridio_mod
 
   interface writeAttributePointerFlexi
      module procedure writeAttributePointerInteger1dFlexi
+     module procedure writeAttributePointerBigInteger1dFlexi
      module procedure writeAttributePointerLogical1dFlexi
      module procedure writeAttributePointerReal1dFlexi
      module procedure writeAttributePointerVector1dFlexi
@@ -81,6 +82,7 @@ module gridio_mod
      module procedure readRealPointer1DFlexi
      module procedure readLogicalPointer1DFlexi
      module procedure readIntegerPointer1DFlexi
+     module procedure readBigIntegerPointer1DFlexi
      module procedure readVectorPointer1DFlexi
      module procedure readDoublePointer2DFlexi
      module procedure readDoublePointer3DFlexi
@@ -103,6 +105,7 @@ module gridio_mod
      module procedure receiveRealPointer1DFlexi
      module procedure receiveLogicalPointer1DFlexi
      module procedure receiveIntegerPointer1DFlexi
+     module procedure receiveBigIntegerPointer1DFlexi
      module procedure receiveVectorPointer1DFlexi
      module procedure receiveDoublePointer2DFlexi
      module procedure receiveDoublePointer3DFlexi
@@ -120,6 +123,7 @@ module gridio_mod
 
   interface sendAttributePointerFlexi
      module procedure sendAttributePointerInteger1dFlexi
+     module procedure sendAttributePointerBigInteger1dFlexi
      module procedure sendAttributePointerLogical1dFlexi
      module procedure sendAttributePointerReal1dFlexi
      module procedure sendAttributePointerVector1dFlexi
@@ -765,7 +769,7 @@ contains
           
           call writeAttributePointerFlexi(20, "distanceGrid", thisOctal%distanceGrid, fileFormatted)
           
-          call writeAttributePointerFlexi(20, "nCrossings", thisOctal%nCrossings, fileFormatted)
+          call writeAttributePointerFlexi(20, "nCrossingsBig", thisOctal%nCrossings, fileFormatted)
           call writeAttributePointerFlexi(20, "hHeating", thisOctal%hHeating, fileFormatted)
           call writeAttributePointerFlexi(20, "tDust", thisOctal%tDust, fileFormatted)
           call writeAttributePointerFlexi(20, "heHeating", thisOctal%heHeating, fileFormatted)
@@ -1979,6 +1983,40 @@ contains
     endif
   end subroutine writeAttributePointerInteger1DFlexi
 
+  subroutine writeAttributePointerBigInteger1DFlexi(lUnit, name, value, fileFormatted)
+    integer :: lUnit
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    integer(bigInt), pointer :: value(:)
+    logical :: fileFormatted
+    character(len=10) :: dataType
+
+    dataType = "b1darray"
+
+    attributeName = name
+    if (associated(value)) then
+       if (fileFormatted) then
+          write(lUnit,*) attributeName
+          write(lUnit,*) dataType
+          write(lUnit,*) SIZE(value)
+          write(lUnit,*) value(1:SIZE(value))
+       else
+          if (uncompressedDumpFiles) then
+             write(lUnit) attributeName
+             write(lUnit) dataType
+             write(lUnit) SIZE(value)
+             write(lUnit) value(1:SIZE(value))
+          else
+#ifdef USEZLIB
+             call writeCompressedFile(lunit, attributeName)
+             call writeCompressedFile(lunit, dataType)
+             call writeCompressedFile(lunit, SIZE(value))
+             call writeCompressedFile(lunit, value(1:SIZE(value)))
+#endif
+          endif
+       endif
+    endif
+  end subroutine writeAttributePointerBigInteger1DFlexi
 
   subroutine writeAttributePointerLogical1DFlexi(lUnit, name, value, fileFormatted)
     integer :: lUnit
@@ -2415,6 +2453,7 @@ contains
 #ifdef USEZLIB
             call readCompressedFile(lUnit, i)
             call readCompressedFile(lUnit, value(1:i))
+            value = value(1:i) ! prevent junk in value(i+1:len(value))
 #endif
          endif
       endif
@@ -2637,6 +2676,36 @@ contains
       endif
     end subroutine readIntegerPointer1DFlexi
 
+    subroutine readBigIntegerPointer1DFlexi(lUnit, value, fileFormatted)
+      integer :: lUnit
+      integer(bigInt), pointer :: value(:)
+      logical :: fileFormatted
+      integer :: n
+
+      call testDataType("b1darray", fileFormatted)
+      if (associated(value)) then
+         deallocate(value)
+         nullify(value)
+      endif
+      if (fileFormatted) then
+         read(lUnit,*) n
+         allocate(value(1:n))
+         read(lUnit,*) value(1:n)
+      else
+         if (uncompressedDumpFiles) then
+            read(lUnit) n
+            allocate(value(1:n))
+            read(lUnit) value(1:n)
+         else
+#ifdef USEZLIB
+            call readCompressedFile(lunit, n)
+            allocate(value(1:n))
+            call readCompressedFile(lunit,value)
+#endif
+         endif
+      endif
+    end subroutine readBigIntegerPointer1DFlexi
+
     subroutine readVectorPointer1DFlexi(lUnit, value, fileFormatted)
       integer :: lUnit
       type(VECTOR), pointer :: value(:)
@@ -2816,6 +2885,26 @@ contains
 
     endif
   end subroutine sendAttributePointerInteger1DFlexi
+
+  subroutine sendAttributePointerBigInteger1DFlexi(iThread, name, value)
+    use mpi
+    integer :: iThread
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    integer(bigInt), pointer :: value(:)
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+
+    attributeName = name
+    if (associated(value)) then
+
+       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
+       call MPI_SEND(SIZE(value), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+       call MPI_SEND(value, SIZE(value), MPI_INTEGER8, iThread, tag, localWorldCommunicator, ierr)
+
+    endif
+  end subroutine sendAttributePointerBigInteger1DFlexi
 
   subroutine sendAttributePointerReal1DFlexi(iThread, name, value)
     use mpi
@@ -3355,6 +3444,25 @@ contains
 
     end subroutine receiveIntegerPointer1dFlexi
 
+    subroutine receiveBigIntegerPointer1dFlexi(value,ithread)
+      use mpi
+      integer :: ithread
+      integer(bigInt), pointer :: value(:)
+      integer :: n 
+      integer :: status(MPI_STATUS_SIZE)
+      integer, parameter :: tag = 50
+      integer :: ierr
+
+      if (associated(value)) then
+         deallocate(value)
+         nullify(value)
+      endif
+      call MPI_RECV(n, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
+      allocate(value(1:n))
+      call MPI_RECV(value, n, MPI_INTEGER8, ithread, tag, localWorldCommunicator, status, ierr)
+
+    end subroutine receiveBigIntegerPointer1dFlexi
+
     subroutine receiveRealPointer1dFlexi(value,ithread)
       use mpi
       integer :: ithread
@@ -3545,6 +3653,7 @@ contains
       real :: rDummy
       real, pointer :: rArray(:)
       integer, pointer :: iArray(:)
+      integer(bigInt), pointer :: bArray(:)
       logical, pointer :: lArray(:)
       type(VECTOR), pointer :: vArray(:)
       real(double), pointer :: dArray(:)
@@ -3722,6 +3831,25 @@ contains
                endif
             endif
             deallocate(iArray)
+         case("b1darray")
+            if (fileFormatted) then
+               read(lUnit,*) n
+               allocate(bArray(1:n))
+               read(lUnit,*) bArray(1:n)
+            else
+               if (uncompressedDumpFiles) then
+                  read(lUnit) n
+                  allocate(bArray(1:n))
+                  read(lUnit) bArray(1:n)
+               else
+#ifdef USEZLIB
+                  call readCompressedFile(lUnit, n)
+                  allocate(bArray(1:n))
+                  call readCompressedFile(lUnit, bArray(1:n))
+#endif
+               endif
+            endif
+            deallocate(bArray)
          case("l1darray")
             if (fileFormatted) then
                read(lUnit,*) n
@@ -4468,6 +4596,7 @@ contains
      logical :: fileFormatted
      character(len=20) :: tag
      character(len=80) :: message
+     INTEGER, DIMENSION(:), pointer :: nCrossings4Byte  => null()
 !     integer :: iThread
 
       do while (.true.)
@@ -4617,6 +4746,15 @@ contains
             call readPointerFlexi(20, thisOctal%distanceGrid, fileFormatted)
 
          case("nCrossings")
+            ! deprecated - this is a 4-byte integer, but thisOctal%nCrossings is now an 8-byte integer.
+            ! This converts to 8-byte. Sending/receiving via MPI will use the 8-byte variable and 
+            ! new dumps will write it with the tag "nCrossingsBig".
+            call readPointerFlexi(20, nCrossings4Byte, fileFormatted)
+            call deallocateAttribute(thisOctal%nCrossings)
+            call allocateAttribute(thisOctal%nCrossings, size(nCrossings4Byte))
+            thisOctal%nCrossings = int(nCrossings4Byte, kind=bigint)
+            call deallocateAttribute(nCrossings4Byte)
+         case("nCrossingsBig")
             call readPointerFlexi(20, thisOctal%nCrossings, fileFormatted)
          case("hHeating")
             call readPointerFlexi(20, thisOctal%hHeating, fileFormatted)
@@ -5008,7 +5146,7 @@ contains
          case("distanceGrid")
             call receivePointerFlexi(thisOctal%distanceGrid, ithread)
 
-         case("nCrossings")
+         case("nCrossingsBig")
             call receivePointerFlexi(thisOctal%nCrossings, ithread)
          case("hHeating")
             call receivePointerFlexi(thisOctal%hHeating, ithread)
@@ -5314,7 +5452,7 @@ contains
 
       call sendAttributePointerFlexi(iThread, "distanceGrid", thisOctal%distanceGrid)
 
-      call sendAttributePointerFlexi(iThread, "nCrossings", thisOctal%nCrossings)
+      call sendAttributePointerFlexi(iThread, "nCrossingsBig", thisOctal%nCrossings)
       call sendAttributePointerFlexi(iThread, "hHeating", thisOctal%hHeating)
       call sendAttributePointerFlexi(iThread, "tDust", thisOctal%tDust)
       call sendAttributePointerFlexi(iThread, "heHeating", thisOctal%heHeating)
