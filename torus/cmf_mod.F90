@@ -4279,7 +4279,6 @@ contains
     type(VECTOR) :: xProj, yProj, rVec
     integer :: nPoints, i, j
     real(double), pointer :: xPoints(:), yPoints(:)
-    integer :: nphi
     real(double) :: r, phi, dphi, dx, dy, rMin, rMax, r1, r2, dxOffset, dyOffset
     integer :: ix, iy, iSource
     logical :: enhanced

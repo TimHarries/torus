@@ -15353,7 +15353,6 @@ end function readparameterfrom2dmap
   recursive subroutine assignDensitiesAlphaDisc(grid, thisOctal)
     use magnetic_mod, only : rhoAlphaDisc, velocityAlphaDisc
     use inputs_mod, only : rSublimation, alphaDiscTemp, grainFrac, rinner, router, smallestCellSize, alphaDiscPower
-    use inputs_mod, only : midplaneDiscTemp, midplaneDiscPower
     type(GRIDTYPE) :: grid
     real(double) :: thisRho, r, fac
     type(octal), pointer   :: thisOctal
@@ -15411,10 +15410,10 @@ end function readparameterfrom2dmap
 
   recursive subroutine assignDensitiesFlatDisc(grid, thisOctal)
     use magnetic_mod, only : rhoAlphaDisc, velocityAlphaDisc
-    use inputs_mod, only : rSublimation, alphaDiscTemp, grainFrac, rinner, router, smallestCellSize, alphaDiscPower
+    use inputs_mod, only :  rinner, router, smallestCellSize
     use inputs_mod, only : midplaneDiscTemp, midplaneDiscPower
     type(GRIDTYPE) :: grid
-    real(double) :: thisRho, r, fac
+    real(double) :: r
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     type(VECTOR) :: cellCentre
