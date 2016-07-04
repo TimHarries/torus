@@ -168,7 +168,6 @@ contains
   subroutine setLoadBalancingThreadsByCrossings(grid)
     use mpi
     type(GRIDTYPE) :: grid
-    integer :: i
     integer(bigint), allocatable :: itemp(:)
     integer(bigint), allocatable :: numberOfCrossingsOnThread(:)
     real(double), allocatable :: frac(:)
