@@ -2431,8 +2431,13 @@ end subroutine radiationHydro
                          toSendStack(thisPacket - 1)%lastPhoton = .true.
 ! stuck here
                          nBundles = nBundles + 1
-                         call MPI_SEND(toSendStack, zerothstackLimit, MPI_PHOTON_STACK, &
-                              OptCounter, tag, localWorldCommunicator,  ierr)
+                         if (bufferedSend) then
+                            call MPI_BSEND(toSendStack, zerothstackLimit, MPI_PHOTON_STACK, &
+                                 OptCounter, tag, localWorldCommunicator,  ierr)
+                         else
+                            call MPI_SEND(toSendStack, zerothstackLimit, MPI_PHOTON_STACK, &
+                                 OptCounter, tag, localWorldCommunicator,  ierr)
+                         endif
 
                          !reset the counter for this thread's bundle recieve 
                          nSaved(optCounter) = 0
