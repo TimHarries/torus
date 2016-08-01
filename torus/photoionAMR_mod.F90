@@ -2294,6 +2294,7 @@ end subroutine radiationHydro
 
        if (myRankGlobal == 0) then
              if (myrankWorldGlobal == 0) call tune(6, "All photons sent from rank 0")  ! stop a stopwatch
+             call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
              mainloop: do iMonte = iMonte_beg, iMonte_end
 !                   if ((myHydroSetGlobal == 0).and.&
 !                        (mod(iMonte,max(int(1,kind=bigint),(imonte_end-imonte_beg+1)/int(10,kind=bigint),&
@@ -2311,7 +2312,7 @@ end subroutine radiationHydro
                       lastPhoton = .false.
                    endif
                    
-                   call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
+                call randomSource(source, nSource, iSource, photonPacketWeight)!, lamArray, nLambda, initialize=.true.)
                 thisSource = source(iSource)
                 call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)
                 if(cart2d .and. .not. source(1)%outsidegrid) then
@@ -2392,7 +2393,8 @@ end subroutine radiationHydro
                 do optCounter = 1, nDomainThreads
                    if(nSaved(optCounter) /= 0) then
                       if(nSaved(optCounter) == (zerothstackLimit) .or. &
-                           (nThreadMonte - nInf) < (zerothstackLimit*nDomainThreads)) then
+!                           (nThreadMonte - nInf) < (zerothstackLimit*nDomainThreads)) then
+                            (iMonte == iMonte_end)) then ! if this is the final photon, send all remaining unsent bundles 
                          thisPacket = 1
                          do sendCounter = 1, (maxStackLimit*nDomainThreads)
                             if(photonPacketStack(sendCounter)%destination == optCounter &
@@ -2457,6 +2459,7 @@ end subroutine radiationHydro
                 write(*,*) "lcore / nMonte ",lCore/dble(nMonte)
                 write(*,*) "Rank 0 sent all initial bundles"
              endif
+             if (myrankWorldGlobal == 0) call tune(6, "All photons sent from rank 0")  ! stop a stopwatch
 
              if(binPhotons) then
                 open(333, file="bins.dat", status="unknown")
@@ -2474,20 +2477,19 @@ end subroutine radiationHydro
 !                write(*,*) myrankWorldglobal, " receiving from ",j
              enddo
 
+             if (myrankWorldGlobal==0)  write(*,*) "Telling Ranks to pass stacks ASAP "
+
              do iThread = 1, nDomainThreads
                 toSendStack(1)%destination = 500
                 call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)
                 call MPI_RECV(donePanicking, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, status, ierr)  
              end do
-
-
-
-             if (myrankWorldGlobal == 0) call tune(6, "All photons sent from rank 0")  ! stop a stopwatch
-             if (myrankWorldGlobal==0)  write(*,*) "Telling Ranks to pass stacks ASAP "
                 
              photonsStillProcessing = .true.
              
              i = 0
+
+             if (myrankWorldGlobal==0)  write(*,*) "Doing photon escape check "
 
              do while(photonsStillProcessing)                   
 
