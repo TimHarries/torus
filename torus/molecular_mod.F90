@@ -3219,7 +3219,6 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 !      if(present(dosink)) then
 
    enddo
-
 !      if(sink .eq. 1.) then
 !         out(3) = sink
 !      else

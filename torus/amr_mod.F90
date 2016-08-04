@@ -2135,11 +2135,11 @@ CONTAINS
 
 #ifdef SPH
 ! Without corner velocities
-       CASE ("sphfile","cluster","wr104")
+       CASE ("cluster","wr104")
           call assign_grid_values(thisOctal,subcell)
 
 ! With corner velocities
-       CASE ("molcluster", "theGalaxy", "dale")
+       CASE ("sphfile","molcluster", "theGalaxy", "dale")
           if( .not. thisoctal%haschild(subcell)) then
 
              if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle

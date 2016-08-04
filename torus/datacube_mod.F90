@@ -104,7 +104,7 @@ contains
     integer, dimension(5) :: naxes
     integer :: group,fpixel,nelements
     logical :: simple, extend
-    
+    logical :: doALMA
     logical :: do_write_Intensity
     logical :: do_write_ipos
     logical :: do_write_ineg
@@ -116,6 +116,8 @@ contains
     logical :: do_write_vaxis
     logical :: do_write_WV
 
+    doALMA = .false.
+    if (PRESENT(ALMA)) doALMA = ALMA
 
 ! Decide which arrays to write. Default is to write all which are allocated.
 ! Optional arguments override the defaults. 
@@ -220,7 +222,7 @@ contains
     fpixel=1
 
 
-    if(present(frequency) .and. present(ALMA)) then
+    if(present(frequency) .and. doALMA) then
        call convertVelocityToHz(thiscube, frequency)
     endif
     
@@ -412,7 +414,6 @@ contains
     contains
 
       subroutine addWCSinfo
-!        use inputs_mod, only : ALMA
         implicit none
         real(double) :: refPix, refVal, deltaPix, startVal
         real(double) :: refValX, refValY, dx, dy
@@ -420,7 +421,7 @@ contains
 ! Axis 1:
 !
         ! Write WCS keywords to the header
-        if(present(ALMA)) then
+        if(doALMA) then
            dx = thisCube%xAxis(2)-thisCube%xAxis(1)
            dy = thisCube%yAxis(2)-thisCube%yAxis(1)
            dx = ((dx * 1.d20)/thisCube%obsdistance)*radtodeg
@@ -445,7 +446,7 @@ contains
 ! Axis 2:
 !
 
-        if(present(ALMA)) then
+        if(doALMA) then
            dx = thisCube%xAxis(2)-thisCube%xAxis(1)
            dy = thisCube%yAxis(2)-thisCube%yAxis(1)
            dx = ((dx * 1.d20)/thisCube%obsdistance)*radtodeg
@@ -489,7 +490,7 @@ contains
 ! 
 ! Axis 3:
 !
-        if(present(ALMA)) then
+        if(doALMA) then
 
            call ftpkyd(unit,'CRPIX3',0.5_db,-3,'reference pixel',status)
            if (SIZE(thisCube%vAxis)  > 1) then
