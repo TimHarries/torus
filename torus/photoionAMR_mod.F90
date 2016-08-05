@@ -2380,7 +2380,7 @@ end subroutine radiationHydro
                       photonPacketStack(optCounter)%sourcePhoton = .true.
                       photonPacketStack(optCounter)%bigPhotonPacket = .true.
                       photonPacketStack(optCounter)%smallPhotonPacket = .false.
-                      photonPacketStack(optCounter)%lastPhoton = .false.
+                      photonPacketStack(optCounter)%lastPhoton = lastPhoton 
                       photonPacketStack(optCounter)%ionizingPhoton = ionizingPhoton
                       exit
                    end if
@@ -2428,7 +2428,7 @@ end subroutine radiationHydro
                             
                             end if
                          end do
-                         toSendStack(thisPacket - 1)%lastPhoton = .true.
+!                         toSendStack(thisPacket - 1)%lastPhoton = .true.
 ! stuck here
                          nBundles = nBundles + 1
                          if (bufferedSend) then
@@ -2475,7 +2475,7 @@ end subroutine radiationHydro
              end if
 
 
-             do i = 1, max(nSmallPackets,1)*nBundles
+             do i = 1, max(nSmallPackets,1)
 !               write(*,*) myHydroSetGlobal," looping from 1 to ",max(nsmallpackets,1), i
                 call MPI_RECV(j, 1, MPI_INTEGER, MPI_ANY_SOURCE, &
                      finaltag, localWorldCommunicator, status, ierr)
@@ -2485,7 +2485,7 @@ end subroutine radiationHydro
              if (myrankWorldGlobal==0)  write(*,*) "Telling Ranks to pass stacks ASAP "
 
              do iThread = 1, nDomainThreads
-                toSendStack(1)%destination = 500
+                toSendStack(1)%destination = -500
                 call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)
                 call MPI_RECV(donePanicking, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, status, ierr)  
              end do
@@ -2499,7 +2499,7 @@ end subroutine radiationHydro
              do while(photonsStillProcessing)                   
 
 !                do iThread = 1, nHydroThreadsGlobal
-!                   toSendStack(1)%destination = 600
+!                   toSendStack(1)%destination = -600
 !                   call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)
 !                   write(*,*) myrankWorldGlobal, " sent buffer flush signal to  ",ithread
 !                end do
@@ -2508,7 +2508,7 @@ end subroutine radiationHydro
                 i = i + 1
                 toSendStack%freq = 0.d0
                 do iThread = 1, nDomainThreads
-                   toSendStack(1)%destination = 999
+                   toSendStack(1)%destination = -999
                    !toSendStack(1)%freq = 100.d0
                    call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)   
                    call MPI_RECV(nEscapedArray(iThread), 1, MPI_INTEGER8, iThread, tag, localWorldCommunicator, status, ierr)
@@ -2545,8 +2545,8 @@ end subroutine radiationHydro
 
              do iThread = 1, nDomainThreads
                 !tosendstack(1)%freq = 100.d0
-                toSendStack(1)%destination = 888
-!                toSendStack(2)%destination = 999
+                toSendStack(1)%destination = -888
+!                toSendStack(2)%destination = -999
                 call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)
              enddo
 
@@ -2604,15 +2604,15 @@ end subroutine radiationHydro
                    !Check to see if a special action is required
                    escapeCheck = .false.
                    !Escape checking
-                   if(currentStack(1)%destination == 999) then
+                   if(currentStack(1)%destination == -999) then
                       iSignal = 1
                       escapeCheck = .true.
                       stackSize = 0
                       !End photoionization loop
-                   else if (currentStack(1)%destination == 888) then
+                   else if (currentStack(1)%destination == -888) then
                       iSignal = 0                    
                       currentStack%destination = 0                      
-                   else if (currentStack(1)%destination == 600) then
+                   else if (currentStack(1)%destination == -600) then
                       stackSize = 0
                       !Evacuate everything currently in need of sending
                       do optCounter = 1, nDomainThreads
@@ -2666,7 +2666,7 @@ end subroutine radiationHydro
                          goto 777
                          Currentstack%destination = 0
 
-                   else if(currentStack(1)%destination == 500 .and. .not. sendAllPhotons) then
+                   else if(currentStack(1)%destination == -500 .and. .not. sendAllPhotons) then
                       sendAllPhotons = .true.
                       stackSize = 0
                       !Evacuate everything currently in need of sending
