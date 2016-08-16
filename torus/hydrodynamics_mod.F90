@@ -1221,10 +1221,10 @@ contains
                 tot = tot + weight
              enddo
              corrInterp = corrInterp / tot
-             thisOctal%correction(subcell) = thisOctal%correction(subcell) + corrInterp
+!             thisOctal%correction(subcell) = thisOctal%correction(subcell) + corrInterp
 
 
-!             thisOctal%correction(subcell) = thisOctal%correction(subcell) + correction(7)
+             thisOctal%correction(subcell) = thisOctal%correction(subcell) + correction(7)
 
           endif
        enddo
@@ -16401,6 +16401,7 @@ end subroutine refineGridGeneric2
     do iDepth = 3, maxDepth
        call setupEdgesLevel(grid%octreeRoot, grid, iDepth)
        call setupGhostsLevel(grid%octreeRoot, grid, iDepth)
+       call setCorrectionToZero(grid%octreeRoot, idepth)
     enddo
 
     if (myrankWorldglobal == 1) call tune(6,"Dirichlet boundary conditions")
@@ -16447,10 +16448,8 @@ end subroutine refineGridGeneric2
           i = 0
           do
              fracChange = 0.d0
-             call gaussSeidelSweep2(grid%octreeRoot, grid, fracChange, iDepth, onlyCellsWithChildren=.false.) !,Black=.true.)
-!             call copyEtaContToCorrection(grid%octreeRoot, idepth)
 
-
+             call gaussSeidelSweep2(grid%octreeRoot, grid, fracChange, iDepth, onlyCellsWithChildren=.false.)
              call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
 
              call calculateResiduals(grid%octreeRoot, grid, iDepth)
@@ -16469,15 +16468,15 @@ end subroutine refineGridGeneric2
 
           if (iDepth > minDepth) then
              call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
-             call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth-1)
+!             call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth-1)
              call restrictResiduals(grid%octreeRoot, grid, iDepth)
           endif
        enddo
 
 !       call setrhou(grid%octreeRoot, minDepth)
-       write(plotfile,'(a,i4.4,a)') "afterdown",bigiter,".vtk"
-       call writeVtkFile(grid, plotfile, &
-            valueTypeString=(/"phigas ", "rho    ","chiline","adot   ","correction","rhou"/))
+!       write(plotfile,'(a,i4.4,a)') "afterdown",bigiter,".vtk"
+!       call writeVtkFile(grid, plotfile, &
+!            valueTypeString=(/"phigas ", "rho    ","chiline","adot   ","correction","rhou"/))
 
        ! now the up part of the V-cycle
        call writeInfo("Beginning up part of V-cycle", TRIVIAL)
@@ -16489,8 +16488,8 @@ end subroutine refineGridGeneric2
           fracChange = 1.d3
           iter = 0 
 
-          call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
-          call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth-1)
+ !         call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
+ !         call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth-1)
           call prolongateCorrectionsOld(grid, grid%octreeRoot, iDepth) ! from depth above
 
 !          if (idepth==(mindepth+1)) call setrhou(grid%octreeRoot, idepth)
@@ -16501,7 +16500,7 @@ end subroutine refineGridGeneric2
 !          call copyPhiGasToEtaline(grid%octreeRoot, iDepth-1)
           call zeroPhiGasLevel(grid%octreeRoot, iDepth)
 !          call zeroPhiGasLevel(grid%octreeRoot, iDepth-1)
-          call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth-1)
+!          call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth-1)
           call setSourceToResiduals(grid%octreeRoot, iDepth)
           do i = 1, 3
              call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
@@ -16527,9 +16526,9 @@ end subroutine refineGridGeneric2
        residual = tempFracChange
        if (writeoutput) write(*,'(i3, a,1pe9.2)') bigIter," Fractional residual at maxdepth ",residual
 
-       write(plotfile,'(a,i4.4,a)') "after",bigiter,".vtk"
-       call writeVtkFile(grid, plotfile, &
-            valueTypeString=(/"phigas ", "rho    ","chiline","adot   ","correction","rhou"/))
+!       write(plotfile,'(a,i4.4,a)') "after",bigiter,".vtk"
+!       call writeVtkFile(grid, plotfile, &
+!            valueTypeString=(/"phigas ", "rho    ","chiline","adot   ","correction","rhou"/))
 
 
        call setCorrectionToZero(grid%octreeRoot, maxDepth)
