@@ -1063,7 +1063,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
         deallocate(contWeightArray)
      end if
 
-     nContPhotons = nint((probContPhoton * real(nPhotons) / real(nOuterLoop)))
+     nContPhotons = nint((probContPhoton * real(nPhotons) / real(nOuterLoop)), kind=bigInt)
      write(message,*) "Number of continuum photons: ",nContPhotons
      call writeInfo(message,TRIVIAL)
 

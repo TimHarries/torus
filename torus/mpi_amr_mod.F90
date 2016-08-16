@@ -1390,7 +1390,6 @@ contains
                 tempStorage(i,37) = neighbourOctal%flux_amr_i(neighbourSubcell,4)
              endif
              tempStorage(i,58) = dble(neighbourOctal%nChildren)
-             if (associated(neighbourOctal%correction)) &
              tempStorage(i,59) = neighbourOctal%correction(neighbourSubcell)
 
           else ! need to average (neighbour octal depth > this Octal depth)
@@ -1440,7 +1439,6 @@ contains
              endif
              
              tempStorage(i,58) = dble(neighbourOctal%nChildren)
-          if (associated(neighbourOctal%correction)) &
              tempStorage(i,59) = neighbourOctal%correction(neighbourSubcell)
 
 
@@ -2065,7 +2063,6 @@ contains
           tempStorage(i,32) = qViscosity(3,3)
 
           tempStorage(i,58) = dble(neighbourOctal%nChildren)
-          if (associated(neighbourOctal%correction)) &
           tempStorage(i,59) = neighbourOctal%correction(neighbourSubcell)
 
        enddo
@@ -2675,6 +2672,8 @@ contains
 
     nbound = getNboundFromDirection(direction)
 
+    correction = 99.d0
+
     if ((thisOctal%twoD).and.((nBound == 5).or. (nBound == 6))) then
        write(*,*) "Bonndary error for twod: ",nbound
        x = -2.d0
@@ -2705,7 +2704,6 @@ contains
           flux = neighbourOctal%flux_i(neighbourSubcell)
           phi = neighbourOctal%phi_i(neighbourSubcell)
           phigas = neighbourOctal%phi_gas(neighbourSubcell)
-          if (associated(neighbourOctal%correction)) &
           correction = neighbourOctal%correction(neighbourSubcell)
           xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
           qViscosity = neighbourOctal%qViscosity(neighbourSubcell,:,:)
@@ -2723,7 +2721,6 @@ contains
           pressure = neighbourOctal%pressure_i(neighbourSubcell)
           phi = neighbourOctal%phi_i(neighbourSubcell)
           phigas = neighbourOctal%phi_gas(neighbourSubcell)
-          if (associated(neighbourOctal%correction)) &
           correction = neighbourOctal%correction(neighbourSubcell)
           xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
           qViscosity = neighbourOctal%qViscosity(neighbourSubcell,:,:)
@@ -2825,7 +2822,7 @@ contains
 
        nc = nint(thisOctal%mpiBoundaryStorage(subcell, nBound, 58))
        correction = thisOctal%mpiBoundaryStorage(subcell, nBound, 59)
-
+!       if (correction >= 0.d0) write(*,*) "corr ",correction,nd
     endif
   end subroutine getNeighbourValues
 
@@ -3761,7 +3758,6 @@ contains
        flux = neighbourOctal%flux_i(neighbourSubcell)
        phi = neighbourOctal%phi_i(neighbourSubcell)
        phigas = neighbourOctal%phi_gas(neighbourSubcell)
-       if (associated(neighbourOctal%correction)) &
        correction = neighbourOctal%correction(neighbourSubcell)
        qViscosity = neighbourOctal%qViscosity(neighbourSubcell, :, :)
        rm1 = neighbourOctal%rho_i_minus_1(neighbourSubcell)
@@ -3818,7 +3814,6 @@ contains
        flux = fac1*neighbourOctal%flux_i(nSubcell(1)) + fac2*neighbourOctal%flux_i(nSubcell(2))
        phi = fac1*neighbourOctal%phi_i(nSubcell(1)) + fac2*neighbourOctal%phi_i(nSubcell(2))
        phigas = fac1*neighbourOctal%phi_gas(nSubcell(1)) + fac2*neighbourOctal%phi_gas(nSubcell(2))
-       if (associated(neighbourOctal%correction)) &
        correction = fac1*neighbourOctal%correction(nSubcell(1)) + fac2*neighbourOctal%correction(nSubcell(2))
        rm1 = fac1*neighbourOctal%rho_i_minus_1(nSubcell(1)) + fac2*neighbourOctal%rho_i_minus_1(nSubcell(2))
        rum1 = fac1*neighbourOctal%u_i_minus_1(nSubcell(1)) + fac2*neighbourOctal%u_i_minus_1(nSubcell(2))
@@ -3892,7 +3887,6 @@ contains
        phigas = fac*(neighbourOctal%phi_gas(nSubcell(1)) + neighbourOctal%phi_gas(nSubcell(2)) + & 
             neighbourOctal%phi_gas(nSubcell(3)) + neighbourOctal%phi_gas(nSubcell(4)))
 
-       if (associated(neighbourOctal%correction)) &
        correction = fac*(neighbourOctal%correction(nSubcell(1)) + neighbourOctal%correction(nSubcell(2)) + & 
             neighbourOctal%correction(nSubcell(3)) + neighbourOctal%correction(nSubcell(4)))
 
