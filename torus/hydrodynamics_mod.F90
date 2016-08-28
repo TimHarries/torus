@@ -16387,7 +16387,7 @@ end subroutine refineGridGeneric2
     integer :: iDepth
     real(double) :: fracChange, tempFracChange, residual
     integer :: ierr, iter, bigIter, i
-    character(len=80) :: plotfile
+!    character(len=80) :: plotfile
     integer, parameter :: minDepth = 4
     integer :: maxDepth
 
