@@ -72,7 +72,7 @@ contains
        case("fibre")
           thisDetector%detRadius = detRadius
           thisDetector%detectorNA = detectorNA
-          call newSpectrum(thisDetector%spectrum, 400.d0, 800.d0, 1000)
+          call newSpectrum(thisDetector%spectrum, 400.d0, 800.d0, 100)
        case DEFAULT
           call writeFatal("Detector type not recognised "//trim(detType))
        end select
@@ -115,6 +115,43 @@ contains
           end select
        endif
   end function hitDetector
+
+  real(double) function distanceToDetector(thisDetector, rVec, uHat)
+    type(DETECTORTYPE) :: thisDetector
+    type(VECTOR) :: rVec, uHat, towardsDetector, hitPosition
+    real(double) :: distanceToPlane, xCoord, yCoord
+
+    distanceToDetector = 1.d30
+
+    towardsDetector = thisDetector%centre - rVec
+    call normalize(towardsDetector)
+
+    if ( ((uHat.dot.towardsDetector) > 0.d0) .and. &
+         ((uHat.dot.thisDetector%normal) < 0.d0) ) then ! photon is moving towards detector (from the correct side!)
+       select case(thisDetector%type)
+          case("ccd")
+
+             distanceToPlane = ((thisDetector%centre - rVec).dot.thisDetector%normal)/(uHat.dot.thisDetector%normal)
+             hitPosition = rVec + distanceToPlane * uHat
+             
+             xCoord = (hitPosition - thisDetector%centre).dot.thisDetector%xAxis
+             yCoord = (hitPosition - thisDetector%centre).dot.thisDetector%yAxis
+             
+             if ( (abs(xCoord) < thisDetector%xSize/2.d0) .and. (abs(yCoord) < thisDetector%ySize/2.d0) ) then
+                distanceToDetector = distanceToPlane
+             endif
+
+          case("fibre")
+             distanceToPlane = ((thisDetector%centre - rVec).dot.thisDetector%normal)/(uHat.dot.thisDetector%normal)
+             hitPosition = rVec + distanceToPlane * uHat
+             if (modulus(hitPosition-thisDetector%centre) < thisDetector%detRadius) then
+                if (acos(-(uhat.dot.thisdetector%normal)) < asin(thisDetector%detectorna)) then
+                   distanceToDetector = distanceToPlane
+                endif
+             endif
+          end select
+       endif
+     end function distanceToDetector
 
 
   subroutine storePhotonOnDetector(thisDetector, photonPos, photonDirection, photonPower, photonWavelength, stored)

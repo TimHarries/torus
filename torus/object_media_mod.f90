@@ -136,6 +136,8 @@ contains
 
     function defineFatSolution(solutionType) result(fatSolution)
 
+! fits from Michels, Foschm, Kienle, 2008, Optics Express, 16, 5907
+
       type(medium) :: fatSolution
       type(medium) :: water
       type(mediumprops) :: waterProps
@@ -143,7 +145,7 @@ contains
       integer, parameter :: nLambda = 100
       real(double), parameter :: lamStart = 400.d0, lamEnd = 900.d0 ! wavelenghs in nm
       real(double) :: muAbsWater, muAbsSoy
-      real(double) :: a_g, a_s, a_soy, b_s, b_soy, sigma_water, sigma_soy, x0_soy, y0_g
+      real(double) :: a_g, a_s, a_soy, b_s, b_soy, sigma_water, sigma_soy, x0_soy, y0_g, sfac
       integer :: i
 
       fatSolution%label = trim(solutionType)
@@ -168,13 +170,30 @@ contains
          b_s = -2.644d0
          sigma_soy = 0.12
          sigma_water = 0.88
+         sfac = 1.d0
+      case("intralipid01")
+         y0_g = 1.018d0
+         a_g = -8.82d-4
+         a_s = 4.857d8
+         b_s = -2.644d0
+         sigma_soy = 0.012
+         sigma_water = 0.988
+         sfac = 0.1d0
+      case("intralipid001")
+         y0_g = 1.018d0
+         a_g = -8.82d-4
+         a_s = 4.857d8
+         b_s = -2.644d0
+         sigma_soy = 0.0012
+         sigma_water = 0.9988
+         sfac = 0.01d0
       case DEFAULT
          write(*,*) "Optical properties not defined for this concentration"
          stop
       end select
       do i = 1, nLambda
          fatSolution%propList(i)%gfactor = y0_g + a_g * fatSolution%lambdaList(i)
-         fatSolution%propList(i)%muScatter = a_s *  fatSolution%lambdaList(i)**b_s * 10.d0 ! per mm to per cm
+         fatSolution%propList(i)%muScatter = sfac * a_s *  fatSolution%lambdaList(i)**b_s * 10.d0 ! per mm to per cm
 
          muAbsSoy = (a_soy / (1.d0+exp(-(fatSolution%lambdaList(i)-x0_soy)/b_soy))) * 10.d0
 

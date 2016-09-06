@@ -219,9 +219,9 @@ contains
         use obj_io_mod, only : obj_count
         integer :: i, n
         type(medium), pointer :: vacuum, water, crownglass, flintglass, air, blood, rubber, &
-             intralipid10
+             intralipid10, intralipid01, intralipid001
 
-        allocate(vacuum, water, crownglass, flintglass, air, blood, rubber, intralipid10)
+        allocate(vacuum, water, crownglass, flintglass, air, blood, rubber, intralipid10, intralipid01,intralipid001)
         !vacuum = createNewMedium('vacuum', (/0.d0, 1.d4/) )
         water = defineWater(25.d0)
         flintglass = defineGlass("denseflint.dat")
@@ -230,6 +230,11 @@ contains
         blood = defineHemoglobin(.true.)
         rubber = defineRubber()
         intralipid10 = defineFatSolution("intralipid10")
+        call writeProps("intralipid10.dat",intralipid10)
+        intralipid01 = defineFatSolution("intralipid01")
+        call writeProps("intralipid01.dat",intralipid01)
+        intralipid001 = defineFatSolution("intralipid001")
+        call writeProps("intralipid001.dat",intralipid001)
         call setupMatcherSkinTissue()
 
         n = obj_count(wavefrontfile)
@@ -259,6 +264,10 @@ contains
                  objectMediaList(i)%p => rubber
               case("intralipid10")
                  objectMediaList(i)%p => intralipid10
+              case("intralipid01")
+                 objectMediaList(i)%p => intralipid01
+              case("intralipid001")
+                 objectMediaList(i)%p => intralipid001
               case("stratum_corneum")
                  objectMediaList(i)%p => tissueList(1)
               case("living_epidermis")
@@ -733,7 +742,7 @@ contains
         type(DETECTORTYPE) :: thisDetector
         integer, parameter :: maxEvents = 100000
         type(VECTOR) :: cellEvent(maxEvents)
-        real(double) :: lengthEvent(maxEvents)
+        real(double) :: lengthEvent(maxEvents), distToDet, tauToDet
         integer :: nEvent
         integer(bigint) :: iMonte_beg, iMonte_end
 #ifdef MPI
@@ -829,7 +838,6 @@ contains
 
 
             do ! infinite loop
-!               write(*,*) "pos ",photonPosition
                 !call findSubcellLocal(photonPosition, thisOctal, subcell)
                 call distanceToCellBoundary(grid, photonPosition, photonDirection, dist, thisOctal)
 
@@ -855,13 +863,47 @@ contains
                 else ! no interface to hit
                     hitsInterface = .false.
                 end if
+
+
+                distToDet = distanceToDetector(thisDetector, photonPosition, photonDirection)
+
+                tauToDet = distToDet * (thisMedium%muAbsorb + thisMedium%muScatter)
                 tauToBoundary = dist * (thisMedium%muAbsorb + thisMedium%muScatter)
+
+                   
+
+
                 call randomNumberGenerator(getDouble=r)
                 absorbed = .false.
                 tau = -log(r)
-!                call getCompositeBiasedTau(tau, weight)
-!                write(*,*) "tau weight " ,tau, weight
-!                photonWeight = photonWeight * weight
+
+
+                if (distToDet < dist) then
+                   if (tau > tauToDet) then
+
+
+!$OMP ATOMIC
+                    thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + &
+                                                      distToDet/(cSpeed/thisMedium%nRefract) * photonWeight
+
+!$OMP ATOMIC
+                    thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
+
+                    nEvent = nEvent + 1
+                    cellEvent(nEvent) = subcellCentre(thisOctal, subcell)
+                    lengthEvent(nEvent) = distToDet/(cSpeed/thisMedium%nRefract) * photonWeight
+
+
+
+                      call storePhotonOnDetector(thisDetector, photonPosition, photonDirection, &
+                           photonWeight, photonWavelength, stored)
+                      if (stored) then
+                         call addEventsToGrid(nEvent, cellEvent, lengthEvent, grid)
+                      endif
+                      exit
+                   endif
+                endif
+
                 if (tau < tauToBoundary ) then ! photon has event before hitting any boundary/interface
                     dist = dist * tau / tauToBoundary
 
@@ -961,7 +1003,7 @@ contains
             else
 !               write(*,*) "photon absorbed after ", countEvent, "events"
             endif
-        end do ! all photons
+       end do ! all photons
 !$OMP END DO
 
 !$OMP END PARALLEL
@@ -1018,6 +1060,7 @@ contains
       integer :: subcell
       thisOctal => grid%octreeRoot
       do i = 1, nEvent
+         if (.not.inOctal(grid%octreeRoot, cellEvent(i))) write(*,*) "outside grid"
          call findsubcellLocal(cellEvent(i), thisOctal, subcell)
          thisOctal%etaLine(subcell) = thisOctal%etaLine(subcell) + lengthEvent(subcell)
       enddo
@@ -1112,7 +1155,7 @@ contains
 
       lamStart = 4000.
       lamEnd = 8000.
-      nLambda = 1000
+      nLambda = 100
 
       select case (fibreSpectrum)
          case("blackbody")
