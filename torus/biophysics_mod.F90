@@ -362,6 +362,7 @@ contains
     end subroutine createSource
 
     subroutine emitPhoton(source, photonPosition, photonDirection, photonWavelength, photonWeight, photonNormal)
+      use inputs_mod, only : smallestCellSize
         type(PHOTONSOURCE) :: source
         type(VECTOR) :: photonPosition, photonDirection, photonNormal
         real(double) :: photonWavelength, photonWeight
@@ -434,6 +435,8 @@ contains
             phi = twoPi * r
             photonDirection = arbitraryRotate(photonDirection,phi,source%component(iComponent)%direction)
         endif
+        photonPosition = photonPosition + 1.d-6*smallestCellSize*photonDirection
+
     end subroutine emitPhoton
 
     subroutine scatter(inComingDirection, normal, gFac, outGoingDirection)
@@ -794,6 +797,7 @@ contains
 !$OMP PARALLEL DEFAULT(NONE) &
 !$OMP PRIVATE(i, firstWrite, photonNormal, photonPosition, photonWeight, photonDirection, photonWavelength, nEvent) &
 !$OMP PRIVATE(dist, hitgrid, absorbed, countEvent, thisOctal, subcell, thisObjectID, thisMedium, subcellHasInterface) &
+!$OMP PRIVATE(distToDet, tauToDet) &
 !$OMP PRIVATE(intersect, tautoboundary, r, tau, cellEvent, lengthEvent, albedo, hitsInterface, vec, nextMedium, doesenter, stored) &
 !$OMP SHARED(nPhotons, thisDetector, source, grid, smallestCellSize, iMonte_beg, iMonte_end, writeoutput) 
 
@@ -920,6 +924,7 @@ contains
                     lengthEvent(nEvent) = dist/(cSpeed/thisMedium%nRefract) * photonWeight
 
                     photonPosition = photonPosition + photonDirection*dist
+
                     ! determine event: scatter or absorption
                     call randomNumberGenerator(getDouble=r)
                     absorbed = .false.
@@ -955,6 +960,9 @@ contains
                                                                  thisMedium%nRefract, nextMedium%nRefract, &
                                                                  doesEnter) ! <= optional output!
                     photonPosition = photonPosition + 1d-6*smallestCellSize*photonDirection ! tweak away from intersection
+
+
+
 !                    if (doesEnter) then
 !                       write(*,*) " photon enters next medium ",thisObjectId,intersect%globalObjectId
 !                    endif
@@ -978,6 +986,7 @@ contains
 
                     photonPosition = photonPosition + photonDirection*(dist+1d-6*smallestCellSize)
 
+
                     ! find next subcell
                     if(inOctal(grid%octreeRoot, photonPosition)) then
                         call findSubcellLocal(photonPosition, thisOctal, subcell)
@@ -992,7 +1001,7 @@ contains
 
                 countEvent = countEvent + 1
 
-            end do ! end while: photon left the grid
+         end do ! end while: photon left the grid
 
             if (.not.absorbed) then
                call storePhotonOnDetector(thisDetector, photonPosition, photonDirection, &
@@ -1060,7 +1069,6 @@ contains
       integer :: subcell
       thisOctal => grid%octreeRoot
       do i = 1, nEvent
-         if (.not.inOctal(grid%octreeRoot, cellEvent(i))) write(*,*) "outside grid"
          call findsubcellLocal(cellEvent(i), thisOctal, subcell)
          thisOctal%etaLine(subcell) = thisOctal%etaLine(subcell) + lengthEvent(subcell)
       enddo

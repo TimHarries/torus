@@ -3179,12 +3179,12 @@ end subroutine writeXMLVtkFileAMR
 
                case("radmom")
                   if (thisOctal%threed) then
-                     rArray(1, n) = real(thisOctal%radiationMomentum(subcell)%x)
-                     rArray(2, n) = real(thisOctal%radiationMomentum(subcell)%y)
-                     rArray(3, n) = real(thisOctal%radiationMomentum(subcell)%z)
+                     rArray(1, n) = real(1.d20*thisOctal%radiationMomentum(subcell)%x)
+                     rArray(2, n) = real(1.d20*thisOctal%radiationMomentum(subcell)%y)
+                     rArray(3, n) = real(1.d20*thisOctal%radiationMomentum(subcell)%z)
                   else
-                     rArray(1, n) = real(thisOctal%radiationMomentum(subcell)%x)
-                     rArray(2, n) = real(thisOctal%radiationMomentum(subcell)%z)
+                     rArray(1, n) = real(1.d20*thisOctal%radiationMomentum(subcell)%x)
+                     rArray(2, n) = real(1.d20*thisOctal%radiationMomentum(subcell)%z)
                      rArray(3, n) = 0.
                   endif
                case("surfnorm")
@@ -3195,12 +3195,12 @@ end subroutine writeXMLVtkFileAMR
                case("radforce")
                      v = cellVolume(thisOctal, subcell)*1.d30
                      if (thisOctal%threed) then
-                        rArray(1, n) = real(thisOctal%kappaTimesFlux(subcell)%x/cSpeed)
-                        rArray(2, n) = real(thisOctal%kappaTimesFlux(subcell)%y/cSpeed)
-                        rArray(3, n) = real(thisOctal%kappaTimesFlux(subcell)%z/cSpeed)
+                        rArray(1, n) = real(1.d20*thisOctal%kappaTimesFlux(subcell)%x/cSpeed)
+                        rArray(2, n) = real(1.d20*thisOctal%kappaTimesFlux(subcell)%y/cSpeed)
+                        rArray(3, n) = real(1.d20*thisOctal%kappaTimesFlux(subcell)%z/cSpeed)
                      else
-                        rArray(1, n) = real(thisOctal%kappaTimesFlux(subcell)%x/cSpeed)
-                        rArray(2, n) = real(thisOctal%kappaTimesFlux(subcell)%z/cSpeed)
+                        rArray(1, n) = real(1.d20*thisOctal%kappaTimesFlux(subcell)%x/cSpeed)
+                        rArray(2, n) = real(1.d20*thisOctal%kappaTimesFlux(subcell)%z/cSpeed)
                         rArray(3, n) = 0.
                      endif
 

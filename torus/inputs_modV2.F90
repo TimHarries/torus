@@ -4260,7 +4260,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
 
        write(keyword, '(a,i1)') "wavelength",i
        call getDouble(keyword, componentWavelength(i), 1.d0, cLine, fLine, nLines, &
-            "Component monochromatic wavelength (nm): ","(a,f5.1,1x,a)", 1.0d0, ok, .true.)
+            "Component monochromatic wavelength (nm): ","(a,f5.1,1x,a)", 1.0d0, ok, .false.)
 
        write(keyword, '(a,i1)') "radius",i
        call getDouble(keyword, componentRadius(i), microntocm, cLine, fLine, nLines, &

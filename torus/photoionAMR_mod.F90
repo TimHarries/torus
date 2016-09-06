@@ -1093,6 +1093,7 @@ contains
 
        if (nHydroSetsGlobal > 1) call checkSetsAreTheSame(grid%octreeRoot)
 
+             refinedSomeCells = .false.
 
           if ((myRankGlobal /= 0).and.(.not.loadBalancingThreadGlobal)) then
              if(dorefine) then
@@ -2538,7 +2539,7 @@ end subroutine radiationHydro
              end do
                
              write(*,*) "Ionizing photons sent (fraction of ninf): ", dble(nIonizingPackets)/dble(ninf)
-             write(*,*) "Ionizing photon escape fraction: ", dble(nIonizingEscaped)/dble(nIonizingPackets)
+             if (nIonizingPackets > 0) write(*,*) "Ionizing photon escape fraction: ", dble(nIonizingEscaped)/dble(nIonizingPackets)
              
              if (myrankWorldGlobal == 0) write(*,*) "Finishing iteration..."
 
@@ -3123,7 +3124,7 @@ end subroutine radiationHydro
 
                             thisOctal%radiationMomentum(subcell) = thisOctal%radiationMomentum(subcell) + uHatDash * &
                                  photonMomentum * photonPacketWeight
-
+!                            write(*,*) "mom ",thisOctal%radiationMomentum(subcell)
                                nScat = nScat + 1
 
                                if (bigPhotonPacket) nScatBigPacket = nScatBigPacket + 1
@@ -3765,6 +3766,11 @@ end subroutine radiationHydro
     call adjustChiline(grid%octreeRoot)
     
     call calculateKappaTimesFlux(grid%octreeRoot, epsOverDeltaT)
+
+    call writeVtkFile(grid, "rad.vtk", &
+               valueTypeString=(/"radmom       ",     "radforce     "/))
+
+
     if(uv_vector) then
        call calculateUVfluxVec(grid%octreeroot, epsoverdeltaT)
     end if
@@ -8111,9 +8117,9 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
           thisOctal%kappaTimesFlux(subcell) = epsOverDeltaT * thisOctal%kappaTimesFlux(subcell) / V
 
           thisOctal%radiationMomentum(subcell) = thisOctal%radiationMomentum(subcell) / V
-
-
+!          write(*,*) "mom ",thisOctal%radiationMomentum(subcell)
 !          write(*,*) " k times f ",thisOctal%kappaTimesFlux(subcell)
+
        endif
     enddo
   end subroutine calculateKappaTimesFlux
@@ -9009,11 +9015,12 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     call MPI_ALLREDUCE(kappaTimesFlux(1:nVoxels)%x,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
          MPI_SUM, amrParComm, ierr)
     kappaTimesFlux(1:nVoxels)%x = tempDoubleArray 
+    write(*,*) "temp ",tempDoubleArray(1:nVoxels)
 
     tempDoubleArray = 0.0
     call MPI_ALLREDUCE(kappaTimesFlux(1:nVoxels)%y,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
          MPI_SUM, amrParComm, ierr)
-    kappaTimesFlux(1:nVoxels)%y = tempDoubleArray 
+    kappaTimesFlux(1:nVoxels)%y = tempDoubleArray
 
     tempDoubleArray = 0.0
     call MPI_ALLREDUCE(kappaTimesFlux(1:nVoxels)%z,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
