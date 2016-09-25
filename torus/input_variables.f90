@@ -837,6 +837,20 @@
   ! empty geometry
   real(double) :: centralMass 
 
+  ! "modular" geometry parameters: -------------------------------------------------------
+  integer, parameter :: maxDiscMods = 9
+  integer :: nDiscModule
+  real(double) :: alphaMod(maxDiscMods)  ! alpha for disc module
+  real(double) :: betaMod(maxDiscMods)   ! beta for disc module
+  real(double) :: rInnerMod(maxDiscMods) ! inner radius for disc module (au)
+  real(double) :: heightMod(maxDiscMods) ! gas scale height at disc module inner radius (au)
+  real(double) :: rOuterMod(maxDiscMods) ! outer radius for disc module (au)
+  real(double) :: prod(maxDiscMods)      ! variable used for calculation of the density normalisation
+  real(double) :: rhoNought(maxDiscMods) ! another variable used for calc of density normalisation
+  real(double) :: dustHeightMod(maxDiscMods, maxDustTypes) ! dust sale height at 100 au for each grain species
+  real(double) :: dustBetaMod(maxDiscMods, maxDustTypes)   ! dust beta for each grain species in each disc module
+  real(double) :: dustFracMod(maxDiscMods, maxDustTypes)   ! dust fraction for each grain type in each disc module
+  ! --------------------------------------------------------------------------------------
 
 !----------------------
 ! adaptive mesh stuff 

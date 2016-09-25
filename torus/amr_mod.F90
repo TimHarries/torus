@@ -1,7 +1,6 @@
 module amr_mod
 
 
-
   ! 21 nov
   ! routines for adaptive mesh refinement. nhs
   ! twod stuff added by tjh started 25/08/04
@@ -1122,10 +1121,12 @@ CONTAINS
     CASE ("shakara","aksco","circumbin")
        CALL shakaraDisk(thisOctal, subcell ,grid)
 
+    CASE ("modular")
+       CALL modularDisc(thisOctal, subcell)
+!   modular disc geometry - cdavies
+
     CASE ("cassandra")
        CALL cassandraDisc(thisOctal, subcell)
-
-
 
     CASE ("HD169142")
        CALL hd169142Disk(thisOctal, subcell ,grid)
@@ -3559,6 +3560,7 @@ CONTAINS
     use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize, ttauriMagnetosphere, rCavity
     use inputs_mod, only : cavdens, limitscalar, addDisc, flatdisc
     use inputs_mod, only : discWind, planetDisc, sourceMass, rGapInner1, ttauristellarwind, SW_rMax, SW_rmin
+    use inputs_mod, only : nDiscModule, rOuterMod, rInnerMod, betaMod, heightMod
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use magnetic_mod, only : accretingAreaMahdavi
@@ -3601,10 +3603,10 @@ CONTAINS
     TYPE(vector)     :: searchPoint, rVec
     TYPE(vector)     :: cellCentre
     REAL                  :: x, y, z
-    REAL(double) :: hr, rd, fac, warpHeight, phi1, phi2, phi
+    REAL(double) :: hr, rd, fac, warpHeight, phi1, phi2, phi, hadj
     real(double) :: warpheight1, warpheight2
     real(double) :: warpradius1, warpradius2, height1, height2
-    INTEGER               :: i
+    INTEGER               :: i, iMod
     real(double)      :: total_mass
     real(double), save :: rgrid(1000)
     real(double)      :: ave_density,  r, dr
@@ -5438,6 +5440,65 @@ CONTAINS
              endif
           endif
 
+       case("modular")
+          ! first off, make sure the cell splits if the depth of the cell depth is less than mindepthamr:
+          if (thisOctal%ndepth < mindepthamr) split = .true.
+          ! Then find your location in the disk and the size of the cell:
+          cellCentre = subcellCentre(thisOctal, subcell)
+          r = sqrt(cellCentre%x**2 + cellCentre%y**2)
+          cellSize = thisOctal%subcellSize
+          ! Figure out which disk module you're in & ensure there are at least 10 cells between modules:
+          do iMod = 1, nDiscModule
+             ! Calculate the scale height at your location using the current module parameters
+             hr = heightMod(iMod) * (r/rInnerMod(iMod))**betaMod(iMod)
+             if ((rOuterMod(iMod) > r).and.(rInnerMod(iMod) < r)) then
+                ! split if the cell size is greater than 10% of the difference between adjacent rinners
+                if ((cellSize > ((rOuterMod(iMod) - rInnerMod(iMod))/10)).and.(ABS(cellCentre%z)/hr < 7.d0)) then
+                   split = .true.
+                endif
+             endif
+          enddo
+          ! refine according to scale height
+          do iMod = 1, nDiscModule
+             ! Calculate the scale height at your location using the current module parameters
+             hr = heightMod(iMod) * (r/rInnerMod(iMod))**betaMod(iMod)
+             if ((rOuterMod(iMod) > r).and.(rInnerMod(iMod) < r)) then
+                ! split cell if difference in scale height across the cell exceeds heightSplitFac
+                if ((ABS(cellCentre%z)/hr < 7.d0).and.(cellSize/hr > heightSplitFac)) split = .true.
+                ! split cell if more than 2 scale heights above the midplane and there are less than 2 cells between it
+                ! and the midplane.
+                if ((ABS(cellCentre%z) > hr*2.d0).and.(ABS(cellCentre%z/cellSize) < 2.)) split = .true.
+             endif
+          enddo
+          ! Check to see if you're near a disk module boundary and do more refinement
+          do iMod = 1, nDiscModule
+             hr = heightMod(iMod) * (r/rInnerMod(iMod))**betaMod(iMod)
+             if ((r < rOuterMod(iMod)*1.05d0).and.(r > rOuterMod(iMod)*0.95d0)) then
+                ! Modify scale height if you're not in the outermost disk module:
+                if (iMod < nDiscModule) then
+                   ! Calculate scale height here using next furthest out disk module's parameters
+                   hadj = heightMod(iMod+1) * (r/rInnerMod(iMod+1))**betaMod(iMod+1)
+                   ! If this new scale height is greater than the one we were using, use this one instead
+                   hr = MAX(hr, hadj)
+                endif
+                ! Split if the cell size is greater than 1% of your radial distance
+                if ((cellSize > rOuterMod(iMod)*0.01d0).and.(ABS(cellCentre%z)/hr < 7.d0)) then
+                   split = .true.
+                endif
+             endif
+          enddo
+          ! Limit the level of refinement needed beyond 10% of the outer disk radius:
+          if (((r - cellSize/2.d0) > (MAXVAL(rOuterMod)*1.1d0)).and.(thisOctal%nDepth > 4)) then
+             split = .false.
+          endif
+          ! Don't split the cells if you're more than half a cell radius outside the outer disk edge:
+          if ((r - cellSize/2.d0) > MAXVAL(rOuterMod)) then
+             split = .false.
+          endif
+          ! Don't split the cell if you're within half a cell radius of the inner disk edge:
+          if ((MODULUS(cellCentre) + cellSize/2.d0) < MINVAL(rInnerMod)) then
+             split = .false.
+          endif
 
        case("circumbin")
 
@@ -11975,6 +12036,62 @@ end function readparameterfrom2dmap
 
 
   end subroutine shakaraDisk
+
+  subroutine modularDisc(thisOctal, subcell)
+    
+    use inputs_mod, only : rho0, rSublimation ! real precision disc module-independent param
+    use inputs_mod, only : nDiscModule, nDustType ! counting params
+    use inputs_mod, only : alphaMod, betaMod, heightMod, rInnerMod, rOuterMod, prod ! 1D array params
+    use inputs_mod, only : dustFracMod, dustHeightMod, dustBetaMod ! 2D array params
+    
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: r, z, h, thisHeight, fracDust
+    integer :: iMod, iDust
+    
+      rVec = subcellCentre(thisOctal, subcell)        ! locate your position in the grid
+      r = dble(SQRT(rVec%x**2 + rVec%y**2))           ! locate your disc midplane position
+      z = dble(rVec%z)                                ! locate your position above the disc midplane
+    
+      ! Fill the entire grid with default values
+      thisOctal%rho(subcell) = 1.d-30                           ! default value of gas density
+      thisOctal%temperature(subcell) = 1.d1                     ! default value of temperature
+      thisOctal%dustTypeFraction(subcell,1:nDustType) = 1.d-30  ! default dust fraction
+      thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)    ! default velocity value
+    
+      ! Determine which disc module you are located in and assign a gas density
+      do iMod = 1, nDiscModule
+        if ((rOuterMod(iMod) > r).and.(rInnerMod(iMod) < r)) then
+          h = heightMod(iMod) * (r/rInnerMod(iMod))**betaMod(iMod)
+          ! determine the scale height of the gas disc at your position, r
+          thisOctal%rho(subcell) = MAX(dble(rho0) * rInnerMod(1)**alphaMod(1) * prod(iMod) * & 
+                                   (1/r)**alphaMod(iMod) * EXP(-0.5d0 * (z/h)**2), 1.d-30)
+          ! determine the density of the gas in the current disc module
+        endif
+        if (dble(rSublimation) < r) then
+          if ((rOuterMod(iMod) > r).and.(rInnerMod(iMod) < r)) then
+            do iDust = 1, nDustType
+              h = heightMod(iMod) * (r/rInnerMod(iMod))**betaMod(iMod)              
+              thisHeight = dustHeightMod(iMod, iDust) * (r/rInnerMod(iMod))**dustBetaMod(iMod, iDust)
+              ! determines the dust scale height at position, r
+              if (real(dustHeightMod(iMod, iDust)) <= real(heightMod(iMod))) then
+                fracDust = MAX(2.d0*(1.d0/dble(SQRT(twopi)*ERF(1/SQRT(2.d0))))*EXP(-0.5d0*(z/thisHeight)**2), 1.d-30)
+                ! normalisation for the dust settling exponential profile. 
+              else
+                fracDust = 1.d0
+              endif
+              thisOctal%dustTypeFraction(subcell, iDust) = MAX(dustFracMod(iMod, iDust) * fracDust, 1.d-30)
+              ! determine the grain fraction of each grain type in the current disc module
+              if ((z <= -h).or.(z >= h)) then
+                thisOctal%dustTypeFraction(subcell, iDust) = MAX(dustFracMod(iMod, iDust), 1.d-30)
+              endif
+            enddo
+          endif
+        endif
+      enddo
+
+  end subroutine modularDisc
 
   subroutine cassandraDisc(thisOctal, subcell)
     use eos_mod
