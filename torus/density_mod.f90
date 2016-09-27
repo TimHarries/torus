@@ -1223,7 +1223,7 @@ contains
     endif
 
 
-    rhoOut = tiny(rhoOut)
+    rhoOut = 1.d-30
     r = sqrt(point%x**2 + point%y**2)
     phi = atan2(point%y,point%x)
     if (phi < 0.0d0) phi = phi + twopi

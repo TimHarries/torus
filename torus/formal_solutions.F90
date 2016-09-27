@@ -1346,7 +1346,7 @@ contains
     ! now save the image to a flie
 
 #if USECFITSIO
-    call writeFitsImage(F_map, filename, 1.d0, "intensity")
+    call writeFitsImage(F_map, filename, 1.d0, "intensity", fluxUnits="MJy/str", axisUnits="arcsec")
 #endif
 
     ! clean up

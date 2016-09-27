@@ -1751,6 +1751,7 @@ contains
 
     case("HD169142")
 
+       rhoAmbient = 1.d-30
        oneKappa = .true.
        call getLogical("gasopacity", includeGasOpacity, cLine, fLine, nLines, &
             "Include gas opacity: ","(a,1l,a)", .false., ok, .false.)
@@ -3937,7 +3938,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     integer :: i
     character(len=20) :: keyword
     character(len=10) :: axisUnits
-    character(len=12) :: fluxUnits
+    character(len=12) :: fluxUnits, globalFluxUnits
     character(len=80) :: outputImageType, imageFilename
     character(len=4)  :: iChar
     integer :: thisnpixels, npixels, nimage
@@ -3995,9 +3996,9 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
                   "Origin for image (10^10 cm): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .false.)
 
 
-    call getString("imagefluxunits", fluxUnits, cLine, fLine, nLines,&
+    call getString("imagefluxunits", globalFluxUnits, cLine, fLine, nLines,&
          "Flux units for image:", "(a,a,1x,a)", "MJy/str", ok, .false.)
-    if (trim(fluxUnits) == "Jy/beam") then
+    if (trim(globalfluxUnits) == "Jy/beam") then
        call getDouble("beamarea", beamarea, arcsecstoradians**2,cLine, fLine, nLines, &
             "Beam area in square arcseconds: ", "(a,f10.2,1x,a)", 1.d0, ok, .false.)
     endif
@@ -4084,7 +4085,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
           call writeInfo("Type of output image: Stokes image (default for atomic physics)")
        endif
               
-       call setImageParams(1, lambdaImage, outputimageType, imageFilename, npixels, axisUnits, fluxUnits, &
+       call setImageParams(1, lambdaImage, outputimageType, imageFilename, npixels, axisUnits, globalfluxUnits, &
             imageSize, aspectRatio, inclination, positionAngle, offsetx, offsety, gridDistance)
     else
        do i = 1, nImage
@@ -4142,6 +4143,11 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
           write(keyword,'(a)') "imageaspect"//iChar
           call getReal(keyword, thisAspectRatio, 1.0, cLine, fLine, nLines, & 
                "Image aspect ratio: ", "(a,f4.1,1x,a)", aspectRatio, ok, .false.)
+
+          write(keyword,'(a)') "imagefluxunits"//iChar
+          call getString(keyword,fluxUnits, cLine, fLine, nLines,&
+               "Flux units for image:", "(a,a,1x,a)", globalfluxUnits, ok, .false.)
+
 
           ! Inclination and position angle
           write(keyword,'(a)') "inclination"//iChar

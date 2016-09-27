@@ -37,8 +37,8 @@ module image_utils_mod
   integer, save :: numImages = 0 
 
 ! Parameters shared by all images
-  character(len=10), save :: myAxisUnits
-  character(len=12), save :: myFluxUnits
+  character(len=10), save :: myAxisUnits(20)
+  character(len=12), save :: myFluxUnits(20)
 
 contains 
 
@@ -118,10 +118,10 @@ contains
     myImages(i)%nPixelsX = int(nPixels*aspectRatio)
 
 ! Axis units (e.g. au, pc, arcsec)
-    myAxisUnits = axisUnits
+    myAxisUnits(i) = axisUnits
 
 ! flux units
-    myFluxUnits = fluxUnits
+    myFluxUnits(i) = fluxUnits
 
 ! Size of image
 !
@@ -131,7 +131,7 @@ contains
     end if
 !
 ! Set size of image y axis in cm
-    select case (myAxisunits)
+    select case (myAxisunits(i))
     case ("au","AU")
        myImages(i)%ImageSizeY = imageSize * real(autocm)
     case ("pc","PC")
@@ -231,17 +231,19 @@ contains
 !
 ! Return axis units
 !
-  function getAxisUnits()
+  function getAxisUnits(i)
 
+    integer :: i
     character(len=10) :: getAxisUnits
-    getAxisUnits=MyAxisUnits
+    getAxisUnits=MyAxisUnits(i)
 
   end function getAxisUnits
 
-  function getFluxUnits()
+  function getFluxUnits(i)
 
+    integer :: i
     character(len=12) :: getFluxUnits
-    getFluxUnits=MyFluxUnits
+    getFluxUnits=MyFluxUnits(i)
 
   end function getFluxUnits
 

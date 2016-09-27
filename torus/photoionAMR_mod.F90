@@ -3767,8 +3767,8 @@ end subroutine radiationHydro
     
     call calculateKappaTimesFlux(grid%octreeRoot, epsOverDeltaT)
 
-    call writeVtkFile(grid, "rad.vtk", &
-               valueTypeString=(/"radmom       ",     "radforce     "/))
+!    call writeVtkFile(grid, "rad.vtk", &
+!               valueTypeString=(/"radmom       ",     "radforce     "/))
 
 
     if(uv_vector) then
@@ -8448,13 +8448,14 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
           write(123, *) theoretical
           write(*,*) "theoretical ", theoretical
           close(123)
-          call writeFitsImage(thisimage, imageFilename, griddistance*pctocm, "intensity", lambdaImage, &
-               pointTest=.true.)
+          call writeFitsImage(thisimage, imageFilename, griddistance*pctocm, "intensity", &
+               getFluxUnits(imageNum), getAxisUnits(imageNum),  lambdaImage, pointTest=.true.)
        else if(grid%geometry == "imgTest") then
-          call writeFitsImage(thisimage, imageFilename, griddistance*pctocm, "intensity", lambdaImage, &
+          call writeFitsImage(thisimage, imageFilename, griddistance*pctocm, "intensity", &
+          getFluxUnits(imageNum), getAxisUnits(imageNum), lambdaImage, &
                cylinderTest=.true.)
        else
-          call writeFitsImage(thisimage, imageFilename, griddistance*pctocm, "intensity", lambdaImage)
+          call writeFitsImage(thisimage, imageFilename, griddistance*pctocm, "intensity", getFluxUnits(imageNum), getAxisUnits(imageNum), lambdaImage)
        end if
     endif
 #else
@@ -9015,7 +9016,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     call MPI_ALLREDUCE(kappaTimesFlux(1:nVoxels)%x,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
          MPI_SUM, amrParComm, ierr)
     kappaTimesFlux(1:nVoxels)%x = tempDoubleArray 
-    write(*,*) "temp ",tempDoubleArray(1:nVoxels)
+!    write(*,*) "temp ",tempDoubleArray(1:nVoxels)
 
     tempDoubleArray = 0.0
     call MPI_ALLREDUCE(kappaTimesFlux(1:nVoxels)%y,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&

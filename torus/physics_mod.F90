@@ -38,8 +38,13 @@ contains
 !    use inputs_mod, only : startFromNeutral
 #endif
 
-
+    use phasematrix_mod, only : phasematrix
+    use dust_mod
     type(GRIDTYPE) :: grid
+    type(PHASEMATRIX),pointer:: miephase(:,:,:)
+    
+!    call dustComparison(grid, miePhase, 100)
+    
 
 #ifdef MOLECULAR
     if (molecularPhysics) then

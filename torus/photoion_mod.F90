@@ -3239,7 +3239,7 @@ end subroutine readHeIIrecombination
 
 #ifdef USECFITSIO
     if (writeoutput) then
-       call writeFitsImage(thisimage, imageFilename, gridDistance*pctocm, "intensity", lambdaLine)
+       call writeFitsImage(thisimage, imageFilename, gridDistance*pctocm, "intensity", getFluxunits(1), getAxisUnits(1), lambdaLine)
     endif
 #else
     call writeInfo("FITSIO not enabled. Not writing "//trim(imageFilename),FORINFO)

@@ -3573,6 +3573,7 @@ CONTAINS
     use magnetic_mod, only : safierfits
     use biophysics_mod, only : splitSkin
 ! Currently commented out. Reinstate if required.
+    use inputs_mod, only : smoothInnerEdge
 !    use inputs_mod, only: ttauriwind, smoothinneredge, amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
 
 #ifdef USECFITSIO
@@ -5240,11 +5241,11 @@ CONTAINS
 
           if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
-!          if (.not.smoothinneredge) then
-!             if (((r-cellsize/2.d0) < rSublimation).and. ((r+cellsize/2.d0) > rSublimation) .and. &
-!                  (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 4.d0) .and. &
-!                  (.not.thisOctal%cylindrical)) split=.true.
-!         endif
+          if (.not.smoothinneredge) then
+             if (((r-cellsize/2.d0) < rSublimation).and. ((r+cellsize/2.d0) > rSublimation) .and. &
+                  (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 1.d0) .and. &
+                  (.not.thisOctal%cylindrical)) split=.true.
+         endif
 
              if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter)) then
                 if ((thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0)) then
@@ -12238,15 +12239,28 @@ end function readparameterfrom2dmap
        scalefac  = hGas / sqrt(hDust**2 + hGas**2)
 
        fac = exp(-0.5d0 * (z/hDust)**2)
+
+
+
        if (r < rGapInner1) then
           thisOctal%dustTypeFraction(subcell,1) = scaleFac * grainFrac(1)
-          thisOctal%dustTypeFraction(subcell,3) = scaleFac * grainFrac(3)
+!          thisOctal%dustTypeFraction(subcell,3) = scaleFac * grainFrac(3)
        else
           thisOctal%dustTypeFraction(subcell,1) = fac * scalefac * grainFrac(1)
-          thisOctal%dustTypeFraction(subcell,3) = fac * scalefac * grainFrac(3)
+!          thisOctal%dustTypeFraction(subcell,3) = fac * scalefac * grainFrac(3)
           thisOctal%dustTypeFraction(subcell,2) = (1.d0-fac) * scalefac * grainFrac(2)
-          thisOctal%dustTypeFraction(subcell,4) = (1.d0-fac) * scalefac * grainFrac(4)
+!          thisOctal%dustTypeFraction(subcell,4) = (1.d0-fac) * scalefac * grainFrac(4)
        endif
+
+!       if (r < rGapInner1) then
+!          thisOctal%dustTypeFraction(subcell,1) = scaleFac * grainFrac(1)
+!          thisOctal%dustTypeFraction(subcell,3) = scaleFac * grainFrac(3)
+!       else
+!          thisOctal%dustTypeFraction(subcell,1) = fac * scalefac * grainFrac(1)
+!          thisOctal%dustTypeFraction(subcell,3) = fac * scalefac * grainFrac(3)
+!          thisOctal%dustTypeFraction(subcell,2) = (1.d0-fac) * scalefac * grainFrac(2)
+!          thisOctal%dustTypeFraction(subcell,4) = (1.d0-fac) * scalefac * grainFrac(4)
+!       endif
 
        rVec = VECTOR(rSublimation*1.001d0, 0.d0, 0.d0)
        rhoFid = HD169142Disc(rVec)
@@ -12277,13 +12291,16 @@ end function readparameterfrom2dmap
 
   subroutine MWC275disk(thisOctal,subcell,grid)
     use density_mod, only: density, MWC275Disc
-    use inputs_mod, only : rOuter, nDustType, grainFrac, dustPhysics, photoionization, rSublimation
+    use inputs_mod, only : rOuter, nDustType, grainFrac, dustPhysics, photoionization, rSublimation, &
+         dustHeight, dustbeta, height, betaDisc
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     real(double) :: r, rd
     TYPE(vector) :: rVec
+    integer :: iDust
+    real(double) :: thisHeight, gasHeight, fracGas, fracDust,z
 
     type(VECTOR),save :: velocitysum
     logical,save :: firsttime = .true.
@@ -12344,10 +12361,19 @@ end function readparameterfrom2dmap
        thisOctal%DustTypeFraction(subcell,1) = 1.d-20
        rVec = subcellCentre(thisOctal, subcell)
        r = sqrt(rVec%x**2+rVec%y**2)
+       z = rvec%z
 
-       if (r > rSublimation) then
-          thisOctal%DustTypeFraction(subcell,1:nDustType) = grainFrac(1:nDustType)
+       if ( (r > rSublimation).and.(r < rOuter)) then
+          do iDust = 1, nDustType
+             thisHeight = dustHeight(iDust)*(r/(100.d0*autocm/1.d10))**dustBeta(iDust)
+             gasHeight =  height*(r/(100.d0*autocm/1.d10))**betaDisc
+             fracGas = max(1.d0/(gasHeight*sqrt(2.d0*pi)) * exp(-0.5d0*(z/gasHeight)**2),1.d-20)
+             fracDust = max(1.d-30,1.d0/(thisHeight*sqrt(2.d0*pi)) * exp(-0.5d0*(z/thisHeight)**2))
+             thisOctal%dustTypeFraction(subcell, iDust) = max(1.d-30,grainFrac(iDust) * fracDust / fracGas)
+          enddo
        endif
+             
+
 
 
     endif

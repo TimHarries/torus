@@ -637,7 +637,7 @@ module image_mod
 !
 
 #ifdef USECFITSIO
-     subroutine writeFitsImage(image, filename, objectDistance, type, lambdaImage, &
+     subroutine writeFitsImage(image, filename, objectDistance, type, fluxUnits, axisUnits, lambdaImage,  &
           pointTest, cylinderTest)
 
        use inputs_mod, only : fwhmPixels, beamArea
@@ -647,7 +647,7 @@ module image_mod
 
 ! Arguments
        type(IMAGETYPE),intent(in) :: image
-       character (len=*), intent(in) :: filename, type
+       character (len=*), intent(in) :: filename, type, fluxUnits, axisUnits
        character(len=80) :: rFile
        real(double) :: objectDistance
        real, intent(in), optional :: lambdaImage
@@ -800,7 +800,7 @@ module image_mod
              call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, &
                   samplings, cylinderTest=.true.)
           else
-             select case (trim(getFluxUnits()))
+             select case (trim(fluxUnits))
              case("Jy/beam")
                 call ConvertArrayToJanskiesPerBeam(array, lambdaImage, dx, objectDistance, beamArea)
              case("MJy/str")
@@ -812,7 +812,7 @@ module image_mod
              case("flux/arcsec2")
                 call ConvertArrayToFluxPerSqArcsec(array, lambdaImage, dx, objectDistance)
              case DEFAULT
-                call writeFatal("Flux unit not recognised: "//trim(getFluxUnits()))
+                call writeFatal("Flux unit not recognised: "//trim(fluxUnits))
              end select
           end if
        else
@@ -829,7 +829,7 @@ module image_mod
        !
 !       call ftpkyj(unit,'EXPOSURE',1500,'Total Exposure Time',status)
 
-       select case (getFluxUnits())
+       select case (fluxUnits)
           case("MJy/str")
              call ftpkys(unit,'BUNIT', "MJY/STR", "units of image values", status)
           case("Jy/pix")
@@ -841,14 +841,14 @@ module image_mod
           case("flux/arcsec2")
              call ftpkys(unit,'BUNIT', "FLUX/ARCSEC2", "units of image values", status)
           case DEFAULT
-             call writeFatal("Flux unit not recognised: "//trim(getFluxUnits()))
+             call writeFatal("Flux unit not recognised: "//trim(fluxUnits))
        end select
 
 
 
 
        ! write keywords and set values which depend on the axis units
-       select case (getAxisUnits())
+       select case (axisUnits)
        case ("arcsec")
           dx = ((dx * 1.d10)/objectDistance)*radtodeg
           dy = ((dy * 1.d10)/objectDistance)*radtodeg
@@ -889,10 +889,10 @@ module image_mod
           call ftpkys(unit,'CUNIT1', "cm", "x axis unit", status)
           call ftpkys(unit,'CUNIT2', "cm", "y axis unit", status)
        case default
-          call writeFatal("Unrecognised units for image axis")
+          call writeFatal("Unrecognised units for image axis: "//trim(axisUnits))
        end select
 
-       if (getAxisUnits() == "arcsec") then 
+       if (axisUnits == "arcsec") then 
           ! write x-axis keywords
           call ftpkys(unit,'CTYPE1',"RA---SIN","x axis", status)
           call ftpkyd(unit,'CRPIX1',dble(image%nx/2.d0),-3,'reference pixel',status)
@@ -1105,7 +1105,7 @@ module image_mod
     end do
 
 #ifdef USECFITSIO
-    call writeFitsimage(image, "test.fits", griddistance*pctocm, "intensity", lambda)
+    call writeFitsimage(image, "test.fits", griddistance*pctocm, "intensity", "MJy/str","pc", lambda)
 #endif
   end subroutine createLucyImage
 

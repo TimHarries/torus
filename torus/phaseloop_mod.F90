@@ -1640,27 +1640,28 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 #ifdef USECFITSIO
 
            if (.not.PRESENT(returnImage)) then
-              call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "intensity", real(lambda_eff))
+              write(*,*) "writing ",trim(specfile), " flux units ",trim(getFluxUnits(imNum))
+              call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "intensity",  getFluxUnits(imNum), getAxisUnits(imNum), real(lambda_eff))
               if (polarizationImages) then
                  header = specfile(1:index(specfile,".fits")-1)
                  write(specFile,'(a,a)') trim(header)//"_pol.fits"
-                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "pol", real(lambda_eff))
+                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "pol",  getFluxUnits(imNum), getAxisUnits(imNum),real(lambda_eff))
                  write(specFile,'(a,a)') trim(header)//"_polr2.fits"
-                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "polr2", real(lambda_eff))
+                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "polr2", getFluxUnits(imNum), getAxisUnits(imNum), real(lambda_eff))
 
                  write(specFile,'(a,a)') trim(header)//"_qr.fits"
-                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "qr", real(lambda_eff))
+                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "qr", getFluxUnits(imNum),  getAxisUnits(imNum), real(lambda_eff))
                  write(specFile,'(a,a)') trim(header)//"_ur.fits"
-                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "ur", real(lambda_eff))
+                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "ur", getFluxUnits(imNum), getAxisUnits(imNum),  real(lambda_eff))
 
                  write(specFile,'(a,a)') trim(header)//"_polr2.fits"
-                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "polr2", real(lambda_eff))
+                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "polr2", getFluxUnits(imNum), getAxisUnits(imNum), real(lambda_eff))
                  write(specFile,'(a,a)') trim(header)//"_pa.fits"
-                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "pa")
+                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "pa", getFluxUnits(imNum), getAxisUnits(imNum))
                  write(specFile,'(a,a)') trim(header)//"_q.fits"
-                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "stokesq")
+                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "stokesq", getFluxUnits(imNum), getAxisUnits(imNum))
                  write(specFile,'(a,a)') trim(header)//"_u.fits"
-                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "stokesu")
+                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "stokesu", getFluxUnits(imNum), getAxisUnits(imNum))
               endif
            else
               returnImage%pixel(:,:)%i = obsImageSet(i1)%pixel(:,:)%i

@@ -117,7 +117,7 @@ contains
        do j = nMuMie, 1, -1
           mu = 2.*real(j-1)/real(nMumie-1)-1.
           ang = acos(mu) * real(radtoDeg)
-          write(23,'(f9.2,4f9.3)') ang, -miePhase(1,k,j)%element(1,2)/miePhase(1,k,j)%element(1,1) 
+          write(23,'(f9.2,4f9.3)') ang, -miePhase(1,k,j)%element(1,2)/miePhase(1,k,j)%element(1,1)
 !               -miePhase(2,k,j)%element(1,2)/miePhase(2,k,j)%element(1,1), &
 !               -miePhase(3,k,j)%element(1,2)/miePhase(3,k,j)%element(1,1), &
 !               -miePhase(4,k,j)%element(1,2)/miePhase(4,k,j)%element(1,1)
@@ -1562,6 +1562,92 @@ contains
 !    grid%oneKappaSca(iDustType, 1:nLambda) = grid%oneKappaSca(iDustType, 1:nLambda) * dustTogas    
 
   end subroutine readDust
+
+  subroutine dustComparison(grid, miePhase, nMuMie)
+    use mieDistPhaseMatrix_mod
+    use phasematrix_mod, only: fillIsotropic, fixMiePhase, PHASEMATRIX, fillHenyey, &
+         newDirectionMie
+    use inputs_mod, only : mie, useDust, dustFile, nDustType, graintype, ngrain, &
+         grainname, x_grain, amin, amax, a0, qdist, pdist, &
+         kappafilename, isotropicScattering, readmiephase, writemiephase, useOldMiePhaseCalc, &
+         ttau_disc_on, grainFrac, henyeyGreensteinphaseFunction, porousFillingFactor, inputGfac, polarWAvelength
+        real, allocatable :: mReal(:,:), mImg(:,:), tmReal(:), tmImg(:)
+    real, allocatable :: mReal2D(:,:), mImg2D(:,:)
+    character(len=80) :: mieFile
+    type(PHASEMATRIX),pointer :: miePhase(:,:,:)
+!    type(VECTOR) :: uHat, uNew, vec_tmp
+!    real(double) :: cosang
+    integer :: nMuMie
+    real(double) :: mu
+    real :: total_dust_abundance
+    real :: kAbs, kSca
+    integer :: i, j, k
+    real :: pol1, pol2
+
+    type(GRIDTYPE) :: grid
+    real, pointer  :: xArray(:)
+    real(double) :: gfac(2000), albedo
+    integer :: nLambda
+    integer :: ilam_beg, ilam_end
+
+
+    if (associated(miePhase)) then
+       deallocate(miePhase)
+       nullify(miePhase)
+    endif
+
+    nLambda = 1
+    if (associated(xarray)) deallocate(xarray)
+    
+    nLambda = 1
+    allocate(xarray(1:nLambda))
+    if (associated(grid%lamArray)) deallocate(grid%lamArray)
+    allocate(grid%lamArray(1:1))
+    allocate(grid%oneKappaAbs(1:nDustType,1:1))
+    allocate(grid%oneKappaSca(1:nDustType,1:1))
+    grid%nLambda = 1
+    grid%oneKappa = .true.
+
+    allocate(miePhase(1:nDustType,1:nLambda,1:nMumie)) 
+
+    if (writeoutput) open(25,file="comparison.dat",status="unknown",form="formatted")
+    do i = 2, 2
+
+       do j = 1, 1000
+
+          aMax(2) = (0.01 + 9.99 * real(j)/1000.)*1.001
+
+
+          xArray(1) = 1.22e4
+          grid%lamArray(1) = xArray(1)
+          call parseGrainType(graintype(i), ngrain, grainname, x_grain)
+          call fillGridMie(grid, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), porousFillingFactor(i),&
+               ngrain, X_grain, grainname, i)
+          kAbs = SUM(grid%oneKappaAbs(1:nDustType,1)*grainFrac(1:nDustType))/1.e10
+          kSca = SUM(grid%oneKappaSca(1:nDustType,1)*grainFrac(1:nDustType))/1.e10
+          albedo = kSca / (kAbs + kSca)
+          pol1 = miePhase(i,1,nMuMie/2)%element(1,2)/miePhase(i,1,nMuMie/2)%element(1,1) * albedo
+
+
+          xArray(1) = 1.63e4
+          grid%lamArray(1) = xArray(1)
+          call parseGrainType(graintype(i), ngrain, grainname, x_grain)
+          call fillGridMie(grid, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), porousFillingFactor(i),&
+               ngrain, X_grain, grainname, i)
+          kAbs = SUM(grid%oneKappaAbs(1:nDustType,1)*grainFrac(1:nDustType))/1.e10
+          kSca = SUM(grid%oneKappaSca(1:nDustType,1)*grainFrac(1:nDustType))/1.e10
+          albedo = kSca / (kAbs + kSca)
+          pol2 = miePhase(i,1,nMuMie/2)%element(1,2)/miePhase(i,1,nMuMie/2)%element(1,1) * albedo
+
+          if (writeoutput) write(25,'(1p,5e13.4)') aMax(2), pol1, pol2, -2.5d0*log10(pol1/pol2)
+          
+       enddo
+    enddo
+       if (writeoutput) close(25)
+
+  end subroutine dustComparison
+
+
 
   subroutine createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
 #ifdef MPI
