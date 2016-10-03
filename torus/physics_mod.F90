@@ -41,7 +41,6 @@ contains
     use phasematrix_mod, only : phasematrix
     use dust_mod
     type(GRIDTYPE) :: grid
-    type(PHASEMATRIX),pointer:: miephase(:,:,:)
     
 !    call dustComparison(grid, miePhase, 100)
     

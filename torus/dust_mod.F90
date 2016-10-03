@@ -1567,29 +1567,21 @@ contains
     use mieDistPhaseMatrix_mod
     use phasematrix_mod, only: fillIsotropic, fixMiePhase, PHASEMATRIX, fillHenyey, &
          newDirectionMie
-    use inputs_mod, only : mie, useDust, dustFile, nDustType, graintype, ngrain, &
+    use inputs_mod, only : nDustType, graintype, ngrain, &
          grainname, x_grain, amin, amax, a0, qdist, pdist, &
-         kappafilename, isotropicScattering, readmiephase, writemiephase, useOldMiePhaseCalc, &
-         ttau_disc_on, grainFrac, henyeyGreensteinphaseFunction, porousFillingFactor, inputGfac, polarWAvelength
-        real, allocatable :: mReal(:,:), mImg(:,:), tmReal(:), tmImg(:)
-    real, allocatable :: mReal2D(:,:), mImg2D(:,:)
-    character(len=80) :: mieFile
+         grainFrac, porousFillingFactor
     type(PHASEMATRIX),pointer :: miePhase(:,:,:)
 !    type(VECTOR) :: uHat, uNew, vec_tmp
 !    real(double) :: cosang
     integer :: nMuMie
-    real(double) :: mu
-    real :: total_dust_abundance
     real :: kAbs, kSca
-    integer :: i, j, k
-    real :: pol1, pol2
+    integer :: i, j
+    real(double) :: pol1, pol2
 
     type(GRIDTYPE) :: grid
     real, pointer  :: xArray(:)
-    real(double) :: gfac(2000), albedo
+    real(double) ::  albedo
     integer :: nLambda
-    integer :: ilam_beg, ilam_end
-
 
     if (associated(miePhase)) then
        deallocate(miePhase)
@@ -1660,12 +1652,12 @@ contains
          grainname, x_grain, amin, amax, a0, qdist, pdist, &
          kappafilename, isotropicScattering, readmiephase, writemiephase, useOldMiePhaseCalc, &
          ttau_disc_on, grainFrac, henyeyGreensteinphaseFunction, porousFillingFactor, inputGfac
-    real, allocatable :: mReal(:,:), mImg(:,:), tmReal(:), tmImg(:)
     real, allocatable :: mReal2D(:,:), mImg2D(:,:)
-    character(len=80) :: mieFile
+    character(len=80) :: miefile
     type(PHASEMATRIX),pointer :: miePhase(:,:,:)
 !    type(VECTOR) :: uHat, uNew, vec_tmp
 !    real(double) :: cosang
+    real, allocatable :: mReal(:,:), mImg(:,:), tmimg(:), tmreal(:)
     integer :: nMuMie
     real(double) :: mu
     real :: total_dust_abundance

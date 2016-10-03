@@ -8455,7 +8455,8 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
           getFluxUnits(imageNum), getAxisUnits(imageNum), lambdaImage, &
                cylinderTest=.true.)
        else
-          call writeFitsImage(thisimage, imageFilename, griddistance*pctocm, "intensity", getFluxUnits(imageNum), getAxisUnits(imageNum), lambdaImage)
+          call writeFitsImage(thisimage, imageFilename, griddistance*pctocm, "intensity", &
+               getFluxUnits(imageNum), getAxisUnits(imageNum), lambdaImage)
        end if
     endif
 #else
