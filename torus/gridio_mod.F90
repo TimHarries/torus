@@ -295,7 +295,7 @@ contains
     else
        call writeInfo("Writing compressed AMR grid file to: "//trim(filename),TRIVIAL)
     endif
-    
+
     if (writeHeader) then
        call date_and_time(values=timeValues)
        if (fileFormatted) then

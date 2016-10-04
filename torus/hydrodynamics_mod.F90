@@ -19449,14 +19449,9 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
              thisCellVolume = cellVolume(thisOctal, subcell) * 1.d30
              cellMass = thisOctal%rho(subcell) * thisCellVolume
 
-
-
-
-
-
              onAxis = .false.
              if (cylindricalHydro) then
-                onAxis = .not.(cellCentre%x - thisOctal%subcellSize/2.d0+0.1d0*smallestCellSize < 0.d0)
+                onAxis = (cellCentre%x - thisOctal%subcellSize/2.d0+0.1d0*smallestCellSize < 0.d0)
              endif
 
              if (thisOctal%threeD.or.spherical) then
@@ -19469,9 +19464,9 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                 cellVelocity = VECTOR(thisOctal%rhou(subcell) / thisOctal%rho(subcell), &
                      rv, &
                      thisOctal%rhow(subcell) / thisOctal%rho(subcell))
-                cellVelocity = VECTOR(thisOctal%rhou(subcell) / thisOctal%rho(subcell), &
-                     0.d0, &
-                     thisOctal%rhow(subcell) / thisOctal%rho(subcell))
+!                cellVelocity = VECTOR(thisOctal%rhou(subcell) / thisOctal%rho(subcell), &
+!                     0.d0, &
+!                     thisOctal%rhow(subcell) / thisOctal%rho(subcell))
              else
                 r = cellCentre%x*1.d10
                 cellVelocity = VECTOR(thisOctal%rhou(subcell) / thisOctal%rho(subcell), &
@@ -19527,7 +19522,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                            VECTOR(thisOctal%rhou(subcell), 0.d0, 0.d0)
                    else
                       gasMom = (cellVolume(thisOctal, subcell) * 1.d30)  * &
-                           VECTOR(thisOctal%rhou(subcell), 0.d0, thisOctal%rhow(subcell))
+                           VECTOR(thisOctal%rhou(subcell), thisOctal%rhov(subcell), thisOctal%rhow(subcell))
                    endif
 
                    if (thisOctal%threed.or.spherical) then
@@ -19574,9 +19569,10 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                       cellMass = thisOctal%rho(subcell) * cellVolume(thisOctal, subcell) * 1.d30
                       cellVelocity = gasMom / cellMass
                       thisOctal%rhou(subcell) =  thisOctal%rho(subcell) * cellVelocity%x
+                      thisOctal%rhov(subcell) =  thisOctal%rho(subcell) * cellVelocity%y
                       thisOctal%rhow(subcell) =  thisOctal%rho(subcell) * cellVelocity%z
-                      if (onAxis) thisOctal%rhou(subcell) = 0.
-                      thisOctal%rhov(subcell) = 0.
+!                      if (onAxis) thisOctal%rhou(subcell) = 0.
+!                      thisOctal%rhov(subcell) = 0.
                       if (thisOctal%rhov(subcell) < 0.d0) then
                          write(*,*) "warning negative rho v. vel = ",(1.d-5)*thisOctal%rhov(subcell)/thisOctal%rho(subcell)
                          write(*,*) "rho ",thisOctal%rho(subcell)
