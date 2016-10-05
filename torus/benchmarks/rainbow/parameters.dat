@@ -24,7 +24,7 @@ radius1 100.
 na1 0.
 power1 1.
 
-nphotons 100000000
+nphotons 10000000
 
 detectorpos 0. 0. -1.
 detectortype ccd

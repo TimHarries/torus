@@ -3303,11 +3303,13 @@ contains
              if (thisOctal%x_i(subcell) == thisOctal%x_i_minus_1(subcell)) then
                 write(*,*) "x_i bug ", thisOctal%x_i(subcell), thisOctal%x_i_minus_1(subcell)
                 print *, "cen ", subcellCentre(thisOctal, subcell)
+                write(*,*) "depth ",thisOctal%ndepth
+                write(*,*) "rho ",thisOctal%rho(subcell)
                 if (.not.octalonthread(neighbouroctal, neighboursubcell, myrankGlobal)) then
                    print *, "AND IT WASNT ON THREAD"
                 end if
-!                print *, "EDGE", thisOctal%edgecell(subcell)
- !               print *, "GHOST", thisOctal%ghostcell(subcell)
+                print *, "EDGE", thisOctal%edgecell(subcell)
+                print *, "GHOST", thisOctal%ghostcell(subcell)
              else
  !               print *, "good at u_i"
              endif
@@ -8377,6 +8379,7 @@ end subroutine sumFluxes
     dt = 1.d30
     
     direction = VECTOR(1.d0, 0.d0, 0.d0)
+    call setupx(grid%octreeRoot, grid, direction)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
     if (amr2d) then
        call setupUi_amr(grid%octreeRoot, grid, direction, dt)

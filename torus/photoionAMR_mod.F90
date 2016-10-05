@@ -1108,10 +1108,13 @@ contains
 
 
              if (refinedSomeCells) then
+                call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
                 if (myRankWorldGlobal == 1) call tune(6,"Even up grid")
                 call writeInfo("Evening up grid", TRIVIAL)
                 call evenUpGridMPI(grid, .false.,.true., evenuparray)
                 if (myRankWorldGlobal == 1) call tune(6,"Even up grid")
+                call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
 
                 if (doselfGrav) then
                    if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
@@ -1125,7 +1128,6 @@ contains
                 endif
 
              endif
-!             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
           endif
 
@@ -7709,7 +7711,7 @@ subroutine addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, gr
 
   do i = 1, nFreq
      if (indexLam(i) /= 0) then
-        spectrum(i) = spectrum(i) + bnu(freq(i), thisOctal%tdust(subcell)) * &
+        spectrum(i) = spectrum(i) + bnu(freq(i), max(1.d-3,thisOctal%tdust(subcell))) * &
              kAbsArray(indexLam(i)) *1.d-10* dFreq(i) * fourPi
      endif
   enddo
