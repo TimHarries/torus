@@ -127,6 +127,8 @@ module sph_data_class
   integer, parameter, private :: MaxAsciiLineLength=800
 ! Maximum number of words per line when reading an ASCII file
   integer, parameter, private :: MaxWords=50
+! Flag to specify when we are reading a Gadget ASCII dump 
+  logical :: gadget = .false.
 
   interface kill
      module procedure kill_sph_data
@@ -343,6 +345,10 @@ contains
     case("ascii")
        call new_read_sph_data(sphdatafilename)
 
+    case("ascii-gadget")
+       gadget=.true.
+       call new_read_sph_data(sphdatafilename)
+
     case("gadget2")
        call read_gadget2_data(sphdatafilename)
 
@@ -420,6 +426,14 @@ contains
     logical, parameter :: multiTime=.false.
     real(double) :: extraPA
 
+    if (gadget) then
+       call writeInfo("Reading ASCII dump from Gadget", FORINFO)
+    else if (dragon) then 
+       call writeInfo("Reading ASCII dump from Dragon", FORINFO)
+    else 
+       call writeInfo("Reading ASCII dump", FORINFO)
+    end if
+
     call findMultiFilename(rootfilename, iModel, filename)
     open(unit=LUIN, file=TRIM(filename), form="formatted",status="old")
     read(LUIN,*) 
@@ -462,11 +476,20 @@ contains
     endif
 
     ! itype: 3 - sinks, treat as sources
-    ipType = indexWord("sink",pType,npType)
-    if (ipType/=0) then
-       nptmass = pNumArray(ipType)
+    if (gadget) then
+       ipType = indexWord("sink / black",pType,npType)
+       if (ipType/=0) then
+          nptmass = pNumArray(ipType)
+       else
+          nptmass = 0
+       end if
     else
-       nptmass = 0
+       ipType = indexWord("sink",pType,npType)
+       if (ipType/=0) then
+          nptmass = pNumArray(ipType)
+       else
+          nptmass = 0
+       end if
     endif
 
     ! itype: 4 - stars, treat as sources
@@ -497,7 +520,13 @@ contains
        write(*,*) trim(word(i)),": ",trim(unit(i))
     enddo
 
-    iitype = indexWord("itype",word,nWord)
+! Gadget doesn't have itype so just set iitype to zero explicitly to avoid 
+! a warning when calling indexWord
+    if (gadget) then 
+       iitype = 0
+    else
+       iitype = indexWord("itype",word,nWord)
+    endif
 
     if ( ((iiType==0).and.(nUnit /= nWord)).or. &
          ((iiType/=0).and.(nUnit /= (nWord-1))) )then
@@ -566,6 +595,17 @@ contains
        write(message,*) "Allocating ", npart, " gas particles and ", nptmass, " sink particles"
     endif
     call writeinfo(message, TRIVIAL)
+
+! A Gadget ASCII dump doesn't contain the physical unit information so hardwire here
+    if (gadget) then
+       call writeInfo("Resetting physical unit conversion for Gadget dump", FORINFO)
+       udist = 3.085678e18_db
+       umass = 1.989e33_db
+       uvel  = 1.0e5_db
+       utime = udist/uvel
+       write(message,*) "udist/umass/uvel=", udist, umass, uvel
+       call writeInfo(message,FORINFO)
+    end if
 
     call init_sph_data(udist, umass, utime, time, nptmass, uvel, utemp)
     ! velocity unit is derived from distance and time unit (converted to seconds from years)
@@ -674,12 +714,15 @@ part_loop: do ipart=1, nlines
 
 
        if (iitype == 0) then
-! If we don't have itype then treat as a gas particle provided the smoothing length is valid
-          if (h>0.0) then
+! If we don't have itype then assume splash has written out the particles in the order gas, sinks, others
+! This should work for Gadget where particles don't have an itype parameter
+          if (ipart<=npart) then
              itype = 1
+          else if (ipart <= npart+nptmass) then 
+             itype = 3
           else
              itype = 5
-          endif
+          end if
        else
           itype = int(junkArray(iitype))
        endif
