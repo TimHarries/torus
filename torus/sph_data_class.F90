@@ -902,6 +902,7 @@ part_loop: do ipart=1, nlines
 
   subroutine read_gadget2_data(filename)
     use inputs_mod, only: convertRhoToHI, sphwithChem, discardSinks
+    use parallel_mod, only: torus_abort
 
     character(len=*), intent(in) :: filename
     integer, parameter  :: LUIN = 10 ! logical unit # of the data file
@@ -922,6 +923,12 @@ part_loop: do ipart=1, nlines
     real(single), allocatable :: g_pos(:,:), g_vel(:,:), g_m(:), g_u(:), g_rho(:), g_h(:)
     real(single), allocatable :: aH(:), aH2(:), aCO(:)
     integer, allocatable      :: g_idNum(:)
+    character(len=4) :: blockLabel
+
+    logical :: isBlockLabelled ! Does this dump use block labelled format?
+    logical :: foundH, foundH2
+    integer :: myiostat
+
 ! Dummy variables for reading the header
     real(double) :: dummyDouble
     integer      :: dummyInt, dummyInt6(6)
@@ -933,6 +940,19 @@ part_loop: do ipart=1, nlines
     write(message,*) "Reading Gadget dump from "//trim(filename)
     call writeInfo(message,FORINFO)
     open(unit=LUIN,status="old",file=filename,form="unformatted")
+
+! Check if this dump uses block labelled format or standard format
+    read(LUIN) blockLabel
+    if ( blockLabel=="HEAD" ) then
+       isBlockLabelled=.true.
+       write(message,*) "This is a block labelled dump"
+       call writeInfo(message,TRIVIAL)
+    else
+       isBlockLabelled=.false.
+       rewind(LUIN)
+       write(message,*) "This is not a block labelled dump"
+       call writeInfo(message,TRIVIAL)
+    end if
 
 ! Read the header
     read (LUIN) g_npart, g_massTable, time, dummyDouble, dummyInt, dummyInt, g_nall, &
@@ -999,30 +1019,65 @@ part_loop: do ipart=1, nlines
     call writeInfo(message,TRIVIAL)
 
 ! Particle positions: total number of particles in file
+    if (isBlockLabelled) then
+       read(LUIN) blockLabel
+       write(message,*) "Reading positions block: ", blockLabel
+       call writeInfo(message,TRIVIAL)
+    endif
     allocate(g_pos(3,nTotal))
     read(LUIN) g_pos
 
 ! Particle velocities: total number of particles in file
+    if (isBlockLabelled) then
+       read(LUIN) blockLabel
+       write(message,*) "Reading velocities block: ", blockLabel
+       call writeInfo(message,TRIVIAL)
+    endif
     allocate(g_vel(3,nTotal))
     read(LUIN) g_vel
 
 ! ID numbers: total number of particles in file
+    if (isBlockLabelled) then
+       read(LUIN) blockLabel
+       write(message,*) "Reading IDs block: ", blockLabel
+       call writeInfo(message,TRIVIAL)
+    endif
     allocate(g_idNum(nTotal))
     read(LUIN) g_idNum
 
 ! Particle masses: number of particles with variable mass
+    if (isBlockLabelled) then
+       read(LUIN) blockLabel
+       write(message,*) "Reading mass block: ", blockLabel
+       call writeInfo(message,TRIVIAL)
+    endif
     allocate(g_m(g_nVarMass))
     read(LUIN) g_m
 
 ! Internal energy: number of gas particles
+    if (isBlockLabelled) then
+       read(LUIN) blockLabel
+       write(message,*) "Reading energy block: ", blockLabel
+       call writeInfo(message,TRIVIAL)
+    endif
     allocate(g_u(nGasTotal))
     read(LUIN) g_u
 
 ! Density: number of gas particles
+    if (isBlockLabelled) then
+       read(LUIN) blockLabel
+       write(message,*) "Reading density block: ", blockLabel
+       call writeInfo(message,TRIVIAL)
+    endif
     allocate(g_rho(nGasTotal))
     read(LUIN) g_rho
 
 ! Smoothing length: number of gas particles
+    if (isBlockLabelled) then
+       read(LUIN) blockLabel
+       write(message,*) "Reading smoothing length block: ", blockLabel
+       call writeInfo(message,TRIVIAL)
+    endif
     allocate(g_h(nGasTotal))
     read(LUIN) g_h
 
@@ -1031,16 +1086,61 @@ part_loop: do ipart=1, nlines
        write (message,'(a,i2)') "Will store particle H2 density"
        call writeInfo(message,FORINFO)
        allocate(sphdata%rhoH2(nGasTotal))
-
        allocate(aH(nGasTotal))
-       read(LUIN) aH
        allocate(aH2(nGasTotal))
-       read(LUIN) aH2
+
+       if (isBlockLabelled) then
+          foundH=.false.
+          foundH2=.false.
+          do
+             read(LUIN,iostat=myiostat) blockLabel
+             if (myiostat<0) then
+                call torus_abort("Reached end of file and didn't find H and/or H2 data")
+             else if (myiostat>0) then
+                call torus_abort("Error reading block label")
+             end if
+
+             select case (blockLabel)
+
+             case('nH')
+                write(message,*) "Reading H block: ", blockLabel
+                call writeInfo(message,TRIVIAL)
+                read(LUIN) aH
+                foundH=.true.
+
+             case('nH2')
+                write(message,*) "Reading H2 block: ", blockLabel
+                call writeInfo(message,TRIVIAL)
+                read(LUIN) aH2
+                foundH2=.true.
+
+             case default
+                write(message,*) "Ignoring block: ", blockLabel
+                call writeInfo(message,TRIVIAL)
+                read(LUIN)
+
+             end select
+
+             if (foundH.and.foundH2) exit
+          end do
+
+       else
+! If the blocks are not labelled then assume the next two blocks H, H2 respectively
+          read(LUIN) aH
+          read(LUIN) aH2
+       end if
+
     end if
 
     if (sphWithChem) then
        write (message,'(a,i2)') "Will store CO fraction"
        call writeInfo(message,FORINFO)
+
+       if (isBlockLabelled) then
+          read(LUIN) blockLabel
+          write(message,*) "Reading CO block: ", blockLabel
+          call writeInfo(message,TRIVIAL)
+       endif
        allocate(sphData%rhoCO(nGasTotal))
        allocate(aCO(nGasTotal))
        read(LUIN) aCO
