@@ -6560,8 +6560,123 @@ contains
 
   end subroutine advectDust
 
+#ifdef CHEMISTRY
+  subroutine advectChemistry(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound, &
+       oneD, twoD, threeD, cylindrical, amr)
+    use chemistry_mod
+  use krome_main
+  use krome_user
+  use krome_user_commons
+  use constants_mod
+    integer :: npairs, thread1(:), thread2(:), nbound(:)
+    integer :: group(:), ngroup
+    integer :: usethisbound
+    logical :: oneD, twoD, threeD, cylindrical, amr
+    type(gridtype) :: grid
+    real(double) :: dt
+    type(vector) :: direction
+    integer :: i
 
-!copy cell rhoe to q, advect q, copy q back to cell rhoe
+    do i = 1, krome_nmols
+       call copyChemistrytoq(grid%octreeroot, i)
+
+
+       if (oneD.and.(.not.spherical)) then
+          call advectq(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
+       else if (oneD.and.spherical) then
+          call advectqspherical(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
+       else if (twoD.and.(.not.amr)) then
+          call advectqcylindrical(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
+       else if (twoD.and.amr) then
+          call advectqcylindrical_amr(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
+       else if (threed.and.(.not.amr)) then
+          call advectq(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
+       else if (threed.and.(amr)) then
+          call advectq_amr(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
+       endif
+
+
+       call copyqtoChemistry(grid%octreeroot, i)
+    enddo
+
+  end subroutine advectChemistry
+
+!copy cell ionfrac to advecting quantity q
+  recursive subroutine copyChemistrytoq(thisoctal, ichem)
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, ichem, dustType
+  
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call copyChemistrytoQ(child, ichem)
+                exit
+             end if
+          end do
+       else
+  
+          thisoctal%q_i(subcell) = thisoctal%kromeSpeciesX(subcell, ichem)*thisOctal%oldRho(subcell)
+        
+       endif
+    enddo
+  end subroutine copyChemistrytoq
+
+  recursive subroutine copyqtoChemistry(thisoctal, ichem)
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, ichem
+  
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call copyqtoChemistry(child, ichem)
+                exit
+             end if
+          end do
+       else
+  
+          if (.not.octalonthread(thisoctal, subcell, myrankglobal)) cycle
+
+          thisoctal%kromeSpeciesX(subcell,ichem) = thisoctal%q_i(subcell)/thisOctal%rho(subcell)
+       endif
+    enddo
+  end subroutine copyqtoChemistry
+
+  recursive subroutine copyrhotooldRho(thisoctal)
+    type(octal), pointer   :: thisoctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, ichem
+  
+    do subcell = 1, thisoctal%maxchildren
+       if (thisoctal%haschild(subcell)) then
+          ! find the child
+          do i = 1, thisoctal%nchildren, 1
+             if (thisoctal%indexchild(i) == subcell) then
+                child => thisoctal%child(i)
+                call copyrhotoOldRho(child)
+                exit
+             end if
+          end do
+       else
+  
+          if (.not.octalonthread(thisoctal, subcell, myrankglobal)) cycle
+
+          if (.not.associated(thisOctal%oldRho)) allocate(thisOctal%oldRho(1:thisOctal%maxChildren))
+          thisoctal%oldRho(subcell) = thisoctal%rho(subcell)
+       endif
+    enddo
+  end subroutine copyRhotoOldRho
+
+
+#endif
+
   subroutine advectrhoe(grid, direction, dt, npairs, thread1, thread2, nbound, group, ngroup, usethisbound)
     integer :: npairs, thread1(:), thread2(:), nbound(:)
     integer :: group(:), ngroup
@@ -7013,6 +7128,13 @@ end subroutine sumFluxes
     
     direction = vector(1.d0, 0.d0, 0.d0)
 
+#ifdef CHEMISTRY
+    if (doChemistry) then
+       call copyRhotoOldRho(grid%octreeRoot)
+    endif
+#endif
+
+
 !Boundary conditions
     call imposeboundary(grid%octreeroot, grid)
     call periodboundary(grid)
@@ -7121,6 +7243,11 @@ end subroutine sumFluxes
     selfGravity = .true.
     if (PRESENT(doSelfGrav)) selfgravity = doSelfGrav
 
+#ifdef CHEMISTRY
+    if (doChemistry) then
+       call copyRhotoOldRho(grid%octreeRoot)
+    endif
+#endif
 
 
 
@@ -7343,6 +7470,11 @@ end subroutine sumFluxes
     selfGravity = .true.
     if (PRESENT(doSelfGrav)) selfgravity = doSelfGrav
 
+#ifdef CHEMISTRY
+    if (doChemistry) then
+       call copyRhotoOldRho(grid%octreeRoot)
+    endif
+#endif
 
 
 
@@ -7618,6 +7750,11 @@ end subroutine sumFluxes
     integer :: idir, thisBound
     logical, optional :: perturbPressure
 
+#ifdef CHEMISTRY
+    if (doChemistry) then
+       call copyRhotoOldRho(grid%octreeRoot)
+    endif
+#endif
 
 
     !boundary conditions
@@ -7681,6 +7818,15 @@ end subroutine sumFluxes
        call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+
+
+#ifdef CHEMISTRY
+    if (doChemistry) then
+       call advectChemistry(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2, &
+            oneD=.true.,twoD=.false.,threed=.false.,cylindrical=.false.,amr=.false.)
+    endif
+#endif
+
        !if running a radiation hydrodynamics calculation, advect the ion fraction
        if(photoionPhysics .and. hydrodynamics) then
 !          call advectIonFrac(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
@@ -7747,6 +7893,13 @@ end subroutine sumFluxes
     type(VECTOR) :: direction
     integer :: idir, thisBound
     selfGravity = doSelfGrav
+
+
+#ifdef CHEMISTRY
+    if (doChemistry) then
+       call copyRhotoOldRho(grid%octreeRoot)
+    endif
+#endif
 
 
     !boundary conditions
@@ -7966,6 +8119,12 @@ end subroutine sumFluxes
        call advectRhoWCylindrical_amr(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call advectRhoRVCylindrical_amr(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
        call advectRhoECylindrical_amr(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound)
+#ifdef CHEMISTRY
+    if (doChemistry) then
+       call advectChemistry(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=thisBound, &
+            oned=.false., twod=.true.,threed=.false., cylindrical=.true.,amr=.true.)
+    endif
+#endif
 
 
        !calculate and set up pressures   
@@ -8040,6 +8199,11 @@ end subroutine sumFluxes
     type(vector) :: direction
     integer :: npairs, thread1(:), thread2(:), nbound(:), group(:), ngroup
 
+#ifdef CHEMISTRY
+    if (doChemistry) then
+       call copyRhotoOldRho(grid%octreeRoot)
+    endif
+#endif
 
     direction = vector(1.d0, 0.d0, 0.d0)
 
@@ -8083,6 +8247,13 @@ end subroutine sumFluxes
 !       call advectIonFrac(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
 !       call advectDust(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     end if
+#ifdef CHEMISTRY
+    if (doChemistry) then
+       call advectChemistry(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2, &
+            oneD=.true.,twoD=.false.,threed=.false.,cylindrical=.false.,amr=.false.)
+    endif
+#endif
+
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup, useThisBound=2)
     
 !impose boundary conditions again

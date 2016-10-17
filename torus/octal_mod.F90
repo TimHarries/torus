@@ -204,6 +204,7 @@ MODULE octal_mod
     real(double), DIMENSION(:), pointer    :: cornerrho => null() ! velocity at corners of subcells
     real(double)               :: phi, dphi, phimin, phimax
 
+    real(double), dimension(:), pointer :: oldRho => null()
     real(double), dimension(:,:,:), pointer :: qViscosity => null()
 
     logical, dimension(:), pointer                 :: diffusionApprox => null()
