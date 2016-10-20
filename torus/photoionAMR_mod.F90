@@ -1419,10 +1419,10 @@ contains
              call writeSourceArray(mpifilename)
           endif
 
-          if (spherical) then
-             write(mpiFilename,'(a,i4.4,a)') "cells",grid%idump,".dat"
-             call write1dlist(grid, mpifilename)
-          endif
+!          if (spherical) then
+!             write(mpiFilename,'(a,i4.4,a)') "cells",grid%idump,".dat"
+!             call write1dlist(grid, mpifilename)
+!          endif
 !          if (.not.CylindricalHydro) then
              write(mpiFilename,'(a,i4.4,a)') "radial",grid%idump,".dat"
              call  dumpValuesAlongLine(grid, mpiFilename, VECTOR(1.d0,0.d0,0.0d0), &

@@ -155,12 +155,6 @@ program torus
 
         call  setupamrgrid(grid)
 
-#ifdef CHEMISTRY
-    if (doChemistry) then
-       call initializeChemistry(grid%octreeRoot) ! setup chemistry stuff here!!!!!!!!
-    endif
-
-#endif
 
 
 !        call sanityCheckGrid(grid)

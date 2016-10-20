@@ -2931,6 +2931,9 @@ end subroutine writeXMLVtkFileAMR
       integer :: i, subcell, n, iVal, nVal
       integer, save ::  iLambda
       real(double) :: ksca, kabs, value, v, r
+#ifdef CHEMISTRY
+      real(double) :: massFraction(krome_nMols)
+#endif
       type(VECTOR) :: rVec, vel, vec, pos
       real, parameter :: min_single_prec = 1.0e-37
       logical, save :: firstTime=.true.
@@ -2980,6 +2983,9 @@ end subroutine writeXMLVtkFileAMR
 
                case("mass")
                   rArray(1, n) = real(thisOctal%rho(subcell)*cellVolume(thisOctal,subcell)*1.d30/mSol)
+
+               case("av")
+                  rArray(1, n) = real(thisOctal%meanav(subcell))
 #ifdef PHOTOION
                case("mu")
                   rArray(1, n) = real(returnMu(thisOctal, subcell, grid%ion, grid%nion))
@@ -3553,11 +3559,14 @@ end subroutine writeXMLVtkFileAMR
 !                   found = .true.
 !                endif
 !             enddo
+             massFraction = thisOctal%kromeSpeciesX(subcell,:)/krome_get_Hnuclei(thisOctal%kromeSpeciesX(subcell,:))
              if (chemIndex /= 0) then
-                   rArray(1, n) = real( &
-                        thisOctal%kromeSpeciesX(subcell, chemIndex)/ &
-                        (dble(thisOctal%rho(subcell)*nAvogadro/1.28d0)) )
-                   found = .true.
+                if (massFraction(chemIndex) > 0.d0) then
+                   rArray(1, n) = real(log10(massFraction(chemIndex)))
+                else
+                   rArray(1, n) = -30.
+                endif
+                found = .true.
              endif
 #endif
              if (.not.found) then

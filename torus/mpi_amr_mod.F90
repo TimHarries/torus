@@ -579,6 +579,35 @@ contains
   end subroutine findTotalPhiOutsideRServer
 
 
+  subroutine findTotalPhiInsideRServer(grid, receiveThread)
+    use mpi
+    type(GRIDTYPE) :: grid
+    real(double) :: radius, totalPhi
+    integer :: ierr
+    integer :: receiveThread
+    integer, parameter :: tag = 55
+    logical :: stillServing
+    integer :: status(MPI_STATUS_SIZE)
+
+    stillServing = .true.
+
+    call findTotalPhiInsideRMPI(grid, radius, totalPhi, reset=.true.)
+
+    do while(stillServing)
+
+       call MPI_RECV(radius, 1, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, status, ierr)
+       if (radius > 1.d29) then
+          stillServing = .false.
+       else
+          totalphi = 0.d0
+          call findTotalPhiInsideRMPI(grid, radius, totalPhi)
+          call MPI_SEND(totalPhi, 1, MPI_DOUBLE_PRECISION, receiveThread, tag, localWorldCommunicator, ierr)
+       endif
+    enddo
+  end subroutine findTotalPhiInsideRServer
+
+
+
   subroutine findTotalMassWithinRMPI(grid, radius, totalMass, reset)
     type(GRIDTYPE) :: grid
     real(double) :: radius
@@ -640,6 +669,37 @@ contains
        call findTotalPhiOutsideRMPIPrivate(grid%octreeRoot, radius, totalPhi)
     endif
   end subroutine findTotalPhiOutsideRMPI
+
+  subroutine findTotalPhiInsideRMPI(grid, radius, totalPhi, reset)
+    type(GRIDTYPE) :: grid
+    real(double) :: radius
+    real(double) :: totalPhi
+    logical, optional :: reset
+    logical :: doReset
+    logical, save :: firstTime = .true.
+    real(double), save :: savedRadius, savedPhi
+
+    doReset = .false.
+    if (PRESENT(reset)) then
+       doReset = reset
+    endif
+    if (doReset) firstTime = .true.
+    
+    if (firstTime) then
+       savedRadius = 1.d30
+       call findMinR(grid%octreeRoot, savedRadius)
+       savedPhi = 0.d0
+       call findTotalPhiInsideRMPIPrivate(grid%octreeRoot, savedRadius, savedPhi)
+       firstTime = .false.
+    endif
+
+    if (radius < savedRadius) then
+       totalPhi = savedPhi
+    else
+       totalPhi = 0.d0
+       call findTotalPhiInsideRMPIPrivate(grid%octreeRoot, radius, totalPhi)
+    endif
+  end subroutine findTotalPhiInsideRMPI
 
 
   recursive subroutine findTotalMassWithinRMPIPrivate(thisOctal, radius, totalMass)
@@ -711,13 +771,43 @@ contains
              if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
                 rVec = subcellCentre(thisOctal, subcell)
                 if (modulus(rVec) > radius) then
-                   totalPhi = totalPhi - thisOctal%phi_gas(subcell) 
+                   totalPhi = totalPhi + thisOctal%phi_i(subcell) 
                 endif
              endif
           endif
        end if
     enddo
   end subroutine findTotalPhiOutsideRMPIPrivate
+
+  recursive subroutine findTotalPhiInsideRMPIPrivate(thisOctal, radius, totalPhi)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  type(VECTOR) :: rVec
+  real(double) :: totalPhi, radius
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call findtotalPhiInsideRMPIPrivate(child, radius,totalPhi)
+                exit
+             end if
+          end do
+       else
+          if(.not. thisoctal%ghostcell(subcell)) then
+             if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+                rVec = subcellCentre(thisOctal, subcell)
+                if (modulus(rVec) < radius) then
+                   totalPhi = totalPhi + thisOctal%phi_i(subcell) 
+                endif
+             endif
+          endif
+       end if
+    enddo
+  end subroutine findTotalPhiInsideRMPIPrivate
 
   recursive subroutine findMaxR(thisOctal, radius)
 !   use inputs_mod, only : hydrodynamics, cylindricalHydro

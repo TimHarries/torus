@@ -296,7 +296,7 @@ ifeq ($(SYSTEM), zen)
 #    FASTFLAG= -O3 -xS #-fp-model fast=2 -no-prec-div -no-prec-sqrt -auto
 #    FASTFLAG= -fp-model fast=2 -no-prec-div -no-prec-sqrt -O3 -xT #-ipo 
 
-    DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
+    DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created -mcmodel medium -shared-intel
 # Uncomment this line to include MPI correctness checking 
 # It is not enabled by default as it can be slow
 #    DEBUGFLAG += -check_mpi
@@ -322,8 +322,10 @@ ifeq ($(SYSTEM), zen)
        F95COMP+=-I/sw/hdf5_intel/include
        STARLIBS=-L/sw/hdf5_intel/lib
     endif
-    NCDF_INC=-I/sw/netcdf-4.3.0/include/
-    NCDF_LIB=-L/sw/netcdf-4.3.0/lib/ -lnetcdff -lnetcdf
+    ifeq ($(netcdf), yes)
+      NCDF_INC=-I/sw/netcdf-4.3.0/include/
+      NCDF_LIB=-L/sw/netcdf-4.3.0/lib/ -lnetcdff -lnetcdf
+    endif
     ZLIBLIBS = -lz	
     MKLIBS = -lmkl_lapack95 -lmkl_def -lmkl_em64t -lmkl_intel -lmkl_sequential -lmkl_core -lguide -lpthread #pthread for macs    
     MPIFLAG = -DMPI
@@ -342,8 +344,10 @@ ifeq ($(SYSTEM), zensingle)
     DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
     STATICFLAG=
     MATHTRAP=
-    NCDF_INC=-I/sw/netcdf-4.3.0/include/
-    NCDF_LIB=-L/sw/netcdf-4.3.0/lib/ -lnetcdff -lnetcdf
+    ifeq ($(netcdf), yes)
+       NCDF_INC=-I/sw/netcdf-4.3.0/include/
+       NCDF_LIB=-L/sw/netcdf-4.3.0/lib/ -lnetcdff -lnetcdf
+    endif
     EXE=torus.zensingle
     STATICLIBS= -Bstatic
     CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
@@ -353,6 +357,10 @@ ifeq ($(SYSTEM), zensingle)
     endif
     ZLIBLIBS = -lz
     MPIFLAG = 
+    KROMELIBS = -L${HOME}/krome/build -lkrome
+    ifeq ($(chemistry), yes)
+       F95COMP+=-I${HOME}/krome/build
+    endif
     KNOWN_SYSTEM=yes
 endif
 

@@ -6619,7 +6619,7 @@ contains
           end do
        else
   
-          thisoctal%q_i(subcell) = thisoctal%kromeSpeciesX(subcell, ichem)*thisOctal%oldRho(subcell)
+          thisoctal%q_i(subcell) = thisoctal%kromeSpeciesX(subcell, ichem) !*thisOctal%oldRho(subcell)
         
        endif
     enddo
@@ -6644,7 +6644,7 @@ contains
   
           if (.not.octalonthread(thisoctal, subcell, myrankglobal)) cycle
 
-          thisoctal%kromeSpeciesX(subcell,ichem) = thisoctal%q_i(subcell)/thisOctal%rho(subcell)
+          thisoctal%kromeSpeciesX(subcell,ichem) = thisoctal%q_i(subcell) !/thisOctal%rho(subcell)
        endif
     enddo
   end subroutine copyqtoChemistry
@@ -8825,6 +8825,7 @@ end subroutine sumFluxes
   subroutine doHydrodynamics1d(grid)
     use inputs_mod, only : tStart, tEnd, tDump, dorefine, amrTolerance
     use mpi
+    use chemistry_mod
     type(gridtype) :: grid
     real(double) :: dt!,  gamma!, mu
     real(double) :: currentTime
@@ -8963,6 +8964,9 @@ end subroutine sumFluxes
           else
              call hydroStep1dSpherical(grid, dt, nPairs, thread1, thread2, nBound, group, nGroup)
           endif
+
+
+
          
 !mass/energy conservation diagnostics
           call findEnergyOverAllThreads(grid, totalenergy)
@@ -17384,21 +17388,19 @@ end subroutine minMaxDepth
            call findTotalMassWithinRServer(grid, iThread)
         endif
      enddo
-!     do iThread = 1, nHydroThreadsGlobal
-!        if (iThread == myRankGlobal) then
-!           call integratePhi1d(grid, grid%octreeRoot, mass)
-!           r = 1.d30
-!           do j = 1, nHydroThreadsGlobal
-!              if (j /= myrankGlobal) then
-!                 call MPI_SEND(r, 1, MPI_DOUBLE_PRECISION, j, tag1, localWorldCommunicator, ierr)
-!              endif
-!           enddo
-!        else
-!           call findTotalPhiOutsideRServer(grid, iThread)
-!        endif
-!     enddo
-
-
+     do iThread = 1, nHydroThreadsGlobal
+        if (iThread == myRankGlobal) then
+           call integratePhi1d(grid, grid%octreeRoot, mass)
+           r = 1.d30
+           do j = 1, nHydroThreadsGlobal
+              if (j /= myrankGlobal) then
+                 call MPI_SEND(r, 1, MPI_DOUBLE_PRECISION, j, tag1, localWorldCommunicator, ierr)
+              endif
+           enddo
+        else
+           call findTotalPhiOutsideRServer(grid, iThread)
+        endif
+     enddo
 
    end subroutine selfGrav1d
 
@@ -17451,8 +17453,7 @@ end subroutine minMaxDepth
                     mass = mass + localMass
                  endif
               enddo
-!              thisOctal%phi_gas(subcell) = (bigG * mass / (r * 1.d10)**2)*(thisOctal%subcellSize*1.d10)
-              thisOctal%phi_gas(subcell) = -(bigG * mass / (r * 1.d10))
+              thisOctal%phi_i(subcell) = -(bigG * 16.d0 *pi**2/3.d0)*(r*1.d10)**4 * thisOctal%rho(subcell)**2 * thisOctal%subcellSize*1.d10
            endif
         endif
      enddo
@@ -17505,8 +17506,7 @@ end subroutine minMaxDepth
                     phi = phi + localPhi
                  endif
               enddo
-              thisOctal%phi_gas(subcell) = phi - bigG * gridMass / ((grid%octreeRoot%centre%x+grid%octreeRoot%subcellSize)*1.d10)
-              thisOctal%phi_i(subcell) = phi - bigG * gridMass / ((grid%octreeRoot%centre%x+grid%octreeRoot%subcellSize)*1.d10)
+              thisOctal%phi_gas(subcell) = phi
            endif
         endif
      enddo
@@ -19356,16 +19356,16 @@ end subroutine broadcastSinks
        accretedAngMomentum(iSource)%z = suma(3)
 
 
-!       if (writeoutput) then
+       if (writeoutput) then
 !
 !          write(*,*) "source ",isource
-!          write(*,*) "before vel ",sourceArray(isource)%velocity/1.d5
+          write(*,*) "before vel ",sourceArray(isource)%velocity/1.d5
 !          write(*,*) "before mass ",sourceArray(isource)%mass/msol
 !
 !          write(*,*) "accreted mass ", accretedMass(isource)
 !          write(*,*) "accreted lin mom ", accretedLinMomentum(isource)
 !          write(*,*) "accreted ang mom ", accretedAngmomentum(isource)
-!       endif
+       endif
 
        sourceMom = sourceArray(iSource)%mass * sourceArray(iSource)%velocity
        sourceMom = sourceMom + accretedLinMomentum(iSource)
@@ -19381,7 +19381,7 @@ end subroutine broadcastSinks
        if (accretedMass(iSource) > 0.d0) write(*,*) "Accretion rate for source ",isource, ": ", &
             (accretedMass(isource)/timestep)/msol * (365.25d0*24.d0*3600.d0)
 !          write(*,*)  "position ",sourceArray(isource)%position
-!          write(*,*) "velocity ",sourceArray(isource)%velocity/1.d5
+          write(*,*) "after velocity ",sourceArray(isource)%velocity/1.d5
 !          write(*,*) "mass (solar) ",sourceArray(isource)%mass/msol
        endif
     enddo

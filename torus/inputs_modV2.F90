@@ -817,6 +817,8 @@ contains
             "Scale height (in pc): ","(a,e12.3,1x,a)", 0.05d0 , ok, .false.)
 
      case("unisphere","gravtest")
+       oneKappa = .true.
+
        call getDouble("mass", sphereMass, msol, cLine, fLine, nLines, &
             "Sphere mass (in M_sol): ","(a,f7.1,1x,a)", 1.d-30, ok, .true.)
 
@@ -3011,7 +3013,7 @@ contains
 
     kromeNames = krome_get_names()
     allocate(kromeInitialAbundances(1:krome_nmols))
-    kromeInitialAbundances = 1.d-30
+    kromeInitialAbundances = 1.d-20
     do i = 1, krome_nmols
        write(keyword,'(a)') "krome_"//trim(kromeNames(i))
        write(outputString,'(a,a,a)') "Initial krome abundance for ",trim(kromenames(i))," :"

@@ -9435,14 +9435,15 @@ endif
   end subroutine calcUnimed
   
   subroutine calcUniformDensityGrid(thisOctal,subcell)
-    use inputs_mod, only : gridDensity, decoupleGasDustTemperature
+    use inputs_mod, only : gridDensity, decoupleGasDustTemperature, hydrodynamics
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
 
     thisOctal%rho(subcell) = gridDensity
     thisOctal%temperature(subcell) = 10.d0
     if (decoupleGasDustTemperature) thisOctal%tdust(subcell) = 10.d0
-    thisOctal%iequationOfState(subcell) = 1 ! isothermal
+
+    if (hydrodynamics) thisOctal%iequationOfState(subcell) = 1 ! isothermal
 
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
 

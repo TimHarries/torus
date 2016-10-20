@@ -75,6 +75,7 @@ contains
 !     call setupMatcherSkinTissue()
      call writeInfo("Done.",TRIVIAL)
    endif
+
 #ifdef CHEMISTRY
    if (doChemistry) then
        call initializeKrome()
@@ -407,6 +408,7 @@ contains
 #endif
 #ifdef CHEMISTRY
     use chemistry_mod
+    use inputs_mod,only :timeChemistry
 #endif
 #ifdef MOLECULAR
     use molecular_mod, only : molecularLoop, globalMolecule
@@ -518,8 +520,12 @@ contains
      endif
 
 #ifdef CHEMISTRY
-    if (doChemistry) then
-       call doChem(grid)
+    if (doChemistry.and.(.not.hydrodynamics)) then
+       if (dustPhysics) then
+          call setupXarray(grid, xarray, nLambda,dustRadeq=.true.)
+          call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+       endif
+       call doChem(grid, timeChemistry)
     endif
 #endif
 

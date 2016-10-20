@@ -323,6 +323,7 @@ MODULE octal_mod
     real(double), pointer, dimension(:,:,:) :: mpiCornerStorage => null()
     INTEGER :: parentSubcell
     logical :: gasOpacity                            ! use gas rather than dust opacity for this cell
+    real(double), dimension(:), pointer  :: meanAV=> null()
 
 #ifdef PDR
     !PDR

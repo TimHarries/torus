@@ -109,7 +109,7 @@ recursive subroutine  initializeChemistry(thisOctal)
   use constants_mod
   TYPE(OCTAL),pointer :: thisOctal
   TYPE(OCTAL),pointer :: child
-  real(double) :: thisX(krome_nMols)
+  real(double) :: thisX(krome_nMols), nH
   integer :: i, subcell
 
   do subcell = 1, thisOctal%maxChildren
@@ -124,67 +124,89 @@ recursive subroutine  initializeChemistry(thisOctal)
         end do
      else
 
+
         if (.not.associated(thisOctal%kromeSpeciesX)) then
            allocate(thisOctal%kromeSpeciesX(1:thisOctal%maxChildren, 1:krome_nmols))
         endif
         thisOctal%kromeSpeciesX(subcell, :) = 1.d-20
+
+        nH = thisOctal%rho(subcell) / mHydrogen
+
         do i = 1, krome_nMols
            thisOctal%kromeSpeciesX(subcell,i)  = kromeInitialAbundances(i)
         enddo
 
-        thisOctal%kromeSpeciesX(subcell,:) = thisOctal%kromeSpeciesX(subcell,:) * &
-             thisOctal%rho(subcell) * nAvogadro/1.28d0
+       
+        thisOctal%kromeSpeciesX(subcell,:) = thisOctal%kromeSpeciesX(subcell,:) * nH
+
         thisX = thisOctal%kromeSpeciesX(subcell,:)
 
+        thisOctal%kromeSpeciesX(subcell,KROME_idx_e) = krome_get_electrons(thisX)
+
+	write(*,*) myrankGlobal, " rho ",thisOctal%rho(subcell) 
+
+        write(*,*) myrankGlobal, " sanity check for N ",SUM(thisOctal%kromeSpeciesX(subcell,:))
+
+        write(*,*) "krome thinks density is ",krome_get_rho(thisOctal%kromeSpeciesX(subcell,:))
+
+        write(*,*) "krome thinks total H-nuclei is ",krome_get_Hnuclei(thisOctal%kromeSpeciesX(subcell,:))
   !user commons for opacity and CR rate
   tau = 1d1 !opacity Av (#)
   zrate = 1.3d-17 !CR rate (1/s)
   gas_dust_ratio = 7.57d11 !gas/dust
   pah_size = 4d-8 !cm
 
-     end if
+   end if
 
   end do
 end subroutine initializeChemistry
 
-recursive subroutine doChemistryTimestep(thisOctal, dt)
+recursive subroutine doChemistryTimestepOctal(thisOctal, dt)
   use inputs_mod, only : amin, amax, qdist, dustPhysics, nDustType
   use krome_main
   use krome_user
-  TYPE(OCTAL),pointer :: thisOctal
+  use krome_user_commons
+
+  TYPE(OCTAL),pointer :: thisOctal, child
   real(double) :: dt, tgas
   real(double) :: thisX(krome_nmols)
   real(double), allocatable :: intensity(:)
-  integer :: subcell
+  integer :: subcell,i
   
   do subcell = 1, thisOctal%maxChildren
-     if (.not.thisOctal%hasChild(subcell)) then
 
 
         thisX(1:krome_nmols) = thisOctal%kromeSpeciesx(subcell,1:krome_nmols)
+
+        tau = 100. !thisOctal%meanAv(subcell) !opacity Av (#)
+        zrate = 1.3d-17 !CR rate (1/s)
+        gas_dust_ratio = 7.57d11 !gas/dust
+        pah_size = 4d-8 !cm
 
 
         if (dustPhysics) then
            if (ndustType > 1) then
               call writeFatal("KROME cannot deal with more than one species of dust. Using the 1st dust type size distribution")
            endif
-           call krome_init_dust_distribution(thisX, thisOctal%dustTypeFraction(subcell,1), alow_arg=dble(amin(1))*micronToCm, &
-                aup_arg=dble(amax(1))*microntocm, &
-                phi_arg=(-1.d0*dble(qdist(1))))
-           call krome_set_Tdust(dble(thisOctal%temperature(subcell)))
+!           call krome_init_dust_distribution(thisX, thisOctal%dustTypeFraction(subcell,1), alow_arg=dble(amin(1))*micronToCm, &
+!                aup_arg=dble(amax(1))*microntocm, &
+!                phi_arg=(-1.d0*dble(qdist(1))))
+!           call krome_set_Tdust(dble(thisOctal%temperature(subcell)))
         endif
-       allocate(intensity(1:krome_nPhotoBins))
-        intensity = 1.d-20
+        allocate(intensity(1:krome_nPhotoBins))
+        intensity = tiny(intensity)
         intensity = intensity + thisOctal%kromeIntensity(subcell,1:krome_nPhotobins)
-        call krome_set_PhotoBinJ(intensity)
+
+!        call krome_set_PhotoBinJ(intensity)
         deallocate(intensity)
         tgas = dble(thisOctal%temperature(subcell))
-        call krome(thisX, tgas, dt)
+        if (dt > 0.d0) then
+           call krome(thisX,  tgas, dt)
+        endif
         thisOctal%kromeSpeciesx(subcell,1:krome_nmols) = thisX(1:krome_nmols)
-     end if
 
   end do
-end subroutine doChemistryTimestep
+end subroutine doChemistryTimestepOctal
 
 recursive subroutine packKrome(thisOctal, index, kromeSpeciesX)
   use krome_main
@@ -212,6 +234,32 @@ recursive subroutine packKrome(thisOctal, index, kromeSpeciesX)
   end do
 end subroutine packKrome
 
+recursive subroutine packAv(thisOctal, index, av)
+  use krome_main
+  use krome_user
+  TYPE(OCTAL),pointer :: thisOctal
+  TYPE(OCTAL),pointer :: child
+  integer :: index
+  real(double) :: av(:)
+  integer :: i, subcell
+  
+  do subcell = 1, thisOctal%maxChildren
+     if (thisOctal%hasChild(subcell)) then
+        ! find the child
+        do i = 1, thisOctal%nChildren, 1
+           if (thisOctal%indexChild(i) == subcell) then
+              child => thisOctal%child(i)
+              call packAv(child, index, av)
+              exit
+           end if
+        end do
+     else
+        index = index + 1
+        av(index) = thisOctal%meanAv(subcell)
+     end if
+  end do
+end subroutine packAv
+
 recursive subroutine unpackKrome(thisOctal, index, kromeSpeciesX)
   use krome_main
   use krome_user
@@ -237,6 +285,30 @@ recursive subroutine unpackKrome(thisOctal, index, kromeSpeciesX)
      end if
   end do
 end subroutine unpackKrome
+
+recursive subroutine unpackav(thisOctal, index, av)
+  TYPE(OCTAL),pointer :: thisOctal
+  TYPE(OCTAL),pointer :: child
+  integer :: index
+  real(double) :: av(:)
+  integer :: i, subcell
+  
+  do subcell = 1, thisOctal%maxChildren
+     if (thisOctal%hasChild(subcell)) then
+        ! find the child
+        do i = 1, thisOctal%nChildren, 1
+           if (thisOctal%indexChild(i) == subcell) then
+              child => thisOctal%child(i)
+              call unpackAv(child, index, av)
+              exit
+           end if
+        end do
+     else
+        index = index + 1
+        thisOctal%meanAv(subcell) = av(index)
+     end if
+  end do
+end subroutine unpackAv
 
 #ifdef MPI
 subroutine updateGridMPIkrome(grid, amrParComm)
@@ -285,7 +357,47 @@ end subroutine updateGridMPIkrome
 
 #endif
 
+#ifdef MPI
+subroutine updateGridMPIAV(grid, amrParComm)
+  use amr_mod
+  use gridtype_mod, only : gridtype
+  use mpi
+  implicit none
+  integer :: amrParComm
+  integer :: nOctals
+  type(gridtype) :: grid
+  integer :: nVoxels, i
+  real(double), allocatable :: av(:)
+  real(double), allocatable :: tempDoubleArray(:), thisTemp(:)
+  integer :: ierr, nIndex
+
+  ! FOR MPI IMPLEMENTATION=======================================================
+
+  nVoxels = 0
+  call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+  allocate(av(1:nVoxels))
+
+  nIndex = 0
+  call packAv(grid%octreeRoot,nIndex, av)
+
+  allocate(thisTemp(nVoxels))
+
+  call MPI_ALLREDUCE(av,thisTemp,nVoxels,MPI_DOUBLE_PRECISION,&
+       MPI_SUM, amrParComm ,ierr)
+
+  av = thisTemp
+  call MPI_BARRIER(amrParComm, ierr) 
+
+  nIndex = 0
+  call unpackav(grid%octreeRoot, nIndex, av)
+  deallocate(thisTemp)
+
+end subroutine updateGridMPIAV
+
+#endif
+
 subroutine doChemistryOverGrid(grid, dt)
+  use inputs_mod, only : splitovermpi
 #ifdef MPI
   use mpi
   use mpi_global_mod
@@ -319,6 +431,7 @@ subroutine doChemistryOverGrid(grid, dt)
   if (doTuning) call tune(6, "Chemistry step")
 
 
+if (.not.splitovermpi) then
 #ifdef MPI
   np = nThreadsGlobal
   n_rmdr = MOD(nOctal,np)
@@ -333,7 +446,7 @@ subroutine doChemistryOverGrid(grid, dt)
   end if
 
 #endif
-
+endif
 
 #ifdef MPI
 
@@ -360,8 +473,8 @@ subroutine doChemistryOverGrid(grid, dt)
 
      thisOctal => octalArray(iOctal)%content
 
-!     write(*,*) myrankGlobal, " doing octal ",ioctal, " start, end ",ioctal_beg,ioctal_end
-     call doChemistryTimestep(thisOctal, dt)
+     write(*,*) myrankGlobal, " doing octal ",ioctal, " start, end ",ioctal_beg,ioctal_end
+     call doChemistryTimestepOctal(thisOctal, dt)
 
   enddo
   !$OMP END DO
@@ -369,8 +482,11 @@ subroutine doChemistryOverGrid(grid, dt)
   !$OMP END PARALLEL
 
 #ifdef MPI
-  call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-  call updateGridMPIkrome(grid, MPI_COMM_WORLD)
+
+  if (.not.splitovermpi) then
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+     call updateGridMPIkrome(grid, MPI_COMM_WORLD)
+  endif
 
 #endif
   deallocate(octalArray)
@@ -387,11 +503,11 @@ subroutine initializeKrome()
 
   call krome_init() !init krome (mandatory)
 
-  call krome_set_photoBin_J21log(5.d0, 13.6d0)
-  phl(:) = krome_get_photoBinE_left() !returns left bin points
-  phr(:) = krome_get_photoBinE_right() !returns right bin points
-  phm(:) = krome_get_photoBinE_mid() !returns left middle points
-  phJ(:) = krome_get_photoBinJ() !returns bin intensities
+!  call krome_set_photoBin_J21log(5.d0, 13.6d0)
+!  phl(:) = krome_get_photoBinE_left() !returns left bin points
+!  phr(:) = krome_get_photoBinE_right() !returns right bin points
+!  phm(:) = krome_get_photoBinE_mid() !returns left middle points
+!  phJ(:) = krome_get_photoBinJ() !returns bin intensities
   if (writeoutput) then
      call writeBanner("Krome photo bins (left, mid, right) ev, intensity","+")
      do i=1,krome_nPhotoBins
@@ -424,36 +540,47 @@ end subroutine storePathlength
 
 
 
-subroutine doChem(grid)
-  use inputs_mod, only : timeChemistry
+subroutine doChem(grid, dt)
   use gridtype_mod
   use krome_main !use krome (mandatory)
   use krome_user !use utility (for krome_idx_* constants and others)
   use vtk_mod
   implicit none
   type(GRIDTYPE) :: grid
-  integer :: i
+  integer :: i, subcell
+  type(OCTAL), pointer :: thisOctal
 !  character(len=16) :: species(krome_nmols)
   character(len=80) :: vtkFilename
-  real(double) :: dt
+  real(double) :: dt,totaltime
 
   call initializeChemistry(grid%octreeRoot)
+  call calculateAv(grid)
 
-     write(vtkFilename,"(a,i3.3,a)") "chem",0,".vtk"
-     call writeVtkFile(grid, vtkFilename, &
-          valueTypeString=(/"chemistry  ","rho        ","temperature"/))
+  write(vtkFilename,"(a,i3.3,a)") "chem",0,".vtk"
+  call writeVtkFile(grid, vtkFilename, &
+       valueTypeString=(/"chemistry  ","rho        ","av        ","temperature"/))
 
-
-
-  do i = 1,1
-     call writeInfo("Doing chemistry timestep...",TRIVIAL)
-     call doChemistryoverGrid(grid, timeChemistry)
+  totaltime = 0.d0
+  dt = 1.d2 * yearstosecs
+  do while (totalTime < 1.d8*yearstosecs)
+    call writeInfo("Doing chemistry timestep...",TRIVIAL)
+    write(*,*) "doing chemistry at ",totaltime*secstoyears
+     call doChemistryoverGrid(grid, dt)
+     thisOctal => grid%octreeRoot
+     call findSubcellLocal(vector(0.d0, 0.0d0, 0.d0),thisOctal,subcell)
+     if (totaltime > 0.) then
+        write(97,'(5f12.3)') log10(totaltime*secstoyears), log10(thisOctal%kromeSpeciesX(subcell,krome_idx_C)/1.d4), &
+          log10(thisOctal%kromeSpeciesX(subcell,krome_idx_HCOj)/1.d4), log10(thisOctal%kromeSpeciesX(subcell,krome_idx_CO)/1.d4), &
+          log10(thisOctal%kromeSpeciesX(subcell,krome_idx_H2O)/1.d4) 
+     endif
+     totaltime =totaltime+dt
+     dt = max(1.d2*yearstosecs,totaltime/3.d0)
      call writeInfo("Done.",TRIVIAL)
-     write(vtkFilename,"(a,i3.3,a)") "chem",i,".vtk"
-     call writeVtkFile(grid, vtkFilename, &
-          valueTypeString=(/"chemistry  ","rho        ","temperature"/))
 
   enddo
+     write(vtkFilename,"(a,i3.3,a)") "chem",1,".vtk"
+     call writeVtkFile(grid, vtkFilename, &
+          valueTypeString=(/"chemistry  ","rho        ","av        ","temperature"/))
 
 
 end subroutine doChem
@@ -472,6 +599,140 @@ subroutine reportKromeSpecies()
      enddo
   endif
 end subroutine reportKromeSpecies
+
+subroutine calculateAv(grid)
+  use gridtype_mod
+  use utils_mod, only : locate
+  use timing
+#ifdef MPI
+  use mpi
+#endif
+  use amr_mod, only : getOctalArray
+  type(GRIDTYPE) :: grid
+  integer :: iLambda
+
+
+  type(OCTAL), pointer :: thisOctal
+  integer :: nOctal, ioctal_beg, ioctal_end, ioctal
+  type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
+
+#ifdef MPI
+  integer :: np, n_rmdr, moctal
+  integer :: ierr
+#endif
+
+  call locate(grid%lamArray, grid%nLambda, 5500., iLambda)
+
+  allocate(octalArray(grid%nOctals))
+  nOctal = 0
+  call getOctalArray(grid%octreeRoot,octalArray, nOctal)
+  if (nOctal /= grid%nOctals) then
+     write(*,*) "Screw up in get octal array", nOctal,grid%nOctals
+     stop
+  endif
+
+  ! default loop indices
+  ioctal_beg = 1
+  ioctal_end = nOctal
+
+  if (doTuning) call tune(6, "A_V step")
+
+
+#ifdef MPI
+  np = nThreadsGlobal
+  n_rmdr = MOD(nOctal,np)
+  mOctal = nOctal/np
+
+  if (myRankGlobal .lt. n_rmdr ) then
+     ioctal_beg = (mOctal+1)*myRankGlobal + 1
+     ioctal_end = ioctal_beg + mOctal
+  else
+     ioctal_beg = mOctal*myRankGlobal + 1 + int(n_rmdr)
+     ioctal_end = ioctal_beg + mOctal -1
+  end if
+
+#endif
+
+#ifdef MPI
+
+  do iOctal = 1, nOctal
+     thisOctal => octalArray(iOctal)%content
+     if ((iOctal < iOctal_beg).or.(iOctal > iOctal_end)) then
+        if (.not.associated(thisOctal%meanAv)) allocate(thisOctal%meanAv(1:thisOctal%maxChildren))
+
+        thisOctal%meanAv = 0.d0
+     endif
+  enddo
+#endif
+
+  !$OMP PARALLEL DEFAULT(NONE) &
+  !$OMP PRIVATE(ioctal, thisOctal) &
+  !$OMP SHARED(grid, ioctal_beg, ioctal_end, octalarray, dt, writeoutput)
+
+  !$OMP DO SCHEDULE(DYNAMIC)
+  do iOctal =  iOctal_beg, iOctal_end
+
+     if ((ioctal_end-iOctal_beg) > 10) then
+           if (mod(iOctal-iOctal_beg+1,(iOctal_end-iOctal_beg)/10)==0) then
+              if (writeoutput) write(*,*) nint(100.*real(iOctal-iOctal_beg+1)/real(iOctal_end-iOctal_beg)), " % complete"
+           endif
+        endif
+
+     thisOctal => octalArray(iOctal)%content
+
+     call calculateAvOctal(grid, thisOctal, iLambda)
+
+  enddo
+  !$OMP END DO
+  !$OMP BARRIER
+  !$OMP END PARALLEL
+
+#ifdef MPI
+
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+     call updateGridMPIAV(grid, MPI_COMM_WORLD)
+
+#endif
+  deallocate(octalArray)
+
+
+  if (doTuning) call tune(6, "A_V step")
+
+
+end subroutine calculateAv
+
+recursive subroutine calculateAVOctal(grid, thisOctal, ilambda)
+  use amr_mod, only : tauAlongPathFast
+  use gridtype_mod
+  type(GRIDTYPE) :: grid
+  type(OCTAL), pointer :: thisOctal, child
+  integer :: iDir
+  integer :: index, ilambda
+  integer, parameter :: ndir = 48
+  type(VECTOR) :: dir(nDir), cellCentre
+  real(double) :: tau(nDir), Av(nDir), expMinusAv(nDir)
+
+  integer :: i, subcell
+        do iDir = 1, nDir
+           dir(iDir) = randomUnitVector()
+        enddo
+  
+  do subcell = 1, thisOctal%maxChildren
+        cellCentre = subcellCentre(thisOctal, subcell)
+
+
+        do iDir = 1, nDir
+           call tauAlongPathFast(ilambda, grid, cellCentre, dir(idir), tau(idir), startOctal=thisOctal, startSubcell=subcell)
+           av(idir) = 1.086d0 * tau(idir)
+        enddo
+        expMinusAv(1:nDir) = exp(-av(1:nDir))
+
+        if (.not.associated(thisOctal%meanAv)) allocate(thisOctal%meanAv(1:thisOctal%maxChildren))
+
+        thisOctal%meanAv(subcell) = -log((1.d0/dble(nDir)) * SUM(expminusav(1:nDir)))
+  end do
+end subroutine calculateAVOctal
+
 
 
 end module chemistry_mod

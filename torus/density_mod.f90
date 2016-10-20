@@ -967,6 +967,7 @@ contains
     logical :: ok
     real :: x1, x2
 
+    rhoAmbient = 1.d-24
     rSpiralInner = (1.01*rGapInner)
     rSpiralOuter = rGapOuter
 
@@ -1092,7 +1093,7 @@ contains
     if (r < rGapInner) then
        rhoOut = rhoOut * deltaCav
     endif
-
+    
 
     rhoOut = max(rhoOut, cavDens)
     r = (modulus(point)*1.e10)

@@ -62,17 +62,19 @@
             write(*,*) "filename ",trim(filename)
             if (firstTime) then
                open(22, file=filename, status="unknown", form="formatted")
-               write(22,'(a4,a12,a9,a9,a9,a12,a12,a12,a12,a12,a12,a12)') &
-                    "#  N","Age (yr)","Mass","Radius","Teff","Lum","Mdot","x","y","z"
+               write(22,'(a4,a12,a9,a9,a9,a12,a12,a12,a12,a12,a12,a12,a12,a12,a12)') &
+                    "#  N","Age (yr)","Mass","Radius","Teff","Lum","Mdot","x","y","z","vx","vy","vz"
             else
                open(22, file=filename, status="old", form="formatted", position="append")
             endif
-            write(22,'(i4.4, 1p, e12.3, 0p, f9.4, f9.4, f9.1, 1p, e12.3, e12.3, e12.3, e12.3, e12.3,e12.3,e12.3)') &
+            write(22,'(i4.4, 1p, e12.3, 0p, f9.4, f9.4, f9.1, 1p, e12.3, e12.3, e12.3, & 
+                 e12.3, e12.3,e12.3,e12.3, e12.3,e12.3,e12.3)') &
                  iModel,source(i)%time*secstoYears, &
                  source(i)%mass/msol, &
                  source(i)%radius*1.d10/rsol, source(i)%teff, source(i)%luminosity/lsol, source(i)%mdot/msol/secstoyears, &
                  source(i)%position%x, &
-                 source(i)%position%y,source(i)%position%z
+                 source(i)%position%y,source(i)%position%z, source(i)%velocity%x/1.d5,source(i)%velocity%y/1.d5, &
+                 source(i)%velocity%z/1.d5
             close(22)
          enddo
          if (firstTime) firstTime = .false.
