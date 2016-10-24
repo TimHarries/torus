@@ -17453,7 +17453,8 @@ end subroutine minMaxDepth
                     mass = mass + localMass
                  endif
               enddo
-              thisOctal%phi_i(subcell) = -(bigG * 16.d0 *pi**2/3.d0)*(r*1.d10)**4 * thisOctal%rho(subcell)**2 * thisOctal%subcellSize*1.d10
+              thisOctal%phi_i(subcell) = -(bigG * 16.d0 *pi**2/3.d0)*(r*1.d10)**4 * thisOctal%rho(subcell)**2 * &
+                   thisOctal%subcellSize*1.d10
            endif
         endif
      enddo

@@ -7,10 +7,10 @@ module chemistry_mod
   use messages_mod
   implicit none
 
-  real(double) :: phl(krome_nPhotoBins)
-  real(double) :: phr(krome_nPhotoBins)
-  real(double) :: phm(krome_nPhotoBins)
-  real(double) :: phJ(krome_nPhotoBins)
+!  real(double) :: phl(krome_nPhotoBins)
+!  real(double) :: phr(krome_nPhotoBins)
+!  real(double) :: phm(krome_nPhotoBins)
+!  real(double) :: phJ(krome_nPhotoBins)
 
 contains
 
@@ -36,13 +36,13 @@ recursive subroutine  pathlengthToIntensity(thisOctal, epsOverDt)
         end do
      else
 
-        do i = 1, krome_nPhotoBins
-           v = cellVolume(thisOctal, subcell) * 1.d30
-           dfreq  = (phr(i)/ergtoev)/hcgs - (phl(i)/ergtoev)/hcgs
+!        do i = 1, krome_nPhotoBins
+!           v = cellVolume(thisOctal, subcell) * 1.d30
+!           dfreq  = (phr(i)/ergtoev)/hcgs - (phl(i)/ergtoev)/hcgs
 
-           thisOctal%kromeintensity(subcell, i) = ((1.d0/v) * epsOverDt * &
-                thisOctal%kromeintensity(subcell, i) / fourPi)*ergtoEv / dFreq
-        enddo
+!           thisOctal%kromeintensity(subcell, i) = ((1.d0/v) * epsOverDt * &
+!                thisOctal%kromeintensity(subcell, i) / fourPi)*ergtoEv / dFreq
+!        enddo
      end if
   end do
 end subroutine pathLengthToIntensity
@@ -151,7 +151,7 @@ recursive subroutine  initializeChemistry(thisOctal)
 
         write(*,*) "krome thinks total H-nuclei is ",krome_get_Hnuclei(thisOctal%kromeSpeciesX(subcell,:))
   !user commons for opacity and CR rate
-  tau = 1d1 !opacity Av (#)
+  tau = 1d2 !opacity Av (#)
   zrate = 1.3d-17 !CR rate (1/s)
   gas_dust_ratio = 7.57d11 !gas/dust
   pah_size = 4d-8 !cm
@@ -178,11 +178,14 @@ recursive subroutine doChemistryTimestepOctal(thisOctal, dt)
 
         thisX(1:krome_nmols) = thisOctal%kromeSpeciesx(subcell,1:krome_nmols)
 
-        tau = 100. !thisOctal%meanAv(subcell) !opacity Av (#)
+        tau = thisOctal%meanAv(subcell) !opacity Av (#)
         zrate = 1.3d-17 !CR rate (1/s)
         gas_dust_ratio = 7.57d11 !gas/dust
         pah_size = 4d-8 !cm
 
+        tgas = dble(thisOctal%temperature(subcell))
+
+        call krome_init()
 
         if (dustPhysics) then
            if (ndustType > 1) then
@@ -193,13 +196,13 @@ recursive subroutine doChemistryTimestepOctal(thisOctal, dt)
 !                phi_arg=(-1.d0*dble(qdist(1))))
 !           call krome_set_Tdust(dble(thisOctal%temperature(subcell)))
         endif
-        allocate(intensity(1:krome_nPhotoBins))
-        intensity = tiny(intensity)
-        intensity = intensity + thisOctal%kromeIntensity(subcell,1:krome_nPhotobins)
+!        allocate(intensity(1:krome_nPhotoBins))
+!        intensity = tiny(intensity)
+!        intensity = intensity + thisOctal%kromeIntensity(subcell,1:krome_nPhotobins)
 
 !        call krome_set_PhotoBinJ(intensity)
-        deallocate(intensity)
-        tgas = dble(thisOctal%temperature(subcell))
+
+!        deallocate(intensity)
         if (dt > 0.d0) then
            call krome(thisX,  tgas, dt)
         endif
@@ -473,7 +476,7 @@ endif
 
      thisOctal => octalArray(iOctal)%content
 
-     write(*,*) myrankGlobal, " doing octal ",ioctal, " start, end ",ioctal_beg,ioctal_end
+     write(*,*) myrankglobal, " doing octal ",ioctal, ioctal_beg, ioctal_end
      call doChemistryTimestepOctal(thisOctal, dt)
 
   enddo
@@ -508,12 +511,12 @@ subroutine initializeKrome()
 !  phr(:) = krome_get_photoBinE_right() !returns right bin points
 !  phm(:) = krome_get_photoBinE_mid() !returns left middle points
 !  phJ(:) = krome_get_photoBinJ() !returns bin intensities
-  if (writeoutput) then
-     call writeBanner("Krome photo bins (left, mid, right) ev, intensity","+")
-     do i=1,krome_nPhotoBins
-        print '(I5,1p,4E10.2)',i,phl(i),phm(i),phr(i),phJ(i)
-     end do
-  endif
+!  if (writeoutput) then
+!     call writeBanner("Krome photo bins (left, mid, right) ev, intensity","+")
+!     do i=1,krome_nPhotoBins
+!        print '(I5,1p,4E10.2)',i,phl(i),phm(i),phr(i),phJ(i)
+!     end do
+!  endif
 
   call reportKromeSpecies()
 
@@ -527,14 +530,14 @@ subroutine storePathlength(thisOctal, subcell, frequency, pathlength)
 
   energy = frequency * hCgs * ergtoev
 
-  if ((energy >= phl(1)).and.(energy <= phr(krome_nPhotoBins))) then
-     do i = 1, krome_nPhotoBins
-        if ((energy >= phl(i)).and.(energy <= phr(i))) then
-           thisOctal%kromeIntensity(subcell,i) = thisOctal%kromeintensity(subcell,i) + pathLength
-           exit
-        endif
-     enddo
-  endif
+!  if ((energy >= phl(1)).and.(energy <= phr(krome_nPhotoBins))) then
+!     do i = 1, krome_nPhotoBins
+!        if ((energy >= phl(i)).and.(energy <= phr(i))) then
+!           thisOctal%kromeIntensity(subcell,i) = thisOctal%kromeintensity(subcell,i) + pathLength
+!           exit
+!        endif
+!     enddo
+!  endif
 
 end subroutine storePathlength
 
@@ -558,29 +561,34 @@ subroutine doChem(grid, dt)
 
   write(vtkFilename,"(a,i3.3,a)") "chem",0,".vtk"
   call writeVtkFile(grid, vtkFilename, &
-       valueTypeString=(/"chemistry  ","rho        ","av        ","temperature"/))
+       valueTypeString=(/"chemistry  ","rho        ","av         ","temperature"/))
+
+  call doChemistryoverGrid(grid, dt)
+
 
   totaltime = 0.d0
-  dt = 1.d2 * yearstosecs
-  do while (totalTime < 1.d8*yearstosecs)
-    call writeInfo("Doing chemistry timestep...",TRIVIAL)
-    write(*,*) "doing chemistry at ",totaltime*secstoyears
-     call doChemistryoverGrid(grid, dt)
-     thisOctal => grid%octreeRoot
-     call findSubcellLocal(vector(0.d0, 0.0d0, 0.d0),thisOctal,subcell)
-     if (totaltime > 0.) then
-        write(97,'(5f12.3)') log10(totaltime*secstoyears), log10(thisOctal%kromeSpeciesX(subcell,krome_idx_C)/1.d4), &
-          log10(thisOctal%kromeSpeciesX(subcell,krome_idx_HCOj)/1.d4), log10(thisOctal%kromeSpeciesX(subcell,krome_idx_CO)/1.d4), &
-          log10(thisOctal%kromeSpeciesX(subcell,krome_idx_H2O)/1.d4) 
-     endif
-     totaltime =totaltime+dt
-     dt = max(1.d2*yearstosecs,totaltime/3.d0)
+!  dt = 1.d2 * yearstosecs
+!  open(20,file="chem.dat",status="unknown",form="formatted")
+!  do while (totalTime < 1.d8*yearstosecs)
+!    call writeInfo("Doing chemistry timestep...",TRIVIAL)
+!    write(*,*) "doing chemistry at ",totaltime*secstoyears
+!     call doChemistryoverGrid(grid, dt)
+!     thisOctal => grid%octreeRoot
+!     call findSubcellLocal(vector(0.d0, 0.0d0, 0.d0),thisOctal,subcell)
+!     if (totaltime > 0.) then
+!        write(20,'(5f12.3)') log10(totaltime*secstoyears), log10(thisOctal%kromeSpeciesX(subcell,krome_idx_Cj)/1.d4), &
+!          log10(thisOctal%kromeSpeciesX(subcell,krome_idx_HCO)/1.d4), log10(thisOctal%kromeSpeciesX(subcell,krome_idx_CO)/1.d4), &
+!          log10(thisOctal%kromeSpeciesX(subcell,krome_idx_H2O)/1.d4) 
+!     endif
+!     totaltime =totaltime+dt
+!     dt = max(1.d2*yearstosecs,totaltime/3.d0)
      call writeInfo("Done.",TRIVIAL)
 
-  enddo
+!  enddo
+  close(20)
      write(vtkFilename,"(a,i3.3,a)") "chem",1,".vtk"
      call writeVtkFile(grid, vtkFilename, &
-          valueTypeString=(/"chemistry  ","rho        ","av        ","temperature"/))
+          valueTypeString=(/"chemistry  ","rho        ","av         ","temperature"/))
 
 
 end subroutine doChem
@@ -613,6 +621,8 @@ subroutine calculateAv(grid)
 
 
   type(OCTAL), pointer :: thisOctal
+  integer :: nDir
+  type(VECTOR), pointer :: dir(:)
   integer :: nOctal, ioctal_beg, ioctal_end, ioctal
   type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
 
@@ -622,6 +632,10 @@ subroutine calculateAv(grid)
 #endif
 
   call locate(grid%lamArray, grid%nLambda, 5500., iLambda)
+
+
+  call getUniformSphereDirections(1, ndir, dir)
+  write(*,*) "ico ",ndir,dir
 
   allocate(octalArray(grid%nOctals))
   nOctal = 0
@@ -680,7 +694,7 @@ subroutine calculateAv(grid)
 
      thisOctal => octalArray(iOctal)%content
 
-     call calculateAvOctal(grid, thisOctal, iLambda)
+     call calculateAvOctal(grid, thisOctal, iLambda,ndir, dir)
 
   enddo
   !$OMP END DO
@@ -694,6 +708,7 @@ subroutine calculateAv(grid)
 
 #endif
   deallocate(octalArray)
+  deallocate(dir)
 
 
   if (doTuning) call tune(6, "A_V step")
@@ -701,22 +716,21 @@ subroutine calculateAv(grid)
 
 end subroutine calculateAv
 
-recursive subroutine calculateAVOctal(grid, thisOctal, ilambda)
+recursive subroutine calculateAVOctal(grid, thisOctal, ilambda,ndir,dir)
   use amr_mod, only : tauAlongPathFast
   use gridtype_mod
   type(GRIDTYPE) :: grid
   type(OCTAL), pointer :: thisOctal, child
   integer :: iDir
   integer :: index, ilambda
-  integer, parameter :: ndir = 48
-  type(VECTOR) :: dir(nDir), cellCentre
-  real(double) :: tau(nDir), Av(nDir), expMinusAv(nDir)
+  integer :: ndir
+  type(VECTOR) :: dir(:), cellCentre
+  real(double), allocatable :: tau(:), Av(:), expMinusAv(:)
 
   integer :: i, subcell
-        do iDir = 1, nDir
-           dir(iDir) = randomUnitVector()
-        enddo
   
+  allocate(tau(1:nDir), av(1:nDir), expMinusAv(1:nDir))
+
   do subcell = 1, thisOctal%maxChildren
         cellCentre = subcellCentre(thisOctal, subcell)
 
@@ -731,6 +745,7 @@ recursive subroutine calculateAVOctal(grid, thisOctal, ilambda)
 
         thisOctal%meanAv(subcell) = -log((1.d0/dble(nDir)) * SUM(expminusav(1:nDir)))
   end do
+  deallocate(tau, av, expMinusAv)
 end subroutine calculateAVOctal
 
 

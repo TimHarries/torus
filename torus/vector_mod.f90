@@ -58,6 +58,12 @@ module vector_mod
      real(double) :: z
   end type VECTOR
 
+  type spheretype
+    integer :: V, E, F
+    real(double) :: R
+    type(vector), dimension(:), allocatable :: point
+ end type spheretype
+
   type spVector
     ! spherical polar vector
     real(double) :: r
@@ -925,6 +931,137 @@ contains
       return
     end if
   end function intersectLineTriangle
+
+
+
+  subroutine setPos(ico, index, px, py, pz)
+    implicit none
+    type(spheretype), intent(inout) :: ico
+    integer, intent(in) :: index
+    real(double), intent(in) :: px, py, pz
+  !contains
+    ico%point(index)%X = px
+    ico%point(index)%Y = py
+    ico%point(index)%Z = pz
+  end subroutine setPos
+
+  type(spheretype) function createBaseIcosphere() result(ico)
+    implicit none
+    real(double) :: A, B, C, D
+    A = (1.0+sqrt(5.0))/2.0
+    B = sqrt(1.0+((3.0+sqrt(3.0))/2.0))
+    C = 1/B
+    D = A/B
+    ico%F = 20
+    ico%E = 30
+    ico%V = 12
+    ico%R = 2*C
+    allocate(ico%point(12))
+    call setPos(ico,1,-C,+D,+0.d0)
+    call setPos(ico,2,+C,+D,+0.d0)
+    call setPos(ico,3,-C,-D,+0.d0)
+    call setPos(ico,4,+C,-D,+0.d0)
+    call setPos(ico,5,+0.d0,-C,+D)
+    call setPos(ico,6,+0.d0,+C,+D)
+    call setPos(ico,7,+0.d0,-C,-D)
+    call setPos(ico,8,+0.d0,+C,-D)
+    call setPos(ico,9,+D,+0.d0,-C)
+    call setPos(ico,10,+D,+0.d0,+C)
+    call setPos(ico,11,-D,+0.d0,-C)
+    call setPos(ico,12,-D,+0.d0,+C)
+  end function createBaseIcosphere
+
+  type(spheretype) function newSphere(verticies,edges,faces,sideLength)
+    implicit none
+    integer :: i
+    integer, intent(in) :: verticies, edges, faces
+    real(double), intent(in) :: sideLength
+    newSphere%F = faces
+    newSphere%E = edges
+    newSphere%V = verticies
+    newSphere%R = sideLength
+    allocate(newSphere%point(verticies))
+    do i=1, newSphere%V
+      call setPos(newSphere,i,0.d0,0.d0,0.d0)
+    end do
+  end function newSphere
+
+  type(spheretype) function splitSphere(parent) result(child)
+    implicit none
+    logical :: existing
+    integer :: F,E,V,i,j,k,index
+    real(double) :: R,dx,dy,dz,dr,cx,cy,cz,cr,sx,sy,sz,sr
+    type(spheretype), intent(in) :: parent
+
+    ! Create the child sphere with base properties.
+    F = 4 * parent%F
+    E = (2*parent%E) + (3*parent%F)
+    V = parent%V + parent%E
+    R = parent%R / 2.0
+    child = newSphere(V,E,F,R)
+
+    ! Determine the new verticies buy splitting edges of parent, and pushing point to radius.
+    index = 1
+    do i=1, parent%V
+      do j=1, parent%V
+        dx = abs(parent%point(i)%X - parent%point(j)%X)
+        dy = abs(parent%point(i)%Y - parent%point(j)%Y)
+        dz = abs(parent%point(i)%Z - parent%point(j)%Z)
+        dr = sqrt((dx*dx)+(dy*dy)+(dz*dz))
+        if (dr < (1.5*parent%R)) then
+          existing = .FALSE.
+          cx = (parent%point(i)%X + parent%point(j)%X)/2.d0
+          cy = (parent%point(i)%Y + parent%point(j)%Y)/2.d0
+          cz = (parent%point(i)%Z + parent%point(j)%Z)/2.d0
+          cr = sqrt((cx*cx)+(cy*cy)+(cz*cz))
+          cx = cx / cr
+          cy = cy / cr
+          cz = cz / cr
+          do k=1, child%V
+            sx = abs(cx - child%point(k)%X)
+            sy = abs(cy - child%point(k)%Y)
+            sz = abs(cz - child%point(k)%Z)
+            sr = sqrt((sx*sx)+(sy*sy)+(sz*sz))
+            if (sr < 1d-10) then
+              existing = .TRUE.
+            end if
+          end do
+          if (existing .EQV. .FALSE.) then
+            call setPos(child,index,cx,cy,cz)
+            index = index + 1
+          end if
+        end if
+      end do
+    end do
+
+  end function
+
+
+subroutine getUniformSphereDirections(splits, ndir, dir)
+
+  implicit none
+
+  integer :: i,splits
+  integer :: ndir
+  type(VECTOR), pointer :: dir(:)
+  type(spheretype) :: ico
+
+
+  ico = createBaseIcosphere()
+
+  do i=1, splits
+    ico = splitSphere(ico)
+  enddo
+  
+  nDir = size(ico%point)
+
+  allocate(dir(1:nDir))
+  dir(1:nDir) = ico%point(1:nDir)
+
+  deallocate(ico%point)
+
+end subroutine getUniformSphereDirections
+
 
 end module vector_mod
 
