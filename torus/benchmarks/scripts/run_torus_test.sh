@@ -205,10 +205,6 @@ prepare_run()
 echo "Working directory is ${TEST_DIR}"
 
 if [[ -e ${TEST_DIR} ]]; then
-    if [[ -e ${TEST_DIR}/lock ]]; then
-	echo "Found lock file ${TEST_DIR}/lock. Aborting"
-	exit 1
-    fi
     echo "Removing old ${TEST_DIR}"
     rm -rf ${TEST_DIR}
 fi
@@ -216,7 +212,7 @@ fi
 if [[ ${TORUS_WORKING_COPY} == none ]]; then 
     mkdir -p ${TEST_DIR}
     cd ${TEST_DIR}
-    touch lock
+    touch ${LOCKFILE}
     echo Checking out torus from SVN archive using: ${TORUS_SVN_REVISION} ${TORUS_SVN_PATH}
     /usr/bin/svn checkout ${TORUS_SVN_REVISION} ${TORUS_SVN_PATH} torus > svn_log.txt 2>&1 
     grep "Checked out revision" svn_log.txt
@@ -225,7 +221,7 @@ else
 	echo "Taking source code from working copy in ${TORUS_WORKING_COPY}"
 	mkdir -p ${TEST_DIR}
 	cd ${TEST_DIR}
-	touch lock
+	touch ${LOCKFILE}
 	ln -s ${TORUS_WORKING_COPY}/torus . 
     else
 	echo "Did not find torusMainV2.F90 in ${TORUS_WORKING_COPY}/torus "
@@ -725,11 +721,11 @@ echo  >> header
 
 # Send mail for daily test or write to terminal for other modes
 if [[ ${MODE} == "daily" ]]; then
-    mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk aali@astro.ex.ac.uk tdouglas@astro.ex.ac.uk haworth@astro.ex.ac.uk"
+    mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk aali@astro.ex.ac.uk tdouglas@astro.ex.ac.uk haworth@astro.ex.ac.uk fjmw201@exeter.ac.uk"
 # Set up the message body 
-    cat header /home/torustest/torus_daily_test_log > /data/torustest/torus_daily_test_email
+    cat header ${TORUS_DAILY_TEST_LOG} > /home/torustest/torus_daily_test_email
     for user in ${mail_to}; do
-        /usr/bin/mail -s "Torus test suite: ${suite_status}" ${user} < /data/torustest/torus_daily_test_email
+        /usr/bin/mail -s "Torus test suite: ${suite_status}" ${user} < /home/torustest/torus_daily_test_email
     done
 else
     echo "Torus test suite: ${suite_status}"
@@ -762,6 +758,8 @@ export TORUS_SVN_PATH=https://repository.astro.ex.ac.uk/torus/trunk/torus/
 export TORUS_SVN_REVISION=
 export TORUS_WORKING_COPY=none
 export SYSTEM=testsuite
+export TORUS_RUNNING_LOG=${HOME}/testsuite.log
+export TORUS_DAILY_TEST_LOG=/home/torustest/torus_daily_test_log
 
 # Parse command line arguments
 while [ $# -gt 0 ]
@@ -783,6 +781,26 @@ do
 shift
 done
 
+# Check for a lock file from an existing run and bail out if one exists
+case ${MODE} in 
+    daily)       export LOCKFILE=${HOME}/torus_daily_test/lock;;
+    workingcopy) export LOCKFILE=${TORUS_WORKING_COPY}/tests/lock;;
+    build)       export LOCKFILE=${HOME}/torus_build_tests/lock;;
+    stable)      export LOCKFILE=${HOME}/torus_stable_version_tests/lock;;
+    *)           echo "ERROR: unrecognised mode"
+	         exit 1;;
+esac
+
+if [[ -e ${LOCKFILE} ]]; then
+    if [[ ${MODE} == daily ]]; then
+	echo `date` "Found lock file. Aborting" >> ${TORUS_RUNNING_LOG}
+	exit 1
+    else
+	echo "Found lock file ${LOCKFILE}. Aborting"
+    fi
+fi
+
+
 # Set platform specific variables. We will assume that we are running on post-zen.
 export PATH=/home/torustest/openmpi/bin:/home/torustest/bin:/usr/local/bin:${PATH}:/usr/bin
 export TORUS_FITSLIBS="/home/torustest/cfitsio/lib"
@@ -793,6 +811,7 @@ case ${MODE} in
     daily) export CONFIG_TO_TEST="openmp mpi hybrid"
            export BUILD_ONLY=""
 	   export DEBUG_OPTS="yes"
+	   echo `date` "Test suite started" >> ${TORUS_RUNNING_LOG} 
 	   echo -------------------------------------------------------------------
 	   echo TORUS daily test suite started on `date`
 	   echo -------------------------------------------------------------------
@@ -868,6 +887,9 @@ if [[ ${MODE} == daily || ${MODE} == workingcopy ]]; then
     check_results
 fi
 
-rm ${TEST_DIR}/lock
+rm ${LOCKFILE}
+rm ${TORUS_DAILY_TEST_LOG}
+
+echo `date` "Test suite finished" >> ${TORUS_RUNNING_LOG}
 
 exit ${RETURN_CODE}
