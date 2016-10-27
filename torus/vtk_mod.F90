@@ -2932,7 +2932,7 @@ end subroutine writeXMLVtkFileAMR
       integer, save ::  iLambda
       real(double) :: ksca, kabs, value, v, r
 #ifdef CHEMISTRY
-      real(double) :: massFraction(krome_nMols)
+      real(double) :: massFraction, nh
 #endif
       type(VECTOR) :: rVec, vel, vec, pos
       real, parameter :: min_single_prec = 1.0e-37
@@ -2943,7 +2943,6 @@ end subroutine writeXMLVtkFileAMR
 #ifdef CHEMISTRY
        species = krome_get_names()
 #endif
-
 
 
       do subcell = 1, thisOctal%maxChildren
@@ -2976,6 +2975,8 @@ end subroutine writeXMLVtkFileAMR
             n = n + 1
 
             found = .true.
+
+            if (chemIndex == 0) then
             select case (valueType)
                case("rho")
 
@@ -3551,18 +3552,14 @@ end subroutine writeXMLVtkFileAMR
                case DEFAULT
                   found = .false.
              end select
-
+          endif
 #ifdef CHEMISTRY
-!             do i = 1, krome_nmols
-!                if (trim(Valuetype) == species(i)) then
-!                   rArray(1, n) = real(thisOctal%kromeSpeciesX(subcell,krome_get_index(trim(valuetype))))
-!                   found = .true.
-!                endif
-!             enddo
-             massFraction = thisOctal%kromeSpeciesX(subcell,:)/krome_get_Hnuclei(thisOctal%kromeSpeciesX(subcell,:))
+
              if (chemIndex /= 0) then
-                if (massFraction(chemIndex) > 0.d0) then
-                   rArray(1, n) = real(log10(massFraction(chemIndex)))
+                nH = thisOctal%rho(subcell) / mHydrogen
+                massFraction = thisOctal%kromeSpeciesX(subcell,chemIndex) / nh
+                if (massFraction > 0.d0) then
+                   rArray(1, n) = real(log10(massFraction))
                 else
                    rArray(1, n) = -30.
                 endif

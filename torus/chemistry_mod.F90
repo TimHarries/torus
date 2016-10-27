@@ -143,13 +143,6 @@ recursive subroutine  initializeChemistry(thisOctal)
 
         thisOctal%kromeSpeciesX(subcell,KROME_idx_e) = krome_get_electrons(thisX)
 
-	write(*,*) myrankGlobal, " rho ",thisOctal%rho(subcell) 
-
-        write(*,*) myrankGlobal, " sanity check for N ",SUM(thisOctal%kromeSpeciesX(subcell,:))
-
-        write(*,*) "krome thinks density is ",krome_get_rho(thisOctal%kromeSpeciesX(subcell,:))
-
-        write(*,*) "krome thinks total H-nuclei is ",krome_get_Hnuclei(thisOctal%kromeSpeciesX(subcell,:))
   !user commons for opacity and CR rate
   tau = 1d2 !opacity Av (#)
   zrate = 1.3d-17 !CR rate (1/s)
@@ -177,40 +170,42 @@ recursive subroutine doChemistryTimestepOctal(thisOctal, dt)
 
      if (.not.thisOctal%hasChild(subcell)) then
 
-        thisX(1:krome_nmols) = thisOctal%kromeSpeciesx(subcell,1:krome_nmols)
 
-        tau = thisOctal%meanAv(subcell) !opacity Av (#)
+        if ((thisOctal%temperature(subcell) < 300.d0).and.(thisOctal%rho(subcell)>1.d-29)) then
+           thisX(1:krome_nmols) = thisOctal%kromeSpeciesx(subcell,1:krome_nmols)
+           
+           tau = thisOctal%meanAv(subcell) !opacity Av (#)
+           
+           
+           zrate = 1.3d-17 !CR rate (1/s)
+           gas_dust_ratio = 7.57d11 !gas/dust
+           pah_size = 4d-8 !cm
+           
+           tgas = dble(thisOctal%temperature(subcell))
 
-        tau = max(tau,10.d0)!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-        zrate = 1.3d-17 !CR rate (1/s)
-        gas_dust_ratio = 7.57d11 !gas/dust
-        pah_size = 4d-8 !cm
-
-        tgas = dble(thisOctal%temperature(subcell))
-
-        call krome_init()
-
-        if (dustPhysics) then
-           if (ndustType > 1) then
-              call writeFatal("KROME cannot deal with more than one species of dust. Using the 1st dust type size distribution")
+           call krome_init()
+           
+           if (dustPhysics) then
+              if (ndustType > 1) then
+                 call writeFatal("KROME cannot deal with more than one species of dust. Using the 1st dust type size distribution")
+              endif
+              !           call krome_init_dust_distribution(thisX, thisOctal%dustTypeFraction(subcell,1), alow_arg=dble(amin(1))*micronToCm, &
+              !                aup_arg=dble(amax(1))*microntocm, &
+              !                phi_arg=(-1.d0*dble(qdist(1))))
+              !           call krome_set_Tdust(dble(thisOctal%temperature(subcell)))
            endif
-!           call krome_init_dust_distribution(thisX, thisOctal%dustTypeFraction(subcell,1), alow_arg=dble(amin(1))*micronToCm, &
-!                aup_arg=dble(amax(1))*microntocm, &
-!                phi_arg=(-1.d0*dble(qdist(1))))
-!           call krome_set_Tdust(dble(thisOctal%temperature(subcell)))
+           !        allocate(intensity(1:krome_nPhotoBins))
+           !        intensity = tiny(intensity)
+           !        intensity = intensity + thisOctal%kromeIntensity(subcell,1:krome_nPhotobins)
+           
+           !        call krome_set_PhotoBinJ(intensity)
+           
+           !        deallocate(intensity)
+           if (dt > 0.d0) then
+              call krome(thisX,  tgas, dt)
+           endif
+           thisOctal%kromeSpeciesx(subcell,1:krome_nmols) = thisX(1:krome_nmols)
         endif
-!        allocate(intensity(1:krome_nPhotoBins))
-!        intensity = tiny(intensity)
-!        intensity = intensity + thisOctal%kromeIntensity(subcell,1:krome_nPhotobins)
-
-!        call krome_set_PhotoBinJ(intensity)
-
-!        deallocate(intensity)
-        if (dt > 0.d0) then
-           call krome(thisX,  tgas, dt)
-        endif
-        thisOctal%kromeSpeciesx(subcell,1:krome_nmols) = thisX(1:krome_nmols)
      endif
   end do
 end subroutine doChemistryTimestepOctal
@@ -467,7 +462,7 @@ endif
 
   !$OMP PARALLEL DEFAULT(NONE) &
   !$OMP PRIVATE(ioctal, thisOctal) &
-  !$OMP SHARED(grid, ioctal_beg, ioctal_end, octalarray, dt, writeoutput)
+  !$OMP SHARED(grid, ioctal_beg, ioctal_end, octalarray, dt, writeoutput, myrankGlobal)
 
   !$OMP DO SCHEDULE(DYNAMIC)
   do iOctal =  iOctal_beg, iOctal_end
@@ -685,7 +680,7 @@ subroutine calculateAv(grid)
 
   !$OMP PARALLEL DEFAULT(NONE) &
   !$OMP PRIVATE(ioctal, thisOctal) &
-  !$OMP SHARED(grid, ioctal_beg, ioctal_end, octalarray, dt, writeoutput)
+  !$OMP SHARED(grid, ioctal_beg, ioctal_end, octalarray, writeoutput, ilambda, dir, ndir)
 
   !$OMP DO SCHEDULE(DYNAMIC)
   do iOctal =  iOctal_beg, iOctal_end
