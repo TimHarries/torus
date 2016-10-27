@@ -3644,6 +3644,69 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
   end subroutine myInterp
     
 
+!...+....1....+....2....+....3....+....4....+....5....+....6....+....7....+
+!     File:        ccubsolv.f (Fortran 77 source for the ccubsolv routine)
+!     Author:      Fredrik Jonsson <fj@phys.soton.ac.uk>
+!     Date:        December 29, 2005
+!     Last change: December 29, 2006
+!     Description: The CCUBSOLV(A,Z) routine solves the cubic polynomial
+!
+!                        z^3+c[2]*z^2+c[1]*z+c[0]=0
+!
+!                  for general complex coefficients c[k]. The routine
+!                  takes a vector A(1..3) of COMPLEX*8 floating point
+!                  precision as input, containing the c[k] coefficients
+!                  as conforming to the convention
+!
+!                        A(1)=c[0],  A(2)=c[1],  A(3)=c[2],
+!
+!                  and returns the three complex-valued roots for z in the
+!                  vector Z(1..3), also being of COMPLEX*8 floating point
+!                  precision.
+!
+!     Copyright (C) 2006, Fredrik Jonsson <fj@phys.soton.ac.uk>
+!...+....1....+....2....+....3....+....4....+....5....+....6....+....7....+
+  subroutine ccubsolv(a,z)
+    complex(double) a(3),z(3)
+    real(double) pi,phi,onethird,twothird,absrr,absqq,absrr23,absqq32
+    complex(double) p,q,rr,qq,cc,w
+    integer k
+
+    pi=3.14159265358979323846d0
+    onethird=1.0/3.0
+    twothird=2.0/3.0
+    p=a(2)-onethird*(a(3)**2)
+    q=2.0*(onethird*a(3))**3-onethird*a(2)*a(3)+a(1)
+    rr=-0.5*q
+    qq=onethird*p
+
+    !     *********************************************************************
+    !     The following construction is made in order to avoid numeric overflow
+    !     in evaluation of the discriminant, in a a manner similar to that used
+    !     in standard routines for evaluation of sqrt(x^2+y^2), for example.
+    !     *********************************************************************
+    absrr=abs(rr)
+    absqq=abs(qq)
+    absrr23=absrr**twothird
+    if ((absrr23).lt.(absqq)) then
+       absqq32=absqq**1.5
+       cc=rr+absqq32*sqrt((rr/absqq32)**2+(qq/absqq)**3)
+    else
+       cc=rr+absrr*sqrt((rr/absrr)**2+(qq/absrr23)**3)
+    endif
+
+    !     *********************************************************************
+    !     Evaluate the solutions for w from the binomial equation w^3=c, and
+    !     form the solutions z(k) from the three obtained roots.
+    !     *********************************************************************
+    cc=cc**onethird
+    do k=0,2
+       phi=k*twothird*pi
+       w=cc*cmplx(cos(phi),sin(phi))
+       z(k+1)=w-onethird*(a(3)+p/w)
+    enddo
+
+  end subroutine ccubsolv
 
 end module utils_mod
 

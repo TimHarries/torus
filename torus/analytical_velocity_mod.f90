@@ -27,6 +27,8 @@ contains
           analyticalVelocity = TTauriStellarWindVelocity(point)
        case(4) ! whitney
           analyticalVelocity = WhitneyVelocity(point)
+       case(5) ! whitney
+          analyticalVelocity = ulrichVelocity(point)
 
 
 
@@ -35,7 +37,52 @@ contains
        end select
      end function analyticalVelocity
 
+     type(VECTOR) function ulrichVelocity(point)
+       use utils_mod, only : ccubsolv
+       use inputs_mod, only : erinner, erouter
+       use inputs_mod, only : mcore
+       type(VECTOR) :: point
+       real(Double) :: vr, vt, vp, mu, r, mu_0
+       real(double) :: costheta, sintheta, sinphi, cosphi, sintheta0
+       real(double) :: vx, vy, vz, v
+       complex(double) :: a(3),z(3)
+       r = modulus(point)*1.d10
 
+       ulrichVelocity = VECTOR(0.d0, 0.d0, 0.d0)
+       mu = (point%z*1.e10) /r
+       if ((r > erInner).and.(r < erOuter)) then
+
+          a(1) = cmplx(-mu * (r/erinner),0.d0)
+          a(2) = cmplx((r/erinner-1.d0), 0.d0)
+          a(3) = 0.d0
+          call ccubsolv(a,z)
+          mu_0 = real(z(1))
+          if ((imag(z(1)) /= 0.d0).or.(imag(z(2))==0.d0).or.(imag(z(3))==0.d0)) then
+             write(*,*)"problem with cubic solver"
+          endif
+          sintheta0 = sqrt(1.d0 - mu_0**2)
+          costheta = point%z*1.d10/r
+          sintheta = sqrt(1.d0- costheta**2)
+          cosphi = point%x/sqrt(point%x**2 + point%y**2)
+          sinphi = point%y/sqrt(point%x**2 + point%y**2)
+          
+          v = sqrt(bigG * mcore/r)/cSpeed
+
+          vr = -v * sqrt(1.d0 + costheta/mu_0)
+          vt = v * (mu_0 - costheta) * sqrt(abs((mu_0+costheta)/(mu_0*costheta)))
+          vp = v * (sintheta0/sintheta) * sqrt(1.d0-costheta/mu_0)
+
+          vx = vr * cosphi * sintheta + vt * cosphi * costheta - vp * sinphi
+          vy = vr * sinphi * sintheta + vt * sinphi * costheta + vp * cosphi
+          vz = vr * costheta - vt  * sintheta
+
+          ulrichVelocity = VECTOR(vx, vy, vz)
+
+
+
+       endif
+
+     end function ulrichVelocity
 
 
      type(VECTOR) function TTauriStellarWindVelocity(point)

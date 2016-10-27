@@ -1678,6 +1678,16 @@ contains
                "Include disc wind: : ","(a,1l,1x,a)", .false., ok, .false.)
 
 
+       call getDouble("erinner", erinner, autocm, cLine, fLine, nLines, &
+            "Inner radius of envelope (AU): ","(a,f5.1,a)", 1.d30, ok, .false.)
+
+       call getDouble("erouter", erouter, pctocm, cLine, fLine, nLines, &
+            "Outer radius of envelope (pc): ","(a,f5.1,a)", 180.d0, ok, .false.)
+
+       call getDouble("mdotenv", mdotenv, msol/(365.25d0*24.d0*3600.d0), cLine, fLine, nLines, &
+            "Accretion of envelope (solar/year): ","(a,f5.1,a)", 180.d0, ok, .false.)
+
+
        if (discwind) then
           ! --- parameters for ttauri wind
           call getDouble("DW_Rmin", DW_Rmin, autocm/1.d10, cLine, fLine, nLines, &
@@ -3004,7 +3014,7 @@ contains
     integer :: nLines,i 
     character(len=20) :: keyword
     character(len=16) :: kromeNames(1:krome_nmols)
-    character(len=40) :: outputString
+    character(len=50) :: outputString
     logical :: ok
 
     call getDouble("timechemistry", timeChemistry, yearstoSecs, cLine, fLine, nLines, &

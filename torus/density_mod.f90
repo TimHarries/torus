@@ -1096,43 +1096,7 @@ contains
     
 
     rhoOut = max(rhoOut, cavDens)
-    r = (modulus(point)*1.e10)
-    mu = ((abs(point%z)*1.e10) /r)
-    r_c = erInner
 
-    rhoEnv = 1.d-30
-    if ((r > erInner).and.(r < erOuter)) then
-       mu_0 = rtnewtdble(-0.2d0 , 1.5d0 , 1.d-4, r/r_c, abs(mu))
-
-! equation 1 for Whitney 2003 ApJ 591 1049 has a mistake in it
-! this is from Momose et al. 1998 ApJ 504 314
-
-       rhoEnv = real((mdotenv / fourPi) * (bigG * mCore)**(-0.5d0) * r**(-1.5d0) * &
-       (1.d0 + abs(mu)/mu_0)**(-0.5d0) * &
-       (abs(mu)/mu_0 + (2.d0*mu_0**2 * r_c/r))**(-1.))
-       fac =  1.d0-min(dble(r - erInner)/(0.02d0*erinner),1.d0)
-       fac = exp(-fac*10.d0)
-       rhoEnv = (rhoEnv * fac)
-       rhoEnv = max(rhoEnv, tiny(rhoEnv))
-       theta = acos(mu)
-       if (theta < cavAngle/2.d0)  then
-          rhoEnv = cavdens
-       endif
-
-    endif
-       if (smoothInnerEdge) then
-          fac = 1.d0
-          if (r < 1.02d0*rinner) then
-             fac = (1.02d0*rinner - r)/(0.02d0*rinner)
-             fac = 10.d0*fac
-             fac = exp(-fac)
-             rhoOut = rhoOut * fac
-          endif
-       endif
-
-
-    rhoOut = max(rhoOut, rhoEnv)
-    rhoOut = max(rhoOut, rhoAmbient)
 
 
 

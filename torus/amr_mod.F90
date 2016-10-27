@@ -11899,16 +11899,20 @@ end function readparameterfrom2dmap
 
 
   subroutine shakaraDisk(thisOctal,subcell,grid)
+    use analytical_velocity_mod, only : ulrichVelocity
+    use utils_mod, only : ccubsolv
+    use density_mod, only : rtnewt
     use density_mod, only: density, shakaraSunyaevDisc
     use inputs_mod, only : rOuter, betaDisc !, rInner, erInner, erOuter, alphaDisc
     use inputs_mod, only : curvedInnerEdge, nDustType, grainFrac, gridDistanceScale, rInner
     use inputs_mod, only : height, hydrodynamics, dustPhysics, mCore, molecular, photoionization
-    use inputs_mod, only : rSublimation
+    use inputs_mod, only : rSublimation, erInner, erOuter, mDotEnv
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
+    complex(double) :: a(3), za(3)
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    real(double) :: r, h, rd, ethermal, rhoFid, thisRSub,z,fac, rho, sinTheta,v
+    real(double) :: r, h, rd, ethermal, rhoFid, thisRSub,fac, rho, sinTheta,v, rhoEnv, mu, mu_0, z
     TYPE(vector) :: rVec
 
     type(VECTOR),save :: velocitysum
@@ -12035,6 +12039,37 @@ end function readparameterfrom2dmap
           thisOctal%dustTypeFraction(subcell,1:nDustType) = max(1.d-20,grainFrac(1:nDustType)*exp(-fac))
        endif
     endif
+    
+    r = modulus(rVec)*1.d10
+    rhoEnv = 1.e-30
+    if ((r > erInner).and.(r < erOuter)) then
+       mu = (rvec%z*1.e10) /r
+
+       a(1) = cmplx(-mu * (r/erinner),0.d0)
+       a(2) = cmplx((r/erinner-1.d0), 0.d0)
+       a(3) = 0.d0
+       call ccubsolv(a,za)
+       mu_0 = real(za(1))
+
+ ! equation 1 for Whitney 2003 ApJ 591 1049 has a mistake in it
+! this is from Momose et al. 1998 ApJ 504 314
+
+       rhoEnv = real((mdotenv / fourPi) * (bigG * mCore)**(-0.5) * r**(-1.5) * &
+       (1. + mu/mu_0)**(-0.5) * &
+       (mu/mu_0 + (2.*mu_0**2 * erinner/r))**(-1.))
+
+!       fac =  1.d0-min(dble(r - erInner)/(0.02d0*erinner),1.d0)
+!       fac = exp(-fac*10.d0)
+!       rhoEnv = real(rhoEnv * fac)
+       rhoEnv = max(rhoEnv, tiny(rhoEnv))
+
+       if (rhoEnv > thisOctal%rho(subcell)) then
+          thisOctal%rho(subcell) = rhoEnv
+          thisOctal%iAnalyticalVelocity(subcell) = 5
+          thisOctal%velocity(subcell) = ulrichVelocity(rVec)
+       endif
+    endif
+
 
 
   end subroutine shakaraDisk

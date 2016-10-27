@@ -175,10 +175,14 @@ recursive subroutine doChemistryTimestepOctal(thisOctal, dt)
   
   do subcell = 1, thisOctal%maxChildren
 
+     if (.not.thisOctal%hasChild(subcell)) then
 
         thisX(1:krome_nmols) = thisOctal%kromeSpeciesx(subcell,1:krome_nmols)
 
         tau = thisOctal%meanAv(subcell) !opacity Av (#)
+
+        tau = max(tau,10.d0)!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
         zrate = 1.3d-17 !CR rate (1/s)
         gas_dust_ratio = 7.57d11 !gas/dust
         pah_size = 4d-8 !cm
@@ -207,7 +211,7 @@ recursive subroutine doChemistryTimestepOctal(thisOctal, dt)
            call krome(thisX,  tgas, dt)
         endif
         thisOctal%kromeSpeciesx(subcell,1:krome_nmols) = thisX(1:krome_nmols)
-
+     endif
   end do
 end subroutine doChemistryTimestepOctal
 
@@ -585,7 +589,7 @@ subroutine doChem(grid, dt)
      call writeInfo("Done.",TRIVIAL)
 
 !  enddo
-  close(20)
+!  close(20)
      write(vtkFilename,"(a,i3.3,a)") "chem",1,".vtk"
      call writeVtkFile(grid, vtkFilename, &
           valueTypeString=(/"chemistry  ","rho        ","av         ","temperature"/))
@@ -732,6 +736,9 @@ recursive subroutine calculateAVOctal(grid, thisOctal, ilambda,ndir,dir)
   allocate(tau(1:nDir), av(1:nDir), expMinusAv(1:nDir))
 
   do subcell = 1, thisOctal%maxChildren
+
+     if (.not.thisOctal%hasChild(subcell)) then
+
         cellCentre = subcellCentre(thisOctal, subcell)
 
 
@@ -740,10 +747,11 @@ recursive subroutine calculateAVOctal(grid, thisOctal, ilambda,ndir,dir)
            av(idir) = 1.086d0 * tau(idir)
         enddo
         expMinusAv(1:nDir) = exp(-av(1:nDir))
-
+        
         if (.not.associated(thisOctal%meanAv)) allocate(thisOctal%meanAv(1:thisOctal%maxChildren))
-
+        
         thisOctal%meanAv(subcell) = -log((1.d0/dble(nDir)) * SUM(expminusav(1:nDir)))
+     endif
   end do
   deallocate(tau, av, expMinusAv)
 end subroutine calculateAVOctal
