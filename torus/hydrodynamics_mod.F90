@@ -8825,7 +8825,9 @@ end subroutine sumFluxes
   subroutine doHydrodynamics1d(grid)
     use inputs_mod, only : tStart, tEnd, tDump, dorefine, amrTolerance
     use mpi
+#ifdef CHEMISTRY
     use chemistry_mod
+#endif
     type(gridtype) :: grid
     real(double) :: dt!,  gamma!, mu
     real(double) :: currentTime
