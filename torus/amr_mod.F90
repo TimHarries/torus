@@ -12045,8 +12045,8 @@ end function readparameterfrom2dmap
     if ((r > erInner).and.(r < erOuter)) then
        mu = (rvec%z*1.e10) /r
 
-       a(1) = cmplx(-mu * (r/erinner),0.d0)
-       a(2) = cmplx((r/erinner-1.d0), 0.d0)
+       a(1) = cmplx(-mu * (r/erinner),0.d0, kind=double)
+       a(2) = cmplx((r/erinner-1.d0), 0.d0, kind=double)
        a(3) = 0.d0
        call ccubsolv(a,za)
        mu_0 = real(za(1))

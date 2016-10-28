@@ -52,8 +52,8 @@ contains
        mu = (point%z*1.e10) /r
        if ((r > erInner).and.(r < erOuter)) then
 
-          a(1) = cmplx(-mu * (r/erinner),0.d0)
-          a(2) = cmplx((r/erinner-1.d0), 0.d0)
+          a(1) = cmplx(-mu * (r/erinner),0.d0,kind=double)
+          a(2) = cmplx((r/erinner-1.d0), 0.d0,kind=double)
           a(3) = 0.d0
           call ccubsolv(a,z)
           mu_0 = real(z(1))

@@ -3702,7 +3702,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
     cc=cc**onethird
     do k=0,2
        phi=k*twothird*pi
-       w=cc*cmplx(cos(phi),sin(phi))
+       w=cc*cmplx(cos(phi),sin(phi), kind=double)
        z(k+1)=w-onethird*(a(3)+p/w)
     enddo
 

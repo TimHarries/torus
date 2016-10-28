@@ -949,8 +949,8 @@ contains
   function shakaraSunyaevDisc(point, grid) result (rhoOut)
     use inputs_mod, only: massRatio, binarySep, rInner, rOuter, betaDisc, height, &
          alphaDisc, rho0, smoothInnerEdge, streamFac, rGapInner, rGapOuter, rhoGap, &
-         deltaCav, erInner, erOuter, mDotEnv, mcore, cavAngle, cavDens, rhoAmbient, planetDisc
-    use inputs_mod, only : sourcePos, sourceMass, sourceRadius, hydrodynamics
+         deltaCav,  rhoAmbient, planetDisc
+    use inputs_mod, only : sourcePos, sourceMass, sourceRadius, hydrodynamics, cavDens
     use utils_mod, only: solveQuad
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(VECTOR), INTENT(IN) :: point
@@ -961,7 +961,7 @@ contains
     integer, parameter :: nStream = 1000
     real ::  phi1, phi2, dphi, r1, turns, d
     type(VECTOR),save :: stream1(nStream), stream2(nStream), rPlanet
-    real(double) :: rSpiralInner, rSpiralOuter,  mu, r_c, rhoEnv, mu_0, theta
+    real(double) :: rSpiralInner, rSpiralOuter
     real(double) :: rInnerPlanetDisc, rOuterPlanetDisc, heightPlanetDisc, alphaPlanetDisc, betaPlanetDisc, rhoPlanetDisc
     real(double) :: mPlanetDisc, hillRadius
     logical :: ok
