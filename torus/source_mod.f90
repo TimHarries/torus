@@ -48,12 +48,13 @@
 
   contains
 
-    subroutine writeSourceHistory(rootfilename, source, nSource)
+    subroutine writeSourceHistory(rootfilename, source, nSource, oldMass, oldAge)
       use inputs_mod, only : iModel
       type(SOURCETYPE) :: source(:)
       character(len=*) :: rootFilename
       character(len=80) :: filename
       integer :: nSource
+      real(double) :: oldMass, mdot, oldAge
       integer :: i
       logical, save :: firstTime = .true.
       if (writeoutput) then
@@ -67,14 +68,18 @@
             else
                open(22, file=filename, status="old", form="formatted", position="append")
             endif
+            mdot = (source(i)%mass - oldMass)/(source(i)%age - oldAge)
+            write(*,*) "mdot", mdot
             write(22,'(i4.4, 1p, e12.3, 0p, f9.4, f9.4, f9.1, 1p, e12.3, e12.3, 10e12.3)') &
                  iModel,source(i)%time*secstoYears, &
                  source(i)%mass/msol, &
-                 source(i)%radius*1.d10/rsol, source(i)%teff, source(i)%luminosity/lsol, source(i)%mdot/msol/secstoyears, &
+                 source(i)%radius*1.d10/rsol, source(i)%teff, source(i)%luminosity/lsol, mdot/msol/secstoyears, &
                  source(i)%position%x, &
                  source(i)%position%y,source(i)%position%z, source(i)%velocity%x/1.d5,source(i)%velocity%y/1.d5, &
                  source(i)%velocity%z/1.d5
             close(22)
+            oldMass = source(i)%mass
+            oldAge = source(i)%time
          enddo
          if (firstTime) firstTime = .false.
       endif

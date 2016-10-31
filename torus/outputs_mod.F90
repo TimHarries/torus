@@ -81,8 +81,9 @@ contains
     real :: lambdaImage
     real, allocatable :: tarray(:,:)
     real(double), allocatable :: xArrayDouble(:)
-    real(double) :: kabs, ksca
+    real(double) :: kabs, ksca, oldMass, oldAge
     integer :: iInc
+    logical, save :: firstSource = .true.
 #ifdef MOLECULAR
 !    integer :: nAng
 !    type(VECTOR) :: thisVec,  axis
@@ -94,6 +95,11 @@ contains
     type(VECTOR) :: viewVec
     real(double), allocatable :: flux(:)    
 #endif
+    if (FirstSource) then
+       oldMAss = 0.d0
+       oldAge = 0.d0
+       firstSource = .false.
+    endif
 
     call writeBanner("Creating outputs","-",TRIVIAL)
 
@@ -480,7 +486,7 @@ if (.false.) then
 !    endif
 !#endif
     if (sourceHistory) then
-       call writeSourceHistory(sourceHistoryfilename,globalSourceArray,globalnSource)
+       call writeSourceHistory(sourceHistoryfilename,globalSourceArray,globalnSource, oldMass, oldAge)
     endif
 
     if (dowriteRadialFile) then
