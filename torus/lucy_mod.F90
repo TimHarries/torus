@@ -2,6 +2,7 @@ module lucy_mod
 
   use constants_mod
   use messages_mod
+  use pah_mod
   use vector_mod
   use amr_mod, only: addNewChild, inOctal, distanceToCellBoundary, returnKappa, amrGridValues, &
        countvoxels, findsubcelllocal, findsubcelltd
@@ -29,7 +30,7 @@ contains
     use inputs_mod, only : variableDustSublimation, iterlucy, rCore, scatteredLightWavelength, solveVerticalHydro
     use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau
     use inputs_mod, only : object, convergeOnUndersampled, maxMemoryAvailable !, mDisc, dusttogas, dustSettling
-    use inputs_mod, only : writelucyTmpfile, discWind, mincrossings, maxiterLucy, solveDiffusionZone, quickSublimate
+    use inputs_mod, only : writelucyTmpfile, discWind, mincrossings, maxiterLucy, solveDiffusionZone, quickSublimate, usePAH
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
     use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled, randomwalk, &
@@ -76,7 +77,7 @@ contains
     integer :: i, j
     real(oct) :: freq(nLambda), dnu(nLambda), probDistJnu(nLambda+1)
     !    real(oct) :: probDistPlanck(nFreq)
-    real(double) :: kappaScadb, kappaAbsdb, totalLumInPackets
+    real(double) :: kappaScadb, kappaAbsdb, totalLumInPackets, kappaAbsPAH
     integer(double) :: nDiffusion
     integer(double) :: nScat, nAbs
     integer(bigInt) :: nMonte, iMonte
@@ -132,7 +133,7 @@ contains
     real(double) :: logNucritUpper, logNucritLower
     real(double) :: this_bnu(nlambda), fac2(nlambda), hNuOverkT(nlambda)
     real(double) :: packetWeight, wavelengthWeight
-    real(double) :: subRadius, dustMass
+    real(double) :: subRadius, dustMass, PAHprob
     real :: lamSmoothArray(5)
     logical :: thisIsFinalPass
     integer(bigInt) :: totMem
@@ -318,6 +319,8 @@ contains
     dT_mean_old = 10.0d0
     iMultiplier = 1
 
+    call zeroAdot(grid%octreeRoot)
+
     do while (.not.converged)
        ! ensure we do at least three iterations
        ! before removing the high temperature cells.
@@ -469,7 +472,7 @@ contains
                 !$OMP PRIVATE(i, j, T1) &
                 !$OMP PRIVATE(thisPhotonAbs, thisPhotonSca) &
                 !$OMP PRIVATE( photonInDiffusionZone, leftHandBoundary, directPhoton) &
-                !$OMP PRIVATE(diffusionZoneTemp, kappaAbsdb, sOctal, kappaScadb, kAbsArray) &
+                !$OMP PRIVATE(diffusionZoneTemp, kappaAbsdb, sOctal, kappaScadb, kappaAbsPAH, kAbsArray) &
                 !$OMP PRIVATE(oldUHat, packetWeight, wavelengthWeight) &
                 !$OMP PRIVATE(tempOctal, tempSubCell, temp, ok) &
                 !$OMP PRIVATE(foundOctal, foundSubcell, hrecip_kt, logt, logNucritUpper, logNucritLower) &
@@ -527,7 +530,9 @@ contains
                    thisFreq = cSpeed/(wavelength / 1.e8)
                    thislam = wavelength
 
+
                    do while(.not.escaped)
+
 
                       ilam = min(floor((log(thislam) - loglam1) * scalelam) + 1, nfreq)
                       ilam = max(ilam, 1)
@@ -535,7 +540,8 @@ contains
                       call toNextEventAMR(grid, rVec, uHat, packetWeight, escaped, thisFreq, nLambda, lamArray,  &
                            photonInDiffusionZone, diffusionZoneTemp,  &
                            directPhoton, scatteredPhoton,  &
-                           sOctal, foundOctal, foundSubcell, iLamIn=ilam, kappaAbsOut = kappaAbsdb, kappaScaOut = kappaScadb)
+                           sOctal, foundOctal, foundSubcell, iLamIn=ilam, kappaAbsOut = kappaAbsdb, kappaScaOut = kappaScadb ,&
+                           kappaAbsPAHout = kappaAbsPAH)
 
                       If (escaped) then
                          !$OMP ATOMIC
@@ -567,7 +573,7 @@ contains
 !                         endif
 
                          if (kappaScadb+kappaAbsdb /= 0.0d0) then
-                            albedo = kappaScadb / (kappaScadb + kappaAbsdb)
+                            albedo = kappaScadb / (kappaScadb + kappaAbsdb + kappaAbsPAH)
                          else
                             albedo = 0.5
                          end if
@@ -608,81 +614,94 @@ contains
                                cycle photonLoop
                             endif
 
-                            call amrGridValues(grid%octreeRoot, octVec, startOctal=thisOctal, &
-                                 actualSubcell=subcell, temperature=treal,grid=grid, kappaAbsArray=kAbsArray)
-                            t1 = dble(treal)
-
-                            ! if the photon has come from the diffusion zone then it has to be
-                            ! reprocessed using the appropriate temperature
-
-                            if (photonInDiffusionZone) then
-                               t1 = dble(diffusionZoneTemp)
+                            if (usepah) then
+                               PAHprob = kappaAbsPAH / (kappaAbsdb + kappaAbsPAH)
+                            else
+                               PAHprob = 0.d0
                             endif
-
-                            hrecip_kt = hcgs / (kErg * t1 )
-
-                            logt = log(t1)
-                            logNucritUpper = 27.9500d0 + logt ! 23.76 is log(k) - log(h) ! 66.0
-                            logNucritLower = 26.0626d0 + logt ! 23.76 is log(k) - log(h) ! 10.0
-                            icritupper = min( floor((logNucritUpper - logNu1) * scalenu) + 1, nfreq        )
-                            icritLower = min( floor((logNucritLower - logNu1) * scalenu) + 1, icritupper-1 )
-                            !			    write(*,*) "icrit upper,lower", icritupper,icritlower,nfreq,t1
-
-                            do i = 1, icritupper
-                               iLam = nfreq - i + 1
-                               kAbsArray2(i) = kabsArray(ilam)
-                            enddo
-
-                            !                  do i = 1, icritupper
-                            !                     iLam = nfreq - i + 1
-                            !                     write(*,*) kabsarray2(i), kabsarray(ilam)
-                            !                  enddo
-                            !stop
-                            probDistJnu(1)  = 1.d-50
-#ifdef USEMKL
-                            hrecip_ktarray(1:icritupper) = hrecip_kt
-
-                            call vdmul(icritupper, freq(1:icritupper), hrecip_ktarray(1:icritupper) , hNuOverkT(1:icritupper)) ! start from second frequency 
-                            call vdexp(icritlower, hNuOverkT(1:icritlower), hNuOverKt(1:icritlower)) ! hnuoverkt now e^hv/kT
-                            call vdsub(icritlower, hnuoverkt(1:icritlower), OneArray(1:icritlower), hNuOverKt(1:icritlower))! hnuoverkt now e^nv/KT - 1
-                            call vdinv(icritlower, hnuoverkt(1:icritlower), fac2(1:icritlower))
-
-                            call vdexp(icritupper - icritlower, -hNuOverkT(icritlower + 1 : icritupper), fac2(icritlower+1 : icritupper))
-
-                            call vdmul(icritupper, fac1dnu(1:icritupper), fac2(1:icritupper), hNuOverkT(1:icritupper)) ! hnuoverkt is temp array now
-                            call vdmul(icritupper, hnuoverkt(1:icritupper), kabsarray2(1:icritupper), this_bnu(1:icritupper))
-#else             
-                            hNuOverkT(1:icritupper) = freq(1:icritupper) * hrecip_kt
-
-                            fac2(1:icritlower) = 1.d0 / (exp(hNuOverkT(1:icritlower)) - 1.d0)
-                            fac2(icritlower+1:icritupper) = exp(-hNuOverkT(icritlower+1:icritupper))
-
-                            this_bnu(1:icritupper) = fac1dnu(1:icritupper) * fac2(1:icritupper) * kabsarray2(1:icritupper) 
-                            !this_bnu here is actually bnu * dnu * kabs
-#endif
-
-                            do i = 2, icritupper
-                               probDistJnu(i) = probDistJnu(i-1) + this_bnu(i) ! should be this_bnu(i-1)?
-                            enddo
-
-                            if (probDistJnu(icritupper) /= 0.d0) then
-                               call randomNumberGenerator(getDouble=r)
-                               r = r * probdistjnu(icritupper) ! this is equivalent to dividing probdist (normalising)
-                               call locate(probDistJnu(1:icritupper), icritupper, r, j)
-                               if (j == nFreq) j = nFreq -1
-                               thisFreq = freq(j) + (freq(j+1) - freq(j))* &
-                                    (r - probDistJnu(j))/(probDistJnu(j+1)-probDistJnu(j))
-				     ! note that probdistjnu(nfreq) cancels here so it's fine
+                            call randomNumberGenerator(getDouble=r)
+                            if (r < PAHprob) then
+                               thisFreq = getPAHfreqFromAdot(thisOctal%adot(subcell))
                                thisLam = (cSpeed / thisFreq) * 1.e8
-                               !                      write(*,*) cSpeed/thisFreq/angstromtocm
-                            endif
+                            else
+                                  
 
+
+                               call amrGridValues(grid%octreeRoot, octVec, startOctal=thisOctal, &
+                                    actualSubcell=subcell, temperature=treal,grid=grid, kappaAbsArray=kAbsArray)
+                               t1 = dble(treal)
+                               
+                               ! if the photon has come from the diffusion zone then it has to be
+                               ! reprocessed using the appropriate temperature
+
+                               if (photonInDiffusionZone) then
+                                  t1 = dble(diffusionZoneTemp)
+                               endif
+                               
+                               hrecip_kt = hcgs / (kErg * t1 )
+                               
+                               logt = log(t1)
+                               logNucritUpper = 27.9500d0 + logt ! 23.76 is log(k) - log(h) ! 66.0
+                               logNucritLower = 26.0626d0 + logt ! 23.76 is log(k) - log(h) ! 10.0
+                               icritupper = min( floor((logNucritUpper - logNu1) * scalenu) + 1, nfreq        )
+                               icritLower = min( floor((logNucritLower - logNu1) * scalenu) + 1, icritupper-1 )
+                               !			    write(*,*) "icrit upper,lower", icritupper,icritlower,nfreq,t1
+                               
+                               do i = 1, icritupper
+                                  iLam = nfreq - i + 1
+                                  kAbsArray2(i) = kabsArray(ilam)
+                               enddo
+                               
+                               !                  do i = 1, icritupper
+                               !                     iLam = nfreq - i + 1
+                               !                     write(*,*) kabsarray2(i), kabsarray(ilam)
+                               !                  enddo
+                               !stop
+                               probDistJnu(1)  = 1.d-50
+#ifdef USEMKL
+                               hrecip_ktarray(1:icritupper) = hrecip_kt
+                               
+                               call vdmul(icritupper, freq(1:icritupper), hrecip_ktarray(1:icritupper) , hNuOverkT(1:icritupper)) ! start from second frequency 
+                               call vdexp(icritlower, hNuOverkT(1:icritlower), hNuOverKt(1:icritlower)) ! hnuoverkt now e^hv/kT
+                               call vdsub(icritlower, hnuoverkt(1:icritlower), OneArray(1:icritlower), hNuOverKt(1:icritlower))! hnuoverkt now e^nv/KT - 1
+                               call vdinv(icritlower, hnuoverkt(1:icritlower), fac2(1:icritlower))
+                               
+                               call vdexp(icritupper - icritlower, -hNuOverkT(icritlower + 1 : icritupper), fac2(icritlower+1 : icritupper))
+                               
+                               call vdmul(icritupper, fac1dnu(1:icritupper), fac2(1:icritupper), hNuOverkT(1:icritupper)) ! hnuoverkt is temp array now
+                               call vdmul(icritupper, hnuoverkt(1:icritupper), kabsarray2(1:icritupper), this_bnu(1:icritupper))
+#else             
+                               hNuOverkT(1:icritupper) = freq(1:icritupper) * hrecip_kt
+                               
+                               fac2(1:icritlower) = 1.d0 / (exp(hNuOverkT(1:icritlower)) - 1.d0)
+                               fac2(icritlower+1:icritupper) = exp(-hNuOverkT(icritlower+1:icritupper))
+                               
+                               this_bnu(1:icritupper) = fac1dnu(1:icritupper) * fac2(1:icritupper) * kabsarray2(1:icritupper) 
+                               !this_bnu here is actually bnu * dnu * kabs
+#endif
+                               
+                               do i = 2, icritupper
+                                  probDistJnu(i) = probDistJnu(i-1) + this_bnu(i) ! should be this_bnu(i-1)?
+                               enddo
+                               
+                               if (probDistJnu(icritupper) /= 0.d0) then
+                                  call randomNumberGenerator(getDouble=r)
+                                  r = r * probdistjnu(icritupper) ! this is equivalent to dividing probdist (normalising)
+                                  call locate(probDistJnu(1:icritupper), icritupper, r, j)
+                                  if (j == nFreq) j = nFreq -1
+                                  thisFreq = freq(j) + (freq(j+1) - freq(j))* &
+                                       (r - probDistJnu(j))/(probDistJnu(j+1)-probDistJnu(j))
+                                  ! note that probdistjnu(nfreq) cancels here so it's fine
+                                  thisLam = (cSpeed / thisFreq) * 1.e8
+                                  !                      write(*,*) cSpeed/thisFreq/angstromtocm
+                               endif
+                            endif
                             oldUhat = uHat
                             uHat = randomUnitVector()
                             thermalPhoton = .true.
                             scatteredPhoton = .false.
                             ! make sure diffused photon is moving out of diffusion zone
-
+                               
                             if (photonInDiffusionZone) then
                                if ((oldUhat.dot.uHat)  > 0.) then
                                   uHat = (-1.d0) * uHat
@@ -773,8 +792,16 @@ contains
           endif
 #endif
 
-          call locate(freq, nFreq, cSpeed/(scatteredLightWavelength*angstromtocm),i)
-          call calculateMeanIntensity(grid%octreeRoot, epsOverDeltaT,dnu(i))
+             call calculateMeanIntensity(grid%octreeRoot, epsOverDeltaT)
+             call calculateAdotPAH(grid%octreeRoot, epsOverDeltaT)
+
+
+!          if (storeScattered) then
+!             call locate(freq, nFreq, cSpeed/(scatteredLightWavelength*angstromtocm),i)
+!             call calculateMeanIntensityOverdNu(grid%octreeRoot, epsOverDeltaT,dnu(i))
+!          endif
+
+          
 
           call calculateTemperatureCorrections(.true., grid%octreeRoot, totalEmission, epsOverDeltaT, &
                nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled,  &
@@ -1057,7 +1084,8 @@ contains
 
        call writeVtkFile(grid, tfilename, &
             valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-            "dust       ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", "diff       "/))
+            "dust       ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", "diff       ", &
+            "adot       "/))
        !    !
        !    ! Write grid structure to a tmp file.
        !    !
@@ -1686,9 +1714,36 @@ contains
 
           if (associated(thisOctal%meanIntensity)) &
                thisOctal%meanIntensity(subcell) = 0.d0
+
+          if (associated(thisOctal%AdotPAH)) &
+               thisOctal%aDotPAH(subcell) = 0.d0
+
        endif
     enddo
   end subroutine zeroDistanceGrid
+
+  recursive subroutine zeroAdot(thisOctal)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call zeroAdot(child)
+                exit
+             end if
+          end do
+       else
+
+               thisOctal%aDot(subcell) = 0.d0
+
+       endif
+    enddo
+  end subroutine zeroAdot
 
   recursive subroutine countInflow(thisOctal,n)
   type(octal), pointer   :: thisOctal
@@ -1711,7 +1766,56 @@ contains
     enddo
   end subroutine countInflow
 
-  recursive subroutine calculateMeanIntensity(thisOctal, epsOverDt, dnu)
+  recursive subroutine calculateMeanIntensity(thisOctal, epsOverDt)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real(double) :: epsOverDt, dV
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calculateMeanIntensity(child, epsOVerDt)
+                exit
+             end if
+          end do
+       else
+
+          if (associated(thisOctal%meanIntensity)) then
+             dv = cellVolume(thisOctal, subcell)*1.d30
+             thisOctal%meanIntensity(subcell) = (1.d0/fourPi) * (1.d0/dv) * (epsOverDt) * thisOctal%meanIntensity(subcell)
+          endif
+       endif
+    enddo
+  end subroutine calculateMeanIntensity
+
+  recursive subroutine calculateAdotPAH(thisOctal, epsOverDt)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real(double) :: epsOverDt, dV
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calculateadotPAH(child, epsOVerDt)
+                exit
+             end if
+          end do
+       else
+          dv = cellVolume(thisOctal, subcell)*1.d30
+          thisOctal%adot(subcell) = (1.d0/dv) * (epsOverDt) * thisOctal%adotPAH(subcell)
+       endif
+    enddo
+  end subroutine calculateAdotPAH
+
+  recursive subroutine calculateMeanIntensityOverdNu(thisOctal, epsOverDt, dnu)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: epsOverDt, dV, dnu
@@ -1723,7 +1827,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call calculateMeanIntensity(child, epsOVerDt, dnu)
+                call calculateMeanIntensityoverdNu(child, epsOVerDt, dnu)
                 exit
              end if
           end do
@@ -1735,7 +1839,7 @@ contains
           endif
        endif
     enddo
-  end subroutine calculateMeanIntensity
+  end subroutine calculateMeanIntensityOverdNu
 
   recursive subroutine checkUndersampled(thisOctal, nUndersampled, nCellsInDiffusion)
     use inputs_mod, only : minCrossings
@@ -1773,7 +1877,7 @@ contains
        epsOverDeltaT, nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled,  &
        dT_sum, dT_min, dT_max, dT_over_T_max)
 
-    use inputs_mod, only : minCrossings, TMinGlobal
+    use inputs_mod, only : minCrossings, TMinGlobal, usePAH
     logical, intent(in) :: this_is_root    ! T if thisOctal is a root node.
     real(oct) :: totalEmission
     type(octal), pointer   :: thisOctal
@@ -1951,9 +2055,9 @@ contains
 
 subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, nLambda, lamArray,  &
       photonInDiffusionZone, diffusionZoneTemp,  directPhoton, scatteredPhoton, &
-       startOctal, foundOctal, foundSubcell, ilamIn, kappaAbsOut, kappaScaOut)
+       startOctal, foundOctal, foundSubcell, ilamIn, kappaAbsOut, kappaScaOut, kappaAbsPAHout)
    use diffusion_mod, only: randomwalk
-   use inputs_mod, only : scatteredLightWavelength, storeScattered
+   use inputs_mod, only : scatteredLightWavelength, storeScattered, usePAH
 
 #ifdef CHEMISTRY
    use chemistry_mod
@@ -1977,7 +2081,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
    integer :: nLambda
    logical :: stillinGrid, ok
    logical :: escaped
-   real(double) :: kappaScaDb, kappaAbsDb
+   real(double) :: kappaScaDb, kappaAbsDb, kappaAbsPAH
    real(oct) :: thisTau
    real(double) :: tauRatio
    real(oct) :: thisFreq
@@ -1990,7 +2094,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
    integer :: i
    real(double), parameter :: fudgeFac = 1.d-2
    integer, optional :: ilamIn
-   real(double), optional :: kappaScaOut, kappaAbsOut
+   real(double), optional :: kappaScaOut, kappaAbsOut, kappaAbsPAHout
    integer, save :: iLamScat
    logical, save :: firstTime = .true.
     real :: test  
@@ -2035,8 +2139,13 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
          foundSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
          grid=grid, inFlow=inFlow, direction=uHat)
 
+    kappaAbsPAH = 0.d0
+    if (usePAH) &
+    kappaAbsPAH = getKappaAbsPAH(thisFreq) * thisOctal%rho(subcell) * 1.d10
+
     if(present(kappaAbsOut)) kappaAbsOut = kappaAbsdb
     if(present(kappaScaOut)) kappaScaOut = kappaScadb
+    if(present(kappaAbsPAHOut)) kappaAbsPAHOut = kappaAbsPAH
 
     oldOctal => thisOctal
     sOctal => thisOctal
@@ -2048,7 +2157,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     tval = tval + fudgeFac * grid%halfSmallestSubcell
 
     if (inFlow) then
-       thisTau = dble(tVal) * (kappaAbsdb + kappaScadb)
+       thisTau = dble(tVal) * (kappaAbsdb + kappaScadb + kappaAbsPAH)
     else
        thisTau = 1.0e-28
     end if
@@ -2154,6 +2263,8 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 !$OMP ATOMIC
     thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + tVal_db * kappaAbsdb * packetWeight
 !$OMP ATOMIC
+    if (usePAH) thisOctal%aDotPAH(subcell) = thisOctal%adotPAH(subcell) + tVal_db * getkappaAbsPAH(thisFreq) * packetWeight
+!$OMP ATOMIC
     thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
 
 #ifdef CHEMISTRY
@@ -2169,6 +2280,9 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 ! in use then access to shared memory may need to be protected from simutaneous updates. 
 !          if (scatteredPhoton.and.storeScattered.and.(iLam==iLamScat)) &
 !               call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, tVal)
+
+    call addMeanIntensity(thisOctal, subcell, tVal*1.d10)
+
 
           if (storeScattered.and.(iLam==iLamScat)) &
                call addMeanIntensity(thisOctal, subcell, tVal*1.d10)
@@ -2199,6 +2313,10 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           if(present(kappaAbsOut)) kappaAbsOut = kappaAbsdb
           if(present(kappaScaOut)) kappaScaOut = kappaScadb
 
+          kappaAbsPAH = 0.d0
+          if (usePAH) &
+          kappaAbsPAH = getKappaAbsPAH(thisFreq) * thisOctal%rho(subcell) * 1.d10
+
           sOctal => thisOctal
           oldOctal => thisOctal
 
@@ -2211,7 +2329,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 ! calculate the optical depth to the next cell boundary
 
           if (inFlow) then
-             thisTau = dble(tVal) * (kappaAbsdb + kappaScadb)
+             thisTau = dble(tVal) * (kappaAbsdb + kappaScadb + kappaAbsPAH)
           else
              thisTau = 1.0e-28
           end if
@@ -2254,6 +2372,9 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
        if(present(kappaAbsOut)) kappaAbsOut = kappaAbsdb
        if(present(kappaScaOut)) kappaScaOut = kappaScadb
 
+       kappaAbsPAH = 0.d0
+       if (usePAH) &
+       kappaAbsPAH = getKappaAbsPAH(thisFreq) * thisOctal%rho(subcell) * 1.d10
 
 
        if (thisOctal%diffusionApprox(subcell)) then
@@ -2276,6 +2397,8 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     tauRatio = real( (tau/thisTau) ,db)
 !$OMP ATOMIC
     thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + (tVal_db*tauRatio) * kappaAbsdb * packetWeight
+!$OMP ATOMIC
+    thisOctal%adotPAH(subcell) = thisOctal%aDotPAH(subcell) + (tVal_db*tauRatio) * getKappaAbsPAH(thisFreq) * packetWeight
 
 #ifdef CHEMISTRY
     if (doChemistry) call storePathLength(thisOctal, subcell, thisFreq, (tval_db*tauRatio) * packetWeight)
@@ -2292,6 +2415,8 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 ! in use then access to shared memory may need to be protected from simutaneous updates. 
 !          if (scatteredPhoton.and.storeScattered.and.(iLam==iLamScat)) &
 !               call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, dble(tVal)*dble(tau)/thisTau)
+
+               call addMeanIntensity(thisOctal, subcell, 1.d10*dble(tVal)*dble(tau)/thisTau)
 
           if (storeScattered.and.(iLam==iLamScat)) &
                call addMeanIntensity(thisOctal, subcell, 1.d10*dble(tVal)*dble(tau)/thisTau)
@@ -2370,6 +2495,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     ! data space to store values from all processors
     real(double)  :: buffer_ncrossings(nThreadsGlobal)     
     real(double) :: buffer_distanceGrid(nThreadsGlobal) 
+    real(double) :: buffer_adotPah(nThreadsGlobal) 
 #ifdef CHEMISTRY
     real(double) :: buffer_pathlength(nThreadsGlobal) 
     integer :: j
@@ -2394,6 +2520,11 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
                buffer_distanceGrid, 1, MPI_REAL, MPI_COMM_WORLD, ierr)  
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
+          ! collecting the data from all the processors including itself.
+          call MPI_ALLGATHER(thisOctal%aDotPAH(subcell), 1, MPI_REAL, &
+               buffer_adotPah, 1, MPI_REAL, MPI_COMM_WORLD, ierr)  
+          call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+
 #ifdef CHEMISTRY
           if (doChemistry) then
              do j = 1, krome_nPhotoBins
@@ -2413,6 +2544,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
           
           thisOctal%distanceGrid(subcell) = SUM(buffer_distanceGrid)
+          thisOctal%aDotPAH(subcell) = SUM(buffer_adotpah)
           thisOctal%nCrossings(subcell) = INT(SUM(buffer_ncrossings), kind=bigint)
           
        endif
@@ -2429,7 +2561,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     integer :: nOctals, nVoxels
     real(double), allocatable :: nCrossings(:)
     real, allocatable :: tempRealArray(:)
-    real(double), allocatable :: distanceGrid(:),tempDoubleArray(:), meanIntensity(:)
+    real(double), allocatable :: distanceGrid(:),adotPAH(:), tempDoubleArray(:), meanIntensity(:)
     real, allocatable :: nDiffusion(:)
     integer, parameter :: nTheta = 11, nPhi = 10
     integer :: ierr, nIndex, nIndexScattered
@@ -2441,12 +2573,13 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     allocate(nCrossings(1:nVoxels))
     allocate(nDiffusion(1:nVoxels))
     allocate(distanceGrid(1:nVoxels))
+    allocate(adotPAH(1:nVoxels))
     allocate(meanIntensity(1:nVoxels))
 
     nIndex = 0
     nIndexScattered = 0 
     call packValues(grid%octreeRoot,nIndex,nIndexScattered, &
-         distanceGrid,nCrossings,ndiffusion, meanIntensity)
+         distanceGrid,adotPAH,nCrossings,ndiffusion, meanIntensity)
 
 
 
@@ -2471,6 +2604,11 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     distanceGrid = tempDoubleArray 
 
     tempDoubleArray = 0.d0
+    call MPI_ALLREDUCE(adotPAH,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+         MPI_SUM,MPI_COMM_WORLD,ierr)
+    adotPAH = tempDoubleArray 
+
+    tempDoubleArray = 0.d0
     call MPI_ALLREDUCE(meanIntensity,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
          MPI_SUM,MPI_COMM_WORLD,ierr)
     meanIntensity = tempDoubleArray 
@@ -2492,9 +2630,9 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     nIndex = 0
     nIndexScattered = 0
     call unpackValues(grid%octreeRoot,nIndex,nIndexScattered, &
-         distanceGrid,nCrossings,nDiffusion, meanIntensity)
+         distanceGrid,adotPAH,nCrossings,nDiffusion, meanIntensity)
 
-    deallocate(nCrossings, nDiffusion, distanceGrid, meanIntensity)
+    deallocate(nCrossings, nDiffusion, distanceGrid, adotPAH, meanIntensity)
 
   end subroutine updateGridMPI
 #endif
@@ -2675,11 +2813,12 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
   end subroutine calculateEtaCont
 
   recursive subroutine packvalues(thisOctal,nIndex, nIndexScattered,&
-       distanceGrid,nCrossings, nDiffusion, meanIntensity)
+       distanceGrid,adotPAH,nCrossings, nDiffusion, meanIntensity)
 !    use inputs_mod, only : storeScattered
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: distanceGrid(:)
+  real(double) :: aDotPAH(:)
   real(double) :: meanIntensity(:)
   real(double) :: nCrossings(:)
   real :: nDiffusion(:)
@@ -2693,13 +2832,14 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call packvalues(child,nIndex,nIndexScattered,distanceGrid,nCrossings,nDiffusion, meanIntensity)
+                call packvalues(child,nIndex,nIndexScattered,distanceGrid,adotPAH, nCrossings,nDiffusion, meanIntensity)
                 exit
              end if
           end do
        else
           nIndex = nIndex + 1
           distanceGrid(nIndex) = thisOctal%distanceGrid(subcell)
+          adotPAH(nIndex) = thisOctal%adotPAH(subcell)
           meanIntensity(nIndex) = thisOctal%meanIntensity(subcell)
           nCrossings(nIndex) = dble(thisOctal%nCrossings(subcell))
           nDiffusion(nIndex) = thisOctal%nDiffusion(subcell)
@@ -2716,11 +2856,11 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     enddo
   end subroutine packvalues
 
-  recursive subroutine unpackvalues(thisOctal,nIndex,nIndexScattered,distanceGrid,nCrossings, nDiffusion, meanIntensity)
+  recursive subroutine unpackvalues(thisOctal,nIndex,nIndexScattered,distanceGrid,adotPAH,nCrossings, nDiffusion, meanIntensity)
 !    use inputs_mod, only : storeScattered
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
-  real(double) :: distanceGrid(:), meanIntensity(:)
+  real(double) :: distanceGrid(:), adotPAH(:), meanIntensity(:)
   real(double) :: ncrossings(:)
   real :: ndiffusion(:)
   integer :: nIndex
@@ -2734,7 +2874,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call unpackvalues(child,nIndex,nIndexScattered,distanceGrid,nCrossings, &
+                call unpackvalues(child,nIndex,nIndexScattered,distanceGrid,adotPAH,nCrossings, &
                      nDiffusion, meanIntensity)
                 exit
              end if
@@ -2742,6 +2882,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
        else
           nIndex = nIndex + 1
           thisOctal%distanceGrid(subcell) = distanceGrid(nIndex)
+          thisOctal%adotPAH(subcell) = adotPAH(nIndex)
           thisOctal%meanIntensity(subcell) = meanIntensity(nIndex)
           thisOctal%nCrossings(subcell) = int(nCrossings(nIndex), kind=bigint)
           thisOctal%nDiffusion(subcell) = nDiffusion(nIndex)
@@ -2945,7 +3086,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
 
 subroutine addDustContinuumLucy(thisOctal, subcell, grid, nlambda, lamArray)
-
+  use inputs_mod, only : ndusttype
   type(OCTAL), pointer :: thisOctal
   integer :: subcell
   type(GRIDTYPE) :: grid
@@ -2967,6 +3108,13 @@ subroutine addDustContinuumLucy(thisOctal, subcell, grid, nlambda, lamArray)
      thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + &
           bLambda(dble(lamArray(i)), dble(thisOctal%temperature(subcell))) * &
              kAbsArray(i) *1.d-10* dlam * fourPi * 1.d-8 ! conversion from per cm to per A
+
+
+     thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + PAHemissivityFromAdot(dble(lamArray(i)), &
+          thisOctal%adot(subcell), &
+          thisOctal%rho(subcell)*SUM(thisOctal%dustTypeFraction(subcell,1:nDustType))) & 
+          *cSpeed/(lamArray(i)*angstromtocm)**2 * fourPi * 1.d-8
+
   enddo
 
   deallocate(kAbsArray)
@@ -2976,6 +3124,8 @@ end subroutine addDustContinuumLucy
 !-------------------------------------------------------------------------------
 
 subroutine addDustContinuumLucyMono(thisOctal, subcell, grid,  lambda, iPhotonLambda)
+  use pah_mod
+  use inputs_mod, only : ndusttype
 
   type(OCTAL), pointer :: thisOctal
   integer :: subcell
@@ -2990,6 +3140,14 @@ subroutine addDustContinuumLucyMono(thisOctal, subcell, grid,  lambda, iPhotonLa
 
   thisOctal%etaCont(subcell) =  bLambda(dble(lambda), dble(thisOctal%temperature(subcell))) * &
              kappaAbs * 1.d-10 * fourPi * 1.d-8 ! conversion from per cm to per A
+
+     thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + &
+          PAHemissivityFromAdot(dble(lambda), &
+          thisOctal%adot(subcell), &
+          thisOctal%rho(subcell)) &!*SUM(thisOctal%dustTypeFraction(subcell,1:nDustType))) & 
+          *cSpeed/(lambda*angstromtocm)**2 * fourPi * 1.d-8
+
+
   if (.not.thisOctal%inFlow(subcell)) thisOctal%etaCont(subcell) = 0.d0
 
 end subroutine addDustContinuumLucyMono
@@ -3524,6 +3682,8 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
           call allocateAttribute(thisOctal%oldTemperature, thisOctal%maxChildren)
           call allocateAttribute(thisOctal%kappaRoss, thisOctal%maxChildren)
           call allocateAttribute(thisOctal%distanceGrid, thisOctal%maxChildren)
+          call allocateAttribute(thisOctal%adotPAH, thisOctal%maxChildren)
+          call allocateAttribute(thisOctal%adot, thisOctal%maxChildren)
           call allocateAttribute(thisOctal%nCrossings, thisOctal%maxChildren)
           call allocateAttribute(thisOctal%nTot, thisOctal%maxChildren)
 

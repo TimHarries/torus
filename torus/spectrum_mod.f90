@@ -1071,5 +1071,19 @@ module spectrum_mod
        enddo
      end subroutine readTlustySpectrum
 
+     real(double) function getFlux(lambda, spectrum)
+       type(SPECTRUMTYPE) :: spectrum
+       real(double) :: lambda, t1
+       integer :: i
+
+       getFlux = tiny(getFlux)
+
+       if ((lambda >= spectrum%lambda(1)).and.(lambda <= spectrum%lambda(spectrum%nlambda))) then
+          call locate(spectrum%lambda, spectrum%nlambda, lambda, i)
+          t1 = (lambda - spectrum%lambda(i))/(spectrum%lambda(i+1)-spectrum%lambda(i))
+          getFlux = spectrum%flux(i)+t1*(spectrum%flux(i+1)-spectrum%flux(i))
+       endif
+     end function getFlux
+
 
   end module spectrum_mod

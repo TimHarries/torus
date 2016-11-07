@@ -355,7 +355,7 @@ contains
          lucy_undersampled, molecularPhysics, hydrodynamics, setupMolecularLteOnly !, UV_vector
     use inputs_mod, only : useDust, realDust, variableDustSublimation, massEnvelope
     use inputs_mod, only : mCore, solveVerticalHydro, sigma0!, scatteredLightWavelength,  storeScattered
-    use inputs_mod, only : tEnd, tDump
+    use inputs_mod, only : tEnd, tDump, usepah
     use gas_opacity_mod
 #ifdef CMFATOM
     use modelatom_mod, only : globalAtomArray
@@ -397,7 +397,7 @@ contains
 #ifdef MPI
 #ifdef PHOTOION
     use photoionAMR_mod, only: photoionizationLoopAMR, ionizegrid
-
+    use pah_mod
     use photoion_utils_mod, only: setupphotogrid
 !    use inputs_mod, only : optimizeStack
 
@@ -441,6 +441,10 @@ contains
 #endif
     nLower = 2
     nUpper = 3
+    
+    if (usePAH) then
+       call readPAHEmissivityTable()
+    endif
 
 !#ifdef MPI
 !#ifdef PHOTOION

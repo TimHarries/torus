@@ -891,6 +891,7 @@ contains
 
           call writeAttributePointerFlexi(20, "udens", thisOctal%udens, fileFormatted)
           call writeAttributePointerFlexi(20, "adot", thisOctal%adot, fileFormatted)
+          call writeAttributePointerFlexi(20, "adotpah", thisOctal%adotpah, fileFormatted)
           call writeAttributePointerFlexi(20, "adotdist", thisOctal%distanceGridAdot, fileFormatted)
           call writeAttributePointerFlexi(20, "dfromgas", thisOctal%distanceGridPhotonFromGas, fileFormatted)
           call writeAttributePointerFlexi(20, "dfromsource", thisOctal%distanceGridPhotonFromSource, fileFormatted)
@@ -4971,6 +4972,8 @@ contains
             call readPointerFlexi(20, thisOctal%udens, fileFormatted)
          case("adot")
             call readPointerFlexi(20, thisOctal%aDot, fileFormatted)
+         case("adotpah")
+            call readPointerFlexi(20, thisOctal%aDotpah, fileFormatted)
          case("adotdist")
             call readPointerFlexi(20, thisOctal%distanceGridaDot, fileFormatted)
          case("dfromgas")
@@ -5341,6 +5344,8 @@ contains
 
          case("udens")
             call receivePointerFlexi(thisOctal%udens, ithread)
+         case("adotpah")
+            call receivePointerFlexi(thisOctal%aDotpah, ithread)
          case("adot")
             call receivePointerFlexi(thisOctal%aDot, ithread)
          case("adotdist")
@@ -5572,6 +5577,7 @@ contains
 
       call sendAttributePointerFlexi(iThread, "udens", thisOctal%udens)
       call sendAttributePointerFlexi(iThread, "adot", thisOctal%adot)
+      call sendAttributePointerFlexi(iThread, "adotpah", thisOctal%adotpah)
       call sendAttributePointerFlexi(iThread, "adotdist", thisOctal%distanceGridAdot)
       call sendAttributePointerFlexi(iThread, "dfromgas", thisOctal%distanceGridPhotonFromGas)
       call sendAttributePointerFlexi(iThread, "dfromsource", thisOctal%distanceGridPhotonFromSource)

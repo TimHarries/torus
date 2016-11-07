@@ -2521,6 +2521,15 @@ contains
        call getLogical("dustsettling", dustSettling, cLine, fLine, nLines, &
                "Dust settling model: : ","(a,1l,1x,a)", .false., ok, .false.)
 
+
+       call getLogical("pah", usePAH, cLine, fLine, nLines, &
+               "Include PAH/VSG physics : ","(a,1l,1x,a)", .false., ok, .false.)
+
+       if (usePAH) then
+          call getString("pahtype", pahType, cLine, fLine, nLines, &
+               "PAH/VSG dust type: ","(a,a,1x,a)","MW3.1_60", ok, .true.)
+       endif
+             
        call getInteger("ndusttype", nDustType, cLine, fLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)
        if (nDustType .gt. maxDustTypes) then
           if (writeoutput) write (*,*) "Max dust types exceeded: ", maxDustTypes

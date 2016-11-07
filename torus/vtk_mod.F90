@@ -3118,6 +3118,9 @@ end subroutine writeXMLVtkFileAMR
                case("jnu")
                   rArray(1, n) = real(thisOctal%biasLine3d(subcell))
 
+               case("u")
+                  rArray(1, n) = real(thisOctal%meanIntensity(subcell))/2.17e-2
+
                case("biasline")
                   rArray(1, n) = real(thisOctal%biasLine3d(subcell))
 

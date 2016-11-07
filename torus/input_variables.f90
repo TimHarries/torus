@@ -63,6 +63,12 @@
   real(double) :: dummyval
 
 
+! pah
+
+  logical :: usePAH
+  character(len=10) :: pahType
+
+
 !-------------------------------
 ! Type of output to be generated
 !-------------------------------

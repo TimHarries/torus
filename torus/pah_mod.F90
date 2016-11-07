@@ -1,31 +1,67 @@
 module pah_mod
 
   use constants_mod
+  use utils_mod, only : locate
   use unix_mod
   use messages_mod
+  use random_mod
   implicit none
 
   type PAHTABLETYPE
      integer :: nu
-     real, allocatable :: u(:)
-     real, allocatable :: lambda(:)
-     real, allocatable :: jnu(:,:)
+     real(double), allocatable :: u(:)
+     real(double), allocatable :: adot(:)
+     real(double), allocatable :: freq(:)
+     real(double), allocatable :: jnu(:,:)
+     real(double), allocatable :: lamKappa(:)
+     real(double), allocatable :: kappaSca(:)
+     real(double), allocatable :: kappaAbs(:)
+     real(double), allocatable :: gFac(:)
+     real(double), allocatable :: pnu(:,:)
   end type PAHTABLETYPE
+
+  real(double) :: a01, a02, sigma1, sigma2, b1, b2
+  type(PAHTABLETYPE) :: PAHtable
 
 contains
 
-  subroutine readPAHEmissivityTable(PAHtable, PAHtype)
-    character(len=*) :: PAHtype
-    type(PAHTableTYPE) :: PAHTable
+  real(double) function dnda(a, amin)
+    real(double) :: a, amin, n01, n02, x1, x2
+    real(double) :: am1, am2
+    real(double), parameter :: mc = 12.d0 * mHydrogen
+    real(double), parameter :: grainDensity = 3.5d0
+    am1 = a01 * exp(3.d0 * sigma1**2)
+    am2 = a02 * exp(3.d0 * sigma2**2)
+
+    write(*,*) "am1 am2 ",am1,am2
+    x1 = log(am1 / amin)/(sqrt(2.d0)*sigma1)
+    x2 = log(am2 / amin)/(sqrt(2.d0)*sigma2)
+
+    write(*,*) " x1 x2 ",x1 ,x2
+    n01 = (3.d0)/(twoPi**1.5d0) * exp(4.5d0*sigma1**2) * mc / (1.d0 + erf(x1)) / (grainDensity * am1**3 * sigma1) * b1
+    n02 = (3.d0)/(twoPi**1.5d0) * exp(4.5d0*sigma2**2) * mc / (1.d0 + erf(x2)) / (grainDensity * am2**3 * sigma2) * b2
+    write(*,*) " n01, n02 ", n01, n02
+    dnda = n01/a * exp(- (log(a/a01)**2)/(2.d0*sigma1**2))
+
+    write(*,*) "dnda ", dnda
+    dnda = dnda + n02/a * exp(- (log(a/a02)**2)/(2.d0*sigma2**2))
+    write(*,*) "dnda ", dnda
+
+  end function dnda
+
+
+  subroutine readPAHEmissivityTable()
+    use inputs_mod, only : pahtype
     integer :: i, j 
     character(len=10) :: cval
     character(len=80) :: filename, dataDirectory, cjunk
     real :: vjunk
+    real(double) :: lambda
 
     call unixGetenv("TORUS_DATA", dataDirectory, i)
 
     PAHtable%nU = 30
-    allocate(PAHtable%U(1:PAHtable%nU), PAHtable%lambda(1001), PAHtable%jnu(1:PAHtable%nu,1:1001))
+    allocate(PAHtable%U(1:PAHtable%nU), PAHtable%freq(1001), PAHtable%jnu(1:PAHtable%nu,1:1001))
     PAHtable%U(01) = 0.10
     PAHtable%U(02) = 0.15
     PAHtable%U(03) = 0.20
@@ -60,6 +96,8 @@ contains
     do i = 1, PAHtable%nu
 
        if (PAHtable%u(i) <= 10.d0) then
+          write(cval,'(f4.2)') PAHtable%u(i)          
+       else if (PAHtable%u(i) <= 10.d0) then
           write(cval,'(f5.2)') PAHtable%u(i)
        else if ((PAHtable%u(i) > 10.d0).and.(PAHtable%u(i) < 100.d0)) then
           write(cval, '(f4.1)') PAHtable%u(i)
@@ -79,17 +117,349 @@ contains
             trim(cval),"_",trim(PAHtype),".txt"
 
        open(20,file=filename,status="old",form="formatted")
-       do j = 1, 61
+       read(20,'(a)') cjunk
+       read(20,'(a)') cjunk
+       read(20,'(a)') cjunk
+       read(20,*) a01, sigma1, b1
+       read(20,*) a02, sigma2, b2
+       write(*,*) "a01 ",a01,sigma1,b1
+       write(*,*) "a02 ",a02,sigma2,b2
+       do j = 1, 56
           read(20,'(a)') cjunk
        enddo
        do j = 1, 1001
-          read(20,*) PAHtable%lambda(1002-j), vjunk, PAHtable%jnu(i,1002-j)
-          if (writeoutput) write(*,*) "lambda ",PAHtable%lambda(j), PAHtable%jnu(i,1002-j)
+          read(20,*) lambda, vjunk, PAHtable%jnu(i,j)
+
+          PAHtable%freq(j) = cSpeed/(lambda*micronToCm)
+          PAHtable%jnu(i,j) = PAHtable%jnu(i,j) * 1.d-23 ! from jy to erg/cm^2/s
        enddo
        close(20)
     enddo
-  end subroutine readPAHEmissivityTable
-  
 
+
+
+    call readPAHkappa()
+    call createPAHprobs()
+    call calculateAdots()
+  end subroutine readPAHEmissivityTable
+ 
+  real(double) function getKappaAbsPAH(freq)
+    use utils_mod
+    real(double) :: freq, lambda
+    integer :: i
+    getKappaAbsPAH = tiny(getKappaAbsPAH)
+    lambda = (cSpeed/freq)/microntocm
+
+    if ((lambda >= PAHtable%lamKappa(1)).and.(lambda <= PAHtable%lamKappa(SIZE(PAHtable%lamKappa)))) then
+       call locate(PAHtable%lamKappa, SIZE(PAHtable%lamKappa), lambda, i)
+       getKappaAbsPAH = logint(lambda, PAHtable%lamKappa(i), PAHtable%lamKappa(i+1), PAHtable%kappaAbs(i), PAHtable%kappaAbs(i+1))
+    endif
+  end function getKappaAbsPAH
+
+
+  real(double) function Jisrf(freq)
+    use spectrum_mod
+    character(len=80) :: dataDirectory, ifilename
+    integer :: i
+    real(double) :: freq
+    real(double) :: lambda
+    type(SPECTRUMTYPE),save :: spectrum
+    logical, save :: firstTime = .true.
+    logical :: ok
+    
+
+
+    if (firstTime) then
+       firstTime = .false.
+
+       call unixGetenv("TORUS_DATA", dataDirectory, i)
+       ifilename = trim(dataDirectory)//"/"//"isrf.dat"
+       
+       call readSpectrum(spectrum, ifilename, ok)
+       if (.not.ok) then
+          call writeFatal("Cannot read isrf.dat")
+          stop
+       endif
+       
+       spectrum%lambda = spectrum%lambda * micronsToAngs
+       spectrum%dlambda = spectrum%dlambda * micronsToAngs
+       spectrum%flux = spectrum%flux / micronsToAngs
+       
+       spectrum%flux = spectrum%flux / (4.d0 * pi)  ! from fourpi jnu to jnu
+    end if
+
+
+    lambda = (cSpeed/freq) / AngstromToCm
+    Jisrf = getFlux(lambda, spectrum)*cspeed/freq**2
+       
+  end function Jisrf
+
+
+  subroutine createPAHprobs()
+
+    integer :: i,j 
+    allocate(PAHtable%pnu(PAHtable%nu, 1001))
+
+    PAHtable%pnu = 0.d0
+
+    do i = 1, PAHtable%nu
+
+       do j = 2, 1001
+          PAHtable%pnu(i,j) = PAHtable%pnu(i,j-1) + PAHTable%jnu(i,j) * &
+               (PAHtable%freq(j) - PAHtable%freq(j-1))
+       enddo
+       PAHtable%pnu(i,1:1001) = PAHtable%pnu(i,1:1001) / PAHtable%pnu(i,1001)
+    enddo
+  end subroutine createPAHprobs
+
+  subroutine calculateAdots()
+    integer :: i,j 
+    allocate(PAHtable%adot(PAHtable%nu))
+
+    do i = 1, PAHtable%nu
+       PAHtable%adot(i) = 0.d0
+       do j = 2, 1001
+          PAHtable%adot(i) = PAHtable%adot(i) + 4.d0 * pi * PAHtable%u(i) * Jisrf(PAHtable%freq(j)) &
+               * getkappaAbsPAH(PAHtable%freq(j)) *  (PAHtable%freq(j) - PAHtable%freq(j-1))
+       enddo
+       if (writeoutput) write(*,*) "U_i ",i, " adot ",PAHtable%adot(i)
+    enddo
+  end subroutine calculateAdots
+
+
+
+  real(double) function PAHemissivity(lambda, u, rho)
+    real(double) :: lambda, u, thisjnu(1001)
+    real(double) :: freq, t1, rho, nH
+    integer :: i, j
+    freq = cspeed/(lambda * angstromTocm)
+
+
+    PAHemissivity = 0.d0
+    if ( (freq > PAHtable%freq(1)).and.(freq < PAHtable%freq(1001)) ) then
+       if ( (u > PAHtable%u(1)) .and. (u < PAHtable%u(PAHtable%nu)) ) then
+
+          nH = rho/mHydrogen
+
+          call locate(PAHtable%u, PAHtable%nu, u, i)
+          t1 = (u - PAHtable%u(i)) / (PAHtable%u(i+1) - PAHtable%u(i))
+          
+          thisJnu = PAHtable%jnu(i,:) + t1 * (PAHtable%jnu(i+1,:) + PAHtable%jnu(i,:))
+       
+          call locate(PAHtable%freq, 1001, freq, j)
+
+          t1 = (freq - PAHtable%freq(j)) / (PAHtable%freq(j+1) - PAHtable%freq(j))
+
+          PAHemissivity =  nh *  (thisJnu(j) + t1 * (thisJnu(j+1) - thisJnu(j)))
+       endif
+    endif
+  end function PAHemissivity
+
+  real(double) function PAHemissivityFromAdot(lambda, adot, rho)
+    real(double) :: lambda, adot, thisjnu(1001),thisAdot
+    real(double) :: freq, t1, rho, nH
+    integer :: i, j
+    freq = cspeed/(lambda * angstromTocm)
+
+
+    PAHemissivityfromAdot = 0.d0
+    if ( (freq > PAHtable%freq(1)).and.(freq < PAHtable%freq(1001)) ) then
+       if ( (adot > PAHtable%adot(1)) .and. (adot < PAHtable%adot(PAHtable%nu)) ) then
+
+          nH = rho/mHydrogen
+
+
+	  thisAdot = min(PAHtable%adot(PAHtable%nu),max(adot, PAHtable%adot(1)))
+          call locate(PAHtable%adot, PAHtable%nu, thisadot, i)
+
+          t1 = (thisadot - PAHtable%adot(i)) / (PAHtable%adot(i+1) - PAHtable%adot(i))
+          
+          thisJnu = PAHtable%jnu(i,:) + t1 * (PAHtable%jnu(i+1,:) + PAHtable%jnu(i,:))
+       
+          call locate(PAHtable%freq, 1001, freq, j)
+
+          t1 = (freq - PAHtable%freq(j)) / (PAHtable%freq(j+1) - PAHtable%freq(j))
+
+          PAHemissivityfromAdot =  nh *  (thisJnu(j) + t1 * (thisJnu(j+1) - thisJnu(j)))
+       endif
+    endif
+  end function PAHemissivityFromAdot
+
+
+  real(double) function  getPAHFreq(u)
+    real(double) :: prob(1001), u 
+    integer :: i, j
+    real(double) :: t1, r
+
+    call locate(PAHtable%u, PAHtable%nu, u, i)
+    t1 = (u - PAHtable%u(i)) / (PAHtable%u(i+1) - PAHtable%u(i))
+
+    prob = PAHtable%pnu(i,:) + t1 * (PAHtable%pnu(i+1,:) + PAHtable%pnu(i,:))
+    call randomNumberGenerator(getDouble=r)
+
+    call locate(prob, 1001, r, j)
+
+    t1 = (r - prob(j))/(prob(j+1) - prob(j))
+
+    getPAHfreq = PAHtable%freq(j) + t1 * (PAHtable%freq(j+1) - PAHtable%freq(j))
+  end function getPAHFreq
+
+  real(double) function  getPAHFreqfromAdot(adot)
+    real(double) :: prob(1001), adot, thisAdot
+    integer :: i, j
+    real(double) :: t1, r
+
+    thisAdot = max(min(adot, PAHtable%adot(PAHtable%nu)),PAHtable%adot(1))
+
+    call locate(PAHtable%adot, PAHtable%nu, thisadot, i)
+    t1 = (thisadot - PAHtable%adot(i)) / (PAHtable%adot(i+1) - PAHtable%adot(i))
+
+    prob = PAHtable%pnu(i,:) + t1 * (PAHtable%pnu(i+1,:) + PAHtable%pnu(i,:))
+    call randomNumberGenerator(getDouble=r)
+
+    call locate(prob, 1001, r, j)
+
+    t1 = (r - prob(j))/(prob(j+1) - prob(j))
+
+    getPAHfreqfromAdot = PAHtable%freq(j) + t1 * (PAHtable%freq(j+1) - PAHtable%freq(j))
+  end function getPAHFreqfromAdot
+
+
+  subroutine testPAHtable(u)
+    integer, parameter :: n = 1000
+    real(double) :: intensity(n), lambda(n)
+    real(double) :: u, thisLambda
+    integer :: i,j 
+
+    do i = 1, n
+       lambda(i) = 5.d0 + 19.d0*dble(i-1)/dble(n-1)
+    enddo
+
+    intensity = 0.d0
+
+    do i = 1, 1000000
+       thislambda = (cSpeed/getPAHfreq(u))/microntocm
+       if ((thisLambda > lambda(1)).and.(thisLambda <= lambda(n))) then
+          call locate(lambda, n, thisLambda, j)
+          intensity(j) = intensity(j) + 1.d0
+       endif
+    enddo
+    do i = 1, n
+       if (Writeoutput) write(55,*) lambda(i), intensity(i)
+    enddo
+          
+  end subroutine testPAHtable
+
+  subroutine readPAHkappa()
+    character(len=80) :: dataDirectory, ifilename, junk
+    integer :: i, j, na, nLambda
+    real(double) :: mass, dm, weight, totweight, aMin, aMax, qDist, da
+    integer :: istart, iend
+    real(double) :: grainDensity
+    real(double), allocatable :: a(:), lambda(:)
+    real(double), allocatable :: qext(:,:), kappaSca(:), kappaAbs(:), kappaExt(:), gFac(:)
+    real(double), allocatable :: qabs(:,:)
+    real(double), allocatable :: qsca(:,:)
+    real(double), allocatable :: g(:,:)
+
+    call unixGetenv("TORUS_DATA", dataDirectory, i)
+    ifilename = trim(dataDirectory)//"/PAH/PAHneu_30"
+
+    open(33, file=ifilename, status="old", form="formatted")
+
+    read(33,*) junk
+    read(33,*) junk
+    read(33,*) junk
+    read(33,*) junk
+    read(33,*) junk
+    read(33,*) junk
+    read(33,*) na
+    read(33,*) nLambda
+    if (writeoutput) write(*,*) "na ",na, " nalmbda ",nlambda
+
+    allocate(a(1:na), lambda(1:nLambda))
+    allocate(qext(1:na,1:nLambda))
+    allocate(qabs(1:na,1:nLambda))
+    allocate(qsca(1:na,1:nLambda))
+    allocate(g(1:na,1:nLambda))
+
+
+
+    allocate(PAHtable%kappaAbs(1:nLambda))
+    allocate(PAHtable%kappaSca(1:nLambda))
+    allocate(PAHtable%gFac(1:nLambda))
+    allocate(PAHtable%lamKappa(1:nLambda))
+    PAHtable%kappaAbs = 0.d0
+    PAHtable%kappaSca = 0.d0
+    PAHtable%gFac = 0.d0
+
+
+    do i = 1, na
+       read(33,*) a(i)
+       read(33,*) junk
+       do j = 1, nLambda
+          read(33,'(a)') junk
+          read(junk,'(4e10.3,e9.2)') lambda(nlambda+1-j), qext(i,nlambda+1-j), qabs(i,nLambda+1-j), qsca(i,nLambda+1-j), g(i,nLambda+1-j)
+       enddo
+    enddo
+    close (33)
+
+    aMin = 0.5e-2
+    amax = 1.e-2
+    grainDensity = 3.5d0
+
+
+    
+    call locate(a, na, aMin, iStart)
+    call locate(a, na, aMax, iEnd)
+
+    mass = 0.d0
+    totWeight = 0.d0
+
+    allocate(kappaAbs(1:nLambda))
+    allocate(kappaSca(1:nLambda))
+    allocate(kappaExt(1:nLambda))
+    allocate(gfac(1:nLambda))
+
+    kappaAbs = 0.d0
+    kappaSca = 0.d0
+    kappaExt = 0.d0
+    gfac = 0.d0
+
+    do i = iStart+1,iEnd
+
+
+
+       dm = (fourPi / 3.d0)*(a(i)*micronToCm)**3 * grainDensity - &
+            (fourPi / 3.d0)*(a(i-1)*micronToCm)**3 * grainDensity
+
+       mass = mass + dm
+       da = a(i) - a(i-1)
+
+       if (writeoutput) write(*,*) " a ",i,a(i)
+       weight = dnda(a(i),amin) * da
+       totWeight = totWeight + weight
+      do j = 1, nLambda
+
+         kappaExt(j) = kappaExt(j) + weight * qExt(i,j) * pi *(a(i)*micronToCm)**2 
+         kappaAbs(j) = kappaAbs(j) + weight * qAbs(i,j) * pi *(a(i)*micronToCm)**2 
+         kappaSca(j) = kappaSca(j) + weight * qSca(i,j) * pi *(a(i)*micronToCm)**2 
+         gFac(j) = gFac(j) + weight * g(i,j) * pi *(a(i)*micronToCm)**2 
+      enddo
+   enddo
+   kappaExt = kappaExt / totWeight / mass
+   PAHtable%kappaSca = kappaSca / totWeight / mass
+   PAHtable%kappaAbs = kappaAbs / totWeight / mass
+   PAHtable%gFac = gFac / totWeight
+   
+   PAHtable%lamKappa = lambda
+
+   do i = 1, SIZE(PAHtable%lamKappa)
+      
+      if (writeoutput) write(36,*) PAHtable%lamKappa(i), (PAHtable%kappaAbs(i) + PAHtable%kappaSca(i))
+   enddo
+
+  end subroutine readPAHkappa
+       
 
 end module pah_mod

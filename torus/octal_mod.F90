@@ -223,6 +223,7 @@ MODULE octal_mod
     REAL(double), DIMENSION(:), pointer         :: kappaP  => null()
     real(double), dimension(:,:,:), pointer       :: scatteredIntensity => null()
     real(double), dimension(:), pointer       :: meanIntensity => null()
+    real(double), dimension(:), pointer       :: adotPAH => null()
     INTEGER(bigint), DIMENSION(:), pointer      :: nCrossings  => null()    ! no of photon crossings used by lucy R Eq
     real(double), DIMENSION(:), pointer :: nTot => null()          ! total density
     real, dimension(:), pointer :: oldFrac  => null() ! Previous value of dust sublimation fraction
