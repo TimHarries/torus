@@ -477,10 +477,10 @@ contains
                 !$OMP PRIVATE(tempOctal, tempSubCell, temp, ok) &
                 !$OMP PRIVATE(foundOctal, foundSubcell, hrecip_kt, logt, logNucritUpper, logNucritLower) &
                 !$OMP PRIVATE(icritupper, icritlower,  kAbsArray2, hNuOverkT, fac2, this_bnu ) &
-                !$OMP PRIVATE(thermalPhoton, scatteredPhoton, weight) &
+                !$OMP PRIVATE(thermalPhoton, scatteredPhoton, weight, PAHprob) &
                 !$OMP SHARED(logNu1, fac1dnu, loglam1, scalelam, scalenu)  &
                 !$OMP SHARED(grid, nLambda, lamArray,miePhase, nMuMie, nDustType) &
-                !$OMP SHARED(imonte_beg, imonte_end, source, nsource) &
+                !$OMP SHARED(imonte_beg, imonte_end, source, nsource, usePAH) &
                 !$OMP SHARED(dnu, nFreq, freq, nMonte, epsOverDeltaT) &
                 !$OMP REDUCTION (+: nAbs, nScat, nInf, totalLumInPackets, nDiffusion, nKilled) 
 
@@ -2266,8 +2266,12 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     tval_db = real(tval,db)
 !$OMP ATOMIC
     thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + tVal_db * kappaAbsdb * packetWeight
+    if (usePAH) then
 !$OMP ATOMIC
-    if (usePAH) thisOctal%aDotPAH(subcell) = thisOctal%adotPAH(subcell) + tVal_db * getkappaAbsPAH(thisFreq) * packetWeight
+       thisOctal%aDotPAH(subcell) = thisOctal%adotPAH(subcell) + tVal_db * getkappaAbsPAH(thisFreq) * packetWeight
+    endif
+
+
 !$OMP ATOMIC
     thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
 
