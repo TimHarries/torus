@@ -357,6 +357,7 @@ contains
     use inputs_mod, only : mCore, solveVerticalHydro, sigma0!, scatteredLightWavelength,  storeScattered
     use inputs_mod, only : tEnd, tDump, usepah
     use gas_opacity_mod
+    use pah_mod
 #ifdef CMFATOM
     use modelatom_mod, only : globalAtomArray
     use cmf_mod, only : atomloop
@@ -397,7 +398,6 @@ contains
 #ifdef MPI
 #ifdef PHOTOION
     use photoionAMR_mod, only: photoionizationLoopAMR, ionizegrid
-    use pah_mod
     use photoion_utils_mod, only: setupphotogrid
 !    use inputs_mod, only : optimizeStack
 

@@ -30,6 +30,9 @@ contains
     real(double) :: am1, am2
     real(double), parameter :: mc = 12.d0 * mHydrogen
     real(double), parameter :: grainDensity = 3.5d0
+
+    dnda = 0.d0
+
     am1 = a01 * exp(3.d0 * sigma1**2)
     am2 = a02 * exp(3.d0 * sigma2**2)
 
@@ -37,18 +40,72 @@ contains
     x1 = log(am1 / amin)/(sqrt(2.d0)*sigma1)
     x2 = log(am2 / amin)/(sqrt(2.d0)*sigma2)
 
-    write(*,*) " x1 x2 ",x1 ,x2
-    n01 = (3.d0)/(twoPi**1.5d0) * exp(4.5d0*sigma1**2) * mc / (1.d0 + erf(x1)) / (grainDensity * am1**3 * sigma1) * b1
-    n02 = (3.d0)/(twoPi**1.5d0) * exp(4.5d0*sigma2**2) * mc / (1.d0 + erf(x2)) / (grainDensity * am2**3 * sigma2) * b2
-    write(*,*) " n01, n02 ", n01, n02
-    dnda = n01/a * exp(- (log(a/a01)**2)/(2.d0*sigma1**2))
+    write(*,*) " x1 x2 ",x1 ,x2, erf(x1),erf(x2)
+    if (erf(x1) > -1.d0) then
+       n01 = (3.d0)/(twoPi**1.5d0) * exp(4.5d0*sigma1**2) * mc / (1.d0 + erf(x1)) / (grainDensity * am1**3 * sigma1) * b1
+       n02 = (3.d0)/(twoPi**1.5d0) * exp(4.5d0*sigma2**2) * mc / (1.d0 + erf(x2)) / (grainDensity * am2**3 * sigma2) * b2
+       write(*,*) " n01, n02 ", n01, n02
+       dnda = n01/a * exp(- (log(a/a01)**2)/(2.d0*sigma1**2))
 
-    write(*,*) "dnda ", dnda
-    dnda = dnda + n02/a * exp(- (log(a/a02)**2)/(2.d0*sigma2**2))
-    write(*,*) "dnda ", dnda
-
+       write(*,*) "dnda ", dnda
+       dnda = dnda + n02/a * exp(- (log(a/a02)**2)/(2.d0*sigma2**2))
+       write(*,*) "dnda ", dnda
+    endif
   end function dnda
 
+  subroutine readDraineOpacity()
+
+    character(len=80) :: filename, dataDirectory, cjunk
+    integer :: i, n
+    real(double) :: junk0, junk1, junk2, junk3, junk4, junk5, junk6
+
+    call unixGetenv("TORUS_DATA", dataDirectory, i)
+    filename = trim(dataDirectory)//"/comp_opacity_abs.out"
+
+    n = 751
+    allocate(PAHtable%kappaAbs(1:n), PAHtable%kappaSca(1:n), PAHtable%lamKappa(1:n))
+
+
+    open(30, file=filename, status="old", form="formatted")
+    read(30,'(A)') cjunk
+    read(30,'(A)') cjunk
+    read(30,'(A)') cjunk
+    read(30,'(A)') cjunk
+    read(30,'(A)') cjunk
+    read(30,'(A)') cjunk
+    read(30,'(A)') cjunk
+    do i = 1,n
+       read(30,*) PAHtable%lamKappa(i), junk1, junk2, junk3, junk4, junk5, junk6
+       
+       PAHtable%kappaAbs(i) = junk1 + junk2 + junk4 + junk5
+    enddo
+    close(30)
+
+    filename = trim(dataDirectory)//"/comp_opacity_ext.out"
+
+    open(30, file=filename, status="old", form="formatted")
+    read(30,'(A)') cjunk
+    read(30,'(A)') cjunk
+    read(30,'(A)') cjunk
+    read(30,'(A)') cjunk
+    read(30,'(A)') cjunk
+    read(30,'(A)') cjunk
+    read(30,'(A)') cjunk
+
+
+    do i = 1,n
+       read(30,*) junk0, junk1, junk2, junk3, junk4, junk5, junk6
+       PAHtable%kappaSca(i) =  (junk1 + junk2 + junk4 + junk5) - PAHtable%kappaAbs(i)
+    enddo
+    close(30)
+    PAHtable%kappaAbs = PAHtable%kappaAbs / mHydrogen * 1.d-8
+    PAHtable%kappaSca = PAHtable%kappaSca / mHydrogen * 1.d-8
+
+   do i = 1, SIZE(PAHtable%lamKappa)
+      if (writeoutput) write(36,*) PAHtable%lamKappa(i), (PAHtable%kappaAbs(i) + PAHtable%kappaSca(i))
+   enddo
+
+  end subroutine readDraineOpacity
 
   subroutine readPAHEmissivityTable()
     use inputs_mod, only : pahtype
@@ -122,8 +179,8 @@ contains
        read(20,'(a)') cjunk
        read(20,*) a01, sigma1, b1
        read(20,*) a02, sigma2, b2
-       write(*,*) "a01 ",a01,sigma1,b1
-       write(*,*) "a02 ",a02,sigma2,b2
+       a01 = a01 / microntocm
+       a02 = a02 / microntocm
        do j = 1, 56
           read(20,'(a)') cjunk
        enddo
@@ -138,7 +195,7 @@ contains
 
 
 
-    call readPAHkappa()
+    call readDraineOpacity()
     call createPAHprobs()
     call calculateAdots()
   end subroutine readPAHEmissivityTable
@@ -155,6 +212,19 @@ contains
        getKappaAbsPAH = logint(lambda, PAHtable%lamKappa(i), PAHtable%lamKappa(i+1), PAHtable%kappaAbs(i), PAHtable%kappaAbs(i+1))
     endif
   end function getKappaAbsPAH
+
+  real(double) function getKappaScaPAH(freq)
+    use utils_mod
+    real(double) :: freq, lambda
+    integer :: i
+    getKappaScaPAH = tiny(getKappaScaPAH)
+    lambda = (cSpeed/freq)/microntocm
+
+    if ((lambda >= PAHtable%lamKappa(1)).and.(lambda <= PAHtable%lamKappa(SIZE(PAHtable%lamKappa)))) then
+       call locate(PAHtable%lamKappa, SIZE(PAHtable%lamKappa), lambda, i)
+       getKappaScaPAH = logint(lambda, PAHtable%lamKappa(i), PAHtable%lamKappa(i+1), PAHtable%kappaSca(i), PAHtable%kappaSca(i+1))
+    endif
+  end function getKappaScaPAH
 
 
   real(double) function Jisrf(freq)
@@ -269,7 +339,7 @@ contains
           nH = rho/mHydrogen
 
 
-	  thisAdot = min(PAHtable%adot(PAHtable%nu),max(adot, PAHtable%adot(1)))
+          thisAdot = min(PAHtable%adot(PAHtable%nu),max(adot, PAHtable%adot(1)))
           call locate(PAHtable%adot, PAHtable%nu, thisadot, i)
 
           t1 = (thisadot - PAHtable%adot(i)) / (PAHtable%adot(i+1) - PAHtable%adot(i))
@@ -353,7 +423,7 @@ contains
   subroutine readPAHkappa()
     character(len=80) :: dataDirectory, ifilename, junk
     integer :: i, j, na, nLambda
-    real(double) :: mass, dm, weight, totweight, aMin, aMax, qDist, da
+    real(double) :: mass, dm, weight, totweight, aMin, aMax,  da
     integer :: istart, iend
     real(double) :: grainDensity
     real(double), allocatable :: a(:), lambda(:)
@@ -399,12 +469,13 @@ contains
        read(33,*) junk
        do j = 1, nLambda
           read(33,'(a)') junk
-          read(junk,'(4e10.3,e9.2)') lambda(nlambda+1-j), qext(i,nlambda+1-j), qabs(i,nLambda+1-j), qsca(i,nLambda+1-j), g(i,nLambda+1-j)
+          read(junk,'(4e10.3,e9.2)') lambda(nlambda+1-j), qext(i,nlambda+1-j), &
+               qabs(i,nLambda+1-j), qsca(i,nLambda+1-j), g(i,nLambda+1-j)
        enddo
     enddo
     close (33)
 
-    aMin = 0.5e-2
+    aMin = 1e-4
     amax = 1.e-2
     grainDensity = 3.5d0
 
@@ -454,10 +525,6 @@ contains
    
    PAHtable%lamKappa = lambda
 
-   do i = 1, SIZE(PAHtable%lamKappa)
-      
-      if (writeoutput) write(36,*) PAHtable%lamKappa(i), (PAHtable%kappaAbs(i) + PAHtable%kappaSca(i))
-   enddo
 
   end subroutine readPAHkappa
        

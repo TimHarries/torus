@@ -27,7 +27,7 @@ contains
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, finalPass)
-    use inputs_mod, only : variableDustSublimation, iterlucy, rCore, scatteredLightWavelength, solveVerticalHydro
+    use inputs_mod, only : variableDustSublimation, iterlucy, rCore, solveVerticalHydro
     use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau
     use inputs_mod, only : object, convergeOnUndersampled, maxMemoryAvailable !, mDisc, dusttogas, dustSettling
     use inputs_mod, only : writelucyTmpfile, discWind, mincrossings, maxiterLucy, solveDiffusionZone, quickSublimate, usePAH
@@ -77,7 +77,7 @@ contains
     integer :: i, j
     real(oct) :: freq(nLambda), dnu(nLambda), probDistJnu(nLambda+1)
     !    real(oct) :: probDistPlanck(nFreq)
-    real(double) :: kappaScadb, kappaAbsdb, totalLumInPackets, kappaAbsPAH
+    real(double) :: kappaScadb, kappaAbsdb, totalLumInPackets, kappaAbsPAH, kappaScaPAH
     integer(double) :: nDiffusion
     integer(double) :: nScat, nAbs
     integer(bigInt) :: nMonte, iMonte
@@ -472,7 +472,7 @@ contains
                 !$OMP PRIVATE(i, j, T1) &
                 !$OMP PRIVATE(thisPhotonAbs, thisPhotonSca) &
                 !$OMP PRIVATE( photonInDiffusionZone, leftHandBoundary, directPhoton) &
-                !$OMP PRIVATE(diffusionZoneTemp, kappaAbsdb, sOctal, kappaScadb, kappaAbsPAH, kAbsArray) &
+                !$OMP PRIVATE(diffusionZoneTemp, kappaAbsdb, sOctal, kappaScadb, kappaAbsPAH, kappaScaPAH, kAbsArray) &
                 !$OMP PRIVATE(oldUHat, packetWeight, wavelengthWeight) &
                 !$OMP PRIVATE(tempOctal, tempSubCell, temp, ok) &
                 !$OMP PRIVATE(foundOctal, foundSubcell, hrecip_kt, logt, logNucritUpper, logNucritLower) &
@@ -541,7 +541,7 @@ contains
                            photonInDiffusionZone, diffusionZoneTemp,  &
                            directPhoton, scatteredPhoton,  &
                            sOctal, foundOctal, foundSubcell, iLamIn=ilam, kappaAbsOut = kappaAbsdb, kappaScaOut = kappaScadb ,&
-                           kappaAbsPAHout = kappaAbsPAH)
+                           kappaAbsPAHout = kappaAbsPAH, kappaScaPAHout = kappaScaPAH)
 
                       If (escaped) then
                          !$OMP ATOMIC
@@ -573,7 +573,7 @@ contains
 !                         endif
 
                          if (kappaScadb+kappaAbsdb /= 0.0d0) then
-                            albedo = kappaScadb / (kappaScadb + kappaAbsdb + kappaAbsPAH)
+                            albedo = (kappaScadb + kappaScaPAH) / (kappaScadb + kappaAbsdb + kappaAbsPAH)
                          else
                             albedo = 0.5
                          end if
@@ -1877,7 +1877,7 @@ contains
        epsOverDeltaT, nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled,  &
        dT_sum, dT_min, dT_max, dT_over_T_max)
 
-    use inputs_mod, only : minCrossings, TMinGlobal, usePAH
+    use inputs_mod, only : minCrossings, TMinGlobal
     logical, intent(in) :: this_is_root    ! T if thisOctal is a root node.
     real(oct) :: totalEmission
     type(octal), pointer   :: thisOctal
@@ -2055,7 +2055,7 @@ contains
 
 subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, nLambda, lamArray,  &
       photonInDiffusionZone, diffusionZoneTemp,  directPhoton, scatteredPhoton, &
-       startOctal, foundOctal, foundSubcell, ilamIn, kappaAbsOut, kappaScaOut, kappaAbsPAHout)
+       startOctal, foundOctal, foundSubcell, ilamIn, kappaAbsOut, kappaScaOut, kappaAbsPAHout, kappaScaPAHout)
    use diffusion_mod, only: randomwalk
    use inputs_mod, only : scatteredLightWavelength, storeScattered, usePAH
 
@@ -2081,7 +2081,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
    integer :: nLambda
    logical :: stillinGrid, ok
    logical :: escaped
-   real(double) :: kappaScaDb, kappaAbsDb, kappaAbsPAH
+   real(double) :: kappaScaDb, kappaAbsDb, kappaAbsPAH, kappaScaPAH
    real(oct) :: thisTau
    real(double) :: tauRatio
    real(oct) :: thisFreq
@@ -2094,7 +2094,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
    integer :: i
    real(double), parameter :: fudgeFac = 1.d-2
    integer, optional :: ilamIn
-   real(double), optional :: kappaScaOut, kappaAbsOut, kappaAbsPAHout
+   real(double), optional :: kappaScaOut, kappaAbsOut, kappaAbsPAHout, kappaScaPAHout
    integer, save :: iLamScat
    logical, save :: firstTime = .true.
     real :: test  
@@ -2140,12 +2140,16 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
          grid=grid, inFlow=inFlow, direction=uHat)
 
     kappaAbsPAH = 0.d0
-    if (usePAH) &
-    kappaAbsPAH = getKappaAbsPAH(thisFreq) * thisOctal%rho(subcell) * 1.d10
+    kappaScaPAH = 0.d0
+    if (usePAH)  then
+       kappaAbsPAH = getKappaAbsPAH(thisFreq) * thisOctal%rho(subcell) * 1.d10
+       kappaAbsPAH = getKappaScaPAH(thisFreq) * thisOctal%rho(subcell) * 1.d10
+    endif
 
     if(present(kappaAbsOut)) kappaAbsOut = kappaAbsdb
     if(present(kappaScaOut)) kappaScaOut = kappaScadb
     if(present(kappaAbsPAHOut)) kappaAbsPAHOut = kappaAbsPAH
+    if(present(kappaScaPAHOut)) kappaScaPAHOut = kappaScaPAH
 
     oldOctal => thisOctal
     sOctal => thisOctal
@@ -2157,7 +2161,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     tval = tval + fudgeFac * grid%halfSmallestSubcell
 
     if (inFlow) then
-       thisTau = dble(tVal) * (kappaAbsdb + kappaScadb + kappaAbsPAH)
+       thisTau = dble(tVal) * (kappaAbsdb + kappaScadb + kappaAbsPAH + kappaScaPAH)
     else
        thisTau = 1.0e-28
     end if
@@ -2314,9 +2318,11 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           if(present(kappaScaOut)) kappaScaOut = kappaScadb
 
           kappaAbsPAH = 0.d0
-          if (usePAH) &
-          kappaAbsPAH = getKappaAbsPAH(thisFreq) * thisOctal%rho(subcell) * 1.d10
-
+          kappaScaPAH = 0.d0
+          if (usePAH) then
+             kappaAbsPAH = getKappaAbsPAH(thisFreq) * thisOctal%rho(subcell) * 1.d10
+             kappaScaPAH = getKappaScaPAH(thisFreq) * thisOctal%rho(subcell) * 1.d10
+          endif
           sOctal => thisOctal
           oldOctal => thisOctal
 
@@ -2373,9 +2379,11 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
        if(present(kappaScaOut)) kappaScaOut = kappaScadb
 
        kappaAbsPAH = 0.d0
-       if (usePAH) &
-       kappaAbsPAH = getKappaAbsPAH(thisFreq) * thisOctal%rho(subcell) * 1.d10
-
+       kappaScaPAH = 0.d0
+       if (usePAH) then
+          kappaAbsPAH = getKappaAbsPAH(thisFreq) * thisOctal%rho(subcell) * 1.d10
+          kappaScaPAH = getKappaScaPAH(thisFreq) * thisOctal%rho(subcell) * 1.d10
+       endif
 
        if (thisOctal%diffusionApprox(subcell)) then
           write(*,*) "Photon in diff zone but not escaped"
@@ -3125,7 +3133,6 @@ end subroutine addDustContinuumLucy
 
 subroutine addDustContinuumLucyMono(thisOctal, subcell, grid,  lambda, iPhotonLambda)
   use pah_mod
-  use inputs_mod, only : ndusttype
 
   type(OCTAL), pointer :: thisOctal
   integer :: subcell
