@@ -3430,13 +3430,21 @@ end subroutine rdintpro
        open(20,file=trim(outFile),status="unknown",form="formatted")
     endif
     if (SedInLambdaFLambda) then
-       write(20,*) '# Columns are: Lambda (Angstroms) and Flux (Flux * lambda) (ergs/s/cm^2)'
+       if (sedlambdainmicrons) then
+          write(20,*) '# Columns are: Lambda (Microns) and Flux (Flux * lambda) (ergs/s/cm^2)'
+       else
+          write(20,*) '# Columns are: Lambda (Angstroms) and Flux (Flux * lambda) (ergs/s/cm^2)'
+       endif
     else if (SedInSiUnits) then
        write(20,*) '# Columns are: Lambda (Microns) and Flux (Flux * lambda) (W/m^2)'
     else if (SedInJansky) then
        write(20,*) '# Columns are: Lambda (Microns) and Flux (janskies)'
     else
-       write(20,*) '# Columns are: Lambda (Angstroms) and Flux (ergs/s/cm^2/Hz)'
+       if (sedlambdainmicrons) then
+          write(20,*) '# Columns are: Lambda (Microns) and Flux (ergs/s/cm^2/Hz)'
+       else
+          write(20,*) '# Columns are: Lambda (Angstroms) and Flux (ergs/s/cm^2/Hz)'
+       endif
     end if
 
 33  format(6(1x, 1PE14.5))

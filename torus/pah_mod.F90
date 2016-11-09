@@ -54,10 +54,11 @@ contains
   end function dnda
 
   subroutine readDraineOpacity()
-
+    use inputs_mod, only : PAHscale
     character(len=80) :: filename, dataDirectory, cjunk
     integer :: i, n
     real(double) :: junk0, junk1, junk2, junk3, junk4, junk5, junk6
+    real(double), parameter :: mu = 1.4d0
 
     call unixGetenv("TORUS_DATA", dataDirectory, i)
     filename = trim(dataDirectory)//"/comp_opacity_abs.out"
@@ -98,8 +99,8 @@ contains
        PAHtable%kappaSca(i) =  (junk1 + junk2 + junk4 + junk5) - PAHtable%kappaAbs(i)
     enddo
     close(30)
-    PAHtable%kappaAbs = PAHtable%kappaAbs / mHydrogen * 1.d-8
-    PAHtable%kappaSca = PAHtable%kappaSca / mHydrogen * 1.d-8
+    PAHtable%kappaAbs = PAHscale * PAHtable%kappaAbs / (mu*mHydrogen) * 1.d-8
+    PAHtable%kappaSca = PAHscale * PAHtable%kappaSca / (mu*mHydrogen) * 1.d-8
 
    do i = 1, SIZE(PAHtable%lamKappa)
       if (writeoutput) write(36,*) PAHtable%lamKappa(i), (PAHtable%kappaAbs(i) + PAHtable%kappaSca(i))
@@ -108,7 +109,7 @@ contains
   end subroutine readDraineOpacity
 
   subroutine readPAHEmissivityTable()
-    use inputs_mod, only : pahtype
+    use inputs_mod, only : pahtype, pahscale
     integer :: i, j 
     character(len=10) :: cval
     character(len=80) :: filename, dataDirectory, cjunk
@@ -188,7 +189,7 @@ contains
           read(20,*) lambda, vjunk, PAHtable%jnu(i,j)
 
           PAHtable%freq(j) = cSpeed/(lambda*micronToCm)
-          PAHtable%jnu(i,j) = PAHtable%jnu(i,j) * 1.d-23 ! from jy to erg/cm^2/s
+          PAHtable%jnu(i,j) = PAHscale * PAHtable%jnu(i,j) * 1.d-23 ! from jy to erg/cm^2/s
        enddo
        close(20)
     enddo
@@ -329,6 +330,8 @@ contains
     real(double) :: lambda, adot, thisjnu(1001),thisAdot
     real(double) :: freq, t1, rho, nH
     integer :: i, j
+    real(double), parameter :: mu = 1.4d0
+
     freq = cspeed/(lambda * angstromTocm)
 
 
@@ -336,7 +339,7 @@ contains
     if ( (freq > PAHtable%freq(1)).and.(freq < PAHtable%freq(1001)) ) then
        if ( (adot > PAHtable%adot(1)) .and. (adot < PAHtable%adot(PAHtable%nu)) ) then
 
-          nH = rho/mHydrogen
+          nH = rho/(mu * mHydrogen)
 
 
           thisAdot = min(PAHtable%adot(PAHtable%nu),max(adot, PAHtable%adot(1)))

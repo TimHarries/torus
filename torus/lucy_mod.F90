@@ -2409,8 +2409,10 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     tauRatio = real( (tau/thisTau) ,db)
 !$OMP ATOMIC
     thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + (tVal_db*tauRatio) * kappaAbsdb * packetWeight
+    if (usePAH) then
 !$OMP ATOMIC
-    thisOctal%adotPAH(subcell) = thisOctal%aDotPAH(subcell) + (tVal_db*tauRatio) * getKappaAbsPAH(thisFreq) * packetWeight
+       thisOctal%adotPAH(subcell) = thisOctal%aDotPAH(subcell) + (tVal_db*tauRatio) * getKappaAbsPAH(thisFreq) * packetWeight
+    endif
 
 #ifdef CHEMISTRY
     if (doChemistry) call storePathLength(thisOctal, subcell, thisFreq, (tval_db*tauRatio) * packetWeight)
@@ -3099,6 +3101,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
 subroutine addDustContinuumLucy(thisOctal, subcell, grid, nlambda, lamArray)
   use inputs_mod, only : ndusttype
+  use inputs_mod, only : usePAH
   type(OCTAL), pointer :: thisOctal
   integer :: subcell
   type(GRIDTYPE) :: grid
@@ -3122,11 +3125,12 @@ subroutine addDustContinuumLucy(thisOctal, subcell, grid, nlambda, lamArray)
              kAbsArray(i) *1.d-10* dlam * fourPi * 1.d-8 ! conversion from per cm to per A
 
 
-     thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + PAHemissivityFromAdot(dble(lamArray(i)), &
-          thisOctal%adot(subcell), &
-          thisOctal%rho(subcell)*SUM(thisOctal%dustTypeFraction(subcell,1:nDustType))) & 
-          *cSpeed/(lamArray(i)*angstromtocm)**2 * fourPi * 1.d-8
-
+     if (usePAH) then
+        thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + PAHemissivityFromAdot(dble(lamArray(i)), &
+             thisOctal%adot(subcell), &
+             thisOctal%rho(subcell)) & 
+             *cSpeed/(lamArray(i)*angstromtocm)**2 * fourPi * 1.d-8
+     endif
   enddo
 
   deallocate(kAbsArray)
@@ -3137,7 +3141,7 @@ end subroutine addDustContinuumLucy
 
 subroutine addDustContinuumLucyMono(thisOctal, subcell, grid,  lambda, iPhotonLambda)
   use pah_mod
-
+  use inputs_mod, only : usePAH
   type(OCTAL), pointer :: thisOctal
   integer :: subcell
   type(GRIDTYPE) :: grid
@@ -3152,12 +3156,13 @@ subroutine addDustContinuumLucyMono(thisOctal, subcell, grid,  lambda, iPhotonLa
   thisOctal%etaCont(subcell) =  bLambda(dble(lambda), dble(thisOctal%temperature(subcell))) * &
              kappaAbs * 1.d-10 * fourPi * 1.d-8 ! conversion from per cm to per A
 
+  if (usePAH) then
      thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + &
           PAHemissivityFromAdot(dble(lambda), &
           thisOctal%adot(subcell), &
-          thisOctal%rho(subcell)) &!*SUM(thisOctal%dustTypeFraction(subcell,1:nDustType))) & 
+          thisOctal%rho(subcell)) &
           *cSpeed/(lambda*angstromtocm)**2 * fourPi * 1.d-8
-
+  endif
 
   if (.not.thisOctal%inFlow(subcell)) thisOctal%etaCont(subcell) = 0.d0
 

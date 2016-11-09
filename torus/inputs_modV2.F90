@@ -245,6 +245,21 @@ contains
 
     call readGridInitParameters(cLine, fLine, nLines)
 
+    call getLogical("readsources", readsources, cLine, fLine, nLines, &
+         "Read sources from a file: ","(a,1l,1x,a)", .false., ok, .false.)
+
+
+    if (.not. readsources) then
+!       if (checkPresent("nsource", cLine, nLines)) then
+          call readSourceParameters(cLine, fLine, nLines)
+!       endif
+    else
+       call getString("sourcefile", sourceFilename, cLine, fLine, nLines, &
+                  "Source filename: ","(a,a,1x,a)","none", ok, .true.)
+    endif
+
+
+
     call readGeometrySpecificParameters(cLine, fLine, nLines)
 
 
@@ -499,18 +514,6 @@ contains
     
     call getDouble("zetacutoff", zetacutoff, 1.d0, cLine, fLine, nLines, &
             "Dimensionless cutoff radius for BES: ", "(a,es9.3,1x,a)", 3.0d0, ok, .false.)
-
-    call getLogical("readsources", readsources, cLine, fLine, nLines, &
-         "Read sources from a file: ","(a,1l,1x,a)", .false., ok, .false.)
-
-    if (.not. readsources) then
-!       if (checkPresent("nsource", cLine, nLines)) then
-          call readSourceParameters(cLine, fLine, nLines)
-!       endif
-    else
-       call getString("sourcefile", sourceFilename, cLine, fLine, nLines, &
-                  "Source filename: ","(a,a,1x,a)","none", ok, .true.)
-    endif
 
 
     if (statisticalEquilibrium.and.(.not.(molecularPhysics.or.atomicPhysics))) then
@@ -1564,10 +1567,10 @@ contains
        call getLogical("curvedinneredge", curvedInnerEdge, cLine, fLine, nLines, &
             "Curved inner edge: ","(a,1l,1x,a)", .false., ok, .false.)
 
-       call getReal("radius1", rCore, real(rsol/1.e10), cLine, fLine, nLines, &
-            "Core radius (solar radii): ","(a,f7.3,a)", 10., ok, .true.)
+!       call getReal("radius1", rCore, real(rsol/1.e10), cLine, fLine, nLines, &
+!            "Core radius (solar radii): ","(a,f7.3,a)", 10., ok, .true.)
 
-       call getReal("rinner", rInner, rCore, cLine, fLine, nLines, &
+       call getReal("rinner", rInner, real(sourceRadius(1)), cLine, fLine, nLines, &
             "Inner Radius (stellar radii): ","(a,f7.3,a)", 12., ok, .true.)
 
        call getReal("teff1", teff, 1., cLine, fLine, nLines, &
@@ -2528,6 +2531,8 @@ contains
        if (usePAH) then
           call getString("pahtype", pahType, cLine, fLine, nLines, &
                "PAH/VSG dust type: ","(a,a,1x,a)","MW3.1_60", ok, .true.)
+          call getDouble("pahscale", PAHscale, 1.d0, cLine, fLine, nLines, &
+               "Scaling factor for PAH emissivities and opacities: ","(a,f7.3,a)",1.d0, ok, .false.)
        endif
              
        call getInteger("ndusttype", nDustType, cLine, fLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)
@@ -2822,6 +2827,7 @@ contains
                      "Source temperature (K) : ","(a,f8.0,a)",1.d0, ok, .true.)
 
                 sourceRadius(i) = sqrt(sourceLum(i) / (fourPi * sourceTeff(i)**4 * stefanBoltz))/1.d10
+                if (writeoutput) write(*,'(a,f7.1)') "Source radius (rsol): ",sourceRadius(i)*1.d10/rsol
              else
                 call writeFatal("Source underspecified - need two of radius, teff and lum")
                 call torus_stop

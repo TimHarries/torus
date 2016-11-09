@@ -66,6 +66,7 @@
 ! pah
 
   logical :: usePAH
+  real(double) :: pahScale
   character(len=10) :: pahType
 
 
