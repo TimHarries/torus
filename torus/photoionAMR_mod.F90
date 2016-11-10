@@ -5870,7 +5870,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                       ! if decoupling, temperature is just the gas temperature - now need to find the dust temperature
 
                       ! gasGrainCool is positive if dust is heated, negative if cooled
-                      gasGrainCool = gasGrainCoolingRate(thisOctal%rho(subcell), thisOctal%ionFrac(subcell,1), &
+                      gasGrainCool = gasGrainCoolingRate(thisOctal%rho(subcell), thisOctal%ionFrac(subcell,2), &
                            dble(thisOctal%temperature(subcell)), thisOctal%tDust(subcell))
                       dustHeating = max(1.d-30,dustHeating + gasGrainCool)
                       call returnKappa(grid, thisOctal, subcell, kappap=kappap, &
@@ -6181,7 +6181,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
  
        if (decoupleGasDustTemperature) then
           ! collisional heating/cooling (positive if gas cooled/dust heated)
-          gasGrainCool =  gasGrainCoolingRate(thisOctal%rho(subcell), thisOctal%ionFrac(subcell,1), &
+          gasGrainCool =  gasGrainCoolingRate(thisOctal%rho(subcell), thisOctal%ionFrac(subcell,2), &
                dble(temperature), thisOctal%tDust(subcell))
           coolingRate = coolingRate + gasGrainCool
        endif

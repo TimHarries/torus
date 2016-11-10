@@ -1626,24 +1626,45 @@ end function recombToGround
 
 ! eq 3.25, Hollenbach & McKee 1979, ApJS, 41, 555
 function gasGrainCoolingRate(rhoGas, ionizationFraction, tGas, tDust) result (Gamma)
-  use inputs_mod, only : grainFrac
+  use inputs_mod, only : grainType, grainFrac, amin, amax, a0, qdist, pdist
+  use dust_mod, only : getMedianSize
   real(double) :: rhoGas, ionizationFraction, tGas, tDust, gamma
   real(double) :: vProton, nGrain, sigmaGrain, f, rGrain, dustToGas, grainVolume, grainDensity
   real(double) :: nHydrogen
-! Hollenbach & McKee 1979, ApJS 41 555
-  rGrain  =  1.d-4
+  
+  rGrain = micronTocm * getMedianSize(aMin(1), aMax(1), a0(1), qDist(1), pDist(1)) 
   sigmaGrain = pi * rGrain**2
   grainVolume = (4.d0/3.d0)*pi*rGrain**3
-  grainDensity = 3.5d0
+
+  select case(grainType(1))
+  case("am_olivine", "am_pyroxene")
+     graindensity = 3.71d0
+  case("forsterite")
+     graindensity = 3.33d0
+  case("enstatite")
+     graindensity = 2.8d0
+  case("sio2")
+     graindensity = 2.21d0
+  case("sil_dl")
+     graindensity = 3.6d0
+  case("draine_sil")
+     graindensity = 3.5d0
+  case("pinteISM")
+     graindensity = 0.5d0
+  case DEFAULT
+     graindensity = 3.5d0
+  end select
+
   dustTogas = grainFrac(1)
 
   if (ionizationFraction > 0.5d0) then
      f = 11.8d0
-  else  if (tGas > 1000.d0)  then
-     f = 0.16 ! atomic
-  else 
-!     f = 1.   ! atomic
-     f = 0.37 ! molecular
+  else  
+     if (tGas > 1000.d0)  then
+        f = 0.16 ! atomic
+     else 
+        f = 1.   ! atomic
+     endif
   endif
 
   vproton = sqrt(2.d0*(1.5d0*kerg*tGas)/mHydrogen)
@@ -1651,7 +1672,6 @@ function gasGrainCoolingRate(rhoGas, ionizationFraction, tGas, tDust) result (Ga
   nHydrogen = rhoGas/mHydrogen
   gamma = nHydrogen * nGrain * sigmaGrain * vProton * f * 2.d0 * kerg * (tGas - tDust)
 end function gasGrainCoolingRate
-
 
 
 !   End of pu0X

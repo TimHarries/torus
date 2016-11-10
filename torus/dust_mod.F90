@@ -2177,5 +2177,39 @@ subroutine getBinMassFraction(porousFillingFactor, aMin, aMax, a0, qDist, pDist,
 
 end subroutine getBinMassFraction
 
+real function getMedianSize(aMin, aMax, a0, qDist, pDist) result(aMedian)
+  real, intent(in) :: aMin, aMax, a0, qDist, pDist
+  real :: a1, a2
+  integer :: i
+  integer, parameter :: n = 1000
+  real :: a(n)     ! grain sizes 
+  real :: f(n)     
+  real :: g(n)
+
+  if (aMin == aMax) then
+     aMedian = aMin
+  else
+     a1 = log(aMin)
+     a2 = log(aMax)
+     !
+     ! setting up the grain sizes
+     do i = 1, n
+        a(i) = (a1 + (a2 - a1) * real(i-1)/real(n-1))
+        a(i) = exp(a(i))
+        f(i) = a(i)**(-qDist) * exp(-(a(i)/a0)**pDist) 
+     end do
+     
+     !
+     ! find the median (in microns)
+     g(:) = f(:)
+     do i = 2, n
+        g(i) = g(i) + g(i-1)
+     enddo
+     g(:) = g(:)/g(n)
+     call locate(g, n, 0.5, i)
+     aMedian = a(i+1)
+  endif
+end function getMedianSize
+
 end module dust_mod
 
