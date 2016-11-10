@@ -7425,11 +7425,13 @@ end subroutine sumFluxes
          call updateSourceProperties(globalsourcearray(i))
       enddo
    endif
+
    if ((globalnSource > 0).and.nBodyPhysics.and.moveSources) then
       call updateSourcePositions(globalsourceArray, globalnSource, timestep, grid)
    else
       globalSourceArray(1:globalnSource)%velocity = VECTOR(0.d0,0.d0,0.d0)
    endif
+
    if (myrankWorldglobal == 1) call tune(6,"Updating source positions")
    
 
@@ -7670,6 +7672,8 @@ end subroutine sumFluxes
 
    if (myrankWorldglobal == 1) call tune(6,"Updating source positions")
 
+
+
    globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + timestep*secstoyears
    if (.not.hosokawaTracks) then
       do i = 1, globalnSource
@@ -7677,10 +7681,24 @@ end subroutine sumFluxes
       enddo
    endif
    if ((globalnSource > 0).and.nBodyPhysics.and.moveSources) then
+
+      if (writeoutput) then
+         write(*,'(a,3f8.3)') "Source velocity before nbody   (km/s): ",globalSourceArray(1)%velocity/1.d5
+         write(*,'(a,1p,3e12.3)') "Current source position (AU): ",globalSourceArray(1)%position*(1.d10/autocm)
+      endif
+
       call updateSourcePositions(globalsourceArray, globalnSource, timestep, grid)
+
+      if (writeoutput) then
+         write(*,'(a,3f8.3)') "Source velocity after nbody   (km/s): ",globalSourceArray(1)%velocity/1.d5
+         write(*,'(a,1p,3e12.3)') "Current source position (AU): ",globalSourceArray(1)%position*(1.d10/autocm)
+      endif
+
+
    else
       globalSourceArray(1:globalnSource)%velocity = VECTOR(0.d0,0.d0,0.d0)
    endif
+
    if (myrankWorldglobal == 1) call tune(6,"Updating source positions")
    
 !   call findMassOverAllThreads(grid, totalMass)
@@ -19362,7 +19380,7 @@ end subroutine broadcastSinks
        if (writeoutput) then
 !
 !          write(*,*) "source ",isource
-          write(*,*) "before vel ",sourceArray(isource)%velocity/1.d5
+          write(*,'(a,3f8.3)') "Before acc velocity (km/s): ", sourceArray(isource)%velocity/1.d5
 !          write(*,*) "before mass ",sourceArray(isource)%mass/msol
 !
 !          write(*,*) "accreted mass ", accretedMass(isource)
@@ -19384,7 +19402,7 @@ end subroutine broadcastSinks
        if (accretedMass(iSource) > 0.d0) write(*,*) "Accretion rate for source ",isource, ": ", &
             (accretedMass(isource)/timestep)/msol * (365.25d0*24.d0*3600.d0)
 !          write(*,*)  "position ",sourceArray(isource)%position
-          write(*,*) "after velocity ",sourceArray(isource)%velocity/1.d5
+          write(*,'(a,3f8.3)') "After acc velocity (km/s): ",sourceArray(isource)%velocity/1.d5
 !          write(*,*) "mass (solar) ",sourceArray(isource)%mass/msol
        endif
     enddo
