@@ -528,14 +528,15 @@ contains
                 call writeInfo("Done",TRIVIAL)
              endif
              
-!             call writeInfo("Dumping post-photoionization data", TRIVIAL)
-!             call writeVtkFile(grid, "start.vtk", &
-!             valueTypeString=(/"rho        ","HI         " ,"temperature", "ghosts     " /))
+             call writeInfo("Dumping post-photoionization data", TRIVIAL)
+             call writeVtkFile(grid, "start.vtk", &
+             valueTypeString=(/"rho        ","HI         " ,"temperature", "ghosts     ", &
+                               "crossings  " /))
 !             if(grid%octreeroot%oned) then
-!                write(datFilename, '(a, i4.4, a)') "start.dat"
-!                call dumpValuesAlongLine(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
-!                     VECTOR(3.86d8, 0.d0, 0.d0), 1000)
-!                
+                write(datFilename, '(a, i4.4, a)') "start.dat"
+                call dumpValuesAlongLine(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
+                     VECTOR(2., 0.d0, 0.d0), 1000)
+                
 !             end if
           end do
        end if
@@ -2147,6 +2148,9 @@ end subroutine radiationHydro
                 if (writeoutput) write(*,*) "r1 ",maxDiffRadius1(isource)
                maxDiffRadius(isource) = maxDiffRadius1(isource)
              endif
+
+             maxDiffRadius(1) = 4e5
+
              if (writeoutput .and. (maxDiffRadius(iSource) > 0.d0)) &
                  write(*,*) iSource," Max diffusion radius from tauRadius ",maxDiffRadius(iSource)
           enddo
@@ -3623,6 +3627,11 @@ end subroutine radiationHydro
                       converged = .true.
                    endif
                 enddo
+
+                if (.not.decoupleGasDustTemperature) then
+                   thisOctal%tDust = thisOctal%temperature
+                endif
+
                 if (decoupleGasDustTemperature .and. (.not.quickThermal)) then
                    ! repeat the above (ionization and gas thermal balance) but now calculate dust temperature too
                    converged = .false.
@@ -4378,6 +4387,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
 !    write(*,*) "ross tau to wall ",(thisOctal%rho(subcell)*kappaRoss*1.d10*wallDist)
     if (.not.radpressuretest) then
+
        if (wallDist > gamma/(thisOctal%rho(subcell)*kappaRoss*1.d10) .and. .not. cart2d) then
           call modifiedRandomWalk(grid, thisOctal, subcell, rVec, uHat, &
                freq, dfreq, nfreq, lamArray, nlambda, thisFreq, photonPacketWeight)
@@ -5727,7 +5737,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                    ! otherwise they also include dust heating/cooling
 
                    iter = 0
-                   if ((totalHeating < HHecooling(grid, thisOctal, subcell, tMinGlobal)).or.(totalHeating < 1.d-30)) then
+                   if (totalHeating < HHecooling(grid, thisOctal, subcell, tMinGlobal)) then
                       newT = tminGlobal
                    else if ((totalHeating > HHecooling(grid, thisOctal, subcell, 20000.))) then
                       newT = 20000.

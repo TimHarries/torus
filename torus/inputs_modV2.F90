@@ -3065,6 +3065,7 @@ contains
     call getLogical("quickthermal", quickThermal, cLine, fLine, nLines, &
          "Compute photoionization equilibrium: ","(a,1l,a)", .false., ok, .false.)
 
+    decoupleGasDustTemperature = .false.
     if (.not. quickthermal) then
        call getLogical("decouplegasdust", decoupleGasDustTemperature, cLine, fLine, nLines, &
             "Decouple gas and dust temperature: ","(a,1l,1x,a)", .false., ok, .false.)
