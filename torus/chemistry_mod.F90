@@ -183,7 +183,6 @@ recursive subroutine doChemistryTimestepOctal(thisOctal, dt)
            
            tgas = dble(thisOctal%temperature(subcell))
 
-           call krome_init()
            
            if (dustPhysics) then
               if (ndustType > 1) then
@@ -418,6 +417,8 @@ subroutine doChemistryOverGrid(grid, dt)
   integer :: ierr
 #endif
 
+
+
   allocate(octalArray(grid%nOctals))
   nOctal = 0
   call getOctalArray(grid%octreeRoot,octalArray, nOctal)
@@ -634,7 +635,6 @@ subroutine calculateAv(grid)
 
 
   call getUniformSphereDirections(1, ndir, dir)
-  write(*,*) "ico ",ndir,dir
 
   allocate(octalArray(grid%nOctals))
   nOctal = 0

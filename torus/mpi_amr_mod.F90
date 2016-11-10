@@ -5919,7 +5919,7 @@ end subroutine writeRadialFile
   
 #ifdef HYDRO
   subroutine addNewChildWithInterp(parent, iChild, grid, constantGravity)
-    use inputs_mod, only : maxDepthAMR!, minDepthAmr
+    use inputs_mod, only : maxDepthAMR, amr2d, amr3d!, minDepthAmr
     use octal_mod, only: subcellRadius
     use utils_mod
     use mpi
@@ -6541,23 +6541,26 @@ end subroutine writeRadialFile
 !
 ! momentum (v)
 !
-    if ( all(thisOctal%rhov(1:thisOctal%maxChildren) < 0.d0) .or. &
-         all(thisOctal%rhov(1:thisOctal%maxChildren) > 0.d0) ) then
-       oldMom = parent%rhov(parentSubcell) * cellVolume(parent,parentSubcell) 
-       newMom = SUM(thisOctal%rhov(1:thisOctal%maxChildren)*cellVolume(thisOctal,1))
-       factor = oldMom / newMom
-       thisOctal%rhov(1:thisOctal%maxChildren) = thisOctal%rhov(1:thisOctal%maxChildren) * factor
+    if (amr3d) then
+       if ( all(thisOctal%rhov(1:thisOctal%maxChildren) < 0.d0) .or. &
+            all(thisOctal%rhov(1:thisOctal%maxChildren) > 0.d0) ) then
+          oldMom = parent%rhov(parentSubcell) * cellVolume(parent,parentSubcell) 
+          newMom = SUM(thisOctal%rhov(1:thisOctal%maxChildren)*cellVolume(thisOctal,1))
+          factor = oldMom / newMom
+          thisOctal%rhov(1:thisOctal%maxChildren) = thisOctal%rhov(1:thisOctal%maxChildren) * factor
+       endif
     endif
-
 !
 ! momentum (w)
 !
-    if ( all(thisOctal%rhow(1:thisOctal%maxChildren) < 0.d0) .or. &
-         all(thisOctal%rhow(1:thisOctal%maxChildren) > 0.d0) ) then
-       oldMom = parent%rhow(parentSubcell) * cellVolume(parent,parentSubcell) 
-       newMom = SUM(thisOctal%rhow(1:thisOctal%maxChildren)*cellVolume(thisOctal,1))
-       factor = oldMom / newMom
-       thisOctal%rhow(1:thisOctal%maxChildren) = thisOctal%rhow(1:thisOctal%maxChildren) * factor
+    if (amr2d.or.amr3d) then
+       if ( all(thisOctal%rhow(1:thisOctal%maxChildren) < 0.d0) .or. &
+            all(thisOctal%rhow(1:thisOctal%maxChildren) > 0.d0) ) then
+          oldMom = parent%rhow(parentSubcell) * cellVolume(parent,parentSubcell) 
+          newMom = SUM(thisOctal%rhow(1:thisOctal%maxChildren)*cellVolume(thisOctal,1))
+          factor = oldMom / newMom
+          thisOctal%rhow(1:thisOctal%maxChildren) = thisOctal%rhow(1:thisOctal%maxChildren) * factor
+       endif
     endif
 
 

@@ -272,7 +272,7 @@ contains
          "Include biophysics in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getLogical("chemistry", doChemistry, cLine, fLine, nLines, &
-         "Include biophysics in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
+         "Include chemistry in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getLogical("dustphysics", dustPhysics, cLine, fLine, nLines, &
          "Include dust physics in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
