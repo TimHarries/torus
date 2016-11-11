@@ -2939,7 +2939,6 @@ end subroutine writeXMLVtkFileAMR
       logical, save :: firstTime=.true.
       logical :: found 
 !$OMP THREADPRIVATE (firstTime)
-!$OMP THREADPRIVATE (firstTimeGetSpecies)
 
 #ifdef CHEMISTRY
        species = krome_get_names()

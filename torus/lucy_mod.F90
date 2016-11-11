@@ -3100,7 +3100,6 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
 
 subroutine addDustContinuumLucy(thisOctal, subcell, grid, nlambda, lamArray)
-  use inputs_mod, only : ndusttype
   use inputs_mod, only : usePAH
   type(OCTAL), pointer :: thisOctal
   integer :: subcell
