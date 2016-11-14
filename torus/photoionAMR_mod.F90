@@ -3629,10 +3629,7 @@ end subroutine radiationHydro
                 enddo
 
                 if (.not.decoupleGasDustTemperature) then
-                   if (.not.associated(thisOctal%tDust)) then
-                      allocate(thisOctal%tDust(1:thisOctal%maxChildren))
-                   endif
-                   thisOctal%tDust = thisOctal%temperature
+                   thisOctal%tDust(1:thisOctal%maxChildren) = thisOctal%temperature(1:thisOctal%maxChildren)
                 endif
 
                 if (decoupleGasDustTemperature .and. (.not.quickThermal)) then
