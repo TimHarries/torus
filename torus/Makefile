@@ -47,6 +47,11 @@ getsvnver = yes
 
 KNOWN_SYSTEM = no
 MPIFLAG = 
+
+# Assume the default compiler is a recent Intel compiler. OpenMP flags for other compilers
+# need to be set in the relevant SYSTEM section of this file
+OPENMPFLAG = -qopenmp
+
 #
 # Set system-dependent variables
 #
@@ -124,6 +129,9 @@ ifeq ($(SYSTEM), gfortran)
 #    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-surprising -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
 #    DEBUGFLAG= -ggdb -fbacktrace -Wunderflow -Wall -Werror -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
     FASTFLAG = -O3
+    OPENMPFLAG = -fopenmp
+# -static-libgcc fixes linking problems under Mac OS
+    STARLIBS += -static-libgcc
 #    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
     EXE = torus.gfortran
     KNOWN_SYSTEM = yes
@@ -161,6 +169,9 @@ ifeq ($(SYSTEM), ompiosx)
     F95COMP  = mpif90 
     DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-surprising -Wno-error=maybe-uninitialized -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
     FASTFLAG = -O3
+    OPENMPFLAG = -fopenmp
+# -static-libgcc fixes linking problems under Mac OS
+    STARLIBS += -static-libgcc
     CFITSIOLIBS = -L${HOME}/cfitsio/lib -lcfitsio
     EXE = torus.ompiosx
     ZLIBLIBS = -lz	
@@ -182,6 +193,7 @@ ifeq ($(SYSTEM), testsuite)
     endif
     DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-surprising -Wno-error=maybe-uninitialized -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow
     FASTFLAG = -O3
+    OPENMPFLAG = -fopenmp
     CFITSIOLIBS = -L/home/torustest/cfitsio/lib -lcfitsio
     EXE = torus.testsuite
     ZLIBLIBS = -lz	
@@ -245,6 +257,31 @@ ifeq ($(SYSTEM), complexity)
     KNOWN_SYSTEM=yes
 endif
 
+# Isca configuration: awaiting FITS and HDF5 libraries
+ifeq ($(SYSTEM), isca)
+    ifeq ($(mpi), no)
+       F95COMP= ifort
+       MPIFLAG=
+    else
+       F95COMP= mpiifort
+       MPIFLAG= -DMPI
+    endif
+    FASTFLAG= -O3
+# To enable the MPI checking feature in Intel MPI add the -check_mpi flag
+# For debugging with optimisations enabled use:
+#    DEBUGFLAG= -O3 -g -debug extended
+    DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
+    STATICFLAG=
+    MATHTRAP=
+    EXE=torus.isca
+    STATICLIBS= -Bstatic
+    KROMELIBS = -L${HOME}/krome/build -lkrome
+    ifeq ($(chemistry), yes)
+       F95COMP+=-I${HOME}/krome/build
+    endif
+    ZLIBLIBS = -lz
+    KNOWN_SYSTEM=yes
+endif
 
 ifeq ($(SYSTEM), davesmac)
 #    F95COMP  = g95
@@ -483,23 +520,8 @@ else
    STATICLIBS =
 endif
 
-# Set OpenMP flags
+# Set OpenMP flag
 ifeq ($(openmp), yes)
-# Assume ifort as the default compiler
-  OPENMPFLAG = -openmp
-# Change the openmp flag for gfortran-based systems
-  ifeq ($(SYSTEM), gfortran)
-     OPENMPFLAG = -fopenmp
-# -static-libgcc fixes linking problems under Mac OS
-     STARLIBS += -static-libgcc
-  endif
-  ifeq ($(SYSTEM), ompiosx)
-     OPENMPFLAG = -fopenmp
-     STARLIBS += -static-libgcc
-  endif
-  ifeq ($(SYSTEM), testsuite)
-     OPENMPFLAG = -fopenmp 
-  endif
   ETCFLAG += $(OPENMPFLAG)
 endif
 
