@@ -2205,12 +2205,12 @@ contains
        do i = 1, nDiscModule
           write(alphaDiscLabel, '(a,i1.1)') "alphamod",i
           call getDouble(alphaDiscLabel, alphaMod(i), 1.d0, cLine, fLine, nLines, &
-               "Alpha parameter for disc module: ","(a,f5.3,a)", 2.25d0, ok, .true.)
+               "Alpha parameter for disc module: ","(a,f8.3,a)", 2.25d0, ok, .true.)
 !         alpha parameter for each module of the disc
 
           write(betaDiscLabel, '(a,i1.1)') "betamod",i
           call getDouble(betaDiscLabel, betaMod(i), 1.d0, cLine, fLine, nLines, &
-               "Beta parameter for disc module: ","(a,f5.3,a)", 1.25d0, ok, .true.)
+               "Beta parameter for disc module: ","(a,f8.3,a)", 1.25d0, ok, .true.)
 !         beta parameter for each module of the disc
 
           write(hDiscLabel, '(a,i1.1)') "heightmod",i
