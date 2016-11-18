@@ -410,8 +410,8 @@ contains
     character(LEN=1)  :: junkchar
     character(LEN=150) :: message
     character(len=MaxAsciiLineLength) :: namestring, unitString, pTypeString
-    integer :: ix, iy, iz, ivx, ivy, ivz, irho, iu, iitype, ih, imass, iUoverT, ipType
-    logical :: haveUandUoverT
+    integer :: ix, iy, iz, ivx, ivy, ivz, irho, iu, iitype, ih, imass, iUoverT, ipType, iDustTemperature
+    logical :: haveUandUoverT, haveDustTemperature
     integer :: iDustfrac
     real(double) :: dustfrac
     integer, allocatable :: pNumArray(:) ! Array of particle numbers read from header
@@ -617,8 +617,16 @@ contains
        call writeinfo("Found u and u/T in the SPH file",TRIVIAL)
        iUoverT = indexWord("u/T",word,nWord)
        haveUandUoverT = .true.
+       if ( wordIsPresent("DustTemperature",word,nWord) ) then
+          call writeinfo("Found DustTemperature in the SPH file",TRIVIAL)
+          iDustTemperature = indexWord("DustTemperature",word,nWord)
+          haveDustTemperature = .true.
+       else
+          haveDustTemperature = .false.
+       endif
     else
        haveUandUoverT = .false.
+       haveDustTemperature = .false.
     end if
 
 ! Decide how to convert between internal energy and temperature. If there is information about
@@ -731,6 +739,8 @@ part_loop: do ipart=1, nlines
        icount = icount + 1
 
 ! 1=gas particle
+       !FOR MHD DUMPS MAY WISH TO EXCLUDE LOW DENSITY ENVELOPE
+       !if ((itype == 1) .AND. (rhon > 5.e-5))  then
        if (itype == 1) then 
           igas = igas + 1
 
@@ -760,6 +770,8 @@ part_loop: do ipart=1, nlines
              else
                 sphdata%temperature(igas) = (2.0/3.0) * u * ( gmw / Rgas) * utemp
              endif
+          else if (haveDustTemperature) then
+             sphdata%temperature(igas) = junkArray(iDustTemperature)
           else if (haveUandUoverT) then 
              sphdata%temperature(igas) = u / junkArray(iUoverT)
           else
