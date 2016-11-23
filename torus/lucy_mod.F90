@@ -2828,7 +2828,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
   recursive subroutine packvalues(thisOctal,nIndex, nIndexScattered,&
        distanceGrid,adotPAH,nCrossings, nDiffusion, meanIntensity)
-!    use inputs_mod, only : storeScattered
+    use inputs_mod, only : usePAH
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: distanceGrid(:)
@@ -2853,7 +2853,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
        else
           nIndex = nIndex + 1
           distanceGrid(nIndex) = thisOctal%distanceGrid(subcell)
-          adotPAH(nIndex) = thisOctal%adotPAH(subcell)
+          if (usePAH) adotPAH(nIndex) = thisOctal%adotPAH(subcell)
           meanIntensity(nIndex) = thisOctal%meanIntensity(subcell)
           nCrossings(nIndex) = dble(thisOctal%nCrossings(subcell))
           nDiffusion(nIndex) = thisOctal%nDiffusion(subcell)
@@ -2871,7 +2871,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
   end subroutine packvalues
 
   recursive subroutine unpackvalues(thisOctal,nIndex,nIndexScattered,distanceGrid,adotPAH,nCrossings, nDiffusion, meanIntensity)
-!    use inputs_mod, only : storeScattered
+    use inputs_mod, only : usePAH
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: distanceGrid(:), adotPAH(:), meanIntensity(:)
@@ -2896,7 +2896,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
        else
           nIndex = nIndex + 1
           thisOctal%distanceGrid(subcell) = distanceGrid(nIndex)
-          thisOctal%adotPAH(subcell) = adotPAH(nIndex)
+          if (usePAH) thisOctal%adotPAH(subcell) = adotPAH(nIndex)
           thisOctal%meanIntensity(subcell) = meanIntensity(nIndex)
           thisOctal%nCrossings(subcell) = int(nCrossings(nIndex), kind=bigint)
           thisOctal%nDiffusion(subcell) = nDiffusion(nIndex)
