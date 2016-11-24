@@ -169,7 +169,7 @@ program torus
 
     if (.not.readGrid) then
        call writeVtkFile(grid, "rho.vtk")
-       call writeVtkFile(grid, "rho2.vtk",valuetypestring=(/"velcall"/))
+!       call writeVtkFile(grid, "rho2.vtk",valuetypestring=(/"velcall"/))
     endif
 
        if (dustPhysics) then

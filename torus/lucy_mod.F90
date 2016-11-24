@@ -2567,7 +2567,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
 
   subroutine updateGridMPI(grid)
-!    use inputs_mod, only : storeScattered
+    use inputs_mod, only : usePAH
     use mpi
     implicit none
 
@@ -2592,6 +2592,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
     nIndex = 0
     nIndexScattered = 0 
+    adotPAH = 0.d0
     call packValues(grid%octreeRoot,nIndex,nIndexScattered, &
          distanceGrid,adotPAH,nCrossings,ndiffusion, meanIntensity)
 
@@ -2617,10 +2618,12 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
          MPI_SUM,MPI_COMM_WORLD,ierr)
     distanceGrid = tempDoubleArray 
 
-    tempDoubleArray = 0.d0
-    call MPI_ALLREDUCE(adotPAH,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
-         MPI_SUM,MPI_COMM_WORLD,ierr)
-    adotPAH = tempDoubleArray 
+    if (usePAH) then
+       tempDoubleArray = 0.d0
+       call MPI_ALLREDUCE(adotPAH,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+            MPI_SUM,MPI_COMM_WORLD,ierr)
+       adotPAH = tempDoubleArray 
+    endif
 
     tempDoubleArray = 0.d0
     call MPI_ALLREDUCE(meanIntensity,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
