@@ -1,12 +1,10 @@
 #!/bin/ksh
-
+#
 # This script builds Torus for MPI/OpenMP/hybrid configurations
-# Set up to work on Zen but will make an educated guess for other machines
-# The handling of MPI wrappers is basic and assumes that ifort is the back end 
-# compiler if it is available.
 #
 # Original: D. Acreman, February 2012
 # Updated: October 2012
+# Updated: Added Isca November 2016
 
 print_help(){
     echo 
@@ -95,19 +93,25 @@ cd ..
 # Choose suitable values of SYSTEM #
 ####################################
 
-thisHost=`hostname`
+thisHost=`hostname -f`
 
-if [[ $thisHost == service0 || $thisHost == service2 ]]; then
+if [[ $thisHost == service*.ice.astro.ex.ac.uk ]]; then
     echo "This looks like Zen"
     system_mpi=zen
     system_hybrid=zen
     system_openmp=zensingle
 
-elif [[ $thisHost == dirac* ]]; then
+elif [[ $thisHost == dirac*.rcs.cluster ]]; then
     echo "This looks like Complexity"
     system_mpi=complexity
     system_hybrid=complexity
     system_openmp=complexity
+
+elif [[ $thisHost == login*.cluster.local ]]; then
+    echo "This looks like Isca"
+    system_mpi=isca
+    system_hybrid=isca
+    system_openmp=isca
     
 else
 
