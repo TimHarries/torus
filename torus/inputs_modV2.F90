@@ -3975,6 +3975,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     real :: inclination, positionAngle, thisPA, thisInc
     real :: offsetX, offsetY, thisOffsetX, thisOffsetY
     real :: aspectRatio, thisAspectRatio
+    type(VECTOR) :: viewvec
 
     call getBigInteger("nphotons", nphotons, cLine, fLine, nLines, &
          "Number of photons in image: ","(a,i9,a)", 10000_bigInt, ok, .false.)
@@ -4185,6 +4186,11 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
           call getReal(keyword, thisPA, real(degtorad), cLine, fLine, nLines, &
                "Position angle (deg): ","(a,f6.1,1x,a)", positionAngle*real(radtodeg), ok, .false.)
 
+          write(keyword,'(a)') "viewvec"//iChar
+          call getVector(keyword, viewVec, 1.d0, cLine, fLine, nLines, &
+                  "View vector for image: ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .false.)
+
+
           ! Position of image centre
           write(keyword,'(a)') "imagecentrex"//iChar
           call getReal(keyword, thisOffsetx, 1.0, cLine, fLine, nLines, &
@@ -4193,8 +4199,13 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
           call getReal(keyword, thisOffsety, 1.0, cLine, fLine, nLines, &
                "Image centre y position (10^10 cm): ", "(a,e10.1,1x,a)", offsety, ok, .false.)
 
-          call setImageParams(i, thisLambdaImage, outputimageType,imageFilename, thisnpixels, axisUnits, fluxUnits, &
-               thisImageSize, thisaspectRatio, thisInc, thisPA, thisOffsetx, thisOffsety, gridDistance)
+          if (modulus(viewVec) < 0.5d0) then
+             call setImageParams(i, thisLambdaImage, outputimageType,imageFilename, thisnpixels, axisUnits, fluxUnits, &
+                  thisImageSize, thisaspectRatio, thisInc, thisPA, thisOffsetx, thisOffsety, gridDistance)
+          else
+             call setImageParams(i, thisLambdaImage, outputimageType,imageFilename, thisnpixels, axisUnits, fluxUnits, &
+                  thisImageSize, thisaspectRatio, thisInc, thisPA, thisOffsetx, thisOffsety, gridDistance,viewvec=viewvec)
+          endif
        enddo
 
        call writeInfo(" ")
