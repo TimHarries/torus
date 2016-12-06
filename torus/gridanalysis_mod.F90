@@ -13,7 +13,7 @@ contains
     use inputs_mod, only : imodel
     use utils_mod, only : findMultifilename
     type(GRIDTYPE) :: grid
-    real(double) :: mass, mass14, mass15, mass16
+    real(double) :: mass, mass14, mass15, mass16, mdisc
     real(double) :: flux
     character(len=80) :: thisFile
 
@@ -22,20 +22,25 @@ contains
     mass = 0.d0
     call findMassWithBounds(grid%octreeRoot, mass, maxRadius=2000.d0*autocm/1.d10)
 
+    mass14 = 0.d0
+    mass15 = 0.d0
+    mass16 = 0.d0
+    mDisc = 0.d0
     call findMassWithBounds(grid%octreeRoot, mass14, minRho=1.d-14)
     call findMassWithBounds(grid%octreeRoot, mass15, minRho=1.d-15)
     call findMassWithBounds(grid%octreeRoot, mass16, minRho=1.d-16)
-
+    call findDiscMass(grid%octreeRoot, globalSourceArray(1)%mass, mDisc, 2000.d0*autocm/1.d10)
+    write(*,*) "disc mass ",mdisc/msol
     call findMultifilename("vel****.dat",iModel,thisfile)
     open(69, file=thisFile, status="unknown", form="formatted")
     call writeVelocityWithBounds(grid%octreeRoot, maxRadius=2000.d0*autocm/1.d10)
     close(69)
     call findMultifilename("kep****.dat",iModel,thisfile)
     call  writeKeplerianButterfly(thisfile,globalSourceArray(1)%mass, 26.d0*autocm, 2000.d0*autocm)
-    write(*,'(i4,1p,10e12.3)') iModel, globalSourceArray(1)%mass/msol, globalSourceArray(1)%mdot/msol*356.25d0*24.d0*3600.d0, &
-flux, mass/msol, mass14/msol, mass15/msol, mass16/msol
-    write(48,'(i4,1p,10e12.3)') iModel, globalSourceArray(1)%mass/msol, globalSourceArray(1)%mdot/msol*356.25d0*24.d0*3600.d0, &
-flux, mass/msol, mass14/msol, mass15/msol, mass16/msol
+    write(*,'(i4,1p,11e12.3)') iModel, globalSourceArray(1)%mass/msol, globalSourceArray(1)%mdot/msol*356.25d0*24.d0*3600.d0, &
+flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
+    write(48,'(i4,1p,11e12.3)') iModel, globalSourceArray(1)%mass/msol, globalSourceArray(1)%mdot/msol*356.25d0*24.d0*3600.d0, &
+flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
 
 
   end subroutine analysis
@@ -119,6 +124,50 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol
        endif
     enddo
   end subroutine findMassWithBounds
+
+  recursive subroutine findDiscMass(thisOctal, sourceMass, totalMass,  maxRadius)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    type(VECTOR) :: rVec, rHat, vHat, vel, vkep
+    real(double) :: totalMass
+    real(double) :: minRho, maxRadius, sourceMass
+    real(double) :: dv,r
+    integer :: subcell, i
+    logical :: includeThisCell
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call findDiscMass(child, sourceMass, totalMass, maxRadius)
+                exit
+             end if
+          end do
+       else
+          if(.not. thisoctal%ghostcell(subcell)) then
+             dv = cellVolume(thisOctal, subcell)*1.d30
+             rVec = subcellCentre(thisOctal, subcell) 
+             r = modulus(rVec)
+
+             includeThisCell = .true.
+
+             if (r > maxRadius) includeThisCell = .false.
+	     vel = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell),thisOctal%rhov(subcell)/thisOctal%rho(subcell), 0.d0)
+	     rHat = rVec
+	     call normalize(rHat)
+	     vHat = rHat.cross.zhat
+	     call normalize(vHat)
+             vKep = sqrt(bigG*sourceMass/(r*1.d10))*vHat
+             if (modulus(vel-vKep)/modulus(vKep) > 0.2d0) then
+                includeThisCell = .false.
+             endif
+             if (includethiscell) totalMass = totalMass + thisOctal%rho(subcell) * dv
+          endif
+       endif
+    enddo
+  end subroutine findDiscMass
 
   recursive subroutine writeVelocityWithBounds(thisOctal, minRho, maxRho, minRadius, maxRadius)
     type(octal), pointer   :: thisOctal
