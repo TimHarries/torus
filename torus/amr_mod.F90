@@ -5444,10 +5444,43 @@ CONTAINS
        case("modular")
           ! first off, make sure the cell splits if the depth of the cell depth is less than mindepthamr:
           if (thisOctal%ndepth < mindepthamr) split = .true.
+          if (thisOctal%ndepth > maxdepthamr) split = .false.
           ! Then find your location in the disk and the size of the cell:
+          cellSize = thisOctal%subcellSize
           cellCentre = subcellCentre(thisOctal, subcell)
           r = sqrt(cellCentre%x**2 + cellCentre%y**2)
-          cellSize = thisOctal%subcellSize
+          thisHeightSplitFac = heightSplitFac
+          if (r < rSublimation) thisHeightSplitFac = 1.
+          ! refine according to scale height
+          do iMod = 1, nDiscModule
+             ! Calculate the scale height at your location using the current module parameters
+             hr = heightMod(iMod) * (r/rInnerMod(iMod))**betaMod(iMod)
+             if ((rOuterMod(iMod) > r).and.(rInnerMod(iMod) < r)) then
+                ! split cell if difference in scale height across the cell exceeds heightSplitFac
+                if ((ABS(cellCentre%z/hr) < 7.d0).and.(cellSize/hr > thisheightSplitFac)) split = .true.
+                ! split cell if more than 2 scale heights above the midplane and there are less than 2 cells between it
+                ! and the midplane.
+                if ((ABS(cellCentre%z/hr) > 2.d0).and.(ABS(cellCentre%z/cellSize) < 2.)) split = .true.
+             endif
+             if (((r-cellSize/2.d0) < MAXVAL(rOuterMod)).and.((r+cellSize/2.d0) > MAXVAL(rOuterMod))) then
+                if ((thisOctal%subcellSize/rOuterMod(nDiscModule) > 0.01).and.(ABS(cellCentre%z/hr) < 7.d0)) then
+                   if (.not.thisOctal%cylindrical) split = .true.
+                endif
+             if (.not.smoothinneredge) then
+                if (((r-cellSize/2.d0) < rSublimation).and.((r+cellSize/2.d0) > rSublimation).and. &
+                   (thisOctal%nDepth < maxdepthamr).and.(ABS(cellCentre%z/hr) < 1.d0).and. &
+                   (.not.thisOctal%cylindrical)) split=.true.
+             endif
+             endif
+          enddo
+          ! Don't split the cell if you're within half a cell radius of the inner disk edge:
+          if ((MODULUS(cellCentre) + cellSize) < rSublimation) split = .false.
+          ! Don't split the cells if you're more than half a cell radius outside the outer disk edge:
+          if ((r - cellSize/2.d0) > rOuterMod(nDiscModule)) split = .false.
+          ! Limit the level of refinement needed beyond 10% of the outer disk radius:
+          if (((r - cellSize/2.d0) > rOuterMod(nDiscModule)*1.1d0).and.(thisOctal%nDepth > 4)) then
+             split = .false.
+          endif
           ! Figure out which disk module you're in & ensure there are at least 10 cells between modules:
           do iMod = 1, nDiscModule
              ! Calculate the scale height at your location using the current module parameters
@@ -5457,18 +5490,6 @@ CONTAINS
                 if ((cellSize > ((rOuterMod(iMod) - rInnerMod(iMod))/10)).and.(ABS(cellCentre%z)/hr < 7.d0)) then
                    split = .true.
                 endif
-             endif
-          enddo
-          ! refine according to scale height
-          do iMod = 1, nDiscModule
-             ! Calculate the scale height at your location using the current module parameters
-             hr = heightMod(iMod) * (r/rInnerMod(iMod))**betaMod(iMod)
-             if ((rOuterMod(iMod) > r).and.(rInnerMod(iMod) < r)) then
-                ! split cell if difference in scale height across the cell exceeds heightSplitFac
-                if ((ABS(cellCentre%z)/hr < 7.d0).and.(cellSize/hr > heightSplitFac)) split = .true.
-                ! split cell if more than 2 scale heights above the midplane and there are less than 2 cells between it
-                ! and the midplane.
-                if ((ABS(cellCentre%z) > hr*2.d0).and.(ABS(cellCentre%z/cellSize) < 2.)) split = .true.
              endif
           enddo
           ! Check to see if you're near a disk module boundary and do more refinement
@@ -5488,18 +5509,6 @@ CONTAINS
                 endif
              endif
           enddo
-          ! Limit the level of refinement needed beyond 10% of the outer disk radius:
-          if (((r - cellSize/2.d0) > (MAXVAL(rOuterMod)*1.1d0)).and.(thisOctal%nDepth > 4)) then
-             split = .false.
-          endif
-          ! Don't split the cells if you're more than half a cell radius outside the outer disk edge:
-          if ((r - cellSize/2.d0) > MAXVAL(rOuterMod)) then
-             split = .false.
-          endif
-          ! Don't split the cell if you're within half a cell radius of the inner disk edge:
-          if ((MODULUS(cellCentre) + cellSize/2.d0) < MINVAL(rInnerMod)) then
-             split = .false.
-          endif
 
        case("circumbin")
 

@@ -130,7 +130,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
     type(octal), pointer  :: child 
     type(VECTOR) :: rVec, rHat, vHat, vel, vkep
     real(double) :: totalMass
-    real(double) :: minRho, maxRadius, sourceMass
+    real(double) :: maxRadius, sourceMass
     real(double) :: dv,r
     integer :: subcell, i
     logical :: includeThisCell
@@ -154,11 +154,11 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
              includeThisCell = .true.
 
              if (r > maxRadius) includeThisCell = .false.
-	     vel = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell),thisOctal%rhov(subcell)/thisOctal%rho(subcell), 0.d0)
-	     rHat = rVec
-	     call normalize(rHat)
-	     vHat = rHat.cross.zhat
-	     call normalize(vHat)
+             vel = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell),thisOctal%rhov(subcell)/thisOctal%rho(subcell), 0.d0)
+             rHat = rVec
+             call normalize(rHat)
+             vHat = rHat.cross.zhat
+             call normalize(vHat)
              vKep = sqrt(bigG*sourceMass/(r*1.d10))*vHat
              if (modulus(vel-vKep)/modulus(vKep) > 0.2d0) then
                 includeThisCell = .false.

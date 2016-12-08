@@ -2225,7 +2225,7 @@ contains
 
           write(routDiscLabel, '(a,i1.1)') "routermod",i
           call getDouble(routDiscLabel, rOuterMod(i), autocm/1.d10, cLine, fLine, nLines, &
-               "Outer radius of disc module (au): ","(a,f5.1,a)", 20.d0, ok, .true.)
+               "Outer radius of disc module (au): ","(a,f7.3,a)", 20.d0, ok, .true.)
 !         outer radius of each module of the disc
 
           do j = 1, nDustType
