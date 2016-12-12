@@ -64,8 +64,8 @@ contains
 
 #ifdef PHOTOION
   if (photoionPhysics) then
-     call addIons(grid%ion, grid%nion, usemetals, hOnly, usexraymetals, noIonization)
-     call addIons(globalIonArray, nGlobalIon, usemetals, hOnly, usexraymetals, noIonization)
+     call addIons(grid%ion, grid%nion, usemetals, usexraymetals, hOnly, noIonization)
+     call addIons(globalIonArray, nGlobalIon, usemetals, usexraymetals, hOnly, noIonization)
      photoionization = .true.
   endif
 #endif
