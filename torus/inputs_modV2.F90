@@ -3139,7 +3139,7 @@ contains
 
     call getLogical("simplemu", simpleMu, cLine, fline, nLines, &
          "Use simple mean particle mass cals: ", "(a,1l,1x,a)", .false., ok, .false.)
-    call getLogical("caseB", hOnly, cLine, fline, nLines, &
+    call getLogical("caseB", caseB, cLine, fline, nLines, &
          "Use case B recombination coefficient: ", "(a,1l,1x,a)", .false., ok, .false.)
 
     if(caseB .and. .not. nodiffusefield) then
