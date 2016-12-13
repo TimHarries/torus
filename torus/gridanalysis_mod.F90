@@ -45,6 +45,90 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
 
   end subroutine analysis
 
+  real(double) function columnDensity(inputOctal, inputSubcell, grid)
+    type(VECTOR) :: rVec, direction
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, inputOctal
+    real(double) :: ds
+    integer :: subcell, inputsubcell
+
+
+    columnDensity = 0.d0
+
+    direction = VECTOR(0.d0, 0.d0, 1.d0)
+    thisOctal => inputOctal
+    subcell = inputSubcell
+    rVec = subcellCentre(inputOctal, inputSubcell)
+    do while(inOctal(grid%octreeRoot, rVec))
+       call distanceToCellBoundary(grid, rVec, direction, ds, sOctal=thisOctal)
+       columnDensity = columnDensity + thisOctal%subcellSize * thisOctal%rho(subcell) * 1.d10
+       rVec = rVec + (ds + 1.d-6)*direction
+    end do
+    direction = VECTOR(0.d0, 0.d0, -1.d0)
+    thisOctal => inputOctal
+    subcell = inputSubcell
+    rVec = subcellCentre(inputOctal, inputSubcell)
+    do while(inOctal(grid%octreeRoot, rVec))
+       call distanceToCellBoundary(grid, rVec, direction, ds, sOctal=thisOctal)
+       columnDensity = columnDensity + thisOctal%subcellSize * thisOctal%rho(subcell) * 1.d10
+       rVec = rVec + (ds + 1.d-6)*direction
+    end do
+  end function columnDensity
+
+  real(double) function massWithinR(thisR, grid)
+    real(double) :: thisR
+    type(GRIDTYPE) :: grid
+
+    massWithinR = 0.d0
+    call findMassWithBounds(grid%octreeRoot, massWithinR, maxRadius=thisR)
+  end function massWithinR
+
+  recursive subroutine calculateToomreQ(thisOctal, grid)
+    use inputs_mod, only : smallestcellsize
+    use ion_mod
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    type(VECTOR) :: rVec, direction
+    real(double) :: totalMass
+    real(double) :: dv,r, cs, omegaK, mass, sigma, toomreQ, mu, pressure
+    integer :: subcell, i
+    logical :: includeThisCell
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calculateToomreQ(child, grid)
+                exit
+             end if
+          end do
+       else
+          rVec = subcellCentre(thisOctal, subcell)
+          
+          if (abs(rVec%z - thisOCtal%subcellSize) < smallestCellsize/10.d0) then
+             Sigma = columnDensity(thisOctal, subcell, grid)
+             mass = massWithinR(modulus(rVec), grid)
+             mass = mass + SUM(globalSourceArray(1:GlobalnSource)%mass)
+             omegaK = sqrt(bigG * mass / (r*1d10)**3)
+
+             mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
+             pressure = thisOctal%temperature(subcell) * kerg * thisOctal%rho(subcell) / (mu * mHydrogen)
+             cs = sqrt(pressure / thisOctal%rho(subcell))
+             toomreQ = (cs * omegaK) / (pi * bigG * sigma)
+             
+             if (.not.associated(thisOctal%etaCont)) allocate(thisOctal%etaCont(1:thisOctal%maxChildren))
+             thisOctal%etaCont(subcell) = toomreQ
+             write(*,*) "toomre Q " , toomreQ
+          endif
+       endif
+    enddo
+  end subroutine calculateToomreQ
+
+          
+
 
 
   function fluxThroughSphericalSurface(grid, radius) result(totflux)

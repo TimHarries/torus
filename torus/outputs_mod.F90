@@ -144,7 +144,9 @@ contains
 
     nimage = getnImage()
 
+    if (doAnalysis) call calculateToomreQ(grid%octreeRoot, grid)
     if (doAnalysis) call analysis(grid)
+    if (doAnalysis) call writeVtkFile(grid, "toomreq.vtk",  valueTypeString=(/"etacont"/))
 
     if (calcBenchmark) then
        select case (grid%geometry)
