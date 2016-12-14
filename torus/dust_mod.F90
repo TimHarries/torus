@@ -1821,84 +1821,84 @@ contains
                 
                 deallocate(mReal2D)
                 deallocate(mImg2D)
-
-                
-                ! You should use the new wrapper as it is much faster.
-                ! The old and new methods give exactly the same result when optimisations
-                ! are turned off.
-                ! When optimisations are turned on, the methods give different result,
-                ! and *neither* matches the result obtained when optimisations are off.
-                useOldMiePhaseCalc = .false.
-             
-                if (useOldMiePhaseCalc) then
-                      
-                      
-                      ilam_beg = 1
-                      ilam_end = grid%nLambda
-#ifdef MPI
-                      ! Set the range of index for a photon loop used later.     
-                      np = nThreadsGlobal
-                      n_rmdr = MOD(grid%nLambda,np)
-                      m = grid%nLambda/np
-                      
-                      if (myRankWorldGlobal .lt. n_rmdr ) then
-                         ilam_beg = (m+1)*myRankWorldGlobal + 1
-                         ilam_end = ilam_beg + m
-                      else
-                         ilam_beg = m*myRankWorldGlobal + 1 + n_rmdr
-                         ilam_end = ilam_beg + m -1
-                      end if
-#endif
-                      
-                      do j = ilam_beg, ilam_end
-                         do k = 1, nMumie
-                            mu = 2.*real(k-1)/real(nMumie-1)-1.
-                            call mieDistPhaseMatrixOld(aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &
-                                 xArray(j), real(mu), miePhase(i,j,k), mReal(i,j), mImg(i,j))
-                         enddo
-                         call normalizeMiePhase(miePhase(i,j,1:nMuMie), nMuMie)
-                      end do
-#ifdef MPI                
-                      allocate(temp(1:grid%nlambda,1:nMuMie,1:4,1:4))
-                      temp = 0.
-                      do j = 1, iLam_beg, iLam_end
-                         do k = 1, nMuMie
-                            do i1 = 1, 4
-                               do i2 = 1, 4
-                                  ! temp is real so need to explicitly convert from double precision to avoid compiler warning
-                                  temp(j,k,i1,i2)= real(miePhase(i,j,k)%element(i1,i2))
-                               enddo
-                            enddo
-                         enddo
-                      enddo
-                      allocate(tempArray(1:(grid%nLambda*nMuMie*4*4)))
-                      allocate(tempArray2(1:(grid%nLambda*nMuMie*4*4)))
-                      tempArray = reshape(temp, shape(tempArray))
-                      
-                      call MPI_ALLREDUCE(tempArray, tempArray2, grid%nLambda, MPI_REAL,&
-                           MPI_SUM, MPI_COMM_WORLD, ierr)
-                      temp = reshape(tempArray2, shape(temp))
-                      do j = 1, grid%nLambda
-                         do k = 1, nMuMie
-                            do i1 = 1, 4
-                            do i2 = 1, 4
-                               miePhase(i,j,k)%element(i1,i2) = temp(j,k,i1,i2)
-                            enddo
-                         enddo
-                      enddo
-                   enddo
-                   deallocate(temp, temparray, temparray2)
-#endif
-                else
-                   call mieDistPhaseMatrixWrapper(nDustType, nLambda, nMuMie, xArray, mReal, mImg, miePhase)
-                end if
              endif
           enddo
-          deallocate(mReal)
-          deallocate(mImg)
-          deallocate(tmReal)
-          deallocate(tmImg)
+                ! You should use the new wrapper as it is much faster.
+!                ! The old and new methods give exactly the same result when optimisations
+!                ! are turned off.
+!                ! When optimisations are turned on, the methods give different result,
+!                ! and *neither* matches the result obtained when optimisations are off.
+!                useOldMiePhaseCalc = .false.
+!             
+!                if (useOldMiePhaseCalc) then
+!                      
+!                      
+!                      ilam_beg = 1
+!                      ilam_end = grid%nLambda
+!#ifdef MPI
+!                      ! Set the range of index for a photon loop used later.     
+!                      np = nThreadsGlobal
+!                      n_rmdr = MOD(grid%nLambda,np)
+!                      m = grid%nLambda/np
+!                      
+!                      if (myRankWorldGlobal .lt. n_rmdr ) then
+!                         ilam_beg = (m+1)*myRankWorldGlobal + 1
+!                         ilam_end = ilam_beg + m
+!                      else
+!                         ilam_beg = m*myRankWorldGlobal + 1 + n_rmdr
+!                         ilam_end = ilam_beg + m -1
+!                      end if
+!#endif
+!                      
+!                      do j = ilam_beg, ilam_end
+!                         do k = 1, nMumie
+!                            mu = 2.*real(k-1)/real(nMumie-1)-1.
+!                            call mieDistPhaseMatrixOld(aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &
+!                                 xArray(j), real(mu), miePhase(i,j,k), mReal(i,j), mImg(i,j))
+!                         enddo
+!                         call normalizeMiePhase(miePhase(i,j,1:nMuMie), nMuMie)
+!                      end do
+!#ifdef MPI                
+!                      allocate(temp(1:grid%nlambda,1:nMuMie,1:4,1:4))
+!                      temp = 0.
+!!                      do j = 1, iLam_beg, iLam_end
+ !                        do k = 1, nMuMie
+ !                           do i1 = 1, 4
+ !                              do i2 = 1, 4
+ !                                 ! temp is real so need to explicitly convert from double precision to avoid compiler warning
+ !                                 temp(j,k,i1,i2)= real(miePhase(i,j,k)%element(i1,i2))
+ !                              enddo
+ !                           enddo
+ !                        enddo
+ !                     enddo
+ !                     allocate(tempArray(1:(grid%nLambda*nMuMie*4*4)))
+ !                     allocate(tempArray2(1:(grid%nLambda*nMuMie*4*4)))
+ !                     tempArray = reshape(temp, shape(tempArray))
+                      
+!                      call MPI_ALLREDUCE(tempArray, tempArray2, grid%nLambda, MPI_REAL,&
+!                           MPI_SUM, MPI_COMM_WORLD, ierr)
+!                      temp = reshape(tempArray2, shape(temp))
+!                      do j = 1, grid%nLambda
+!                         do k = 1, nMuMie
+!                            do i1 = 1, 4
+!                            do i2 = 1, 4
+!                               miePhase(i,j,k)%element(i1,i2) = temp(j,k,i1,i2)
+!                            enddo
+!                         enddo
+!                      enddo
+!                   enddo
+!                   deallocate(temp, temparray, temparray2)
+!#endif
+!                else
+          call mieDistPhaseMatrixWrapper(nDustType, nLambda, nMuMie, xArray, mReal, mImg, miePhase)
+!                end if
        endif
+
+       deallocate(mReal)
+       deallocate(mImg)
+       deallocate(tmReal)
+       deallocate(tmImg)
+       !    endif
     endif
     if (writeMiePhase.and.writeoutput.and.(nlambda>1)) then
        write(miefile,'(a,i3.3,a)') "miephasefile",nLambda,".dat"
@@ -1907,21 +1907,21 @@ contains
        close(144)
     end if
     
-
+    
     call fixMiePhase(miePhase, nDustType, nLambda, nMuMie)
     do i = 1, nDustType
        do j = 1, nLambda
           call normalizeMiePhase(miePhase(i,j,1:nMuMie), nMuMie)
        enddo
     enddo
-
-
-    666 continue
-
-       call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
-       call writeInfo("Completed.",TRIVIAL)
-    endif
-  end subroutine createDustCrossSectionPhaseMatrix
+ 
+    
+666 continue
+    
+    call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
+    call writeInfo("Completed.",TRIVIAL)
+ endif
+end subroutine createDustCrossSectionPhaseMatrix
 
 
   recursive subroutine allocateMemoryForDust(thisOctal)
