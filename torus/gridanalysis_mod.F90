@@ -89,11 +89,9 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    type(VECTOR) :: rVec, direction
-    real(double) :: totalMass
-    real(double) :: dv,r, cs, omegaK, mass, sigma, toomreQ, mu, pressure
+    type(VECTOR) :: rVec
+    real(double) :: r, cs, omegaK, mass, sigma, toomreQ, mu, pressure
     integer :: subcell, i
-    logical :: includeThisCell
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -112,6 +110,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
              Sigma = columnDensity(thisOctal, subcell, grid)
              mass = massWithinR(modulus(rVec), grid)
              mass = mass + SUM(globalSourceArray(1:GlobalnSource)%mass)
+             r = modulus(rVec)
              omegaK = sqrt(bigG * mass / (r*1d10)**3)
 
              mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)

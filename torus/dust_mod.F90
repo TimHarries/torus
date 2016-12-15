@@ -1650,7 +1650,7 @@ contains
          newDirectionMie
     use inputs_mod, only : mie, useDust, dustFile, nDustType, graintype, ngrain, &
          grainname, x_grain, amin, amax, a0, qdist, pdist, &
-         kappafilename, isotropicScattering, readmiephase, writemiephase, useOldMiePhaseCalc, &
+         kappafilename, isotropicScattering, readmiephase, writemiephase, &
          ttau_disc_on, grainFrac, henyeyGreensteinphaseFunction, porousFillingFactor, inputGfac
     real, allocatable :: mReal2D(:,:), mImg2D(:,:)
     character(len=80) :: miefile
@@ -1669,11 +1669,11 @@ contains
     real :: xArray(:)
     real(double) :: gfac(2000)
     integer :: nLambda
-    integer :: ilam_beg, ilam_end
+!    integer :: ilam_beg, ilam_end
 
 #ifdef MPI
-    real, allocatable :: temp(:,:,:,:), tempArray(:), tempArray2(:)
-    integer :: np, n_rmdr, m, ierr, i1,i2
+!    real, allocatable :: temp(:,:,:,:), tempArray(:), tempArray2(:)
+!    integer :: np, n_rmdr, m, ierr, i1,i2
 #endif
 
 
