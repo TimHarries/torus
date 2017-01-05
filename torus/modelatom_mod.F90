@@ -1476,6 +1476,7 @@ contains
        call writeInfo(msg)
        write(msg,*) "   nu = ", nu
        call writefatal(msg)
+       alpha = sqrt(nu)
        stop
     end if
     
