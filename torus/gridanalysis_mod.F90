@@ -17,10 +17,10 @@ contains
     real(double) :: flux
     character(len=80) :: thisFile
 
-    flux = fluxThroughSphericalSurface(grid, 2000.d0*autocm/1.d10)
+    flux = fluxThroughSphericalSurface(grid, 1500.d0*autocm/1.d10)
     flux = flux / msol * 365.25d0*24.d0*3600.d0
     mass = 0.d0
-    call findMassWithBounds(grid%octreeRoot, mass, maxRadius=2000.d0*autocm/1.d10)
+    call findMassWithBounds(grid%octreeRoot, mass, maxRadius=1500.d0*autocm/1.d10)
 
     mass14 = 0.d0
     mass15 = 0.d0
@@ -29,14 +29,14 @@ contains
     call findMassWithBounds(grid%octreeRoot, mass14, minRho=1.d-14)
     call findMassWithBounds(grid%octreeRoot, mass15, minRho=1.d-15)
     call findMassWithBounds(grid%octreeRoot, mass16, minRho=1.d-16)
-    call findDiscMass(grid%octreeRoot, globalSourceArray(1)%mass, mDisc, 2000.d0*autocm/1.d10)
+    call findDiscMass(grid%octreeRoot, globalSourceArray(1)%mass, mDisc, 1500.d0*autocm/1.d10)
     write(*,*) "disc mass ",mdisc/msol
     call findMultifilename("vel****.dat",iModel,thisfile)
     open(69, file=thisFile, status="unknown", form="formatted")
-    call writeVelocityWithBounds(grid%octreeRoot, maxRadius=2000.d0*autocm/1.d10)
+    call writeVelocityWithBounds(grid%octreeRoot, maxRadius=1500.d0*autocm/1.d10)
     close(69)
     call findMultifilename("kep****.dat",iModel,thisfile)
-    call  writeKeplerianButterfly(thisfile,globalSourceArray(1)%mass, 26.d0*autocm, 2000.d0*autocm)
+    call  writeKeplerianButterfly(thisfile,globalSourceArray(1)%mass, 26.d0*autocm, 1500.d0*autocm)
     write(*,'(i4,1p,11e12.3)') iModel, globalSourceArray(1)%mass/msol, globalSourceArray(1)%mdot/msol*356.25d0*24.d0*3600.d0, &
 flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
     write(48,'(i4,1p,11e12.3)') iModel, globalSourceArray(1)%mass/msol, globalSourceArray(1)%mdot/msol*356.25d0*24.d0*3600.d0, &
@@ -45,23 +45,30 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
 
   end subroutine analysis
 
-  real(double) function columnDensity(inputOctal, inputSubcell, grid)
+  subroutine calculateColumn(columnDensity, cs, inputOctal, inputSubcell, grid)
     type(VECTOR) :: rVec, direction
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, inputOctal
-    real(double) :: ds
+    real(double) :: ds,cs,totweight,columndensity,mu,pressure
     integer :: subcell, inputsubcell
 
 
     columnDensity = 0.d0
+    cs = 0.d0
+    totweight = 0.d0
 
     direction = VECTOR(0.d0, 0.d0, 1.d0)
     thisOctal => inputOctal
     subcell = inputSubcell
     rVec = subcellCentre(inputOctal, inputSubcell)
     do while(inOctal(grid%octreeRoot, rVec))
+       call findSubcellLocal(rVec, thisOctal, subcell)
        call distanceToCellBoundary(grid, rVec, direction, ds, sOctal=thisOctal)
        columnDensity = columnDensity + thisOctal%subcellSize * thisOctal%rho(subcell) * 1.d10
+       mu = 1.27
+       pressure = thisOctal%temperature(subcell) * kerg * thisOctal%rho(subcell) / (mu * mHydrogen)
+       cs = cs + sqrt(pressure / thisOctal%rho(subcell)) * thisOctal%rho(subcell)
+       totweight = totweight + thisOctal%rho(subcell)
        rVec = rVec + (ds + 1.d-6)*direction
     end do
     direction = VECTOR(0.d0, 0.d0, -1.d0)
@@ -69,11 +76,17 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
     subcell = inputSubcell
     rVec = subcellCentre(inputOctal, inputSubcell)
     do while(inOctal(grid%octreeRoot, rVec))
+       call findSubcellLocal(rVec, thisOctal, subcell)
        call distanceToCellBoundary(grid, rVec, direction, ds, sOctal=thisOctal)
        columnDensity = columnDensity + thisOctal%subcellSize * thisOctal%rho(subcell) * 1.d10
+       mu = 1.27
+       pressure = thisOctal%temperature(subcell) * kerg * thisOctal%rho(subcell) / (mu * mHydrogen)
+       cs = cs + sqrt(pressure / thisOctal%rho(subcell)) * thisOctal%rho(subcell)
+       totweight = totweight + thisOctal%rho(subcell)
        rVec = rVec + (ds + 1.d-6)*direction
     end do
-  end function columnDensity
+    cs = cs / totweight
+  end subroutine calculateColumn
 
   real(double) function massWithinR(thisR, grid)
     real(double) :: thisR
@@ -105,9 +118,8 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
           end do
        else
           rVec = subcellCentre(thisOctal, subcell)
-          
-          if (abs(rVec%z - thisOCtal%subcellSize) < smallestCellsize/10.d0) then
-             Sigma = columnDensity(thisOctal, subcell, grid)
+          if (abs(abs(rVec%z) - thisOCtal%subcellSize/2.d0) < 1496.) then
+             call calculateColumn(sigma, cs, thisOctal, subcell, grid)
              mass = massWithinR(modulus(rVec), grid)
              mass = mass + SUM(globalSourceArray(1:GlobalnSource)%mass)
              r = modulus(rVec)

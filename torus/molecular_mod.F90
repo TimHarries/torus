@@ -829,6 +829,21 @@ module molecular_mod
                  endif
               endif
 
+              if (thisMolecule%molecule == "CH3CN") then
+                 thisOctal%molAbundance(subcell) = 1.d-30
+                 if (thisOctal%rho(subcell)  > 1.d-15) then
+                    if (thisOctal%temperature(subcell) > 100.d0) then
+                       thisOctal%molAbundance(subcell) = 1.d-8
+                    else if ((thisOctal%temperature(subcell) >= 90.d0).and.(thisOctal%temperature(subcell) <= 100.d0)) then
+                       thisOctal%molAbundance(subcell) = 5.d-9
+                    else if (thisOctal%temperature(subcell) < 90.d0) then
+                       thisOctal%molAbundance(subcell) = 1.d-10
+                    endif
+                 endif
+              endif
+
+
+
 #ifdef MPI
 #ifdef HYDRO
               if(zeroghosts) then
@@ -3290,12 +3305,12 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
      call writeinfo("Initialising datacube",TRIVIAL)
 
      if(nv .eq. 0) then
-        call initCube(cube, 200, mytelescope, wantTau=wantTau) ! Make cube
+        call initCube(cube, 200, mytelescope, wantTau=wantTau, alma=alma) ! Make cube
      else
-        call initCube(cube, nv, mytelescope, wantTau=wantTau) ! Make cube
+        call initCube(cube, nv, mytelescope, wantTau=wantTau, alma=alma) ! Make cube
      endif
 
-     cube%obsDistance = gridDistance * 1d10!(in cm) Additional information that will be useful
+     cube%obsDistance = gridDistance !(in cm) Additional information that will be useful
      if (gridDistance/pctocm < 1000.0) then 
         write(message,'(a,f10.3,a)') "Observer Distance        : ",gridDistance/pctocm, " pc"
      else

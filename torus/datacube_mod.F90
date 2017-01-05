@@ -424,13 +424,13 @@ contains
         if(doALMA) then
            dx = thisCube%xAxis(2)-thisCube%xAxis(1)
            dy = thisCube%yAxis(2)-thisCube%yAxis(1)
-           dx = ((dx * 1.d20)/thisCube%obsdistance)*radtodeg
-           dy = ((dy * 1.d20)/thisCube%obsdistance)*radtodeg
+           dx = ((dx * 1.d10)/thisCube%obsdistance)*radtodeg
+           dy = ((dy * 1.d10)/thisCube%obsdistance)*radtodeg
            refValX = DEC
            refValY = RA
            call ftpkyd(unit,'CRPIX1',0.5_db,-3,'reference pixel',status)
            call ftpkyd(unit,'CDELT1',dx,10,' ',status)
-           call ftpkys(unit,'CTYPE1',thisCube%xAxisType,"x axis", status)
+           call ftpkys(unit,'CTYPE1',"RA---SIN","x axis", status)
            call ftpkyd(unit,'CRVAL1',refValX,-5,'coordinate value at reference point',status)
            call ftpkys(unit,'CUNIT1', "deg", "x axis unit", status)
            
@@ -449,8 +449,8 @@ contains
         if(doALMA) then
            dx = thisCube%xAxis(2)-thisCube%xAxis(1)
            dy = thisCube%yAxis(2)-thisCube%yAxis(1)
-           dx = ((dx * 1.d20)/thisCube%obsdistance)*radtodeg
-           dy = ((dy * 1.d20)/thisCube%obsdistance)*radtodeg
+           dx = ((dx * 1.d10)/thisCube%obsdistance)*radtodeg
+           dy = ((dy * 1.d10)/thisCube%obsdistance)*radtodeg
            refValX = DEC
            refValY = RA
            call ftpkyd(unit,'CRPIX2',0.5_db,-3,'reference pixel',status)

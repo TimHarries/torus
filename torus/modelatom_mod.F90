@@ -813,8 +813,9 @@ contains
 
 
           if (t > 3.) then
-             N0overN1 = ne * (u0/u1) * ci * exp (24.59d0/(kev*t)) / t**1.5
-             n1overn2 = ne * (u1/u2) * ci * exp (54.42d0/(kev*t)) / t**1.5
+             N0overN1 = min(1.d20,ne * (u0/u1) * ci * exp (24.59d0/(kev*t)) / t**1.5)
+             n1overn2 = min(1.d20,ne * (u1/u2) * ci * exp (54.42d0/(kev*t)) / t**1.5)
+
              c = 1.d0 / ( 1.d0 + n1overn2 + n0overn1 * n1overn2)
           else
              n0overn1 = 1.d10
@@ -880,8 +881,8 @@ contains
 
 
           if (t > 3.) then
-             N0overN1 = ne * (u0/u1) * ci * exp (24.59d0/(kev*t)) / t**1.5
-             n1overn2 = ne * (u1/u2) * ci * exp (54.42d0/(kev*t)) / t**1.5
+             N0overN1 = min(1.d20,ne * (u0/u1) * ci * exp (24.59d0/(kev*t)) / t**1.5)
+             n1overn2 = min(1.d20,ne * (u1/u2) * ci * exp (54.42d0/(kev*t)) / t**1.5)
              c = 1.d0 / ( 1.d0 + n1overn2 + n0overn1 * n1overn2)
           else
              n0overn1 = 1.d10
