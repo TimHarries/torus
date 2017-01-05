@@ -156,7 +156,7 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
        select case (geometry)
           case("cmfgen")
              onekappa=.false.
-             call read_cmfgen_data("OPACITY_DATA")
+             call read_cmfgen_data("RVTJ")
              call put_cmfgen_Rmin(CMFGEN_Rmin)  ! in [10^10cm]
              call put_cmfgen_Rmax(CMFGEN_Rmax)  ! in [10^10cm]
           case DEFAULT
@@ -501,14 +501,14 @@ doGridshuffle: if(gridShuffle) then
                                                                      "temperature", &
                                                                      "fixedtemp  "/))
 #ifdef STATEQ
-          case("cmfgen")
-              call map_cmfgen_opacities(grid)
-              call distort_cmfgen(grid%octreeRoot, grid)
-              call set_bias_cmfgen(grid%octreeRoot, grid, lamline)
-              call writeVtkFile(grid, "cmfgen.vtk",  valueTypeString=(/"etaline ", &
-                                                                       "chiline ", &
-                                                                       "ne      ", &
-                                                                       "velocity"/))
+!          case("cmfgen")
+!              call map_cmfgen_opacities(grid)
+!              call distort_cmfgen(grid%octreeRoot, grid)
+!              call set_bias_cmfgen(grid%octreeRoot, grid, lamline)
+!              call writeVtkFile(grid, "cmfgen.vtk",  valueTypeString=(/"etaline ", &
+!                                                                       "chiline ", &
+!                                                                       "ne      ", &
+!                                                                       "velocity"/))
 #endif
 
           case("wrshell")

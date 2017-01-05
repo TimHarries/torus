@@ -10,6 +10,7 @@ module cmfgen_class
   !---------------------------------------------------------------------------------
 
   use kind_mod
+  use messages_mod
   use constants_mod
   use vector_mod
   use gridtype_mod
@@ -92,70 +93,250 @@ contains
     character(LEN=120) :: dum_a_long
     integer :: i, nd
     integer :: luin =88
-    real(double) :: freq
-    character(len=14) :: tstring
+    real(double) :: freq, ln_ri, ln_rmax, ln_rmin, dln_r, rstar
+    characteR(len=120) :: msg
 
     open(unit=luin, file=filename, status="old")
 
-    ! Reading header and writing it to the standard output for record.
-    write(*,'(a)') " "
-    write(*,'(a)') " "
-    write(*,'(a)') "======= Reading OPACITY_DATA of CMFGEN =================================== "
-    do i = 1, 9
-       read(luin,'(a)') dum_a_long
-       write(*,'(a)') dum_a_long
-    end do
-    write(*,'(a)') "============================================================================== "
-    write(*,'(a)') " "
-    write(*,'(a)') " "
+    if (filename == "OPACITY_DATA") then
+       
+       ! Reading header and writing it to the standard output for record.
+       call writeInfo(" ")
+       call writeInfo(" ")
+       call writeInfo("======= Reading OPACITY_DATA of CMFGEN =================================== ")
+       do i = 1, 9       
+          read(luin,'(a)') dum_a_long       
+          write(msg,'(a)') dum_a_long
+          call writeInfo(msg)
+       end do
+       call writeInfo("========================================================================== ")
+       call writeInfo(" ")
+       call writeInfo(" ")
+       
+       
+       
+       ! now reading the data and storing them
+       rewind(luin)
+       read(luin,*) cmfgen_opacity%format_date
+       read(luin,*) cmfgen_opacity%model_id
+       read(luin,*) cmfgen_opacity%trans_id
+       read(luin,*) cmfgen_opacity%diff_aprox
+       read(luin,*) freq
+       read(luin,*) cmfgen_opacity%lambda
+       read(luin,*) cmfgen_opacity%amass
+       read(luin,*) cmfgen_opacity%Ic
+       read(luin,*) cmfgen_opacity%nd
+       read(luin,*) dum_a  ! skip header    
+       ! now allocate memory for data arrays
+       nd = cmfgen_opacity%nd
+       ALLOCATE(cmfgen_opacity%r(nd), cmfgen_opacity%T(nd), cmfgen_opacity%sigma(nd), cmfgen_opacity%V(nd))
+       ALLOCATE(cmfgen_opacity%eta(nd), cmfgen_opacity%chi_th(nd), cmfgen_opacity%esec(nd), &
+            cmfgen_opacity%etal(nd), cmfgen_opacity%chil(nd), cmfgen_opacity%rho(nd))
+       !initialze data arrays
+       cmfgen_opacity%r(1:nd)=0.0d0; cmfgen_opacity%T(1:nd)=0.0d0; cmfgen_opacity%sigma(1:nd)=0.0d0
+       cmfgen_opacity%V(1:nd)=0.0d0; cmfgen_opacity%eta(1:nd)=0.0d0; cmfgen_opacity%chi_th(1:nd)=0.0d0
+       cmfgen_opacity%esec(1:nd)=0.0d0; cmfgen_opacity%etal(1:nd)=0.0d0; cmfgen_opacity%chil(1:nd)=0.0d0
+       cmfgen_opacity%rho(1:nd)=0.0d0
+       
+       do i = 1, nd
+          read(luin, *)              &
+               cmfgen_opacity%r(nd+1-i),       &
+               cmfgen_opacity%T(nd+1-i),       &
+               cmfgen_opacity%sigma(nd+1-i),   &
+               cmfgen_opacity%V(nd+1-i),       &
+               cmfgen_opacity%eta(nd+1-i),     &
+               cmfgen_opacity%chi_th(nd+1-i),  &
+               cmfgen_opacity%esec(nd+1-i),    &
+               cmfgen_opacity%etal(nd+1-i),    &
+               cmfgen_opacity%chil(nd+1-i)
+       end do
+       
+       ! changing units of T from 10^4 K to K
+       cmfgen_opacity%T(1:nd) = 1.0d4*cmfgen_opacity%T(1:nd)
+       
+
+!XXXXXXXXXXXXXXXXXXXXXX
+!just testing 
+!       cmfgen_opacity%chil(1:nd) = 0.5d0*cmfgen_opacity%chil(1:nd)  ! adding missing factor if hydrogen
 
 
-    ! now reading the data and storing them
-    rewind(luin)
-    read(luin,*) cmfgen_opacity%format_date
-    read(luin,*) cmfgen_opacity%model_id
-    read(luin,*) cmfgen_opacity%trans_id
-    read(luin,*) cmfgen_opacity%diff_aprox
-    read(luin,*) freq
-    read(luin,*) cmfgen_opacity%lambda
-    read(luin,*) cmfgen_opacity%amass
-    read(luin,*) cmfgen_opacity%Ic
-    read(luin,*) cmfgen_opacity%nd
-    read(luin,*) dum_a  ! skip header    
-    ! now allocate memory for data arrays
-    nd = cmfgen_opacity%nd
-    ALLOCATE(cmfgen_opacity%r(nd), cmfgen_opacity%T(nd), cmfgen_opacity%sigma(nd), cmfgen_opacity%V(nd))
-    ALLOCATE(cmfgen_opacity%eta(nd), cmfgen_opacity%chi_th(nd), cmfgen_opacity%esec(nd), &
-         cmfgen_opacity%etal(nd), cmfgen_opacity%chil(nd), cmfgen_opacity%rho(nd))
+       !
+       ! Assigining a psedo density using electron scattering opacity!
+       cmfgen_opacity%rho(1:nd) = cmfgen_opacity%esec(1:nd)
 
-    do i = 1, nd
-       read(luin, *)              &
-            cmfgen_opacity%r(nd+1-i),       &
-            cmfgen_opacity%T(nd+1-i),       &
-            cmfgen_opacity%sigma(nd+1-i),   &
-            cmfgen_opacity%V(nd+1-i),       &
-            cmfgen_opacity%eta(nd+1-i),     &
-            cmfgen_opacity%chi_th(nd+1-i),  &
-            cmfgen_opacity%esec(nd+1-i),    &
-            cmfgen_opacity%etal(nd+1-i),    &
-            cmfgen_opacity%chil(nd+1-i)
-    end do
+       
+    else if (filename == "RVTJ") then
+       ! Reading header and writing it to the standard output for record.
+       call writeInfo(" ")
+       call writeInfo(" ")
+       call writeInfo("======= Reading RVTJ of CMFGEN =================================== ")
+       do i = 1, 12      
+          read(luin,'(a)') dum_a_long       
+          write(msg,'(a)') dum_a_long
+          call writeInfo(msg)
+       end do
+       call writeInfo("========================================================================== ")
+       call writeInfo(" ")
+       call writeInfo(" ")
+       
+       
+       
+       ! now reading the data and storing them
+       rewind(luin)
+       read(luin,*) cmfgen_opacity%format_date
+       read(luin,*) cmfgen_opacity%model_id
+       read(luin,*) dum_a  ! skip header    
+       read(luin,*) dum_a, cmfgen_opacity%nd
+       read(luin,*) dum_a  ! skip header    
+       read(luin,*) dum_a  ! skip header    
+       read(luin,*) dum_a  ! skip header    
+       read(luin,*) dum_a  ! skip header    
+       read(luin,*) dum_a  ! skip header    
+       read(luin,*) dum_a  ! skip header    
+       read(luin,*) dum_a  ! skip header    
+       read(luin,*) dum_a  ! skip header    
 
-    ! changing units of T from 10^4 K to K
-    cmfgen_opacity%T(1:nd) = 1.0d4*cmfgen_opacity%T(1:nd)
+       ! now allocate memory for data arrays
+       nd = cmfgen_opacity%nd
+       ALLOCATE(cmfgen_opacity%r(nd), cmfgen_opacity%T(nd), cmfgen_opacity%sigma(nd), cmfgen_opacity%V(nd))
+       ALLOCATE(cmfgen_opacity%eta(nd), cmfgen_opacity%chi_th(nd), cmfgen_opacity%esec(nd), &
+            cmfgen_opacity%etal(nd), cmfgen_opacity%chil(nd), cmfgen_opacity%rho(nd))
+       ! Initializing the data arrays
+       cmfgen_opacity%r(1:nd)=0.0d0; cmfgen_opacity%T(1:nd)=0.0d0; cmfgen_opacity%sigma(1:nd)=0.0d0
+       cmfgen_opacity%V(1:nd)=0.0d0; cmfgen_opacity%eta(1:nd)=0.0d0; cmfgen_opacity%chi_th(1:nd)=0.0d0
+       cmfgen_opacity%esec(1:nd)=0.0d0; cmfgen_opacity%etal(1:nd)=0.0d0; cmfgen_opacity%chil(1:nd)=0.0d0
+       cmfgen_opacity%rho(1:nd)=0.0d0
 
-    ! to be consisetnt with the notation in stateq_mod::generateOpacitiesAMR
-    cmfgen_opacity%eta(1:nd) = 1.0d10*cmfgen_opacity%eta(1:nd)
-    cmfgen_opacity%etal(1:nd) = 1.0d10*cmfgen_opacity%etal(1:nd)
 
-    close(luin)
+       ! Read radius
+       read(luin,*) dum_a  
+       read(luin,*) cmfgen_opacity%r(1:nd)   ! 10^10cm
 
-    open(luin, file="RVTJ", status="old", form="formatted")
-10 continue
-    read(luin,'(a14)') tstring
-    if (trim(tstring) /= " Mass Density") goto 10
-    read(luin,*) cmfgen_opacity%rho(1:nd)
-    call reverse(cmfgen_opacity%rho)
+       ! Read Velocity
+       read(luin,*) dum_a  
+       read(luin,*) cmfgen_opacity%V(1:nd)   ! km/s
+
+       ! Read sigma
+       read(luin,*) dum_a  
+       read(luin,*) cmfgen_opacity%sigma(1:nd)   ! 
+
+       ! Read electron density to a dummy (eta array)
+       read(luin,*) dum_a  
+       read(luin,*) cmfgen_opacity%eta(1:nd)   ! 
+
+       ! Read temeprature
+       read(luin,*) dum_a  
+       read(luin,*) cmfgen_opacity%T(1:nd)   ! 
+
+       ! Read Rosseland Mean Opacity to a dummy (eta array)
+       read(luin,*) dum_a  
+       read(luin,*) cmfgen_opacity%eta(1:nd)   ! 
+
+       ! Read Flux Mean Opacity to a dummy (eta array)
+       read(luin,*) dum_a  
+       read(luin,*) cmfgen_opacity%eta(1:nd)   ! 
+
+       ! Read Atom Density to a dummy (eta array)
+       read(luin,*) dum_a  
+       read(luin,*) cmfgen_opacity%eta(1:nd)   ! 
+
+       ! Read Ion Density to a dummy (eta array)
+       read(luin,*) dum_a  
+       read(luin,*) cmfgen_opacity%eta(1:nd)   ! 
+
+       ! Read density
+       read(luin,*) dum_a  
+       read(luin,*) cmfgen_opacity%rho(1:nd)   !  [g/cm^3]
+
+       ! Now reverse the order
+
+       ! Note using eta array for tmp array       
+       cmfgen_opacity%eta(1:nd) = cmfgen_opacity%r(1:nd)
+       do i = 1, nd
+          cmfgen_opacity%r(i) = cmfgen_opacity%eta(nd+1-i)
+       end do
+
+       cmfgen_opacity%eta(1:nd) = cmfgen_opacity%V(1:nd)
+       do i = 1, nd
+          cmfgen_opacity%V(i) = cmfgen_opacity%eta(nd+1-i)
+       end do
+
+       cmfgen_opacity%eta(1:nd) = cmfgen_opacity%sigma(1:nd)
+       do i = 1, nd
+          cmfgen_opacity%sigma(i) = cmfgen_opacity%eta(nd+1-i)
+       end do
+
+       cmfgen_opacity%eta(1:nd) = cmfgen_opacity%T(1:nd)
+       do i = 1, nd
+          cmfgen_opacity%T(i) = cmfgen_opacity%eta(nd+1-i)
+       end do
+
+       cmfgen_opacity%eta(1:nd) = cmfgen_opacity%rho(1:nd)
+       do i = 1, nd
+          cmfgen_opacity%rho(i) = cmfgen_opacity%eta(nd+1-i)
+       end do
+       cmfgen_opacity%eta(1:nd) = 0.0d0
+
+
+!       print *, "r   = ", cmfgen_opacity%r
+!       print *, "Vr  = ", cmfgen_opacity%V
+!       print *, "T   = ", cmfgen_opacity%T
+!       print *, "rho = ", cmfgen_opacity%rho
+
+
+       
+       ! changing units of T from 10^4 K to K
+       cmfgen_opacity%T(1:nd) = 1.0d4*cmfgen_opacity%T(1:nd)
+
+    else if (filename == "DUMMY") then
+       ! sets up the data with functions in this routine
+
+       !  Number of grid points
+       nd = 70 
+       cmfgen_opacity%nd = nd
+
+       ! allocate arrays
+
+       ALLOCATE(cmfgen_opacity%r(nd), cmfgen_opacity%T(nd), cmfgen_opacity%sigma(nd), cmfgen_opacity%V(nd))
+       ALLOCATE(cmfgen_opacity%eta(nd), cmfgen_opacity%chi_th(nd), cmfgen_opacity%esec(nd), &
+            cmfgen_opacity%etal(nd), cmfgen_opacity%chil(nd), cmfgen_opacity%rho(nd))
+       ! Initializing the data arrays
+       cmfgen_opacity%r(1:nd)=0.0d0; cmfgen_opacity%T(1:nd)=0.0d0; cmfgen_opacity%sigma(1:nd)=0.0d0
+       cmfgen_opacity%V(1:nd)=0.0d0; cmfgen_opacity%eta(1:nd)=0.0d0; cmfgen_opacity%chi_th(1:nd)=0.0d0
+       cmfgen_opacity%esec(1:nd)=0.0d0; cmfgen_opacity%etal(1:nd)=0.0d0; cmfgen_opacity%chil(1:nd)=0.0d0
+       cmfgen_opacity%rho(1:nd)=0.0d0
+
+
+
+       !----------------------------------
+       Rstar = 139.10d0  ! 10^10 cm
+       !----------------------------------
+
+
+       ! Set up R grid ! spacing with natural log.
+       ln_Rmin =  log( cmfgen_opacity%Rmin )
+       ln_Rmax =  log( cmfgen_opacity%Rmax )
+       dln_R =  ln_Rmax - ln_Rmin
+
+       do i = 1, nd 
+          ln_ri = ln_Rmin + dln_R*dble(i-1)/dble(nd-1)
+          cmfgen_opacity%r(i) = EXP(ln_ri)          ! 10^10 cm
+       end do
+
+       ! set up velocity, density and temperature
+       do i = 1, nd 
+          cmfgen_opacity%V(i)   = cmfgen_beta_velocity(cmfgen_opacity%r(i), Rstar)     ! km/s
+          cmfgen_opacity%rho(i) = cmfgen_beta_density(cmfgen_opacity%r(i), Rstar)      ! g/cm^3
+          cmfgen_opacity%T(i)   = cmfgen_beta_temperature(cmfgen_opacity%r(i), Rstar)  ! K
+       end do
+
+       ! set up other data here.
+       ! They can be just left as they are (zeros)
+              
+    else
+       write(msg,'(a)') "Error: Unknown filename was passed to read_cmfgen_data."
+       stop
+    end if
     close(luin)
 
 
@@ -714,6 +895,112 @@ contains
     enddo
     
   end subroutine distort_cmfgen
+  !===================================================================
+  ! Given a point and grid, this function returns
+  ! the wind velocity (as a vector) in units of speed of light [c]. 
+  ! 
+  !====================================================================
+  FUNCTION cmfgen_beta_velocity(r, Rstar) RESULT(out)
+    
+    IMPLICIT NONE
+
+    real(double)                  :: out   ! [km/s]
+    real(double), intent(in)      :: r     ! [10^10cm]
+    real(double), intent(in) :: Rstar    ! 10^10cm   = 20 Rsun
+    !
+    real(double)  :: Vr
+    !
+    real(double), parameter :: V0    = 10.0d0    ! km/s
+    real(double), parameter :: Vinf  = 2000.0d0  ! km/s
+    real(double), parameter :: beta  = 1.0d0     ! [-]
+    !
+!    real(double), parameter :: Rstar=139.10d0      ! 10^10cm   = 20 Rsun
+
+    !Rstar = cmfgen_opacity%Rmin
+
+    !
+    if (r<Rstar) then ! inside of the star
+       vr = 1.0d-10   ! [kms]
+    else
+       Vr = V0 + (Vinf-V0)*(1.0d0-Rstar/r)**beta
+       Vr = MAX(Vr, 1.0d0)    ! km/s
+    end if
+
+    out = Vr
+    
+  END FUNCTION cmfgen_beta_velocity
+
+
+
+
+
+  !
+  !
+  !===================================================================
+  ! Given a point and grid, this function returns the density in [g/cm^3] 
+  ! at the point by interpolating the original zeus data.
+  !    
+  FUNCTION cmfgen_beta_density(r, Rstar) RESULT(out)
+    
+    IMPLICIT NONE
+
+    REAL(double)                  :: out
+    real(double), intent(in)      :: r   ! [10^10 cm]
+    real(double), intent(in) :: Rstar    ! 10^10cm   = 20 Rsun
+    !
+    real(double), parameter ::  M_sun      = 1.9891d33 ! in [g]
+    real(double), parameter ::  rho_min    = 1.0d-23 ! [g/cm^3]     
+    real(double), parameter ::  rho_max    = 1.0d0   ! [g/cm^3]     
+    real(double), parameter ::  Mdot       = 1.0d-6    ! [Msun/yr]     
+    real(double), parameter ::  Mdot_cgs   = Mdot*(M_sun/(60.0d0*60.0d0*24.0d0*365.0d0))    ! [g/s]     
+    real(double), parameter ::  pi         = 3.141593d0
+    !
+    !
+    real(double) :: r_cgs, vr_cgs
+
+    if (r< Rstar .or. r>cmfgen_opacity%Rmax) then 
+       out = rho_min  ! just assign a small value and return
+    else       
+       ! using a routine in utils_mod
+       r_cgs = r*1.0d10
+       vr_cgs = cmfgen_beta_velocity(r, Rstar)*1.0d5
+       out = Mdot_cgs / ( 4.0d0*pi*Vr_cgs*r_cgs*r_cgs )
+       out = MAX(rho_min, out)
+    end if
+
+  END FUNCTION cmfgen_beta_density
+
+
+
+  !
+  !
+  !
+  !===============================================================
+  !  Returns given point and grid, this function return 
+  !  the wind temperature in [K].
+  !
+  !===============================================================  
+  FUNCTION cmfgen_beta_temperature(r, Rstar)  RESULT(out)
+    
+    IMPLICIT NONE
+    REAL                          :: out    ! [K]
+    real(double), intent(in) :: r   ! 10^10 cm
+    real(double), intent(in) :: Rstar    ! 10^10cm   = 20 Rsun
+    !
+!    real(double), parameter  ::  T_iso = 36.0d3  ! [K]
+    real(double), parameter  ::  T_iso = 18.0d3  ! [K]
+
+    
+    if (r<Rstar) then ! inside of the star
+       out = 1000.0d0
+    else
+       out = T_iso
+       out = MAX(out, 3000.0)   ! limit the minimum temperature here
+    end if
+
+  END FUNCTION cmfgen_beta_temperature
+
+
 
 end module cmfgen_class
 
