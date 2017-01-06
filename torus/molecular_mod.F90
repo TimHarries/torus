@@ -830,14 +830,14 @@ module molecular_mod
               endif
 
               if (thisMolecule%molecule == "CH3CN") then
-                 thisOctal%molAbundance(subcell) = 1.d-30
+                 thisOctal%molAbundance(subcell) = 1.e-30
                  if (thisOctal%rho(subcell)  > 1.d-15) then
                     if (thisOctal%temperature(subcell) > 100.d0) then
-                       thisOctal%molAbundance(subcell) = 1.d-8
+                       thisOctal%molAbundance(subcell) = 1.e-8
                     else if ((thisOctal%temperature(subcell) >= 90.d0).and.(thisOctal%temperature(subcell) <= 100.d0)) then
-                       thisOctal%molAbundance(subcell) = 5.d-9
+                       thisOctal%molAbundance(subcell) = 5.e-9
                     else if (thisOctal%temperature(subcell) < 90.d0) then
-                       thisOctal%molAbundance(subcell) = 1.d-10
+                       thisOctal%molAbundance(subcell) = 1.e-10
                     endif
                  endif
               endif

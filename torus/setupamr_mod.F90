@@ -34,7 +34,7 @@ contains
     use inputs_mod, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp, ttauriStellarWind
     use inputs_mod, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, mDisc
-    use inputs_mod, only : rCore, rInner, rOuter, lamline,gridDistance, massEnvelope, readTurb, virialAlpha
+    use inputs_mod, only : rCore, rInner, rOuter, gridDistance, massEnvelope, readTurb, virialAlpha
     use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, logspacegrid, nmag, dospiral, sphereMass,sphereRadius
     use disc_class, only:  new
 #ifdef ATOMIC

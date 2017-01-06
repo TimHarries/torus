@@ -97,7 +97,6 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
   end function massWithinR
 
   recursive subroutine calculateToomreQ(thisOctal, grid)
-    use inputs_mod, only : smallestcellsize
     use ion_mod
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
