@@ -8713,10 +8713,12 @@ end subroutine sumFluxes
        call gravityTimeStep(grid%octreeRoot, dt)
     endif
 
-    direction = VECTOR(0.d0, 0.d0, 1.d0)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
-    call setuprhoPhi(grid%octreeroot, grid, direction)
-    call gravityTimeStep(grid%octreeRoot, dt)
+    if (amr3d.or.amr2d) then
+       direction = VECTOR(0.d0, 0.d0, 1.d0)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
+       call setuprhoPhi(grid%octreeroot, grid, direction)
+       call gravityTimeStep(grid%octreeRoot, dt)
+    endif
 
   end subroutine computeGravityTimeStep
 
@@ -17452,8 +17454,8 @@ end subroutine minMaxDepth
            if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
 
            rVec = subcellCentre(thisOctal, subcell)
-           if (.not.rVec%x < 0.d0) then
               r = rVec%x
+           if (.not.rVec%x < 0.d0) then
               mass = 0.d0
               localMass = 0.d0
               
@@ -17473,8 +17475,7 @@ end subroutine minMaxDepth
                     mass = mass + localMass
                  endif
               enddo
-              thisOctal%phi_i(subcell) = -(bigG * 16.d0 *pi**2/3.d0)*(r*1.d10)**4 * thisOctal%rho(subcell)**2 * &
-                   thisOctal%subcellSize*1.d10
+              thisOctal%phi_i(subcell) = -bigG * mass / (r * gridDistanceScale)**2
            endif
         endif
      enddo
@@ -17524,7 +17525,7 @@ end subroutine minMaxDepth
               do j = 1, nHydroThreadsGlobal
                  if (j /= myrankGlobal) then
                     call MPI_RECV(localphi, 1, MPI_DOUBLE_PRECISION, j, tag, localWorldCommunicator, status, ierr)
-                    phi = phi + localPhi
+                    phi = phi + localPhi * thisOctal%subcellSize * gridDistanceScale
                  endif
               enddo
               thisOctal%phi_gas(subcell) = phi

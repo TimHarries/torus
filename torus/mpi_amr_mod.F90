@@ -750,6 +750,7 @@ contains
   end subroutine findTotalMassWithinRMPIPrivate
 
   recursive subroutine findTotalPhiOutsideRMPIPrivate(thisOctal, radius, totalPhi)
+    use inputs_mod, only : griddistancescale
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   type(VECTOR) :: rVec
@@ -771,7 +772,7 @@ contains
              if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
                 rVec = subcellCentre(thisOctal, subcell)
                 if (modulus(rVec) > radius) then
-                   totalPhi = totalPhi + thisOctal%phi_i(subcell) 
+                   totalPhi = totalPhi + thisOctal%phi_i(subcell) * thisOctal%subcellSize * gridDistanceScale
                 endif
              endif
           endif
