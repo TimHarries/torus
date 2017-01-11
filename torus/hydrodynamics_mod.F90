@@ -2899,6 +2899,7 @@ contains
 !set up neighbour densities and cell interface advecting velocities - x direction
   recursive subroutine setupui(thisoctal, grid, direction, dt)
     use mpi
+    use inputs_mod, only : smallestCellSize
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
     type(octal), pointer   :: neighbouroctal
@@ -2956,7 +2957,7 @@ contains
              
              x_interface = thisOctal%x_i(subcell) - thisOctal%subcellSize*gridDistancescale/2.d0
 
-             locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*grid%halfsmallestsubcell)
+             locator = subcellcentre(thisoctal, subcell) + direction * (thisoctal%subcellsize/2.d0+0.01d0*smallestCellsize)
              neighbouroctal => thisoctal
              call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
              call getneighbourvalues(grid, thisoctal, subcell, neighbouroctal, neighboursubcell, direction, q, rho, rhoe, &
@@ -2972,13 +2973,16 @@ contains
 
 
              if (thisOctal%x_i(subcell) == thisOctal%x_i_minus_1(subcell)) then
-                write(*,*) "x_i bug ", thisOctal%x_i(subcell), thisOctal%x_i_minus_1(subcell)
-                print *, "cen ", subcellCentre(thisOctal, subcell)
+                write(*,*) myrankGlobal, " x_i bug ", thisOctal%x_i(subcell), thisOctal%x_i_minus_1(subcell)
+                print *, "cen ", subcellCentre(thisOctal, subcell), thisOctal%edgeCell(subcell)
+                write(*,*) "xinterface ",x_interface
+                write(*,*) "grid%halfsmallest subcell ",grid%halfsmallestsubcell
+                write(*,*) "depth ",thisOctal%ndepth
                 if (.not.octalonthread(neighbouroctal, neighboursubcell, myrankGlobal)) then
                    print *, "AND IT WASNT ON THREAD"
                 end if
-!                print *, "EDGE", thisOctal%edgecell(subcell)
- !               print *, "GHOST", thisOctal%ghostcell(subcell)
+                print *, "EDGE", thisOctal%edgecell(subcell)
+                print *, "GHOST", thisOctal%ghostcell(subcell)
              else
  !               print *, "good at u_i"
              endif
@@ -8242,6 +8246,7 @@ end subroutine sumFluxes
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
  
     call setupX(grid%octreeRoot, grid, direction)
+    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup)
     call setupQX(grid%octreeRoot, grid, direction)
 
 !Set up the grid values
@@ -8568,11 +8573,10 @@ end subroutine sumFluxes
     dt = 1.d30
     
     direction = VECTOR(1.d0, 0.d0, 0.d0)
-    call setupx(grid%octreeRoot, grid, direction)
     call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=2)
     if (amr2d) then
        call setupUi_amr(grid%octreeRoot, grid, direction, dt)
-    else
+    else if (amr3d) then
        call setupUi_amr4(grid%octreeRoot, grid, direction, dt)
     endif
     call setupUpm(grid%octreeRoot, grid, direction)
@@ -8594,20 +8598,21 @@ end subroutine sumFluxes
        call pressureTimeStep(grid%octreeRoot, dt)
     endif
 
-    direction = VECTOR(0.d0, 0.d0, 1.d0)
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
-    if (amr2d) then
-       call setupUi_amr(grid%octreeRoot, grid, direction, dt)
-    else
-       call setupUi_amr4(grid%octreeRoot, grid, direction, dt)
+    if (amr2d.or.amr3d) then
+       direction = VECTOR(0.d0, 0.d0, 1.d0)
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
+       if (amr2d) then
+          call setupUi_amr(grid%octreeRoot, grid, direction, dt)
+       else
+          call setupUi_amr4(grid%octreeRoot, grid, direction, dt)
+       endif
+       call setupUpm(grid%octreeRoot, grid, direction)
+       call computepressureGeneral(grid, grid%octreeroot, .true.) 
+       call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
+       call setuppressure(grid%octreeroot, grid, direction)
+       call setuprhoPhi(grid%octreeroot, grid, direction)
+       call pressureTimeStep(grid%octreeRoot, dt)
     endif
-    call setupUpm(grid%octreeRoot, grid, direction)
-    call computepressureGeneral(grid, grid%octreeroot, .true.) 
-    call exchangeacrossmpiboundary(grid, npairs, thread1, thread2, nbound, group, ngroup, useThisBound=3)
-    call setuppressure(grid%octreeroot, grid, direction)
-    call setuprhoPhi(grid%octreeroot, grid, direction)
-    call pressureTimeStep(grid%octreeRoot, dt)
-
   end subroutine pressureGradientTimeStep
 
   recursive subroutine pressureTimeStep(thisoctal, dt)

@@ -112,7 +112,7 @@ contains
     use inputs_mod, only : pahtype, pahscale
     integer :: i, j 
     character(len=10) :: cval
-    character(len=80) :: filename, dataDirectory, cjunk
+    character(len=120) :: filename, dataDirectory, cjunk
     real :: vjunk
     real(double) :: lambda
 
