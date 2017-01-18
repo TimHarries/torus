@@ -1894,10 +1894,10 @@ contains
 !                end if
        endif
 
-       deallocate(mReal)
-       deallocate(mImg)
-       deallocate(tmReal)
-       deallocate(tmImg)
+!       deallocate(mReal)
+!       deallocate(mImg)
+!       deallocate(tmReal)
+!       deallocate(tmImg)
        !    endif
     endif
     if (writeMiePhase.and.writeoutput.and.(nlambda>1)) then

@@ -965,9 +965,12 @@ contains
           !               freq(iFreq), iElement)*cosTheta*exp(-tauCont(iFreq)),taucont(ifreq)
           !          write(*,*) freq(ifreq),i_nu(source(sourcenumber),freq(ifreq),ielement)
           !          iCont(iFreq) = iCont(iFreq) + i_nu(source(sourceNumber), freq(iFreq), iElement)*cosTheta*exp(-tauCont(iFreq))
-             iCont(iFreq) = iCont(iFreq) + i_nu(source(sourceNumber), freq(iFreq), iElement, cosTheta)*exp(-tauCont(iFreq))
+          if (opticallyThickContinuum) then
+               iCont(iFreq) = iCont(iFreq) + i_nu(source(sourceNumber), freq(iFreq), iElement, cosTheta)*exp(-tauCont(iFreq))
+            else
+               iCont(iFreq) = i_nu(source(sourceNumber), freq(iFreq), iElement, cosTheta)*exp(-tauCont(iFreq))
+            endif
 
-             if (sobolevApprox) iCont(iFreq) = i_nu(source(sourceNumber), freq(iFreq), iElement, cosTheta)!!!!!!!!!!!!!!!!!!!!!!
        enddo
     endif
 
@@ -1353,8 +1356,8 @@ contains
     integer :: iStage
     real(double), allocatable :: oldpops(:,:), newPops(:,:), dPops(:,:), mainoldpops(:,:)
     real(double) :: newNe
-    real(double), parameter :: underCorrect = 0.95d0
-    real(double), parameter :: underCorrectne = 0.95d0
+    real(double), parameter :: underCorrect = 0.8d0
+    real(double), parameter :: underCorrectne = 0.8d0
     real(double) :: dne
     logical :: sobolevApprox
     real(double) :: fac
@@ -1429,8 +1432,7 @@ contains
 #endif
 
 
-    sobolevApprox = .true.
-
+    call checkInflow(grid%octreeRoot, nsource, source)
     freq = 0.d0
     indexRBBTrans = 0
     nfreq = 0; nRBBTrans = 0; tauAv = 0.d0
@@ -1595,9 +1597,12 @@ contains
        close(69)
     endif
 
-    nRay = 1000
+    nRay = 1024
 
     nStage = 2
+
+    sobolevApprox = .true.
+
     if (sobolevApprox) nStage = 1
     do iStage = 1, nStage
 
@@ -1631,6 +1636,8 @@ contains
           ioctal_beg = 1
           ioctal_end = SIZE(octalArray)       
 
+          write(*,*) myrankGlobal, " size of octal Array ",ioctal_end
+
           if (fixedRays) then
              call randomNumberGenerator(putIseed = iseed)
              call randomNumberGenerator(reset = .true.)
@@ -1645,7 +1652,7 @@ contains
          nOctals = size(octalArray)
 
 #ifdef MPI
-         allocate(doneBythisThread(1:nOctals))
+         if (.not.allocated(doneByThisThread)) allocate(doneBythisThread(1:nOctals))
          donebythisthread = .false.
 
          if (myrankGlobal == 0) then
@@ -1750,8 +1757,6 @@ contains
                    !             thisOctal => grid%octreeRoot
                    !             call findSubcellLocal(posVec, thisOctal, subcell)
 
-                   thisOctal%inflow(subcell) = thisOctal%inflow(subcell).and. &
-                        (.not.insidesource(thisOctal, subcell, nsource, Source))
 
 
                    if (thisOctal%inflow(subcell).and.(thisOctal%temperature(subcell) > 3000.)) then 
@@ -2028,7 +2033,7 @@ contains
                       endif
 
 
-                      if (myRankisZero) then
+!                      if (myRankisZero) then
                          open(69, file=ifilename, status="old", position = "append", form="formatted")
                          rCore = real(source(1)%radius)
                          if (nAtom == 1) write(69,'(6f10.4)') log10(modulus(subcellCentre(thisOctal,subcell))/rCore), &
@@ -2055,7 +2060,7 @@ contains
                          !                                   bnu(freq(i),dble(thisOctal%temperature(subcell)))
                          !                           enddo
                          !                           close(69)
-                      endif
+!                      endif
 
                       !                call locate(freq,nfreq,cspeed/6562.8d-8,ifreq)
                       !                nStar = boltzSahaGeneral(thisAtom(1), 6, thisOctal%ne(subcell), &
@@ -2074,6 +2079,8 @@ contains
           enddo
                 !$OMP END DO
                 !$OMP BARRIER
+
+
 
                 deallocate(oldPops)
                 deallocate(mainoldPops)
@@ -2165,7 +2172,7 @@ contains
                 percentageConverged = 100.d0 * dble(nConverged)/dble(nInUse)
                 write(ifilename,'(a,i2.2,a)') "fracchange",idump,".vtk"
                 call writeVTKfile(grid,ifilename, valueTypeString = (/"adot"/))
-                if (writeoutput) write(*,*) "Percentage converged: ",percentageConverged
+                write(*,*) myrankGlobal," Percentage converged: ",percentageConverged, ninuse, nconverged
 
                 if (myRankIsZero) &
                      call writeAmrGrid("atom_tmp.grid",.false.,grid)
@@ -2236,10 +2243,11 @@ contains
           
           if (thisOctal%inflow(subcell).and.(thisOctal%temperature(subcell) > 3000.)) then
              nInuse = nInuse + 1
+             maxFrac = -1.d30
              do iAtom = 1, size(thisOctal%newAtomLevel,2)
-                maxFrac = -1.d30
                 do j = 1 , size(thisOctal%newAtomLevel,3)
-                   if (thisOctal%atomLevel(subcell,iAtom,j) /= 0.d0) then
+                   write(30+myrankGlobal,*) iatom,j,thisOctal%newAtomLevel(subcell,iatom,j), thisOctal%atomLevel(subcell,iatom,j)
+                   if (thisOctal%atomLevel(subcell,iAtom,j) > 1.d-20) then
                       temp = abs((thisOctal%newatomLevel(subcell,iAtom,j) - &
                            thisOctal%atomLevel(subcell,iAtom,j)) / &
                            thisOctal%atomLevel(subcell,iAtom,j))
@@ -2293,6 +2301,29 @@ contains
     enddo
   end subroutine checkVelocityInterp
 
+  recursive  subroutine  checkInflow(thisOctal, nsource, source)
+    integer :: nsource
+    type(SOURCETYPE) :: source(:)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call checkInflow(child, nsource, source)
+                exit
+             end if
+          end do
+       else
+          thisOctal%inflow(subcell) = thisOctal%inflow(subcell).and. &
+               (.not.insidesource(thisOctal, subcell, nsource, Source))
+       endif
+    enddo
+  end subroutine checkInflow
 
   recursive  subroutine  calcEtaLine(thisOctal, thisAtom, nAtom, iAtom, iTrans)
     type(MODELATOM) :: thisAtom(:)
@@ -2328,6 +2359,36 @@ contains
        endif
     enddo
   end subroutine calcEtaLine
+
+  recursive  subroutine  removeInnerEtaChi(thisOctal, radius)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    real(double) :: radius
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call removeInnerEtaChi(child, radius)
+                exit
+             end if
+          end do
+       else
+
+          if (modulus(subcellCentre(thisOctal, subcell)) < radius) then
+
+             thisOctal%etaLine(subcell) = 1.d-30
+             thisOctal%chiLine(subcell) = 1.d-30
+             thisOctal%etaCont(subcell) = 1.d-30
+             thisOctal%kappaAbs(subcell,1) = 1.d-30
+             thisOctal%kappaSca(subcell,1) = 1.d-30
+          endif
+       endif
+    enddo
+  end subroutine removeInnerEtaChi
 
   recursive  subroutine  calcChiLine(thisOctal, thisAtom, nAtom, iAtom, iTrans)
     type(MODELATOM) :: thisAtom(:)
@@ -3093,6 +3154,7 @@ contains
        if (occultingDisc) then
           if (distToDisc < distToGrid) then
              i0 = tiny(i0)
+             write(*,*) "ray hit occulting disc"
              goto 666
           endif
        endif
@@ -3432,6 +3494,7 @@ contains
        call calcEtaLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
 !       close(45)
        call calcContinuumOpacities(grid%octreeRoot, thisAtom, nAtom, transitionfreq)
+       call removeInnerEtaChi(grid%octreeRoot, source(1)%radius*1.1)
     endif
 
     call setMicroturb(grid%octreeRoot, dble(vTurb))
@@ -3493,7 +3556,8 @@ contains
 #endif
     endif
 
-!    if (.not.doSpec) goto 666
+    if (.not.doSpec) goto 666
+
 #ifdef MPI
   call randomNumberGenerator(syncIseed=.true.)
 #endif
@@ -3612,7 +3676,7 @@ contains
     deallocate(da, domega, rayPosition)
 
     lineOff = storeLineOff
-
+666 continue
   end subroutine calculateAtomSpectrum
 
 
@@ -3658,7 +3722,7 @@ contains
     
     if (nr2 > 0) then
        rmin = globalSourceArray(1)%radius 
-       rMax = ttaurirOuter/1.d10
+       rMax = max(rMin*10.d0,ttaurirOuter/1.d10)
     
 
        do ir = 1, nr2
@@ -4270,7 +4334,7 @@ contains
   subroutine createRayGridGeneric(cube, SourceArray, xPoints, yPoints, nPoints, xProj, yProj)
     use inputs_mod, only :  ttaurirouter, amrgridsize, ttauriStellarWind, SW_Rmin, SW_rmax, &
          ttauriWind
-    use inputs_mod,only : nr1,nr2,nr3,nr4,nphi1,nphi2,nphi3,nphi4
+    use inputs_mod,only : nr1,nr2,nr3,nr4,nphi1,nphi2,nphi3,nphi4, ttauriMagnetosphere
     use source_mod, only : globalnSource
     use amr_mod, only : countVoxels
     use datacube_mod, only : datacube
@@ -4284,7 +4348,7 @@ contains
     logical :: enhanced
     enhanced = .true.
 
-    nPoints = (nr1*nphi1 + nr2*nphi2 + nr3*nphi3 + nr4*nphi4) +  globalnSource * nr1 * nphi1
+    nPoints = (nr1*nphi1 + nr2*nphi2 + nr3*nphi3 + nr4*nphi4) +  2*globalnSource * nr1 * nphi1
     nPoints = nPoints + 4*cube%nx*cube%ny
 
     allocate(xPoints(1:nPoints),yPoints(1:nPoints))
@@ -4303,8 +4367,27 @@ contains
              yPoints(nPoints) = (sourceArray(isource)%position.dot.yproj) + r * sin (phi)
           enddo
        enddo
+
+       rMin = sourceArray(iSource)%radius
+       rMax = rMin * 20.d0
+       do i = 1, nr1
+          r1 = rMin + (rMax-rMin) * (dble(i-1)/dble(nr1))**3
+          r2 = rMin + (rMax-rMin) * (dble(i)/dble(nr1))**3
+          r = 0.5d0*(r1+r2)
+          call randomNumberGenerator(getDouble=dphi)
+          dphi = dphi * twoPi
+          do j = 1, nphi1
+             phi = twoPi * dble(j-1)/dble(nPhi1)+dphi
+             rVec = VECTOR(r*cos(phi),r*sin(phi),0.d0)
+             nPoints = nPoints + 1
+             xPoints(nPoints) = (sourceArray(isource)%position.dot.xproj) + r * cos (phi)
+             yPoints(nPoints) = (sourceArray(isource)%position.dot.yproj) + r * sin (phi)
+          enddo
+       enddo
+
     enddo
 
+    if (ttauriMagnetosphere) then
        rmin = sourceArray(1)%radius 
        rMax = ttauriRouter/1.d10
 
@@ -4326,7 +4409,7 @@ contains
              yPoints(nPoints) = sourceArray(isource)%position%y + rVec%y
           enddo
        enddo
-    
+    endif
     if (ttauriWind) then
        rmin = ttaurirOuter/1.d10 !dw_rmin
        rMax = amrGridSize

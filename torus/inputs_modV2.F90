@@ -3683,7 +3683,7 @@ contains
                   "Number of azimuthal rays to capture stellar wind: ","(a,i2,1x,a)", 100, ok, .false.) 
           endif
 
-    endif
+       endif
 
     call getLogical("internalView", internalView, cLine, fLine, nLines, &
          "View as our Galaxy:", "(a,1l,1x,a)", .false., ok, .false.)

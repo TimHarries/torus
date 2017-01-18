@@ -193,7 +193,7 @@ contains
                 if (writeoutput) write(*,*) "Calculating spectrum: ",trim(tempFilename)
                 call calculateAtomSpectrum(grid, globalAtomArray, nAtom, iTransAtom, iTransLine, &
                      viewVec, dble(gridDistance), &
-                     globalSourceArray, globalnsource, totalflux, occultingDisc=.true., prefix=tempFilename)
+                     globalSourceArray, globalnsource, totalflux, occultingDisc=.false., prefix=tempFilename)
              enddo
           enddo
        enddo
