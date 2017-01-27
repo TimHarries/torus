@@ -12255,12 +12255,12 @@ end function readparameterfrom2dmap
 
        if (r < rGapInner1) then
           thisOctal%dustTypeFraction(subcell,1) = scaleFac * grainFrac(1)
-!          thisOctal%dustTypeFraction(subcell,3) = scaleFac * grainFrac(3)
+          thisOctal%dustTypeFraction(subcell,3) = scaleFac * grainFrac(3)
        else
           thisOctal%dustTypeFraction(subcell,1) = fac * scalefac * grainFrac(1)
-!          thisOctal%dustTypeFraction(subcell,3) = fac * scalefac * grainFrac(3)
+          thisOctal%dustTypeFraction(subcell,3) = fac * scalefac * grainFrac(3)
           thisOctal%dustTypeFraction(subcell,2) = (1.d0-fac) * scalefac * grainFrac(2)
-!          thisOctal%dustTypeFraction(subcell,4) = (1.d0-fac) * scalefac * grainFrac(4)
+          thisOctal%dustTypeFraction(subcell,4) = (1.d0-fac) * scalefac * grainFrac(4)
        endif
 
 !       if (r < rGapInner1) then

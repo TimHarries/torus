@@ -42,7 +42,7 @@ contains
     type(gridtype), intent(in) :: grid
 
 
-    select case (trim(grid%geometry))
+    select case (grid%geometry)
        
     case ("jets")
        ! using a routine in jets_mod.f90

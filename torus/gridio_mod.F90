@@ -2443,6 +2443,7 @@ contains
       logical :: fileFormatted
 
       call testDataType("csingle", fileFormatted)
+      value = " "
       if (fileFormatted) then
          read(lUnit,*) i
          read(lUnit,*) value(1:i)
