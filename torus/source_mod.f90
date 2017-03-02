@@ -743,10 +743,10 @@
 
 
     subroutine getPhotonPositionDirection(source, position, direction, rHat, grid, weight)
-      use inputs_mod, only : biasPhiDirection, biasPhiProb, biasPhiInterval 
+      use inputs_mod, only : biasPhiDirection, biasPhiProb, biasPhiInterval, cylindricalHydro
       use inputs_mod, only : amrgridcentrey, amrgridcentrex, hotSpot, amrGridSize
       type(GRIDTYPE) :: grid
-      real(double) :: r, t, u, v, w, ang, planetBiasWeight
+      real(double) :: r, t, u, v, w, ang, planetBiasWeight, rand
       real(double), optional :: weight
       type(SOURCETYPE) :: source
       type(VECTOR),intent(out) :: position, direction, rHat
@@ -758,11 +758,18 @@
       if (PRESENT(weight)) weight = 1.d0
 
       if (source%stellar) then
+!         write(*,*)source%outsideGrid, cylindricalHydro, grid%octreeroot%twoD, source%pointSource
          if (.not.source%outsideGrid) then
             if (source%pointSource) then
                !      ! simply treating as a point source
                position = source%position
                direction = randomUnitVector()
+
+               if (grid%octreeroot%twoD) then
+                  call randomNumberGenerator(getDouble=rand)
+                  direction = Vector(sin(pi*rand), 0, cos(pi*rand))
+                  weight=weight*sin(pi*rand)*pi/2
+               endif
                
                if (biasPhiDirection > 0.d0) then
                   if (.not.PRESENT(weight)) then
@@ -817,11 +824,21 @@
 
                
             else
-               rHat = randomUnitVector()
-               position = source%position + source%radius*rHat
-               ! A limb darkening law should be applied here for 
-               ! for general case here.....
-               direction = fromPhotoSphereVector(rHat)
+               !change rHat here to random (R,z) vector for 2d cylindrical case TD
+               if (grid%octreeroot%twoD) then
+                  call randomNumberGenerator(getDouble=rand)
+                  rHat = Vector(sin(pi*rand), 0, cos(pi*rand))
+                  call normalize(rHat)
+                  weight=weight*sin(pi*rand)*pi/2
+                  direction=rHat
+                  position = source%position + source%radius*rHat
+               else
+                  rHat = randomUnitVector()
+                  position = source%position + source%radius*rHat 
+                  ! A limb darkening law should be applied here for 
+                  ! for general case here.....
+                  direction = fromPhotoSphereVector(rHat)
+               endif
                if (hotSpot) then
                   call getPhotoVec(source%surface, position, direction)
                endif
@@ -877,7 +894,6 @@
          call randomNumberGenerator(getDouble=r)
          r = 2.d0 * r - 1.d0
          position%z = r * grid%octreeRoot%subcellSize*2.d0
-!         direction = VECTOR(1.d0, 0.d0, 0.d0)
          direction = VECTOR(1.d0, 0.d0, 0.d0)
          if(grid%octreeroot%twod) then
             position%y = amrgridcentrey

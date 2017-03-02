@@ -543,7 +543,7 @@ suite_status="PASSED"
 echo "Summary of test results: " > header
 echo " " >> header
 
-grepper="/bin/grep -c -i"
+grepper="/usr/bin/grep -c -i"
 
 # Test for success of disc benchmark
 num_success=`${grepper} "TORUS: Test successful"  benchmarks_hybrid/benchmarks/disc/check_log_hybrid_disc.txt`

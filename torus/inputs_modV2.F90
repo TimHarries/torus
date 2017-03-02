@@ -313,6 +313,9 @@ contains
     call getInteger("maxiter", maxPhotoionIter, cLine, fLine, nLines, &
          "Maximum number of iterations","(a,i8,a)", 10, ok, .false.)
 
+    call getLogical("subgridhii", doSubgridHIIExpansion, cLine, fline, nLines, &
+         "Use subgrid model for HII region expansion: ", "(a,1l,1x,a)", .false., ok, .false.)
+    
     call getLogical("starburst", starburst, cLine, fline, nLines, &
          "Generate sources as starburst: ", "(a,1l,1x,a)", .false., ok, .false.)
 
@@ -375,6 +378,9 @@ contains
             "Allow sources to move: ", "(a,1l,1x,a)", .true., ok, .false.)
 
     endif
+
+    call getLogical("evolvesources", evolveSources, cLine, fLine, nLines, &
+         "Stars follow evolutionary tracks: ", "(a,1l,1x,a)", .true., ok, .false.)
 
     call getDouble("rhothresh", rhoThreshold, 1.d0, cLine, fLine, nLines, &
          "Threshold density for sink creation (g/cc): ","(a,e12.3,1x,a)", 1.d-14, ok, .false.)
@@ -477,21 +483,47 @@ contains
     call getLogical("radiationHydrodynamics", radiationHydrodynamics, cLine, fLine, nLines, &
          "Perform a radiation-hydrodynamics calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getDouble("radiationtimescale", radTimeScale, 1.d0, cLine, fLine, nLines, &
+         "ratio of radiation to hydro timescales: ", "(a,f7.1,1x,a)", 0.0d0, ok, .false.)
+    
+    call getInteger("shotnoiseweight", ShotNoiseWeight, cLine, fLine, nLines, &
+         "#crossings for rad history weighted<current: ","(a,i8,a)", 400, ok, .false.)
+
     call getLogical("caklineopacity", CAKlineOpacity, cLine, fLine, nLines, &
          "use Abbot82 temp invarient form of line driving: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getLogical("radforcemonte", RadForceMonte, cLine, fLine, nLines, &
          "use a path length based estimation for the rad pressure: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("accretionfeedback", AccretionFeedback, cLine, fLine, nLines, &
+         "re-inject some of the accreted material into the domain: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getInteger("accfeedbackcells", AccFeedbackCells, cLine, fLine, nLines, &  
+         "number of cells to inject into : ","(a,i8,a)", 4, ok, .false.)
+
+    call getDouble("feedbackopenangle", FeedbackTheta0, 1.d0, cLine, fLine, nLines, &
+         "Theta_0 in feedback distribution: ", "(a,f7.1,1x,a)", 1.d-2, ok, .false.)
+
+    call getDouble("feedbackfw", Feedbackfw, 1.d0, cLine, fLine, nLines, &
+         "f_w in feedback distribution: ", "(a,f7.1,1x,a)", 0.27d0, ok, .false.)
+
+    call getDouble("feedbackfv", Feedbackfv, 1.d0, cLine, fLine, nLines, &
+         "f_v in feedback distribution: ", "(a,f7.1,1x,a)", 0.333d0, ok, .false.)  
+
+    call getDouble("feedbackstartmass", FeedbackStartMass, msol, cLine, fLine, nLines, &
+         "Mass that stellar feedback starts: ", "(a,f7.1,1x,a)", 1.0d0, ok, .false.)  
+
     call getInteger("nhydroperphoto", nHydroPerPhoto, cLine, fLine, nLines, &
          "Number of hydro steps per photoionisation loop: ","(a,i4,a)", 1, ok, .false.)
-
 
     call getLogical("doselfgrav", doselfgrav, cLine, fLine, nLines, &
          "Use self gravity: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getDouble("gravtol", gravTol, 1.d0, cLine, fLine, nLines, &
             "Tolerance for gravity solver: ", "(a,e12.5,1x,a)", 1.d-6, ok, .false.)
+
+    call getLogical("forcevcycle", forceVcycle, cLine, fLine, nLines, &
+         "Always do multigrid V cycle: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getLogical("redogravonread", redoGravOnRead, cLine, fLine, nLines, &
          "Re-solve self-gravity on read: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -515,6 +547,18 @@ contains
     call getDouble("zetacutoff", zetacutoff, 1.d0, cLine, fLine, nLines, &
             "Dimensionless cutoff radius for BES: ", "(a,es9.3,1x,a)", 3.0d0, ok, .false.)
 
+
+    if (.not. readsources) then
+!       if (checkPresent("nsource", cLine, nLines)) then
+          call readSourceParameters(cLine, fLine, nLines)
+!       endif
+    else
+       call getString("sourcefile", sourceFilename, cLine, fLine, nLines, &
+                  "Source filename: ","(a,a,1x,a)","none", ok, .true.)
+    endif
+
+    call getReal("metallicity", stellarMetallicity, 1.0, cLine, fLine, nLines, &
+         "Metallicity of sources in terms of solar: ","(a,f6.1,1x,a)", 1.0, ok, .false.)
 
     if (statisticalEquilibrium.and.(.not.(molecularPhysics.or.atomicPhysics))) then
        call writeFatal("Must include either molecularPhysics or atomicPhysics for statistical equilibrium calculation")
@@ -828,6 +872,9 @@ contains
        call getDouble("radius", sphereRadius, pctocm/1.d10, cLine, fLine, nLines, &
             "Sphere radius (in pc): ","(a,e12.3,1x,a)", 1.d-30, ok, .true.)
 
+       call getDouble("spheredensityfactor", sphereSurroundingsFac, 1.0d0, cLine, fLine, nLines, &
+            "Density ratio at edge of sphere:: ","(a,e12.3,1x,a)", 1.d-2, ok, .false.)
+
        call getVector("position", spherePosition, 1.d0, cLine, fLine, nLines, &
             "Sphere position (10^10 cm): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
 
@@ -873,6 +920,9 @@ contains
        call getDouble("radius", sphereRadius, pctocm/1.d10, cLine, fLine, nLines, &
             "Sphere radius (in pc): ","(a,e12.3,1x,a)", 1.d-30, ok, .true.)
 
+       call getDouble("spheredensityfactor", sphereSurroundingsFac, 1.0d0, cLine, fLine, nLines, &
+            "Density ratio at edge of sphere:: ","(a,e12.3,1x,a)", 1.d-2, ok, .false.)
+
        call getVector("position", spherePosition, 1.d0, cLine, fLine, nLines, &
             "Sphere position (10^10 cm): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
 
@@ -884,6 +934,21 @@ contains
 
        call getDouble("omega", omega, 1.d0, cLine, fLine, nLines, &
             "Angular frequency of rotation: ","(a,f7.2,a)",1.d-13, ok, .true.)
+
+       call getReal("isothermtemp", isoThermTemp, 1., cLine, fLine, nLines, &
+            "Isothermal temperature (K): ","(a,f7.1,1x,a)", 20.0, ok, .false.)
+
+
+     case("plumber")
+       call getDouble("mass", plumberMass, msol, cLine, fLine, nLines, &
+            "Plumber filament mass (in M_sol): ","(a,f7.1,1x,a)", 1.d-30, ok, .true.)
+       call getDouble("radius", plumberRadius, pctocm/1.d10, cLine, fLine, nLines, &
+            "Plumber filament radius (in pc): ","(a,e12.3,1x,a)", 1.d-30, ok, .true.)
+       call getDouble("exponent", plumberExponent, 1.d0, cLine, fLine, nLines, &
+            "Plumber density exponent at large radii: ","(a,e12.3,1x,a)", 2.d0, ok, .true.)
+       call getDouble("omega", omega, 1.d0, cLine, fLine, nLines, &
+            "Angular frequency of rotation: ","(a,f7.2,a)",1.d-13, ok, .true.)
+
 
      case("magstream")
        call getString("magstreamfile", magStreamFile, cLine, fLine, nLines, &
@@ -2598,7 +2663,6 @@ contains
              call getReal(grainFracLabel, grainFrac(i), 1., cLine, fLine, nLines, &
                   "Grain fractional abundance: ","(a,f8.5,1x,a)",0.01 , ok, .false.)
              grainFracTotal = grainFracTotal + grainFrac(i)
-             
 
              call getReal(grainDensityLabel, grainDensity(i), 1., cLine, fLine, nLines, &
                   "Grain density (g/cc): ","(a,f8.5,1x,a)",3.6 , ok, .false.)
@@ -3123,6 +3187,11 @@ contains
     call getLogical("biasToLyman", biasToLyman, cLine, fLine, nLines, &
          "Variance reduction, higher sampling of Lyman photons: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    if (biasToLyman) then
+       call getDouble("biasMagnitude", biasMagnitude, 1.d0, cLine, fLine, nLines, &
+               "Variance reduction, extent of bias: ", "(a,1p,e9.3,1x,a)", 100.d0, ok, .false.)
+    endif
+
     call getLogical("binPhotons", binPhotons, cLine, fLine, nLines, &
          "Bin and dump photons as a function of wavelength: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -3157,6 +3226,8 @@ contains
 
     call getReal("tminglobal", TMinGlobal, 1., cLine, fLine, nLines, &
          "Minimum Temperature (K): ","(a,f4.1,1x,a)", 10., ok, .false.)
+    call getReal("tmaxglobal", TMaxGlobal, 1., cLine, fLine, nLines, &
+         "Maximum Temperature (K): ","(a,f4.1,1x,a)", 2.e4, ok, .false.)
 
     if(splitovermpi) then
        call getLogical("optimizeStack", optimizeStack, cLine, fLine, nLines, &
@@ -3201,7 +3272,9 @@ contains
        call getLogical("periodicZ", periodicZ, cLine, fLine, nLines, &
             "Use periodic photon boundary conditions in z direction:", "(a,1l,1x,a)", .false., ok, .false.)
        call getInteger("bufferCap", bufferCap, cLine, fLine, nLines, &
-            "Number of photon stacks allowed in the buffer ","(a,i8,a)", 40000, ok, .false.)
+!            "Number of photon stacks allowed in the buffer ","(a,i8,a)", 40000, ok, .false.)
+            "Number of photon stacks allowed in the buffer ","(a,i8,a)", & 
+            max(40000,nint(dble(inputnmonte)/dble(stacklimit))), ok, .false.)
     end if
 
 !
@@ -3371,7 +3444,7 @@ contains
          "Enforce a minimum density of 1mHydrogen cm^-3: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getInteger("mincrossings", minCrossings, cLine, fLine, nLines, &
-         "Minimum crossings required for cell to be sampled: ","(a,i12,a)",100,ok,.false.)
+         "Minimum crossings required for cell to be sampled: ","(a,i12,a)",200,ok,.false.)
 
     call getReal("taudiff", tauDiff, 1., cLine, fLine, nLines, &
          "Mininum optical depth of cell to be in diffusion approx : ","(a,f7.1,a)",100., ok, .false.)
@@ -3434,12 +3507,20 @@ contains
     call getInteger("vtuToGrid", vtuToGrid, cLine, fLine, nLines, &
          "specify how many vtu files to dump for each grid file: ","(a,1x,i4,a)", 1, ok, .false.)
 
+    call getLogical("imposefixing", imposeFixing, cLine, fLine, nLines, &
+         "Impose fixed regions on the hydro models: ","(a,1l,1x,a)", .false., ok, .false.)
+
+
+    
     if (cylindricalHydro) then
        !       if(.not. useionparam) then
        amrGridCentreX = amrgridsize/2.
        dx = dble(amrgridSize)/dble(2**5-4)
        amrGridSize = real(dble(amrGridsize) + 4.0d0*dx)
-       amrGridCentrez =  0.!0.5*amrGridSize / real(2**maxDepthAMR) ! 0.
+       if (.not.checkPresent("amrgridcentrez", cline, nlines)) then
+          amrGridCentrez =  0.49999999*amrGridSize / real(2**maxDepthAMR)! can mess up locate functions if centre is exactly half a cell from a boundary
+          amrGridCentrez =  amrGridCentreZ * 1.000001d0
+       endif
        vtkIncludeGhosts = .false.
        !       endif
        call getDouble("alpha", alphaViscosity, 1.d0, cLine, fLine, nLines, &
@@ -3489,8 +3570,8 @@ contains
     if (readTurb) then
        call getReal("virialalpha", virialAlpha, 1.0, cLine, fLine, nLines, &
             "Virial parameter alpha: ","(a,f7.2,a)", 2.0, ok, .true.)
-    endif
-
+     endif
+    
     call getLogical("useviscosity", useViscosity, cLine, fLine, nLines, &
          "Use viscosity?: ","(a,1l,1x,a)", .true., ok, .false.)
 
@@ -5023,7 +5104,7 @@ end subroutine getBigInteger
     default = " (default)"
  endif
  if (ok) then
-   write(output,format) trim(message)//" ",rval,default
+   write(output,*) trim(message)//" ",rval,default
     call writeInfo(output, TRIVIAL)
  endif
  rval = rval * unitConversion
@@ -5270,6 +5351,8 @@ end subroutine getVector
          getBoundaryCode = 7
       case("gasmix") 
          getBoundaryCode = 9
+      case("slip-wall") 
+         getBoundaryCode = 10
       case DEFAULT
          print *, "Unrecognised boundary string:", boundaryString
          print *, "Halting."

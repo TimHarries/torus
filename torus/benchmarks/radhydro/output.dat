@@ -1,0 +1,108 @@
+hosokawa F
+loadbalancing T
+nhydrothreads 4
+isothermal F
+startfromneutral F
+packetsplitting T
+nsmallpackets 100
+!limitertype minmod
+dosmoothgrid T
+alpha 0.1
+tensorviscosity T
+rhofloor 1.e-30
+accradius 3.
+vtkincludeghosts F
+hydrospeedlimit 200.
+compressdumps F
+!binaryxml F
+etaviscosity 0.
+vardustsub T
+
+tminglobal 20.
+gridshuffle T
+
+rhothresh 1.d-11
+mincrossings 10
+maxiter 12
+nmonte 30000
+splitovermpi T
+geometry sphere
+readgrid T
+inputfile dump_0090.grid
+readsources F
+sourcefile source0322.dat
+writegrid T
+outputfile dump
+
+hydrodynamics T
+doselfgrav F
+photoionphysics F
+nbodyphysics F
+dustphysics T
+radpressure T
+radforcemonte T
+radiationtimescale 0.5
+caklineopacity F
+imposefixing F
+
+hOnly T
+usemetals F
+quickthermal F
+nhydroperphoto 1
+
+dusttogas 0.01
+grainfrac1 1.0d3
+tsub1 25.0
+graintype1 sil_dl
+amin1 0.05
+amax1 0.25
+qdist1 3.5
+iso_scatter T
+
+mindepthamr 7
+maxdepthamr 7
+dorefine      F
+dounrefine    F 
+refineonjeans F
+amrtolerance     1.0d3
+cfl 0.3
+
+cylindricalhydro T
+amr3d F
+amr2d T
+amr1d F
+
+movesinks F
+addsinks F
+amrgridsize 1.2e7
+amrgridcentrez 0.6e7
+griddistancescale 1.d10
+
+tstart 0.d0 s 
+tend  3.15576d0 s
+tdump 3.15576d0 s
+
+mass 3.518d-4
+radius 3.2d-2
+position 0. 0. 0.
+velocity 0. 0. 0.
+beta 0.0
+omega 5.d-30
+invertsphere F
+
+!rinner 1.0
+!rho 1.0d2
+
+nsource 1
+mass1 1.0d-9
+radius1 0.1
+lum1 1.0
+sourcepos1 0. 0. 0.
+contflux1 blackbody
+
+xplusboundstring  freeOutNoIn
+xminusboundstring reflecting
+yplusboundstring  freeOutNoIn
+yminusboundstring freeOutNoIn
+zplusboundstring  freeOutNoIn
+zminusboundstring reflecting

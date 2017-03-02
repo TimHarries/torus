@@ -67,6 +67,7 @@ MODULE octal_mod
      module procedure allocateAttributeDouble3D
      module procedure allocateAttributeReal
      module procedure allocateAttributeInteger
+     module procedure allocateAttributeInteger2D
      module procedure allocateAttributeBigInteger
      module procedure allocateAttributeLogical
      module procedure allocateAttributeVector
@@ -95,6 +96,7 @@ MODULE octal_mod
      module procedure copyAttributeDoublePointer3d
      module procedure copyAttributeRealPointer
      module procedure copyAttributeIntegerPointer
+     module procedure copyAttributeIntegerPointer2D
      module procedure copyAttributeBigIntegerPointer
      module procedure copyAttributeLogicalPointer
      module procedure copyAttributeVectorPointer
@@ -195,8 +197,8 @@ MODULE octal_mod
     LOGICAL, DIMENSION(8)              :: inFlow
 
     TYPE(OCTALPOINTER), pointer :: neighbourOctal(:,:,:) => null() ! pointer to neighbour
-    integer, pointer :: neighbourSubcell(:,:,:)  => null()
-
+    integer, pointer :: neighbourSubcell(:,:,:) => null() 
+    
     TYPE(vector), DIMENSION(8)         :: velocity       ! velocity
 !    TYPE(vector), DIMENSION(8)         :: quadvelocity       ! DAR very temporary velocity expires 28 Feb 2009
 !    TYPE(vector), DIMENSION(8)         :: linearvelocity       ! DAR very temporary velocity expires 28 Feb 2009
@@ -207,6 +209,8 @@ MODULE octal_mod
     real(double), dimension(:), pointer :: oldRho => null()
     real(double), dimension(:,:,:), pointer :: qViscosity => null()
 
+    integer, dimension(:,:), pointer :: isOnBoundary => null()
+    
     logical, dimension(:), pointer                 :: diffusionApprox => null()
     logical, dimension(:), pointer                 :: fixedTemperature => null()
     real, dimension(:), pointer :: nDiffusion => null()
@@ -220,9 +224,12 @@ MODULE octal_mod
     REAL, DIMENSION(:), pointer                 :: floorTemperature => null()  ! Minimum temperature (applied in photoion_mod)
     REAL(double), DIMENSION(:), pointer                 :: kappaRoss => null()
     REAL(double), DIMENSION(:), pointer         :: distanceGrid  => null()  ! distance crossing used by lucy R Eq
+    REAL(double), DIMENSION(:), pointer         :: distanceGridHistory  => null()  ! distance crossing used by lucy R Eq
     REAL(double), DIMENSION(:), pointer         :: kappaP  => null()
     real(double), dimension(:,:,:), pointer       :: scatteredIntensity => null()
     real(double), dimension(:), pointer       :: meanIntensity => null()
+    INTEGER(bigint), DIMENSION(:), pointer      :: nCrossIonizing  => null() ! no of H-ionizing photon crossings 
+    INTEGER(bigint), DIMENSION(:), pointer      :: nScatters  => null()    ! no of scattering events 
     real(double), dimension(:), pointer       :: adotPAH => null()
     INTEGER(bigint), DIMENSION(:), pointer      :: nCrossings  => null()    ! no of photon crossings used by lucy R Eq
     real(double), DIMENSION(:), pointer :: nTot => null()          ! total density
@@ -302,10 +309,13 @@ MODULE octal_mod
     real(double),  pointer, DIMENSION(:) :: NHeII => null()            ! HeII
     real(double),  pointer, dimension(:) :: Hheating => null()
     real(double),  pointer, dimension(:) :: Heheating => null()
+    real(double),  pointer, dimension(:) :: HheatingHistory => null()
+    real(double),  pointer, dimension(:) :: HeheatingHistory => null()
     real(double), dimension(:), pointer  :: tDust  => null()
 
     real(double), dimension(:,:), pointer  :: ionFrac => null()
     real(double), dimension(:,:), pointer  :: photoIonCoeff  => null()
+    real(double), dimension(:,:), pointer  :: photoIonCoeffHistory  => null()
     real(double), dimension(:,:), pointer :: sourceContribution => null()
     real(double), dimension(:,:), pointer :: diffuseContribution => null()
     real(double), dimension(:,:), pointer :: normSourceContribution => null()
@@ -396,6 +406,7 @@ MODULE octal_mod
     type(vECTOR), pointer :: surfaceNormal(:) => null()
     type(VECTOR), pointer :: radiationMomentum(:) => null()
     type(VECTOR), pointer :: kappaTimesFlux(:) => null()
+    type(VECTOR), pointer :: kappaTimesFluxHistory(:) => null()
     type(VECTOR), pointer :: UVvector(:) => null()
     type(VECTOR), pointer :: UVvectorPlus(:) => null()
     type(VECTOR), pointer :: UVvectorMinus(:) => null()
@@ -952,6 +963,16 @@ CONTAINS
     endif
   end subroutine allocateAttributeInteger
 
+  subroutine allocateAttributeInteger2d(array, nSize1, nSize2)
+    integer :: nSize1, nSize2
+    integer, pointer :: array(:,:)
+
+    if (.not.associated(array)) then
+       allocate(array(1:nSize1, 1:nSize2))
+       array = 0*array
+    endif
+  end subroutine allocateAttributeInteger2d
+  
   subroutine allocateAttributeBigInteger(array, nSize)
     integer :: nSize
     integer(bigInt), pointer :: array(:)
@@ -1046,6 +1067,17 @@ CONTAINS
     endif
 
   end subroutine copyAttributeIntegerPointer
+
+
+  subroutine copyAttributeIntegerPointer2d(dest, source)
+    integer, pointer :: dest(:,:), source(:,:)
+    if (associated(source)) then
+       allocate(dest(SIZE(source, 1),SIZE(source,2)))
+       dest = source
+    endif
+
+  end subroutine copyAttributeIntegerPointer2d
+
 
   subroutine copyAttributeBigIntegerPointer(dest, source)
     integer(bigint), pointer :: dest(:), source(:)

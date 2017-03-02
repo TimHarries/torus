@@ -75,7 +75,7 @@ contains
     use inputs_mod, only : UV_vector, spherical, forceminrho 
     use inputs_mod, only : sphereRadius, sphereMass, feedbackDelay
     use starburst_mod
-    use viscosity_mod, only : viscousTimescale
+    use viscosity_mod, only : viscousTimescale,viscousTimescaleCylindrical
     use dust_mod, only : emptyDustCavity, sublimateDust
     use hydrodynamics_mod, only: hydroStep3d, hydrostep3d_amr, calculaterhou, calculaterhov, calculaterhow, &
          calculaterhoe, setupedges, unsetGhosts, setupghostcells, evenupgridmpi, refinegridgeneric, &
@@ -92,8 +92,8 @@ contains
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
     use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral
-    use inputs_mod, only: densitySpectrum, cflNumber, useionparam, xrayonly, isothermal, supernovae, &
-          burstType, burstAge, mstarburst, burstTime, starburst, inputseed, doSelfGrav, redoGravOnRead, nHydroperPhoto
+    use inputs_mod, only: densitySpectrum, cflNumber, useionparam, xrayonly, isothermal, supernovae, doSubgridHIIExpansion, &
+          burstType, burstAge, mstarburst, burstTime, starburst, inputseed, doSelfGrav, redoGravOnRead, nHydroperPhoto, radTimescale
     use parallel_mod, only: torus_abort
     use mpi
     integer :: nMuMie
@@ -130,7 +130,8 @@ contains
     integer :: optID
     logical, save :: firstWN=.true., firstFeedbackIter = .true.
     integer :: niter, nHydroCounter
-    real(double) :: epsoverdeltat, totalMass, tauSca, tauAbs, tff, rhosphere, feedbackStartTime 
+    real(double) :: epsoverdeltat, totalMass, tauSca, tauAbs, tff, rhosphere, feedbackStartTime
+    real(double) :: ionizedVolume, ionizedMass, ke
     logical :: sourcesCreated, doFeedback
 
     nPhotoIter = 1
@@ -512,12 +513,13 @@ contains
                 if (nbodyPhysics.and.hosokawaTracks) then
                    call  setSourceArrayProperties(globalsourceArray, globalnSource, fractionOfAccretionLum)
                 endif
-                tmpcylindricalhydro=cylindricalhydro
-                cylindricalHydro = .false.
                 if (.not.timeDependentRT .and. .not. xrayonly .and. (.not. isothermal)) &
                      call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, &
                      maxPhotoionIter, loopLimitTime, &
                      looplimittime, timeDependentRT,iterTime,.false., evenuparray, optID, iterStack, miePhase, nMuMie)
+
+                tmpcylindricalhydro=cylindricalhydro
+                cylindricalHydro = .false. !why is this here? photoIonAMR didnt check cylindricalHydro until i changed it to TD
 
                 if (isoThermal) then
                    call neutralGrid(grid%octreeRoot)
@@ -531,7 +533,7 @@ contains
              call writeInfo("Dumping post-photoionization data", TRIVIAL)
              call writeVtkFile(grid, "start.vtk", &
              valueTypeString=(/"rho        ","HI         " ,"temperature", "ghosts     ", &
-                               "crossings  " /))
+                               "crossings  " ,"tdust      " /))
 !             if(grid%octreeroot%oned) then
                 write(datFilename, '(a, i4.4, a)') "start.dat"
                 call dumpValuesAlongLine(grid, datFileName, VECTOR(0.d0,  0.d0, 0.d0), &
@@ -598,7 +600,7 @@ contains
 !                ,"phi          " /))
                 
                 call zeroPhiGas(grid%octreeRoot)
-                call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.) 
+                call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true., doMultigridVcycle=.true.) 
                 
                 if(.not. dirichlet) then
                    call periodBoundary(grid, justGrav = .true.)
@@ -657,14 +659,16 @@ contains
     
     
     if ((.not.loadBalancingThreadglobal).and.(myrankGlobal/=0).and.redoGravOnRead.and.readGrid) then
-       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
-       call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.)
+       if (myrankWorldglobal == 1) call writeInfo("Solving self gravity on read-in...")
+       if (myrankWorldglobal == 1) call tune(6,"Self-gravity on read")
+       call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true., doMultigridVcycle=.true.)
        call zeroSourcepotential(grid%octreeRoot)
        if (globalnSource > 0) then
           call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
        endif
        call sumGasStarGravity(grid%octreeRoot)
        if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
+       if (myrankWorldglobal == 1) call writeInfo("Done.")
     endif
     
 
@@ -809,6 +813,7 @@ contains
        endif
 
        doFeedback = .true.
+       feedbackStartTime = 0.d0
        if (starburst) then
           if (grid%geometry == "krumholz" .or. grid%geometry == "sphere") then
              ! stellar feedback starts when 0.1tff has passed after bursttime 
@@ -905,6 +910,9 @@ contains
 !               .true., evenuparray, sign)
                 tmpcylindricalhydro=cylindricalhydro
                 cylindricalHydro = .false.
+                if (doFeedback .and. doSubgridHIIExpansion) then
+                   call subgridHIIexpansion(grid, globalSourceArray, globalnSource, grid%currentTime+dt-feedbackStartTime) 
+                endif
 !                nPhotoIter = 10
 !                nPhotoIter = int(10 - grid%idump)
 !                nphotoIter = max(1, nPhotoIter)
@@ -913,7 +921,7 @@ contains
                    if (firstFeedbackIter) then
                       ! if reading in a grid which has already had the initial 10 photoion loop done 
                       ! don't need to redo the 10
-                      if (readgrid .and. (grid%currentTime >= feedbackStartTime + 2.d0*deltaTforDump)) then
+                      if (readgrid .and. (grid%currentTime >= feedbackStartTime + 1.5d0*deltaTforDump)) then
                          nPhotoIter = 1
                          firstFeedbackIter = .false.
                          if (writeoutput) write(*,*) "firstFeedbackIter: ", firstFeedbackIter, nPhotoIter, feedbackStartTime
@@ -922,6 +930,12 @@ contains
                          if (writeoutput) write(*,*) "firstFeedbackIter: ", firstFeedbackIter, nPhotoIter, feedbackStartTime
                          firstFeedbackIter = .false.
                       endif
+                      ! if we're using updateHistories, do 10 initially regardless
+                      if (radTimeScale > 0.) then
+                         nPhotoIter = 10
+                      endif
+                      if (writeoutput) write(*,*) "firstFeedbackIter: ", firstFeedbackIter, nPhotoIter, feedbackStartTime
+                      firstFeedbackIter = .false.
                    else
                       nPhotoIter = 1
                    endif
@@ -931,9 +945,16 @@ contains
                       call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, &
                            lamArray, nPhotoIter, loopLimitTime, &
                            looplimittime, timeDependentRT,iterTime,.true., evenuparray, optID, iterStack, miePhase, nMuMie) 
+                      ! fixme
+                      if (nPhotoIter == 10) then
+                         call writeInfo("Dumping post-photoionization data", TRIVIAL)
+                         call writeVtkFile(grid, "first.vtk", &
+                              valueTypeString=(/"rho        ","HI         " ,"temperature",  &
+                              "crossings  ","ioncross   " ,"tdust      " /))
+                      endif
                    endif
                 endif
-
+                
                 if (isoThermal) then
                    call neutralGrid(grid%octreeRoot)
                    call setPhotoionIsothermal(grid%octreeRoot)
@@ -1149,7 +1170,8 @@ contains
              allocate(globalsourcearray(1:1000))
              globalsourceArray(:)%outsideGrid = .false.
              globalnSource = 0
-             call createSources(globalnSource, globalSourceArray, burstType, burstAge, mStarburst, 0.d0)
+             call createSources(globalnSource, globalSourceArray, burstType,&
+                  burstAge, mStarburst, 0.d0)
              if (.not.loadBalancingThreadGlobal) then
                  call putStarsInGridAccordingToDensity(grid, globalnSource, globalsourceArray)
 
@@ -1167,7 +1189,7 @@ contains
                  if (doselfgrav.and.(myrankGlobal/=0)) then
                     if (myrankWorldglobal == 1) call writeInfo("Solving self gravity...")
                     if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
-                    call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.)
+                    call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true., doMultigridVcycle=.true.)
                     if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
                     if (myrankWorldglobal == 1) call writeInfo("Done.")
                  endif
@@ -1200,7 +1222,8 @@ contains
              sneAdded = .false.
              if ((myrankGlobal /= 0).and.(.not.loadBalancingThreadGlobal).and.supernovae) then
                 call addSupernovae(grid, globalnSource, globalsourcearray, dt, sneAdded)
-                if (doselfgrav.and.sneAdded) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, multigrid=.true.)
+                if (doselfgrav.and.sneAdded) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, &
+                     multigrid=.true., doMultigridVcycle=.true.)
                 lArray(1) = sneAdded
                 if (myrankGlobal==1) call MPI_SEND(lArray, 1, MPI_LOGICAL, 0, tagsne, localWorldCommunicator,  ierr)
              endif
@@ -1300,8 +1323,14 @@ contains
 
        if (nbodyPhysics) globalSourceArray(1:globalnSource)%time = grid%currentTime
 
-       if (.not.loadBalancingThreadGlobal) call findMassOverAllThreads(grid, totalMass)
-       if (writeoutput) write(*,*) "Total mass on grid is ", totalmass/mSol
+       call findMassOverAllThreads(grid, totalMass)
+       if (writeoutput) write(*,*) "Total mass on grid (msol) is ", totalmass/mSol
+       ke = 0.d0
+       call findkeOverAllThreads(grid, ke)
+       if (writeoutput) write(*,*) "Total KE on grid (erg) is ", ke
+       call findIonizedVolumeOverAllThreads(grid, ionizedVolume, ionizedMass)
+       if (writeoutput) write(*,*) "Total ionized volume (>mincrossings) (pc^3): ", ionizedVolume/(pctocm**3)
+       if (writeoutput) write(*,*) "Total ionized mass (msol): ", ionizedMass/msol
 
        
        if (myRankWorldGlobal == 1) write(*,*) "Current time: ",grid%currentTime
@@ -1385,7 +1414,7 @@ contains
                "diff         ","dust         ","tdust        ","u_i          ",  &
                "phi          ","rhou         ","rhov         ","rhow         ","rhoe         ", &
                "vphi         ","jnu          ","mu           ", &
-               "HeI          ","HeII         ", &
+               "HeI          ","HeII         ","scatters     ","ioncross     ",&
                "fvisc1       ","fvisc2       ","fvisc3       ","crossings    ","mpithread    "/))
 
 
@@ -1424,11 +1453,32 @@ contains
 !             write(mpiFilename,'(a,i4.4,a)') "cells",grid%idump,".dat"
 !             call write1dlist(grid, mpifilename)
 !          endif
-!          if (.not.CylindricalHydro) then
-             write(mpiFilename,'(a,i4.4,a)') "radial",grid%idump,".dat"
-             call  dumpValuesAlongLine(grid, mpiFilename, VECTOR(1.d0,0.d0,0.0d0), &
+             write(mpiFilename,'(a,i4.4,a)') "radial+X",grid%idump,".dat"
+             call  dumpValuesAlongLine(grid, mpiFilename, VECTOR(0.d0,0.d0,0.0d0), &
                   VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.d0),1000)
-!          endif
+
+             write(mpiFilename,'(a,i4.4,a)') "radial+Z",grid%idump,".dat"
+             call  dumpValuesAlongLine(grid, mpiFilename, VECTOR(0.d0,0.d0,0.0d0), &
+                  VECTOR(0.0d0, 0.0d0, grid%octreeRoot%subcellSize),1000)
+
+          if (grid%octreeRoot%threeD) then
+
+             write(mpiFilename,'(a,i4.4,a)') "radial+Y",grid%idump,".dat"
+             call  dumpValuesAlongLine(grid, mpiFilename, VECTOR(0.d0,0.d0,0.0d0), &
+                  VECTOR(0.0d0, grid%octreeRoot%subcellSize, 0.d0),1000)
+
+             write(mpiFilename,'(a,i4.4,a)') "radial+XYZ",grid%idump,".dat"
+             call  dumpValuesAlongLine(grid, mpiFilename, VECTOR(0.d0,0.d0,0.0d0), &
+                  VECTOR(grid%octreeRoot%subcellSize,grid%octreeRoot%subcellSize, &
+                         grid%octreeRoot%subcellSize),1000)
+
+          else
+
+             write(mpiFilename,'(a,i4.4,a)') "radial+XZ",grid%idump,".dat"
+             call  dumpValuesAlongLine(grid, mpiFilename, VECTOR(0.d0,0.d0,0.0d0), &
+                  VECTOR(grid%octreeRoot%subcellSize, 0.0d0, grid%octreeRoot%subcellSize),1000)
+          endif
+
            
           if(grid%geometry == "bonnor" .and. grid%octreeRoot%oneD) then
              write(mpiFilename,'(a,i4.4,a)') "1DRHD_torus",grid%idump,".dat"
@@ -1476,8 +1526,8 @@ contains
 
     close(444)
 !    write(*,*) "myRank", myRankGlobal, "finishing loop. Time:", grid%currentTime, "tend ", tend
-    if (gasdt < 1.d-1) then
-      call torus_stop("tc less than 0.1 s")
+    if (gasdt < 1.d-3) then
+      call torus_stop("tc less than 0.001 s")
     endif
 
  enddo
@@ -1490,8 +1540,8 @@ end subroutine radiationHydro
     use inputs_mod, only : quickThermal, inputnMonte, noDiffuseField, minDepthAMR, maxDepthAMR, binPhotons,monochromatic, &
          readGrid, dustOnly, bufferCap, doPhotorefine, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation, &
-         radPressureTest, justdump, uv_vector, inputEV, xrayCalc, useionparam, dumpregularVTUs, decoupleGasDustTemperature
-
+         radPressureTest, justdump, uv_vector, inputEV, xrayCalc, useionparam, dumpregularVTUs, decoupleGasDustTemperature,&
+         radTimeScale, cylindricalHydro
 
     use inputs_mod, only : usePacketSplitting, inputNSmallPackets, amr2d, amr3d, forceminrho, nDustType, readgrid, &
          loadBalancing, loadBalancingMethod, tsub, bufferedSend 
@@ -1535,7 +1585,7 @@ end subroutine radiationHydro
     real(double) :: epsOverDeltaT
     integer :: nIter, nPeriodic, loopSource
     logical :: converged, thisThreadConverged, failed
-    real(double) :: photonPacketWeight, spectrumweight
+    real(double) :: photonPacketWeight, spectrumweight, tempWeight
     real(double) :: tPhoton
     real(double) :: albedo
     integer :: maxIter
@@ -1603,8 +1653,9 @@ end subroutine radiationHydro
     real(double) :: m1, m2
     real :: tauMax
   !  real :: oldTime = 1.e10
-  !  integer :: newStackLimit= 0, oldStackLimit= 0
+    integer :: newStackLimit= 0!, oldStackLimit= 0
     real(double) :: oldT(8), oldF(8), fracT(8), fracF(8)
+    logical :: subcellConverged(8)
     integer :: thisPacket, sendCounter
     integer, allocatable :: nSaved(:)
     integer :: stackSize, p
@@ -1678,19 +1729,27 @@ end subroutine radiationHydro
     integer :: receivedStackSize, nToSend
     integer :: nDomainThreads, localRank, m, nBundles
     real :: FinishTime, WaitingTime, globalStartTime, globalTime
+    real :: scatteringTime, scatteringStart, scatteringEnd
+    real :: crossedSendTime, crossedSendStart, crossedSendEnd
+    real :: prepTime, prepstart, prepend
+    real :: time500, end500, start500
+    real :: toNextEventTime, toNextEventStart, toNextEventEnd
+    real :: crossedBoundaryTime, crossedBoundaryStart, crossedBoundaryEnd
     real(double), allocatable :: efficiencyArray(:)
     real(double) :: medianEfficiency
     !xray stuff
     type(AUGER) :: augerArray(5, 5, 10)
     integer, save :: oldStackLimit = 0
     logical, save :: firstCall = .true.
+    integer :: photonOne, photonN
     ! *** diagnostics
     real(double) :: diaghHeating, diagheHeating, diagdustHeating, diagtotalHeating, diagkappap
     logical :: writediagnostics
+    integer :: scatterLim 
     ! *** end diagnostics
 
     !AMR
-!    integer :: iUnrefine, nUnrefine
+    integer :: iUnrefine, nUnrefine
 
 
     !!Thaw - optimize stack will be run prior to a big job to ensure that the most efficient stack size is used
@@ -1735,10 +1794,10 @@ end subroutine radiationHydro
     if(customStacks) then
        optimizeStack = .false.
        maxStackLimit = maxval(stackLimitArray(1:nDomainThreads))
-       sendStackLimit = stackLimitArray(myRankGlobal+1)
+!       sendStackLimit = stackLimitArray(myRankGlobal+1)
     else
        maxStackLimit = stackLimit
-       sendStackLimit = stackLimit
+!       sendStackLimit = stackLimit
     end if
 
     zerothstacklimit = stacklimit
@@ -1800,9 +1859,9 @@ end subroutine radiationHydro
 
     !Add some extra bytes for safety
     bufferSize = bufferCap*(bufferSize + MPI_BSEND_OVERHEAD)
-
+    if (firstTime.and.writeoutput) write(*,*) "buffercap: ", bufferCap
     if(bufferSize < 0) then
-       write(*,*) "warning negative buffer size", bufferSize
+       if (writeoutput) write(*,*) "warning negative buffer size", bufferSize
        bufferSize = -bufferSize
     end if
 
@@ -2149,7 +2208,7 @@ end subroutine radiationHydro
                maxDiffRadius(isource) = maxDiffRadius1(isource)
              endif
 
-             maxDiffRadius(1) = 4e5
+!             maxDiffRadius(1) = 4e5
 
              if (writeoutput .and. (maxDiffRadius(iSource) > 0.d0)) &
                  write(*,*) iSource," Max diffusion radius from tauRadius ",maxDiffRadius(iSource)
@@ -2218,7 +2277,7 @@ end subroutine radiationHydro
           if (myrankWorldGlobal == 1) call tune(6, "Setting up load balance")  ! start a stopwatch
 
           if (firstLoadBalancing.and.(.not.readGrid)) then
-             call setLoadBalancingThreadsByCells(grid)
+             call setLoadBalancingThreadsBySources(grid)
              firstLoadBalancing = .false.
           else
              select case(loadBalancingMethod)
@@ -2230,6 +2289,8 @@ end subroutine radiationHydro
                    call setLoadBalancingThreadsByLum(grid)
                 case("crossings")
                    call setLoadBalancingThreadsByCrossings(grid)
+                case("scatters")
+                   call setLoadBalancingThreadsByScatters(grid)
                 case DEFAULT
                    call setLoadBalancingThreadsByCrossings(grid)
              end select
@@ -2302,8 +2363,14 @@ end subroutine radiationHydro
        if (myRankGlobal == 0) then
              if (myrankWorldGlobal == 0) call tune(6, "All photons sent from rank 0")  ! stop a stopwatch
              call randomSource(source, nSource, iSource, photonPacketWeight, lamArray, nLambda, initialize=.true.)
+             waitingTime = 0.
+             scatteringtime = 0.
+             crossedsendtime = 0.
+             prepTime = 0.
+             call wallTime(globalStartTime)
+             call walltime(startTime)
              mainloop: do iMonte = iMonte_beg, iMonte_end
-!                   if ((myHydroSetGlobal == 0).and.&
+                !                   if ((myHydroSetGlobal == 0).and.&
 !                        (mod(iMonte,max(int(1,kind=bigint),(imonte_end-imonte_beg+1)/int(10,kind=bigint),&
 !                        kind=bigint) == 0))) &
 !                        write(*,*) "imonte ",imonte
@@ -2312,19 +2379,21 @@ end subroutine radiationHydro
 !                if (mod(iMonte,(imonte_end-imonte_beg+1)/10) == 0) then
 !                   write(*,*) myHydroSetGlobal, " imonte ",imonte
 !                endif
-                   if (iMonte == nThreadMonte) then
-                      lastPhoton = .true.
-!                      write(*,*) myrankWorldGlobal, " doing last photon"
-                   else
-                      lastPhoton = .false.
-                   endif
-                   
+                if (iMonte == nThreadMonte) then
+                   lastPhoton = .true.
+                   !                      write(*,*) myrankWorldGlobal, " doing last photon"
+                else
+                   lastPhoton = .false.
+                endif
+                
                 call randomSource(source, nSource, iSource, photonPacketWeight)!, lamArray, nLambda, initialize=.true.)
                 thisSource = source(iSource)
-                call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid)
+                call getPhotonPositionDirection(thisSource, rVec, uHat,rHat,grid, tempWeight)
                 if(cart2d .and. .not. source(1)%outsidegrid) then
                    call Pseudo3DUnitVector(uHat, photonPacketWeight,grid%halfsmallestsubcell,&
                         2.d0*grid%octreeRoot%subcellSize)
+                else if( grid%octreeroot%twoD) then
+                   photonPacketWeight = photonPacketWeight*tempWeight
                 end if
                 !re-weighting for corner sources, edges still need work
                 if(source(iSource)%onCorner) then
@@ -2333,15 +2402,15 @@ end subroutine radiationHydro
                    else if (grid%octreeRoot%twoD) then
                       photonPacketWeight = photonPacketWeight * 1.d0 /4.d0
                    end if
-                !else if(source(iSource)%onEdge .and. .not. source(iSource)%onCorner) then
-                !   photonPacketWeight = 1.d0/2.d0
+                   !else if(source(iSource)%onEdge .and. .not. source(iSource)%onCorner) then
+                   !   photonPacketWeight = 1.d0/2.d0
                 else
                    photonPacketWeight = photonPacketWeight * 1.d0
                 end if
-
+                
                 tPhoton = 0.d0
                 spectrumweight = 1.d0
-
+                
                 
                 if(monochromatic) then
                    thisFreq = ((inputEV)*evtoerg)/hcgs
@@ -2353,108 +2422,171 @@ end subroutine radiationHydro
                 totalPower = totalPower + epsOverDeltaT*photonPacketWeight
                 
                 if(binPhotons) then
-                   do i = 1, nFreq
+                   do i = 1, size(lams)
                       if((wavelength/1.e8) < lams(i+1) .and. (wavelength/1.e8) > lams(i)) then
-                         countArray(i) = countArray(i) + 1.d0*photonPacketWeight
+                         countArray(i) = countArray(i) + 1.d0!*photonPacketWeight
                          exit
                       end if
                    end do
                 end if
-
+                
                 ionizingPhoton = .false.
                 if ((thisFreq*hcgs*ergtoev) > grid%ion(1)%iPot) then ! ionizing photon
                    ionizingPhoton = .true.
                 endif
-
+                
                 call findSubcellTD(rVec, grid%octreeRoot,thisOctal, subcell)
-
-
-! TJH this is where the load balancing thread stuff needs to go for rank 0 thread
-! sending photons from stars
-
+                
+                
+                ! TJH this is where the load balancing thread stuff needs to go for rank 0 thread
+                ! sending photons from stars
+                
                 iThread = loadBalancedThreadNumber(thisOctal%mpiThread(subcell))
-
+                
                 !Create a bundle of photon packets, only modify the first available array space
-                !available slots have frequency == 0.d0
-                do optCounter = 1, (SIZE(photonPacketStack))
-                   if(photonPacketStack(optCounter)%freq == 0.d0) then
-                      photonPacketStack(optCounter)%rVec = rVec
-                      photonPacketStack(optCounter)%uHat = uHat
-                      photonPacketStack(optCounter)%freq = thisFreq
-                      photonPacketStack(optCounter)%tPhot = tPhoton
-                      photonPacketStack(optCounter)%ppw = photonPacketWeight
-                      photonPacketStack(optCounter)%destination = iThread
-                      photonPacketStack(optCounter)%sourcePhoton = .true.
-                      photonPacketStack(optCounter)%bigPhotonPacket = .true.
-                      photonPacketStack(optCounter)%smallPhotonPacket = .false.
-                      photonPacketStack(optCounter)%lastPhoton = lastPhoton 
-                      photonPacketStack(optCounter)%ionizingPhoton = ionizingPhoton
-                      exit
-                   end if
-                end do
+!                !available slots have frequency == 0.d0
+!                do optCounter = 1, (SIZE(photonPacketStack))
+!                   if(photonPacketStack(optCounter)%freq == 0.d0) then
+!                      photonPacketStack(optCounter)%rVec = rVec
+!                      photonPacketStack(optCounter)%uHat = uHat
+!                      photonPacketStack(optCounter)%freq = thisFreq
+!                      photonPacketStack(optCounter)%tPhot = tPhoton
+!                      photonPacketStack(optCounter)%ppw = photonPacketWeight
+!                      photonPacketStack(optCounter)%destination = iThread
+!                      photonPacketStack(optCounter)%sourcePhoton = .true.
+!                      photonPacketStack(optCounter)%bigPhotonPacket = .true.
+!                      photonPacketStack(optCounter)%smallPhotonPacket = .false.
+!                      photonPacketStack(optCounter)%lastPhoton = lastPhoton 
+!                      photonPacketStack(optCounter)%ionizingPhoton = ionizingPhoton
+!                      exit
+!                   end if
+!                end do
 
+                ! location of iThread's photons in photonPacketStack
+                photonOne = (iThread-1)*maxstackLimit + 1
+                photonN = photonOne + min(nSaved(iThread), maxStackLimit-1) 
+
+                ! put the photon into the stack
+                call walltime(prepstart)
+                photonPacketStack(photonN)%rVec = rVec
+                photonPacketStack(photonN)%uHat = uHat
+                photonPacketStack(photonN)%freq = thisFreq
+                photonPacketStack(photonN)%tPhot = tPhoton
+                photonPacketStack(photonN)%ppw = photonPacketWeight
+                photonPacketStack(photonN)%destination = iThread
+                photonPacketStack(photonN)%sourcePhoton = .true.
+                photonPacketStack(photonN)%bigPhotonPacket = .true.
+                photonPacketStack(photonN)%smallPhotonPacket = .false.
+                photonPacketStack(photonN)%lastPhoton = lastPhoton 
+                photonPacketStack(photonN)%ionizingPhoton = ionizingPhoton
+                call walltime(prepEnd)
+                prepTime = prepTime + (prepEnd-prepStart)
+                if (ionizingPhoton) then
+                   nIonizingPackets = nIonizingPackets + 1 
+                endif 
                 !Keep track of how many packets are destined for each thread
                 nSaved(iThread) = nSaved(iThread) + 1
-
+                
                 !Once the bundle for a specific thread has reached a critical size, send it to the thread for propagation
-                do optCounter = 1, nDomainThreads
-                   if(nSaved(optCounter) /= 0) then
-                      if(nSaved(optCounter) == (zerothstackLimit) .or. &
-!                           (nThreadMonte - nInf) < (zerothstackLimit*nDomainThreads)) then
-                            (iMonte == iMonte_end)) then ! if this is the final photon, send all remaining unsent bundles 
-                         thisPacket = 1
-                         do sendCounter = 1, (maxStackLimit*nDomainThreads)
-                            if(photonPacketStack(sendCounter)%destination == optCounter &
-                                 .and. photonPacketStack(sendCounter)%freq /= 0.d0) then           
-                               toSendStack(thisPacket)%rVec = photonPacketStack(sendCounter)%rVec
-                               toSendStack(thisPacket)%uHat = photonPacketStack(sendCounter)%uHat
-                               toSendStack(thisPacket)%freq = photonPacketStack(sendCounter)%freq
-                               toSendStack(thisPacket)%tPhot = photonPacketStack(sendCounter)%tPhot
-                               toSendStack(thisPacket)%ppw = photonPacketStack(sendCounter)%ppw
-                               toSendStack(thisPacket)%destination = photonPacketStack(sendCounter)%destination
-                               toSendStack(thisPacket)%sourcePhoton = photonPacketStack(sendCounter)%sourcePhoton
-                               toSendStack(thisPacket)%crossedPeriodic = photonPacketStack(sendCounter)%crossedPeriodic 
-                               toSendStack(thisPacket)%bigPhotonPacket = photonPacketStack(sendCounter)%bigPhotonPacket
-                               toSendStack(thisPacket)%smallPhotonPacket = photonPacketStack(sendCounter)%smallPhotonPacket
-                               toSendStack(thisPacket)%lastPhoton = photonPacketStack(sendCounter)%lastPhoton
-                               toSendStack(thisPacket)%ionizingPhoton = photonPacketStack(sendCounter)%ionizingPhoton
-                               if (toSendStack(thisPacket)%lastPhoton) then
-!                                  write(*,*) myrankWorldGlobal, " sending last packet ",thisPacket, imonte
-                               endif
-                               if (toSendStack(thisPacket)%ionizingPhoton) then
-                                  nIonizingPackets = nIonizingPackets + 1 
-                               endif 
-                               nInf = nInf + 1
-                               thisPacket = thisPacket + 1
-                               
-                               !Reset the photon frequency so that this array entry can be overwritten
-                               photonPacketStack(sendCounter)%freq = 0.d0
-                               
-                               !Reset the destination so that it doesnt get picked up in subsequent sweeps!       
-                               photonPacketStack(sendCounter)%destination = 0
-                            
-                            end if
-                         end do
-!                         toSendStack(thisPacket - 1)%lastPhoton = .true.
-! stuck here
-                         nBundles = nBundles + 1
-                         if (bufferedSend) then
-                            call MPI_BSEND(toSendStack, zerothstackLimit, MPI_PHOTON_STACK, &
-                                 OptCounter, tag, localWorldCommunicator,  ierr)
-                         else
-                            call MPI_SEND(toSendStack, zerothstackLimit, MPI_PHOTON_STACK, &
-                                 OptCounter, tag, localWorldCommunicator,  ierr)
-                         endif
+                if(nSaved(iThread) == (maxstackLimit)) then 
+                   call walltime(crossedSendStart)
+                   if (bufferedSend) then
+                      call MPI_BSEND(photonPacketStack(photonOne:photonN), maxstackLimit, MPI_PHOTON_STACK, &
+                           iThread, tag, localWorldCommunicator,  ierr)
+                   else
+                      call MPI_SEND(photonPacketStack(photonOne:photonN), maxstackLimit, MPI_PHOTON_STACK, &
+                           iThread, tag, localWorldCommunicator,  ierr)
+                   endif
+                   call walltime(crossedSendEnd)
+                   crossedSendTime = crossedSendTime + (crossedSendEnd-crossedSendstart)
+                   !Keep track of total number of sent photons and bundles
+                   nInf = nInf + nSaved(iThread)
+                   nBundles = nBundles + 1
+                   !reset the counter for this thread's bundle recieve 
+                   nSaved(iThread) = 0
+                   !Reset the photon frequency (receiving threads interpret freq==0 as not a photon)
+                   photonPacketStack(photonOne:photonN)%freq = 0.d0
+                   !Reset the destination (receiving threads interpret destination==0 as not a photon)
+                   photonPacketStack(photonOne:photonN)%destination = 0
+                end if
 
+                !Send all remaining photons if this is the last one
+                if (lastPhoton) then
+                   do optCounter = 1, nDomainThreads
+                      if(nSaved(optCounter) > 0) then
+                         ! location of optCounter's photons in photonPacketStack
+                         photonOne = (optCounter-1)*maxstacklimit + 1
+                         photonN = optCounter*maxstacklimit 
+                         call walltime(crossedSendStart)
+                
+!                !Once the bundle for a specific thread has reached a critical size, send it to the thread for propagation
+!                do optCounter = 1, nDomainThreads
+!                   if(nSaved(optCounter) /= 0) then
+!                      if(nSaved(optCounter) == (zerothstackLimit) .or. &
+!!                           (nThreadMonte - nInf) < (zerothstackLimit*nDomainThreads)) then
+!                            (iMonte == iMonte_end)) then ! if this is the final photon, send all remaining unsent bundles 
+!                         thisPacket = 1
+!                         do sendCounter = 1, (maxStackLimit*nDomainThreads)
+!                            if(photonPacketStack(sendCounter)%destination == optCounter &
+!                                 .and. photonPacketStack(sendCounter)%freq /= 0.d0) then           
+!                               toSendStack(thisPacket)%rVec = photonPacketStack(sendCounter)%rVec
+!                               toSendStack(thisPacket)%uHat = photonPacketStack(sendCounter)%uHat
+!                               toSendStack(thisPacket)%freq = photonPacketStack(sendCounter)%freq
+!                               toSendStack(thisPacket)%tPhot = photonPacketStack(sendCounter)%tPhot
+!                               toSendStack(thisPacket)%ppw = photonPacketStack(sendCounter)%ppw
+!                               toSendStack(thisPacket)%destination = photonPacketStack(sendCounter)%destination
+!                               toSendStack(thisPacket)%sourcePhoton = photonPacketStack(sendCounter)%sourcePhoton
+!                               toSendStack(thisPacket)%crossedPeriodic = photonPacketStack(sendCounter)%crossedPeriodic 
+!                               toSendStack(thisPacket)%bigPhotonPacket = photonPacketStack(sendCounter)%bigPhotonPacket
+!                               toSendStack(thisPacket)%smallPhotonPacket = photonPacketStack(sendCounter)%smallPhotonPacket
+!                               toSendStack(thisPacket)%lastPhoton = photonPacketStack(sendCounter)%lastPhoton
+!                               toSendStack(thisPacket)%ionizingPhoton = photonPacketStack(sendCounter)%ionizingPhoton
+!                               if (toSendStack(thisPacket)%lastPhoton) then
+!!                                  write(*,*) myrankWorldGlobal, " sending last packet ",thisPacket, imonte
+!                               endif
+!                               if (toSendStack(thisPacket)%ionizingPhoton) then
+!                                  nIonizingPackets = nIonizingPackets + 1 
+!                               endif 
+!                               nInf = nInf + 1
+!                               thisPacket = thisPacket + 1
+!                               
+!                               !Reset the photon frequency so that this array entry can be overwritten
+!                               photonPacketStack(sendCounter)%freq = 0.d0
+!                               
+!                               !Reset the destination so that it doesnt get picked up in subsequent sweeps!       
+!                               photonPacketStack(sendCounter)%destination = 0
+!                            
+!                            end if
+!                         end do
+!!                         toSendStack(thisPacket - 1)%lastPhoton = .true.
+!                         ! stuck here
+!                         nBundles = nBundles + 1
+                         if (bufferedSend) then
+                            call MPI_BSEND(photonPacketStack(photonOne:photonN), maxstackLimit, MPI_PHOTON_STACK, &
+                                 optCounter, tag, localWorldCommunicator,  ierr)
+                         else
+                            call MPI_SEND(photonPacketStack(photonOne:photonN), maxstackLimit, MPI_PHOTON_STACK, &
+                                 optCounter, tag, localWorldCommunicator,  ierr)
+                         endif
+                         call walltime(crossedSendEnd)
+                         crossedSendTime = crossedSendTime + (crossedSendEnd-crossedSendstart)
+                         !Keep track of total number of sent photons and bundles
+                         nInf = nInf + nSaved(optCounter)
+                         nBundles = nBundles + 1
+                         
                          !reset the counter for this thread's bundle recieve 
                          nSaved(optCounter) = 0
-                         toSendStack%destination = 0
-                         toSendStack%freq = 0.d0
-                      end if
-                   end if
-                end do
+                         !Reset the photon frequency (receiving threads interpret freq==0 as not a photon)
+                         photonPacketStack(photonOne:photonN)%freq = 0.d0
+                         !Reset the destination (receiving threads interpret destination==0 as not a photon)
+                         photonPacketStack(photonOne:photonN)%destination = 0
+                      endif
+                   enddo
+                endif
 
              end do mainloop
+             call walltime(finishTime)
+             waitingTime = waitingTime + (finishTime-startTime)
 
              if (myrankGlobal == 0) then
                 call mpi_allreduce(totalpower, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroThreadCommunicator, ierr)
@@ -2467,6 +2599,7 @@ end subroutine radiationHydro
                 write(*,*) "ratio = ", lcore/totalPower
                 write(*,*) "nmonte ",nMonte
                 write(*,*) "nthreadmonte ",nThreadMonte
+                write(*,*) "nbundles ", nbundles
                 write(*,*) "epsoverdt ",epsOverDeltaT
                 write(*,*) "lcore / nMonte ",lCore/dble(nMonte)
                 write(*,*) "Rank 0 sent all initial bundles"
@@ -2475,34 +2608,37 @@ end subroutine radiationHydro
 
              if(binPhotons) then
                 open(333, file="bins.dat", status="unknown")
-                do i=1, nFreq
+                write(333,*) "# total count = ", sum(countArray)
+                do i=1, size(lams) 
                    write(333,*) lams(i)*1.e8, countArray(i)/dble(nMonte)
                 end do
                 close(333)
              end if
 
 
+             ! check if the last photon has escaped
+             if (myrankWorldGlobal == 0) call tune(6, "Rank 0 received all finaltags")  ! start a stopwatch
              do i = 1, max(nSmallPackets,1)
 !               write(*,*) myHydroSetGlobal," looping from 1 to ",max(nsmallpackets,1), i
                 call MPI_RECV(j, 1, MPI_INTEGER, MPI_ANY_SOURCE, &
                      finaltag, localWorldCommunicator, status, ierr)
 !                write(*,*) myrankWorldglobal, " receiving from ",j
              enddo
-
+             if (myrankWorldGlobal == 0) call tune(6, "Rank 0 received all finaltags")  ! stop a stopwatch
              if (myrankWorldGlobal==0)  write(*,*) "Telling Ranks to pass stacks ASAP "
-
+             if (myrankWorldGlobal == 0) call tune(6, "Ranks passed stacks asap")  ! start a stopwatch
              do iThread = 1, nDomainThreads
                 toSendStack(1)%destination = -500
                 call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)
                 call MPI_RECV(donePanicking, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, status, ierr)  
              end do
+             if (myrankWorldGlobal == 0) call tune(6, "Ranks passed stacks asap")  ! stop a stopwatch
                 
              photonsStillProcessing = .true.
              
              i = 0
 
-             if (myrankWorldGlobal==0)  write(*,*) "Doing photon escape check "
-
+             if (myrankWorldGlobal == 0) call tune(6, "Photon escape check")  ! start a stopwatch
              do while(photonsStillProcessing)                   
 
 !                do iThread = 1, nHydroThreadsGlobal
@@ -2543,9 +2679,14 @@ end subroutine radiationHydro
                    exit
                 endif
              end do
+             if (myrankWorldGlobal == 0) call tune(6, "Photon escape check")  ! stop a stopwatch
                
              write(*,*) "Ionizing photons sent (fraction of ninf): ", dble(nIonizingPackets)/dble(ninf)
-             if (nIonizingPackets > 0) write(*,*) "Ionizing photon escape fraction: ", dble(nIonizingEscaped)/dble(nIonizingPackets)
+             if (nIonizingPackets > 0) then
+                write(*,*) "Ionizing photon escape fraction: ", dble(nIonizingEscaped)/dble(nIonizingPackets)
+             else
+                write(*,*) "Ionizing photon escape fraction: ", 0.d0 
+             endif
              
              if (myrankWorldGlobal == 0) write(*,*) "Finishing iteration..."
 
@@ -2574,6 +2715,13 @@ end subroutine radiationHydro
              nSaved = 0
              nNotEndLoop = 0
              waitingTime = 0.d0
+             scatteringTime = 0.
+             toNextEventTime = 0.
+             time500 = 0.
+             crossedBoundaryTime = 0.
+             prepTime = 0.
+             crossedSendTime = 0.
+
              call wallTime(globalStartTime)
              sendAllPhotons = .false.
              !needNewPhotonArray = .true.  
@@ -2605,7 +2753,6 @@ end subroutine radiationHydro
                          end if
                       end do
                       receivedStackSize = stackSize
-                      nToSend = 0
 
 !                      write(*,*) myrankWorldGlobal, " received a new stack of size ",stacksize,currentStack(1)%destination
                    !Check to see if a special action is required
@@ -2623,111 +2770,143 @@ end subroutine radiationHydro
                       stackSize = 0
                       !Evacuate everything currently in need of sending
                       do optCounter = 1, nDomainThreads
-                         if(optCounter /= myRankGlobal .and. nSaved(optCounter) /= 0) then
-                            thisPacket = 1
-                            
-                            toSendStack%freq = 0.d0
-                            do sendCounter = 1, (maxStackLimit*nDomainThreads)
-                               if(photonPacketStack(sendCounter)%destination /= 0 .and. &
-                                    photonPacketStack(sendCounter)%destination == optCounter) then
-                                  
-                                  toSendStack(thisPacket)%rVec = photonPacketStack(sendCounter)%rVec
-                                  toSendStack(thisPacket)%uHat = photonPacketStack(sendCounter)%uHat
-                                  toSendStack(thisPacket)%freq = photonPacketStack(sendCounter)%freq
-                                  toSendStack(thisPacket)%tPhot = photonPacketStack(sendCounter)%tPhot
-                                  toSendStack(thisPacket)%ppw = photonPacketStack(sendCounter)%ppw
-                                  toSendStack(thisPacket)%destination = photonPacketStack(sendCounter)%destination
-                                  toSendStack(thisPacket)%sourcePhoton = photonPacketStack(sendCounter)%sourcePhoton
-                                  toSendStack(thisPacket)%crossedPeriodic = photonPacketStack(sendCounter)%crossedPeriodic
-                                  toSendStack(thisPacket)%bigPhotonPacket = photonPacketStack(sendCounter)%bigPhotonPacket
-                                  toSendStack(thisPacket)%smallPhotonPacket = photonPacketStack(sendCounter)%smallPhotonPacket
-                                  toSendStack(thisPacket)%lastPhoton = photonPacketStack(sendCounter)%lastPhoton
-                                  toSendStack(thisPacket)%ionizingPhoton = photonPacketStack(sendCounter)%ionizingPhoton
-                                  thisPacket = thisPacket + 1
-                                  !nInf = nInf + 1
-                                     
-                                  !Reset the photon frequency so that this array entry can be overwritten
-                                  photonPacketStack(sendCounter)%freq = 0.d0
-                                  
-                                  !Reset the destination so that it doesnt get picked up in subsequent sweeps!
-                                  photonPacketStack(sendCounter)%destination = 0
-                                  
-                               end if
-                            end do
-!TJH this was originally mpi_send not mpi_bsend ! 11/9/2012
+                         if(nSaved(optCounter) > 0 .and. optCounter /= myRankGlobal) then
+                            ! location of optCounter's photons in photonPacketStack
+                            photonOne = (optCounter-1)*maxstacklimit + 1
+                            photonN = optCounter*maxstacklimit
+!                         if(optCounter /= myRankGlobal .and. nSaved(optCounter) /= 0) then
+!                            thisPacket = 1
+!                            
+!                            toSendStack%freq = 0.d0
+!                            do sendCounter = 1, (maxStackLimit*nDomainThreads)
+!                               if(photonPacketStack(sendCounter)%destination /= 0 .and. &
+!                                    photonPacketStack(sendCounter)%destination == optCounter) then
+!                                  
+!                                  toSendStack(thisPacket)%rVec = photonPacketStack(sendCounter)%rVec
+!                                  toSendStack(thisPacket)%uHat = photonPacketStack(sendCounter)%uHat
+!                                  toSendStack(thisPacket)%freq = photonPacketStack(sendCounter)%freq
+!                                  toSendStack(thisPacket)%tPhot = photonPacketStack(sendCounter)%tPhot
+!                                  toSendStack(thisPacket)%ppw = photonPacketStack(sendCounter)%ppw
+!                                  toSendStack(thisPacket)%destination = photonPacketStack(sendCounter)%destination
+!                                  toSendStack(thisPacket)%sourcePhoton = photonPacketStack(sendCounter)%sourcePhoton
+!                                  toSendStack(thisPacket)%crossedPeriodic = photonPacketStack(sendCounter)%crossedPeriodic
+!                                  toSendStack(thisPacket)%bigPhotonPacket = photonPacketStack(sendCounter)%bigPhotonPacket
+!                                  toSendStack(thisPacket)%smallPhotonPacket = photonPacketStack(sendCounter)%smallPhotonPacket
+!                                  toSendStack(thisPacket)%lastPhoton = photonPacketStack(sendCounter)%lastPhoton
+!                                  toSendStack(thisPacket)%ionizingPhoton = photonPacketStack(sendCounter)%ionizingPhoton
+!                                  thisPacket = thisPacket + 1
+!                                  !nInf = nInf + 1
+!                                     
+!                                  !Reset the photon frequency so that this array entry can be overwritten
+!                                  photonPacketStack(sendCounter)%freq = 0.d0
+!                                  
+!                                  !Reset the destination so that it doesnt get picked up in subsequent sweeps!
+!                                  photonPacketStack(sendCounter)%destination = 0
+!                                  
+!                               end if
+!                            end do
+!!TJH this was originally mpi_send not mpi_bsend ! 11/9/2012
                             if (bufferedSend) then
-                               call MPI_BSEND(toSendStack, maxstackLimit, MPI_PHOTON_STACK, OptCounter, tag, &
-                                    localWorldCommunicator, ierr)
+                               call MPI_BSEND(photonPacketStack(photonOne:photonN), maxstackLimit, MPI_PHOTON_STACK, &
+                                    optCounter, tag, localWorldCommunicator,  ierr)
                             else
-                              call MPI_SEND(toSendStack, maxStackLimit, &
-                                   MPI_PHOTON_STACK, OptCounter, tag, localWorldCommunicator,  ierr)
+                               call MPI_SEND(photonPacketStack(photonOne:photonN), maxstackLimit, MPI_PHOTON_STACK, &
+                                    optCounter, tag, localWorldCommunicator,  ierr)
 !                               write(*,*) myrankWorldGlobal," flushing  stack to ",optCounter, " size ",thisPacket-1
                             endif
-                              !reset the counter for this thread's bundle recieve
-                               nSaved(optCounter) = 0
-                               toSendStack%freq = 0.d0
-                               toSendStack%destination = 0
-                            end if
-                         end do
-                     
-                         goto 777
-                         Currentstack%destination = 0
+                            !reset the counter for this thread's bundle recieve 
+                            nSaved(optCounter) = 0
+                            !Reset the photon frequency (receiving threads interpret freq==0 as not a photon)
+                            photonPacketStack(photonOne:photonN)%freq = 0.d0
+                            !Reset the destination (receiving threads interpret destination==0 as not a photon)
+                            photonPacketStack(photonOne:photonN)%destination = 0
+                         endif
+                      enddo
+
+                      Currentstack%destination = 0
+                      goto 777
 
                    else if(currentStack(1)%destination == -500 .and. .not. sendAllPhotons) then
+                      call walltime(start500)
                       sendAllPhotons = .true.
                       stackSize = 0
                       !Evacuate everything currently in need of sending
                       do optCounter = 1, nDomainThreads
-                         if(optCounter /= myRankGlobal .and. nSaved(optCounter) /= 0) then
-                            if(nSaved(optCounter) == sendStackLimit .or. sendAllPhotons) then
-                               thisPacket = 1
-                               
-                               toSendStack%freq = 0.d0
-                               do sendCounter = 1, (maxStackLimit*nDomainThreads)
-                                  if(photonPacketStack(sendCounter)%destination /= 0 .and. &
-                                       photonPacketStack(sendCounter)%destination == optCounter) then
-                                     
-                                     toSendStack(thisPacket)%rVec = photonPacketStack(sendCounter)%rVec
-                                    toSendStack(thisPacket)%uHat = photonPacketStack(sendCounter)%uHat
-                                    toSendStack(thisPacket)%freq = photonPacketStack(sendCounter)%freq
-                                    toSendStack(thisPacket)%tPhot = photonPacketStack(sendCounter)%tPhot
-                                    toSendStack(thisPacket)%ppw = photonPacketStack(sendCounter)%ppw
-                                    toSendStack(thisPacket)%destination = photonPacketStack(sendCounter)%destination
-                                    toSendStack(thisPacket)%sourcePhoton = photonPacketStack(sendCounter)%sourcePhoton
-                                    toSendStack(thisPacket)%crossedPeriodic = photonPacketStack(sendCounter)%crossedPeriodic
-                                    toSendStack(thisPacket)%bigPhotonPacket = photonPacketStack(sendCounter)%bigPhotonPacket
-                                    toSendStack(thisPacket)%smallPhotonPacket = photonPacketStack(sendCounter)%smallPhotonPacket
-                                    toSendStack(thisPacket)%lastPhoton = photonPacketStack(sendCounter)%lastPhoton
-                                    toSendStack(thisPacket)%ionizingPhoton = photonPacketStack(sendCounter)%ionizingPhoton
-                                    thisPacket = thisPacket + 1
-                                    !nInf = nInf + 1
-                                    
-                                    !Reset the photon frequency so that this array entry can be overwritten
-                                    photonPacketStack(sendCounter)%freq = 0.d0
-                                    
-                                     !Reset the destination so that it doesnt get picked up in subsequent sweeps!
-                                    photonPacketStack(sendCounter)%destination = 0
-                                    
-                                 end if
-                              end do
-!TJH this was originally mpi_send not mpi_bsend ! 11/9/2012
-                              if (bufferedSend) then
-                                 call MPI_BSEND(toSendStack, maxstackLimit, MPI_PHOTON_STACK, OptCounter, tag, &
-                                      localWorldCommunicator, ierr)
-                              else
-                                 call MPI_SEND(toSendStack, maxStackLimit, &
-                                      MPI_PHOTON_STACK, OptCounter, tag, localWorldCommunicator,  ierr)
-                              endif
-                              !reset the counter for this thread's bundle recieve
-                              nSaved(optCounter) = 0
-                              toSendStack%freq = 0.d0
-                              toSendStack%destination = 0
-                           end if
-                        end if
-                     end do
-                     call MPI_SEND(donePanicking, 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
-                     
-                     goto 777
+                         if(nSaved(optCounter) > 0 .and. optCounter /= myRankGlobal) then
+                            ! location of optCounter's photons in photonPacketStack
+                            photonOne = (optCounter-1)*maxstacklimit + 1
+                            photonN = optCounter*maxstacklimit 
+                            if (bufferedSend) then
+                               call MPI_BSEND(photonPacketStack(photonOne:photonN), maxstackLimit, MPI_PHOTON_STACK, &
+                                    optCounter, tag, localWorldCommunicator,  ierr)
+                            else
+                               call MPI_SEND(photonPacketStack(photonOne:photonN), maxstackLimit, MPI_PHOTON_STACK, &
+                                    optCounter, tag, localWorldCommunicator,  ierr)
+                            endif
+                            !reset the counter for this thread's bundle recieve 
+                            nSaved(optCounter) = 0
+                            !Reset the photon frequency (receiving threads interpret freq==0 as not a photon)
+                            photonPacketStack(photonOne:photonN)%freq = 0.d0
+                            !Reset the destination (receiving threads interpret destination==0 as not a photon)
+                            photonPacketStack(photonOne:photonN)%destination = 0
+                         endif
+                      enddo
+                      call MPI_SEND(donePanicking, 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
+                      call walltime(end500)
+                      time500 = time500 + (end500-start500) 
+                      
+                      goto 777
+
+!                         if(optCounter /= myRankGlobal .and. nSaved(optCounter) /= 0) then
+!                            if(nSaved(optCounter) == sendStackLimit .or. sendAllPhotons) then
+!                               thisPacket = 1
+!                               
+!                               toSendStack%freq = 0.d0
+!                               do sendCounter = 1, (maxStackLimit*nDomainThreads)
+!                                  if(photonPacketStack(sendCounter)%destination /= 0 .and. &
+!                                       photonPacketStack(sendCounter)%destination == optCounter) then
+!                                     
+!                                     toSendStack(thisPacket)%rVec = photonPacketStack(sendCounter)%rVec
+!                                    toSendStack(thisPacket)%uHat = photonPacketStack(sendCounter)%uHat
+!                                    toSendStack(thisPacket)%freq = photonPacketStack(sendCounter)%freq
+!                                    toSendStack(thisPacket)%tPhot = photonPacketStack(sendCounter)%tPhot
+!                                    toSendStack(thisPacket)%ppw = photonPacketStack(sendCounter)%ppw
+!                                    toSendStack(thisPacket)%destination = photonPacketStack(sendCounter)%destination
+!                                    toSendStack(thisPacket)%sourcePhoton = photonPacketStack(sendCounter)%sourcePhoton
+!                                    toSendStack(thisPacket)%crossedPeriodic = photonPacketStack(sendCounter)%crossedPeriodic
+!                                    toSendStack(thisPacket)%bigPhotonPacket = photonPacketStack(sendCounter)%bigPhotonPacket
+!                                    toSendStack(thisPacket)%smallPhotonPacket = photonPacketStack(sendCounter)%smallPhotonPacket
+!                                    toSendStack(thisPacket)%lastPhoton = photonPacketStack(sendCounter)%lastPhoton
+!                                    toSendStack(thisPacket)%ionizingPhoton = photonPacketStack(sendCounter)%ionizingPhoton
+!                                    thisPacket = thisPacket + 1
+!                                    !nInf = nInf + 1
+!                                    
+!                                    !Reset the photon frequency so that this array entry can be overwritten
+!                                    photonPacketStack(sendCounter)%freq = 0.d0
+!                                    
+!                                     !Reset the destination so that it doesnt get picked up in subsequent sweeps!
+!                                    photonPacketStack(sendCounter)%destination = 0
+!                                    
+!                                 end if
+!                              end do
+!!TJH this was originally mpi_send not mpi_bsend ! 11/9/2012
+!                              if (bufferedSend) then
+!                                 call MPI_BSEND(toSendStack, maxstackLimit, MPI_PHOTON_STACK, OptCounter, tag, &
+!                                      localWorldCommunicator, ierr)
+!                              else
+!                                 call MPI_SEND(toSendStack, maxStackLimit, &
+!                                      MPI_PHOTON_STACK, OptCounter, tag, localWorldCommunicator,  ierr)
+!                              endif
+!                              !reset the counter for this thread's bundle recieve
+!                              nSaved(optCounter) = 0
+!                              toSendStack%freq = 0.d0
+!                              toSendStack%destination = 0
+!                           end if
+!                        end if
+!                     end do
+!                     call MPI_SEND(donePanicking, 1, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
+!                     
+!                     goto 777
                   end if
                   Currentstack%destination = 0
                else if (stackSize < 0) then
@@ -2751,15 +2930,17 @@ end subroutine radiationHydro
                !$OMP PRIVATE(doingsmallpackets,startnewsmallpacket,ismallphotonpacket,bigphotonpacket) &
                !$OMP PRIVATE(smallphotonpacket,smallpacketorigin,smallpacketfreq,smallphotonpacketweight,kappap) &
                !$OMP PRIVATE(kappascadb, albedo, r, kappaabsdust, thisOctal, subcell) &
-               !$OMP PRIVATE(crossedMPIboundary, newThread, thisPacket, kappaabsgas, escat, tempcell, lastPhoton) &
+               !$OMP PRIVATE(crossedMPIboundary, newThread, kappaabsgas, escat, tempcell, lastPhoton) &
                !$OMP PRIVATE(finished, voidThread, crossedPeriodic, nperiodic,  myrankworldglobal) &
-               !$OMP PRIVATE(bigPhotonPacketWeight, iLam, flushbuffer,ntosend) &
+               !$OMP PRIVATE(bigPhotonPacketWeight, iLam, flushbuffer) &
                !$OMP PRIVATE(uHatBefore, vec_tmp, unew, uhatafter, uHatDash, rHat, zHat, movedCells) & 
+               !$OMP PRIVATE(TONEXTEVENTSTART, TONEXTEVENTEND, TONEXTEVENTTIME, CROSSEDBOUNDARYSTART, PHOTONONE, SUBCELLCONVERGED) &
+               !$OMP PRIVATE(PHOTONN, CROSSEDBOUNDARYEND, CROSSEDBOUNDARYTIME, SCATTERINGSTART, SCATTERINGEND, SCATTERINGTIME) &
                !$OMP SHARED(photonPacketStack, myRankGlobal, currentStack, escapeCheck, cart2d) &
                !$OMP SHARED(noDiffuseField, grid, epsoverdeltat, iSignal, MPI_PHOTON_STACK) &
                !$OMP SHARED(nlambda, lamarray, tlimit, nHydroThreadsGlobal, sendAllPhotons,toSendStack) &
                !$OMP SHARED(nTotScat, nScatbigPacket, nScatSmallPacket, gammaTableArray, freq, nsmallpackets) &
-               !$OMP SHARED(dfreq, endLoop, nIter, spectrum, sendStackLimit) &
+               !$OMP SHARED(dfreq, endLoop, nIter, spectrum) &
                !$OMP SHARED(nSaved, maxStackLimit, source, uv_vector, containslastpacket) &
                !$OMP SHARED(stackSize, nFreq, radPressureTest, augerArray) &
                !$OMP SHARED(nPhot, nEscaped, stackLimit, localWorldCommunicator, nhydrosetsglobal, nToNextEventPhoto, nNotEscaped) &
@@ -2860,9 +3041,13 @@ end subroutine radiationHydro
                       
 !                      call findsubcellTd(rVec, grid%octreeRoot, beforeOctal, beforeSubcell)
 
+
+                      call walltime(toNextEventStart)
                       call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, &
                            photonPacketWeight, epsOverDeltaT, nfreq, freq, dFreq, tPhoton, tLimit, &
                            crossedMPIboundary, newThread, sourcePhoton, crossedPeriodic, miePhase, nMuMie, movedCells)
+                      call walltime(toNextEventEnd)
+                      toNextEventTime = toNextEventTime + (toNextEventEnd-toNextEventStart) 
 
                       if (nToNextEventPhoto == 1) movedCells = .true. ! a new photon has effectively moved cells
                       
@@ -2874,89 +3059,128 @@ end subroutine radiationHydro
 !                      endif
 
                       if (crossedMPIBoundary) then    
+                         call walltime(crossedboundaryStart)
                          !Create a bundle of photon packets, only modify the first available array space
                          !$OMP CRITICAL (crossed_mpi_boundary)
-                         do optCounter = 1, (SIZE(photonPacketStack))
-                            if(photonPacketStack(optCounter)%freq == 0.d0) then
-                               photonPacketStack(optCounter)%rVec = rVec
-                               photonPacketStack(optCounter)%uHat = uHat
-                               photonPacketStack(optCounter)%freq = thisFreq
-                               photonPacketStack(optCounter)%tPhot = tPhoton
-                               photonPacketStack(optCounter)%ppw = photonPacketWeight
-                               photonPacketStack(optCounter)%destination = newthread !loadBalancedThreadNumber(newThread)
-                               photonPacketStack(optCounter)%sourcePhoton = sourcePhoton
-                               photonPacketStack(optCounter)%crossedPeriodic = crossedPeriodic
-                               photonPacketStack(optCounter)%bigPhotonPacket = bigPhotonPacket
-                               photonPacketStack(optCounter)%smallPhotonPacket = smallPhotonPacket
-                               photonPacketStack(optCounter)%lastPhoton = lastPhoton
-                               photonPacketStack(optCounter)%ionizingPhoton = ionizingPhoton
-                               if(crossedPeriodic) then
-                                  nPeriodic = nPeriodic + 1
-                               end if
-                               exit
-                            end if
-                         end do
+                         ! location of newThread's photons in photonPacketStack
+                         photonOne = (newThread-1)*maxstackLimit + 1
+                         photonN = photonOne + min(nSaved(newThread), maxStackLimit-1) 
+                         photonPacketStack(photonN)%rVec = rVec
+                         photonPacketStack(photonN)%uHat = uHat
+                         photonPacketStack(photonN)%freq = thisFreq
+                         photonPacketStack(photonN)%tPhot = tPhoton
+                         photonPacketStack(photonN)%ppw = photonPacketWeight
+                         photonPacketStack(photonN)%destination = newthread 
+                         photonPacketStack(photonN)%sourcePhoton = sourcePhoton
+                         photonPacketStack(photonN)%crossedPeriodic = crossedPeriodic
+                         photonPacketStack(photonN)%bigPhotonPacket = bigPhotonPacket
+                         photonPacketStack(photonN)%smallPhotonPacket = smallPhotonPacket
+                         photonPacketStack(photonN)%lastPhoton = lastPhoton
+                         photonPacketStack(photonN)%ionizingPhoton = ionizingPhoton
+                         if(crossedPeriodic) then
+                            nPeriodic = nPeriodic + 1
+                         end if
 
                          !Keep track of how many packets are destined for each thread
                          nSaved(newThread) = nSaved(newThread) + 1
-                         nToSend = nToSend + 1
+!                         nToSend = nToSend + 1
                          flushBuffer = containsLastPacket
-                         if (flushBuffer) then
-!                            write(*,*) myrankWorldGlobal, " flushing buffer with ",nToSend
-                         endif
-
+                         
                          !Once the bundle for a specific thread has reached a critical size, send it to the thread for propagation
-                         do optCounter = 1, nDomainThreads
-                            if(optCounter /= myRankGlobal .and. nSaved(optCounter) /= 0) then
-                               if(nSaved(optCounter) == (sendStackLimit) .or. sendAllPhotons.or.flushBuffer) then
-                                  thisPacket = 1
-                                  toSendStack%freq = 0.d0
-                                  do sendCounter = 1, (maxStackLimit*nDomainThreads)
-                                     if(photonPacketStack(sendCounter)%destination /= 0 .and. &
-                                          photonPacketStack(sendCounter)%destination == optCounter) then 
-                                        
-                                        toSendStack(thisPacket)%rVec = photonPacketStack(sendCounter)%rVec
-                                        toSendStack(thisPacket)%uHat = photonPacketStack(sendCounter)%uHat
-                                        toSendStack(thisPacket)%freq = photonPacketStack(sendCounter)%freq
-                                        toSendStack(thisPacket)%tPhot = photonPacketStack(sendCounter)%tPhot
-                                        toSendStack(thisPacket)%ppw = photonPacketStack(sendCounter)%ppw
-                                        toSendStack(thisPacket)%destination = photonPacketStack(sendCounter)%destination
-                                        toSendStack(thisPacket)%sourcePhoton = photonPacketStack(sendCounter)%sourcePhoton
-                                        toSendStack(thisPacket)%crossedPeriodic = photonPacketStack(sendCounter)%crossedPeriodic
-                                        toSendStack(thisPacket)%bigPhotonPacket = photonPacketStack(sendCounter)%bigPhotonPacket
-                                        toSendStack(thisPacket)%smallPhotonPacket = photonPacketStack(sendCounter)%smallPhotonPacket
-                                        toSendStack(thisPacket)%lastPhoton = photonPacketStack(sendCounter)%lastPhoton
-                                        toSendStack(thisPacket)%ionizingPhoton = photonPacketStack(sendCounter)%ionizingPhoton
-                                        thisPacket = thisPacket + 1
-                                        !nInf = nInf + 1
-                                     
-                                        !Reset the photon frequency so that this array entry can be overwritten
-                                        photonPacketStack(sendCounter)%freq = 0.d0
-                                     
-                                        !Reset the destination so that it doesnt get picked up in subsequent sweeps!
-                                        photonPacketStack(sendCounter)%destination = 0
-                                        
-                                     end if
-                                  end do
+                         if(nSaved(newThread) == (maxStackLimit)) then 
+                            if (bufferedSend) then
+                               call MPI_BSEND(photonPacketStack(photonOne:photonN), maxstackLimit, MPI_PHOTON_STACK, &
+                                    newThread, tag, localWorldCommunicator,  ierr)
+                            else
+                               call MPI_SEND(photonPacketStack(photonOne:photonN), maxstackLimit, MPI_PHOTON_STACK, &
+                                    newThread, tag, localWorldCommunicator,  ierr)
+                            endif
+                            !reset the counter for this thread's bundle recieve 
+                            nSaved(newThread) = 0
+                            !Reset the photon frequency (receiving threads interpret freq==0 as not a photon)
+                            photonPacketStack(photonOne:photonN)%freq = 0.d0
+                            !Reset the destination (receiving threads interpret destination==0 as not a photon)
+                            photonPacketStack(photonOne:photonN)%destination = 0
+                         end if
 
-                                  if(thisPacket /= 1 .and. nSaved(optCounter) /= 0) then
-                                     if (bufferedSend) then
-                                        call MPI_BSEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, OptCounter, tag, &
-                                             localWorldCommunicator, ierr)
-                                     else
-                                        call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, OptCounter, tag, &
-                                             localWorldCommunicator, ierr)
-                                     endif
-                                     nSaved(optCounter) = 0
-                                     toSendStack%freq = 0.d0
-                                     toSendStack%destination = 0
-                                  end if
-                                  
-                               end if
-                            end if
-                         end do
+                         !Send all unsent photons
+                         if (sendAllPhotons .or. flushBuffer) then
+                            do optCounter = 1, nDomainThreads
+                               if(nSaved(optCounter) > 0 .and. optCounter /= myRankGlobal) then
+                                  ! location of optCounter's photons in photonPacketStack
+                                  photonOne = (optCounter-1)*maxstacklimit + 1
+                                  photonN = optCounter*maxstacklimit 
+                                  if (bufferedSend) then
+                                     call MPI_BSEND(photonPacketStack(photonOne:photonN), maxstackLimit, MPI_PHOTON_STACK, &
+                                          optCounter, tag, localWorldCommunicator,  ierr)
+                                  else
+                                     call MPI_SEND(photonPacketStack(photonOne:photonN), maxstackLimit, MPI_PHOTON_STACK, &
+                                          optCounter, tag, localWorldCommunicator,  ierr)
+                                  endif
+                                  !reset the counter for this thread's bundle recieve 
+                                  nSaved(optCounter) = 0
+                                  !Reset the photon frequency (receiving threads interpret freq==0 as not a photon)
+                                  photonPacketStack(photonOne:photonN)%freq = 0.d0
+                                  !Reset the destination (receiving threads interpret destination==0 as not a photon)
+                                  photonPacketStack(photonOne:photonN)%destination = 0
+                               endif
+                            enddo
+                         endif
+!
+!                         !Once the bundle for a specific thread has reached a critical size, send it to the thread for propagation
+!                         do optCounter = 1, nDomainThreads
+!                            if(optCounter /= myRankGlobal .and. nSaved(optCounter) /= 0) then
+!                               if(nSaved(optCounter) == (sendStackLimit) .or. sendAllPhotons.or.flushBuffer) then
+!                                  thisPacket = 1
+!                                  toSendStack%freq = 0.d0
+!                                  do sendCounter = 1, (maxStackLimit*nDomainThreads)
+!                                     if(photonPacketStack(sendCounter)%destination /= 0 .and. &
+!                                          photonPacketStack(sendCounter)%destination == optCounter) then 
+!                                        
+!                                        toSendStack(thisPacket)%rVec = photonPacketStack(sendCounter)%rVec
+!                                        toSendStack(thisPacket)%uHat = photonPacketStack(sendCounter)%uHat
+!                                        toSendStack(thisPacket)%freq = photonPacketStack(sendCounter)%freq
+!                                        toSendStack(thisPacket)%tPhot = photonPacketStack(sendCounter)%tPhot
+!                                        toSendStack(thisPacket)%ppw = photonPacketStack(sendCounter)%ppw
+!                                        toSendStack(thisPacket)%destination = photonPacketStack(sendCounter)%destination
+!                                        toSendStack(thisPacket)%sourcePhoton = photonPacketStack(sendCounter)%sourcePhoton
+!                                        toSendStack(thisPacket)%crossedPeriodic = photonPacketStack(sendCounter)%crossedPeriodic
+!                                        toSendStack(thisPacket)%bigPhotonPacket = photonPacketStack(sendCounter)%bigPhotonPacket
+!                                        toSendStack(thisPacket)%smallPhotonPacket = photonPacketStack(sendCounter)%smallPhotonPacket
+!                                        toSendStack(thisPacket)%lastPhoton = photonPacketStack(sendCounter)%lastPhoton
+!                                        toSendStack(thisPacket)%ionizingPhoton = photonPacketStack(sendCounter)%ionizingPhoton
+!                                        thisPacket = thisPacket + 1
+!                                        !nInf = nInf + 1
+!                                     
+!                                        !Reset the photon frequency so that this array entry can be overwritten
+!                                        photonPacketStack(sendCounter)%freq = 0.d0
+!                                     
+!                                        !Reset the destination so that it doesnt get picked up in subsequent sweeps!
+!                                        photonPacketStack(sendCounter)%destination = 0
+!                                        
+!                                     end if
+!                                  end do
+!
+!                                  if(thisPacket /= 1 .and. nSaved(optCounter) /= 0) then
+!                                     if (bufferedSend) then
+!                                        call MPI_BSEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, OptCounter, tag, &
+!                                             localWorldCommunicator, ierr)
+!                                     else
+!                                        call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, OptCounter, tag, &
+!                                             localWorldCommunicator, ierr)
+!                                     endif
+!                                     nSaved(optCounter) = 0
+!                                     toSendStack%freq = 0.d0
+!                                     toSendStack%destination = 0
+!                                  end if
+!                                  
+!                               end if
+!                            end if
+!                         end do
                          !$OMP END CRITICAL (crossed_mpi_boundary)
                          finished = .true.
+                         call walltime(crossedBoundaryEnd)
+                         crossedboundaryTime = crossedBoundaryTime + (crossedBoundaryEnd-CrossedBoundaryStart) 
 !                         if (doingsmallpackets) &
 !                              write(*,*) myrankGlobal, " set finished true ", ismallPhotonPacket,doingsmallPackets
                       endif
@@ -3004,6 +3228,7 @@ end subroutine radiationHydro
 
                          if (.not. escaped) then
 
+                            call walltime(scatteringStart)
 
                             thisLam = real(cSpeed / thisFreq) * 1.e8
                             call locate(lamArray, nLambda, real(thisLam), iLam)
@@ -3132,6 +3357,7 @@ end subroutine radiationHydro
                                  photonMomentum * photonPacketWeight
 !                            write(*,*) "mom ",thisOctal%radiationMomentum(subcell)
                                nScat = nScat + 1
+                               thisOctal%nScatters(subcell) = thisOctal%nScatters(subcell) + 1
 
                                if (bigPhotonPacket) nScatBigPacket = nScatBigPacket + 1
                                if (smallPhotonPacket) nScatSmallPacket = nScatSmallPacket + 1
@@ -3162,6 +3388,8 @@ end subroutine radiationHydro
 !                                  write(*,*) "optical depth of cell ",(kappaAbsDb+kappaScadb)*thisOctal%subcellSize
                                endif
                                
+                               call walltime(scatteringEnd)
+                               scatteringTime = scatteringTime + (scatteringEnd-scatteringStart) 
                                
                             endif
                          if (nScat > 1000000) then
@@ -3356,17 +3584,45 @@ end subroutine radiationHydro
  
 
        efficiencyArray = 0.d0
-       if (myrankGlobal /= 0) then
-          call wallTime(globalTime)
-          globalTime = globalTime - globalStartTime
-          write(*,'(i3.3,a,f9.2,a,f9.2,a)') myrankGlobal, " waited for ",waitingTime, " seconds or ", &
-             waitingTime/GlobalTime*100.,"% of run"
+       call wallTime(globalTime)
+       globalTime = globalTime - globalStartTime
+       if (firsttime) then
+          if (myrankglobal == 0) then
+             write(*,'(i3.3,a,f9.2,a,f9.2,a)') myrankGlobal, " mainloop time ",waitingTime, " seconds or ", &
+                waitingTime/GlobalTime*100.,"% of run"
+             write(*,'(i3.3,a,f12.5,a,f12.5,a)') myrankGlobal, " photonPacketStack ", & 
+                prepTime, " s or ", prepTime/(waitingTime)*100.,"% (mainloop)"
+             write(*,'(i3.3,a,f12.5,a,f12.5,a)') myrankGlobal, " bsend time ", & 
+                crossedSendTime, " s or ", crossedSendTime/(waitingTime)*100.,"% (mainloop)"
+          else
+             do optCount = 1, nHydroThreadsGlobal
+                if (ANY(loadBalanceList(optCount,1:nLoadBalanceList(optCount)) == myRankGlobal)) then
+                   write(*,'(i3.3,a1,i3.3,a,f9.2,a,f9.2,a)') optcount, " ",myrankGlobal, & 
+                   " waited for ",waitingTime, " seconds or ", waitingTime/GlobalTime*100.,"% of run"
+                   write(*,'(i3.3,a1,i3.3,a,f12.5,a,f12.5,a)') optcount, " ",myrankGlobal, & 
+                   " scattering time ", scatteringTime, " s or ", scatteringTime/(GlobalTime)*100.,"%"
+                   write(*,'(i3.3,a1,i3.3,a,f12.5,a,f12.5,a)') optcount, " ",myrankGlobal, & 
+                   " toNextEvent time ", toNextEventTime, " s or ", toNextEventTime/(GlobalTime)*100.,"%"
+                   write(*,'(i3.3,a1,i3.3,a,f12.5,a,f12.5,a)') optcount, " ",myrankGlobal, " crossedBound time ", & 
+                      crossedBoundaryTime, " s or ", crossedBoundaryTime/(GlobalTime)*100.,"%"
+!                   write(*,'(i3.3,a1,i3.3,a,f12.5,a,f12.5,a)') optcount, " ",myrankGlobal, " crossed prep time ", & 
+!                      prepTime, " s or ", prepTime/(crossedBoundaryTime)*100.,"% (crossedBoundary)"
+!                   write(*,'(i3.3,a1,i3.3,a,f12.5,a,f12.5,a)') optcount, " ",myrankGlobal, " crossedSend time ", & 
+!                      crossedSendTime, " s or ", crossedSendTime/(crossedBoundaryTime)*100.,"% (crossedBoundary)"
+!                   write(*,'(i3.3,a1,i3.3,a,f12.5,a,f12.5,a)') optcount, " ",myrankGlobal, " 500 time ", time500, " s or ", &
+!                      time500/(GlobalTime-waitingTime)*100.,"% (not-waiting)"
+                endif
+             enddo
+          endif
+          firstTime = .false.
+      endif
 !          thisOctal%etacont(1:thisOctal%maxChildren) = waitingTime/GlobalTime*100.
 !          write(mpiFilename,'(a, i4.4,a1,f,a)') "waitingTime_", grid%iDump,"_",grid%currentTime,".vtk"
 !          call writeVtkFile(grid, mpiFilename, &
 !               valueTypeString=(/"etacont     "/))
 
 
+      if (myrankGlobal /= 0) then
           efficiencyArray(myrankGlobal) = 100.d0*(1.d0 - dble(waitingTime/GlobalTime))
           allocate(temp1d(1:nThreadsGlobal-1))
           call MPI_ALLREDUCE(efficiencyArray, temp1d, nThreadsGlobal-1, &
@@ -3425,7 +3681,7 @@ end subroutine radiationHydro
 
 
     np = 1
-    firstTime = .true.
+!    firstTime = .true.
 
 
 
@@ -3463,7 +3719,7 @@ end subroutine radiationHydro
 
     call  identifyUndersampled(grid%octreeRoot)
 
-
+    if (radTimeScale > 0.0d0) call updateHistories(grid%octreeRoot)
 
     if (myRankWorldGlobal == 0) write(*,*) "Ninf ",ninf
     if (myrankWorldGlobal == 1) call tune(6, "Temperature/ion corrections")
@@ -3486,9 +3742,8 @@ end subroutine radiationHydro
 !         "crossings    "/))!
 
 
-! aali - commented out 2016-04-25 - causes drop in memory sometimes large enough to crash
-! (and only saves a few seconds anyway)
-!    if (loadbalancing) call  setLoadBalancingThreadsByCells(grid)
+    if (loadbalancing) call  setLoadBalancingThreadsByCells(grid)
+
 
     if (myRankGlobal /= 0) then
 
@@ -3556,9 +3811,8 @@ end subroutine radiationHydro
        endif
 
        !$OMP PARALLEL DEFAULT(NONE) &
-       !$OMP PRIVATE(iOctal, thisOctal, subcell, v, kappap, i, endTime,startTime) &
+       !$OMP PRIVATE(iOctal, thisOctal, subcell, v, kappap, i, endTime,startTime, SUBCELLCONVERGED) &
        !$OMP PRIVATE(dustHeating, tempcell, oldf, oldt, iter, fract, fracf, converged, tempion, tempdust) &
-       !$OMP PRIVATE(writeDiagnostics, diagTotalHeating, diagDustHeating, diagHeHeating, diagHheating,diagkappap) &
        !$OMP SHARED(iOctal_beg, iOctal_end, dustOnly, octalArray, grid, epsOverDeltaT, uv_vector) &
        !$OMP SHARED(timedep, quickThermal, deltaTime, tminGlobal, myrankGlobal, nhydrosetsglobal) &
        !$OMP SHARED(augerArray, radpressuretest, loadbalancing, copyOfThread, decoupleGasDustTemperature) 
@@ -3598,91 +3852,43 @@ end subroutine radiationHydro
                 enddo
                 
              else
-                oldT(1:thisOctal%maxChildren) = thisOctal%temperature(1:thisOctal%maxChildren)
                 if (.not.associated(thisOctal%ionFrac)) then
                    write(*,*) "not associated ",myrankGlobal,copyOfThread
                 endif
+                oldT(1:thisOctal%maxChildren) = thisOctal%temperature(1:thisOctal%maxChildren)
                 oldF(1:thisOctal%maxChildren) = thisOctal%ionFrac(1:thisOctal%maxChildren,1)
-                ! calculate ionization and gas thermal balance (without calculating dust temperature) 
+                subcellConverged(1:thisOctal%maxChildren) = .false.
                 converged = .false.
                 iter = 0
                 do while(.not.converged)
                    iter = iter + 1
-                   call calculateIonizationBalance(grid,thisOctal, epsOverDeltaT, augerArray)
+                   call calculateIonizationBalance(grid,thisOctal, epsOverDeltaT, augerArray, subcellConverged)
                    if (quickThermal) then
                       call quickThermalCalc(thisOctal)
                    else
-                      call calculateThermalBalanceNew(grid, thisOctal, epsOverDeltaT)
+                      call calculateThermalBalanceNew(grid, thisOctal, epsOverDeltaT, iter, subcellConverged)
                    endif
-                   fracT(1:thisOctal%maxChildren) = abs(thisOctal%temperature(1:thisOctal%maxChildren) - &
-                        oldT(1:thisOctal%maxChildren))/oldT(1:thisOctal%maxChildren)
-                   fracF(1:thisOctal%maxChildren) = abs(thisOctal%ionFrac(1:thisOctal%maxChildren,1) &
-                        - oldF(1:thisOctal%maxChildren))/oldF(1:thisOctal%maxChildren)
-                   oldT(1:thisOctal%maxChildren) = thisOctal%temperature(1:thisOctal%maxChildren)
-                   oldF(1:thisOctal%maxChildren) = thisOctal%ionFrac(1:thisOctal%maxChildren,1)
-                   converged = (ALL(fracT(1:thisOctal%maxChildren) < 0.01d0)).and. (ALL(FracF(1:thisOctal%maxChildren) < 0.01d0))
-                   if (iter > 100) then
-                      write(*,*) myrankglobal, "(A) temp/ion fraction not converged after 100 iterations ", &
-                           (ALL(fracT(1:thisOctal%maxChildren) < 0.01d0)),  (ALL(FracF(1:thisOctal%maxChildren) < 0.01d0))
-                      converged = .true.
-                   endif
-                enddo
-
-                if (.not.decoupleGasDustTemperature) then
-                   thisOctal%tDust(1:thisOctal%maxChildren) = thisOctal%temperature(1:thisOctal%maxChildren)
-                endif
-
-                if (decoupleGasDustTemperature .and. (.not.quickThermal)) then
-                   ! repeat the above (ionization and gas thermal balance) but now calculate dust temperature too
-                   converged = .false.
-                   iter = 0
-                   do while(.not.converged)
-                      iter = iter + 1
-                      call calculateIonizationBalance(grid,thisOctal, epsOverDeltaT, augerArray)
-                      call calculateThermalBalanceNew(grid, thisOctal, epsOverDeltaT)
-                      ! dust temperature
-                      call calculateThermalBalanceDust(grid, thisOctal, epsOverDeltaT)
                       fracT(1:thisOctal%maxChildren) = abs(thisOctal%temperature(1:thisOctal%maxChildren) - &
                            oldT(1:thisOctal%maxChildren))/oldT(1:thisOctal%maxChildren)
                       fracF(1:thisOctal%maxChildren) = abs(thisOctal%ionFrac(1:thisOctal%maxChildren,1) &
                            - oldF(1:thisOctal%maxChildren))/oldF(1:thisOctal%maxChildren)
                       oldT(1:thisOctal%maxChildren) = thisOctal%temperature(1:thisOctal%maxChildren)
                       oldF(1:thisOctal%maxChildren) = thisOctal%ionFrac(1:thisOctal%maxChildren,1)
-                      converged = (ALL(fracT(1:thisOctal%maxChildren) < 0.01d0)).and. (ALL(FracF(1:thisOctal%maxChildren) < 0.01d0))
-                      if (iter > 100) then
-                         write(*,*) myrankglobal, "(B) temp/ion fraction not converged after 100 iterations ", &
-                              (ALL(fracT(1:thisOctal%maxChildren) < 0.01d0)),  (ALL(FracF(1:thisOctal%maxChildren) < 0.01d0))
-                         converged = .true.
-                      endif
-                   enddo
-                endif
-                ! diagnostics
-                do iter = 1, thisOctal%maxChildren
-                   if (.not.thisOctal%hasChild(iter)) then 
-                   if (.not.thisOctal%undersampled(iter)) then
-                      writeDiagnostics = .false.
-                      if ((fracT(iter) > 0.01d0) .or. (fracF(iter) > 0.01d0)) then
-                         ! not converged
-                         writeDiagnostics = .true. 
-                      endif
-                      if (writeDiagnostics) then
-                         call getHeating(grid, thisOctal, iter, diaghHeating, diagheHeating, &
-                             diagdustHeating, diagtotalHeating, epsOverDeltaT)
-                         call returnKappa(grid, thisOctal, iter, kappap=diagkappap, &
-                               atThisTemperature=real(thisOctal%tDust(iter)))
-                         write(*,*) "-----"
-                         write(*,'(a,i3,3es10.3)') "subcell, centre: ", iter, subcellcentre(thisOctal, iter)
-                         write(*,'(a,2f12.5)') "fracT, fracF: ",fracT(iter), fracF(iter)
-                         write(*,'(a,3f9.2,es9.2)') "temp, tdust, HI frac, rho: ", & 
-                             thisOctal%temperature(iter), thisOctal%tdust(iter),  thisOctal%ionFrac(iter,1),&
-                             thisOctal%rho(iter) 
-                         write(*,*) "-----"
-                      endif
-                   endif
+                      
+                      subcellConverged(1:thisOctal%maxChildren) = (fracT(1:thisOctal%maxChildren) < 0.01d0) .and. &
+                                                                  (fracF(1:thisOctal%maxChildren) < 0.01d0)
+                      converged = ALL(subcellConverged(1:thisOctal%maxChildren))
+!                   converged = (ALL(fracT(1:thisOctal%maxChildren) < 0.01d0)).and. (ALL(FracF(1:thisOctal%maxChildren) < 0.01d0))
+                   if (iter > 30 .and..not. converged) then
+                      write(*,*) myrankglobal, "(A) temp/ion frac not conv after 30 iter ", &
+                           (ALL(fracT(1:thisOctal%maxChildren) < 0.01d0)),  (ALL(FracF(1:thisOctal%maxChildren) < 0.01d0))
+                      converged = .true.
                    endif
                 enddo
-                ! end diagnostics
 
+                if (.not.decoupleGasDustTemperature) then
+                   thisOctal%tDust = thisOctal%temperature
+                endif
              end if
 
              
@@ -5028,6 +5234,8 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
           end do
        else
           if (.not.associated(thisOctal%photoionCoeff)) found = .false.
+          if (.not.associated(thisOctal%nScatters)) found = .false. 
+          if (.not.associated(thisOctal%nCrossIonizing)) found = .false. 
        endif
     enddo
   end subroutine CheckPhotoionAllocationsSub
@@ -5071,6 +5279,8 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
       call allocateAttribute(thisOctal%kappaRoss, thisOctal%maxChildren)
       call allocateAttribute(thisOctal%distanceGrid, thisOctal%maxChildren)
       call allocateAttribute(thisOctal%nCrossings, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%nCrossIonizing, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%nScatters, thisOctal%maxChildren)
       call allocateAttribute(thisOctal%nTot, thisOctal%maxChildren)
       call allocateAttribute(thisOctal%chiLine, thisOctal%maxChildren)
       call allocateAttribute(thisOctal%biasLine3D, thisOctal%maxChildren)
@@ -5123,6 +5333,8 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        else
           thisOctal%distanceGrid(subcell) = 0.d0
           thisOctal%nCrossings(subcell) = 0
+          thisOctal%nCrossIonizing(subcell) = 0
+          thisOctal%nScatters(subcell) = 0
           thisOctal%undersampled(subcell) = .false.
           thisOCtal%nDiffusion(subcell) = 0.
           thisOctal%Hheating(subcell) = 0.d0
@@ -5501,13 +5713,14 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
   end subroutine getThermalTime
 
 
-  subroutine calculateIonizationBalance(grid, thisOctal, epsOverDeltaT, augerArray)
-    use inputs_mod, only : xraycalc, useionparam
+  subroutine calculateIonizationBalance(grid, thisOctal, epsOverDeltaT, augerArray, subcellConverged) 
+    use inputs_mod, only : xraycalc, useionparam, radTimescale, tMinGlobal
     type(gridtype) :: grid
     type(AUGER) :: augerArray(5, 5, 10)
     type(octal), pointer   :: thisOctal
     real(double) :: epsOverDeltaT
-    integer :: subcell
+    logical, intent(in) :: subcellConverged(:)
+    integer :: subcell, iIon, j
     
     do subcell = 1, thisOctal%maxChildren
        
@@ -5519,19 +5732,32 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
           if (thisOctal%inflow(subcell)) then
              if (.not.thisOctal%undersampled(subcell)) then
-                if(xraycalc .and. .not. useionparam) then
-                   call solveIonizationBalance_xray(grid, thisOctal, subcell, thisOctal%temperature(subcell), &
-                        epsOverdeltaT, augerArray)
-                else
-                   call solveIonizationBalance(grid, thisOctal, subcell, thisOctal%temperature(subcell), epsOverdeltaT)
-                end if
+                if (.not.subcellConverged(subcell)) then 
+                   if(xraycalc .and. .not. useionparam) then
+                      call solveIonizationBalance_xray(grid, thisOctal, subcell, thisOctal%temperature(subcell), &
+                           epsOverdeltaT, augerArray)
+                   else
+                      thisOctal%temperature(subcell) = max(thisOctal%temperature(subcell), tMinGlobal)
+                      call solveIonizationBalance(grid, thisOctal, subcell, thisOctal%temperature(subcell), epsOverdeltaT)
+                   end if
+                endif
              else
-
-                thisOctal%ionFrac(subcell, 1) = 1.d0
-                thisOctal%ionFrac(subcell, 2) = 1.d-30
-!                if(thisOctal%nCrossings(subcell) /= 0) then
-!                   write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
-!                end if
+                if (radTimescale <= 0.d0) then ! if not doing updateHistories
+                   ! make all species neutral
+                   thisOctal%ionFrac(subcell, 1) = 1.d0
+                   thisOctal%ionFrac(subcell, 2) = 1.d-30
+                   do iIon = 1, grid%nIon 
+                      j = len(trim(grid%ion(iIon)%species))
+                      if (grid%ion(iIon)%species(j-1:j) == " I") then ! neutral
+                         thisOctal%ionFrac(subcell, iIon) = 1.d0
+                      else
+                         thisOctal%ionFrac(subcell, iIon) = 1.d-10
+                      endif
+                   enddo
+!                   thisOctal%HHeating(subcell) = 1.d-30
+!                   thisOctal%HeHeating(subcell) = 1.d-30
+                   thisOctal%ne(subcell) = returnNe(thisOctal, subcell, grid%ion, grid%nion)
+                endif
              endif
           endif
        endif
@@ -5699,13 +5925,15 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 !!$      enddo
 !!$  end subroutine calculateThermalBalance
 
-  subroutine calculateThermalBalanceNew(grid, thisOctal, epsOverDeltaT)
+  subroutine calculateThermalBalanceNew(grid, thisOctal, epsOverDeltaT, grandIter, subcellConverged) 
     use mpi
-    use inputs_mod, only : tMinGlobal 
+    use inputs_mod, only : tMinGlobal, tMaxGlobal, decoupleGasDustTemperature 
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     real(double) :: epsOverDeltaT
     real(double) :: totalHeating
+    logical, intent(in) :: subcellConverged(:)
+    integer, intent(in) :: grandIter
     integer :: subcell
     logical :: converged
     real(double) :: a, b, c, d, e, fa, fb, fc, r, s, p, q, tol, tol1, xm
@@ -5714,9 +5942,15 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     real(double), parameter :: eps = 3.d-8
     real :: t1, t2
     real(double) :: Hheating, Heheating, dustHeating, newT, deltaT
-    real :: underCorrection = 0.5
+    real(double) :: newTdust, deltaTdust, kappap, gasGrainCool
+    real :: underCorrection
     integer :: nIter
     tol = 1.d-2
+
+    undercorrection = 0.6
+    if (grandIter > 10) then
+       undercorrection = 0.1 
+    endif
 
     do subcell = 1, thisOctal%maxChildren
 
@@ -5731,163 +5965,144 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                 if (.not.thisOctal%undersampled(subcell)) then
                    
 
+                   if (.not.subcellConverged(subcell)) then 
                    
-                   call getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDeltaT)
-                   ! if decoupling gas and dust temperatures, totalHeating and HHeCooling only consider gas heating/cooling
-                   ! otherwise they also include dust heating/cooling
+                      call getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDeltaT)
+                      ! if decoupling gas and dust temperatures, totalHeating and HHeCooling only consider gas heating/cooling
+                      ! otherwise they also include dust heating/cooling
 
-                   iter = 0
-                   if (totalHeating < HHecooling(grid, thisOctal, subcell, tMinGlobal)) then
-                      newT = tminGlobal
-                   else if ((totalHeating > HHecooling(grid, thisOctal, subcell, 20000.))) then
-                      newT = 20000.
-                   else
-                      nIter = 0
-                      converged = .false.
-                      
-                      !try nearby temperatures to start the bracket
-                      t1 = thisOctal%temperature(subcell) * 0.8
-                      t2 = thisOctal%temperature(subcell) * 1.2
-                      FA = (totalHeating - HHecooling(grid, thisOctal, subcell, t1)) !FUNC(A)
-                      FB = (totalHeating - HHecooling(grid, thisOctal, subcell, t2)) !FUNC(B)
-
-                      IF (FB*FA.GT.0.d0) then
-                         t1 = tMinGlobal
-                         t2 = 20000.
-!                         write(*,*) "failed using nearby temps ",thisOctal%temperature(subcell)
+                      iter = 0
+                      if ((totalHeating < HHecooling(grid, thisOctal, subcell, tMinGlobal))) then
+                         newT = tminGlobal
+                         thisOctal%temperature(subcell)=max(thisOctal%temperature(subcell), tMinGlobal)
+                      else if ((totalHeating > HHecooling(grid, thisOctal, subcell, tMaxGlobal))) then
+                         newT = tmaxGlobal
                       else
-!                         write(*,*) "success using nearby temps ",thisOctal%temperature(subcell)
-                      endif
+                         nIter = 0
+                         converged = .false.
+                         
+                         !try nearby temperatures to start the bracket
+                         t1 = thisOctal%temperature(subcell) * 0.8 
+                         t2 = min(thisOctal%temperature(subcell) * 1.2, tMaxGlobal) 
+                         FA = (totalHeating - HHecooling(grid, thisOctal, subcell, t1)) !FUNC(A)
+                         FB = (totalHeating - HHecooling(grid, thisOctal, subcell, t2)) !FUNC(B)
 
-                      A = t1
-                      B = t2
-                      FA = (totalHeating - HHecooling(grid, thisOctal, subcell, real(a))) !FUNC(A)
-                      FB = (totalHeating - HHecooling(grid, thisOctal, subcell, real(b))) !FUNC(B)
-                      IF (FB*FA.GT.0.d0) write(*,*) 'Root must be bracketed for ZBRENT.',totalHeating,fa,fb
-                      FC = FB
-                      ! find temperature that gives heating = cooling
-                      DO ITER=1,ITMAX
-                         IF(FB*FC.GT.0.d0) THEN
-                            C=A
-                            FC=FA
-                            D=B-A
-                            E=D
-                         ENDIF
-                         IF(ABS(FC).LT.ABS(FB)) THEN
-                            A=B
-                            B=C
-                            C=A
-                            FA=FB
-                            FB=FC
-                            FC=FA
-                         ENDIF
-                         TOL1=2.d0*EPS*ABS(B)+0.5d0*TOL
-                         XM=0.5d0*(C-B)
-                         IF(ABS(XM).LE.TOL1 .OR. FB.EQ.0.d0)THEN
-                            newT = B
-                            exit
-                         ENDIF
-                         IF(ABS(E).GE.TOL1 .AND. ABS(FA).GT.ABS(FB)) THEN
-                            S=FB/FA
-                            IF(A.EQ.C) THEN
-                               P=2.*XM*S
-                               Q=1.-S
-                            ELSE
-                               Q=FA/FC
-                               R=FB/FC
-                               P=S*(2.d0*XM*Q*(Q-R)-(B-A)*(R-1.d0))
-                               Q=(Q-1.d0)*(R-1.d0)*(S-1.d0)
-                            ENDIF
-                            IF(P.GT.0.d0) Q=-Q
-                            P=ABS(P)
-                            IF(2.d0*P .LT. MIN(3.d0*XM*Q-ABS(TOL1*Q),ABS(E*Q))) THEN
+                         IF (FB*FA.GT.0.d0) then
+                            t1 = tMinGlobal
+                            t2 = tMaxGlobal
+   !                         write(*,*) "failed using nearby temps ",thisOctal%temperature(subcell)
+                         else
+   !                         write(*,*) "success using nearby temps ",thisOctal%temperature(subcell)
+                         endif
+
+                         A = t1
+                         B = t2
+                         FA = (totalHeating - HHecooling(grid, thisOctal, subcell, real(a))) !FUNC(A)
+                         FB = (totalHeating - HHecooling(grid, thisOctal, subcell, real(b))) !FUNC(B)
+                         IF (FB*FA.GT.0.d0) write(*,*) 'Root must be bracketed for ZBRENT.',totalHeating,fa,fb
+                         FC = FB
+                         ! find temperature that gives heating = cooling
+                         DO ITER=1,ITMAX
+                            IF(FB*FC.GT.0.d0) THEN
+                               C=A
+                               FC=FA
+                               D=B-A
                                E=D
-                               D=P/Q
+                            ENDIF
+                            IF(ABS(FC).LT.ABS(FB)) THEN
+                               A=B
+                               B=C
+                               C=A
+                               FA=FB
+                               FB=FC
+                               FC=FA
+                            ENDIF
+                            TOL1=2.d0*EPS*ABS(B)+0.5d0*TOL
+                            XM=0.5d0*(C-B)
+                            IF(ABS(XM).LE.TOL1 .OR. FB.EQ.0.d0)THEN
+                               newT = B
+                               exit
+                            ENDIF
+                            IF(ABS(E).GE.TOL1 .AND. ABS(FA).GT.ABS(FB)) THEN
+                               S=FB/FA
+                               IF(A.EQ.C) THEN
+                                  P=2.*XM*S
+                                  Q=1.-S
+                               ELSE
+                                  Q=FA/FC
+                                  R=FB/FC
+                                  P=S*(2.d0*XM*Q*(Q-R)-(B-A)*(R-1.d0))
+                                  Q=(Q-1.d0)*(R-1.d0)*(S-1.d0)
+                               ENDIF
+                               IF(P.GT.0.d0) Q=-Q
+                               P=ABS(P)
+                               IF(2.d0*P .LT. MIN(3.d0*XM*Q-ABS(TOL1*Q),ABS(E*Q))) THEN
+                                  E=D
+                                  D=P/Q
+                               ELSE
+                                  D=XM
+                                  E=D
+                               ENDIF
                             ELSE
                                D=XM
                                E=D
                             ENDIF
-                         ELSE
-                            D=XM
-                            E=D
-                         ENDIF
-                         A=B
-                         FA=FB
-                         IF(ABS(D) .GT. TOL1) THEN
-                            B=B+D
-                         ELSE
-                            B=B+SIGN(TOL1,XM)
-                         ENDIF
-                         FB = (totalHeating - HHecooling(grid, thisOctal, subcell, real(b))) !FUNC(B)
-                      enddo
-!                      write(*,*) "finished after ",iter, " iterations"
-                      if (ABS(XM).gt.TOL1) write(*,*) 'ZBRENT exceeding maximum iterations.', xm, tol1
-                      newT = B
-                   END if
+                            A=B
+                            FA=FB
+                            IF(ABS(D) .GT. TOL1) THEN
+                               B=B+D
+                            ELSE
+                               B=B+SIGN(TOL1,XM)
+                            ENDIF
+                            FB = (totalHeating - HHecooling(grid, thisOctal, subcell, real(b))) !FUNC(B)
+                         enddo
+   !                      write(*,*) "finished after ",iter, " iterations"
+                         if (ABS(XM).gt.TOL1) write(*,*) 'ZBRENT exceeding maximum iterations.', xm, tol1
+                         newT = B
+                      END if
 
-                   ! final temperature
-                   deltaT = newT- dble(thisOctal%temperature(subcell))
-                   thisOctal%temperature(subcell) = thisOctal%temperature(subcell) + underCorrection * real(deltaT)
+                      ! final temperature
+                      deltaT = newT- dble(thisOctal%temperature(subcell))
+                      thisOctal%temperature(subcell) = thisOctal%temperature(subcell) + underCorrection * real(deltaT)
 
-!                    write(*,*) "thermal balance new converged after ",iter
+                      ! floor and ceiling
+                      thisOctal%temperature(subcell) = max(thisOctal%temperature(subcell), tminglobal)
+                      thisOctal%temperature(subcell) = min(thisOctal%temperature(subcell), tMaxGlobal)
+
+                      ! now do dust temperature
+                      if (decoupleGasDustTemperature) then
+                         ! if decoupling, temperature is just the gas temperature - now need to find the dust temperature
+
+                         ! gasGrainCool is positive if dust is heated, negative if cooled
+                         gasGrainCool = gasGrainCoolingRate(thisOctal%rho(subcell), thisOctal%ionFrac(subcell,2), &
+                              dble(thisOctal%temperature(subcell)), thisOctal%tDust(subcell))
+                         dustHeating = max(1.d-30,dustHeating + gasGrainCool)
+                         call returnKappa(grid, thisOctal, subcell, kappap=kappap, &
+                               atThisTemperature=real(thisOctal%tDust(subcell)))
+                         newtDust = (dustHeating / (fourPi * kappaP * (stefanBoltz/pi)))**0.25d0
+
+                         ! final temperature 
+                         deltaTdust = newTdust- thisOctal%tDust(subcell)
+                         thisOctal%tdust(subcell) = thisOctal%tDust(subcell) + underCorrection * deltaTdust
+
+                         ! floor and ceiling
+                         thisOctal%tdust(subcell) = max(thisOctal%tdust(subcell), tminglobal)
+                         thisOctal%tdust(subcell) = min(thisOctal%tdust(subcell), tMaxGlobal)
+                      else
+                         thisOctal%tdust(subcell) = dble(thisOctal%temperature(subcell))
+                      endif
+                        
+                   endif
+                else
+                   ! undersampled
+                   thisOctal%temperature(subcell) = tminGlobal
+                   thisOctal%tdust(subcell) = tminGlobal
                 endif
              endif
           end if
        endif
     enddo
   end subroutine calculateThermalBalanceNew
-
-  subroutine calculateThermalBalanceDust(grid, thisOctal, epsOverDeltaT)
-    use mpi
-    use inputs_mod, only : decoupleGasDustTemperature
-    type(gridtype) :: grid
-    type(octal), pointer   :: thisOctal
-    real(double) :: epsOverDeltaT
-    real(double) :: totalHeating
-    integer :: subcell
-    real(double) :: Hheating, Heheating, dustHeating, gasGrainCool
-    real(double) :: kappaP, newTdust, deltaTdust
-    real :: underCorrection = 0.5
-
-    do subcell = 1, thisOctal%maxChildren
-
-       if (.not.thisOctal%hasChild(subcell)) then
-
- !THAW - trying to root out mpi things
-          if(octalOnThread(thisOctal, subcell, myRankGlobal)) then
-          
-             if (thisOctal%inflow(subcell)) then
-                
-                
-                if (.not.thisOctal%undersampled(subcell)) then
-                   
-                   call getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDeltaT)
-                   ! if decoupling gas and dust temperatures, totalHeating and HHeCooling only consider gas heating/cooling
-                   ! otherwise they also include dust heating/cooling
-
-                   ! now do dust temperature
-                   if (decoupleGasDustTemperature) then
-                      ! if decoupling, temperature is just the gas temperature - now need to find the dust temperature
-
-                      ! gasGrainCool is positive if dust is heated, negative if cooled
-                      gasGrainCool = gasGrainCoolingRate(thisOctal%rho(subcell), thisOctal%ionFrac(subcell,2), &
-                           dble(thisOctal%temperature(subcell)), thisOctal%tDust(subcell))
-                      dustHeating = max(1.d-30,dustHeating + gasGrainCool)
-                      call returnKappa(grid, thisOctal, subcell, kappap=kappap, &
-                            atThisTemperature=real(thisOctal%tDust(subcell)))
-                      newtDust = (dustHeating / (fourPi * kappaP * (stefanBoltz/pi)))**0.25d0
-
-                      ! final temperature 
-                      deltaTdust = newTdust- thisOctal%tDust(subcell)
-                      thisOctal%tdust(subcell) = thisOctal%tDust(subcell) + underCorrection * deltaTdust
-                   endif 
-
-                endif
-             endif
-          end if
-       endif
-    enddo
-  end subroutine calculateThermalBalanceDust
 
   subroutine calculateEquilibriumTemperature(grid, thisOctal, subcell, epsOverDeltaT, Teq)
     type(gridtype) :: grid
@@ -6014,8 +6229,11 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        enddo
   end subroutine calculateThermalBalanceTimeDep
   
-  function HHeCooling(grid, thisOctal, subcell, temperature, debug) result (coolingRate)
+  function HHeCooling(grid, thisOctal, subcell, temperature, debug, iter) result (coolingRate)
     use inputs_mod, only : dustOnly, hOnly, decoupleGasDustTemperature
+    integer, optional :: iter
+    integer :: nRates
+    real(double) :: myRates(6)
     type(OCTAL),pointer :: thisOctal
     integer :: subcell
     type(GRIDTYPE) :: grid
@@ -6044,6 +6262,8 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     real, parameter                :: hcRyd = &    ! constant: h*c*Ryd (Ryd at inf used) [erg]
          & 2.1799153e-11
 
+    nRates = 0
+    myRates = 0.d0
 
     coolingRate = 0.d0
 
@@ -6059,10 +6279,14 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        ne = thisOctal%ne(subcell)
        
        becool = 0.
-       
+!       write(*,*) temperature
        gff = 1.1d0 + 0.34d0*exp(-(5.5d0 - log10(temperature))**2 / 3.d0)  ! Kenny equation 23
        
        coolingRate = 1.42d-27 * (nHii+nHeii) * ne * gff * sqrt(temperature)  ! Kenny equation 22 (free-free)
+       if (present(iter)) then
+          nRates = nRates + 1
+          myRates(nRates) = coolingRate
+       endif
        
        thisLogT = log10(temperature)
        log10te = thisLogT
@@ -6112,6 +6336,10 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        end if
        
        coolingrate = coolingrate + coolcoll
+       if (present(iter)) then
+          nRates = nRates + 1
+          myRates(nRates) = coolcoll 
+       endif
        
        becool = becool +coolcoll
        
@@ -6159,6 +6387,10 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        betaHe = thisrootTbetaHe / sqrt(temperature)
 
        coolingRate = coolingRate +  ne * nhii * kerg * temperature * betaH
+       if (present(iter)) then
+          nRates = nRates + 1
+          myRates(nRates) = ne * nhii * kerg * temperature * betaH
+       endif
               
        if (ne * nhii * kerg * temperature * betaH < 0.) then
           write(*,*) "negative H cooling",ne,nhii,kerg,temperature,betah
@@ -6167,6 +6399,10 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        if(.not. hOnly) then
           coolingRate = coolingRate + ne * nheii * kerg * temperature * betaHe
        end  if
+       if (present(iter)) then
+          nRates = nRates + 1
+          myRates(nRates) = ne * nheii * kerg * temperature * betaHe
+       endif
 
        if (ne * nheii * kerg * temperature * betaHe < 0.) then
           write(*,*) "negative He cooling",ne,nheii,kerg,temperature,betaHe
@@ -6178,12 +6414,20 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        endif
 !           write(*,*) log(coolingRate),log(crate),coolingRate/(coolingrate+crate)
        coolingRate = coolingRate + crate
+       if (present(iter)) then
+          nRates = nRates + 1
+          myRates(nRates) = crate 
+       endif
  
        if (decoupleGasDustTemperature) then
           ! collisional heating/cooling (positive if gas cooled/dust heated)
           gasGrainCool =  gasGrainCoolingRate(thisOctal%rho(subcell), thisOctal%ionFrac(subcell,2), &
                dble(temperature), thisOctal%tDust(subcell))
           coolingRate = coolingRate + gasGrainCool
+       endif
+       if (present(iter)) then
+          nRates = nRates + 1
+          myRates(nRates) = gasGrainCool 
        endif
 
     endif
@@ -6195,8 +6439,22 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        dustCooling = fourPi * kappaP * (stefanBoltz/pi) * dble(temperature)**4
        coolingRate = coolingRate + dustCooling
     endif
+    if (present(iter)) then
+       nRates = nRates + 1
+       myRates(nRates) = dustCooling 
+    endif
 
 
+    if (present(iter)) then
+       if (nRates /= 7) then
+           write(*,*) "nRates: ", nRates
+           stop
+       endif
+       myRates(1:nRates) = myRates(1:nRates)/coolingRate
+!       open(unit=99, file='allcooling.dat', status='unknown', position='append',form="formatted")
+!       write(99,'(i3.3,8(1x,es9.2))') iter, coolingRate, myRates(1:nRates)
+!       close(99)
+    endif
 
   end function HHeCooling
 
@@ -6225,6 +6483,9 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     kappaAbs = 0.d0; kappaAbsDust = 0.d0
 
     thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
+    if ((thisFreq*hcgs*ergtoev) > grid%ion(1)%iPot) then ! ionizing photon
+       thisOctal%nCrossIonizing(subcell) = thisOctal%nCrossIonizing(subcell) + 1 
+    endif
 
     fac = distance * photonPacketWeight / (hCgs * thisFreq)
 
@@ -6322,8 +6583,6 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     gFac = 0.d0
     do i = 1, nDist
        rVecTemp = rVec + (dble(i-1)* ds) * uHat
-       rHat = VECTOR(rVecTemp%x, rVecTemp%y, rVecTemp%z)
-       call normalize(rHat)
        uHatDash = uHat
        if (thisOctal%twoD .and. .not. cart2d) then
           zHat = VECTOR(0.d0, 0.d0, 1.d0)
@@ -6398,7 +6657,9 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, temperature, epsOver
   real(double) :: chargeExchangeIonization, chargeExchangeRecombination
   real(double), allocatable :: newFrac(:)
   real(double), allocatable :: xplus1overx(:)
-  real(double), parameter :: underCorrection = 0.6d0
+  real(double) :: underCorrection
+
+  undercorrection = 0.6d0
 
   v = cellVolume(thisOctal, subcell)
   k = 1
@@ -7778,11 +8039,13 @@ subroutine readHeIIrecombination()
   close(40)
 end subroutine readHeIIrecombination
 
-recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, &
-     kappaTimesFlux, uvVec)
+recursive subroutine packvalues(thisOctal,nIndex,nCrossings,nCrossIonizing,nScatters, photoIonCoeff, hHeating, HeHeating,&
+     distanceGrid, radMomVec, kappaTimesFlux, uvVec)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: nCrossings(:)
+  real(double) :: nCrossIonizing(:)
+  real(double) :: nScatters(:)
   real(double) :: photoIonCoeff(:,:)
   real(double) :: hHeating(:)
   real(double) :: heHeating(:)
@@ -7800,8 +8063,8 @@ recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHea
         do i = 1, thisOctal%nChildren, 1
            if (thisOctal%indexChild(i) == subcell) then
               child => thisOctal%child(i)
-              call packvalues(child, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, &
-                   kappaTimesFlux, uvVec)
+              call packvalues(child, nIndex,nCrossings,nCrossIonizing,nScatters, photoIonCoeff, hHeating, HeHeating,&
+               distanceGrid, radMomVec, kappaTimesFlux, uvVec)
               exit
            end if
         end do
@@ -7809,6 +8072,8 @@ recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHea
         if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
         nIndex = nIndex + 1
         nCrossings(nIndex) = dble(thisOctal%nCrossings(subcell))
+        nCrossIonizing(nIndex) = dble(thisOctal%nCrossIonizing(subcell))
+        nScatters(nIndex) = dble(thisOctal%nScatters(subcell))
         photoIonCoeff(nIndex, :) = thisOctal%photoIonCoeff(subcell, :)
         hHeating(nIndex) = thisOctal%hHeating(subcell)
         heHeating(nIndex) = thisOctal%heHeating(subcell)
@@ -7820,11 +8085,13 @@ recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHea
   enddo
 end subroutine packvalues
 
-recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, &
-     kappaTimesFlux, uvVec)
+recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings,nCrossIonizing,nScatters, photoIonCoeff, hHeating, HeHeating, &
+     distanceGrid, radMomVec, kappaTimesFlux, uvVec)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: nCrossings(:)
+  real(double) :: nCrossIonizing(:)
+  real(double) :: nScatters(:)
   real(double) :: photoIonCoeff(:,:)
   real(double) :: hHeating(:)
   real(double) :: heHeating(:)
@@ -7842,8 +8109,8 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call unpackvalues(child, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, &
-                     kappaTimesFlux, uvvec)
+                call unpackvalues(child, nIndex,nCrossings,nCrossIonizing,nScatters, photoIonCoeff, hHeating, HeHeating, &
+                 distanceGrid, radMomVec, kappaTimesFlux, uvvec)
                 exit
              end if
           end do
@@ -7851,6 +8118,8 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hH
           if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
           nIndex = nIndex + 1
           thisOctal%nCrossings(subcell) = nint(nCrossings(nIndex), kind=bigint)
+          thisOctal%nCrossIonizing(subcell) = nint(nCrossIonizing(nIndex), kind=bigint)
+          thisOctal%nScatters(subcell) = nint(nScatters(nIndex), kind=bigint)
           thisOctal%photoIonCoeff(subcell, :) = photoIonCoeff(nIndex, :)
           thisOctal%hHeating(subcell) = hHeating(nIndex) 
           thisOctal%heHeating(subcell) = heHeating(nIndex) 
@@ -8106,6 +8375,145 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
        endif
     enddo
   end subroutine calculateEnergyFromTemperature
+
+  recursive subroutine UpdateHistories(thisOctal)
+    use inputs_mod, only: maxDepthAMR, cflNumber, nHydroPerPhoto, radTimeScale, shotNoiseWeight
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    type(vector) :: tmpVector
+    real(double) :: decayFactor, shotNoiseFac, tmpDouble
+    real(double),  allocatable :: tmpDoubleArr(:)
+    
+    if (.not.allocated(tmpDoubleArr)) allocate(tmpDoubleArr(size(thisOctal%photoIonCoeff(subcell,:))))
+
+!    write(*,*) "history",thisOctal%ndepth
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call UpdateHistories(child)
+                exit
+             end if
+          end do
+       else
+          decayFactor = exp (-cflNumber * nHydroPerPhoto /( radTimeScale * 2**(maxDepthAMR-thisOctal%nDepth))) !assuming relevence of the MC estimate decays away at the somewhere between the hydro timescale for this cell and the hydro time for the smallest cell
+          if (thisOctal%nCrossings(subcell).eq.1000000)  then 
+             shotNoiseFac=0.5
+          else  
+             shotNoiseFac= 1.0/sqrt(1.0+thisOctal%ncrossings(subcell)/shotNoiseWeight)
+          endif
+
+          if ((decayFactor.ne.decayFactor).or.decayfactor<1.0d-6) decayfactor=1.0d-6
+
+          if (.not.associated(thisOctal%kappaTimesFluxHistory)) then
+             allocate(thisOctal%kappaTimesFluxHistory(1:thisOctal%maxChildren))
+             thisOctal%kappaTimesFluxHistory = VECTOR(0.d0,0.d0,0.d0)
+          endif
+          if (.not.associated(thisOctal%DistanceGridHistory)) then
+             allocate(thisOctal%DistanceGridHistory(1:thisOctal%maxChildren))
+             thisOctal%DistanceGridHistory(1:thisOctal%maxChildren) = 0.d0
+          endif
+          if (.not.associated(thisOctal%hHeatingHistory)) then
+             allocate(thisOctal%hHeatingHistory(1:thisOctal%maxChildren))
+             thisOctal%hHeatingHistory(1:thisOctal%maxChildren) = 0.d0
+          endif
+          if (nGlobalIon > 2) then
+             if (.not.associated(thisOctal%HeHeatingHistory)) then
+                allocate(thisOctal%HeHeatingHistory(1:thisOctal%maxChildren))
+                thisOctal%HeHeatingHistory(1:thisOctal%maxChildren) = 0.d0
+             endif
+          endif
+          if (.not.associated(thisOctal%photoionCoeffHistory)) then
+             allocate(thisOctal%photoIonCoeffHistory(1:thisOctal%maxChildren,1:nGlobalIon))
+             thisOctal%photoIonCoeffHistory(1:thisOctal%maxChildren,1:nGlobalIon) = 0.d0
+          endif
+          
+
+!          if (.not.associated(thisOctal%HeHeatingHistory)) then
+!                   allocate(thisOctal%HeHeatingHistory(1:thisOctal%maxChildren))
+!                   thisOctal%HeHeatingHistory(1:thisOctal%maxChildren)=0.0
+!          endif
+          
+          !kappaTimesFlux
+           if (thisOctal%kappaTimesFluxHistory(subcell)%x .eq. 0.0d0 .and.&
+               thisOctal%kappaTimesFluxHistory(subcell)%y .eq. 0.0d0 .and.&
+               thisOctal%kappaTimesFluxHistory(subcell)%z .eq. 0.0d0 .and.&
+               (thisOctal%kappaTimesFlux(subcell)%x .ne. 0.0d0 .or.&
+                thisOctal%kappaTimesFlux(subcell)%y .ne. 0.0d0 .or.&
+                thisOctal%kappaTimesFlux(subcell)%z .ne. 0.0d0)) then
+             thisOctal%kappaTimesFluxHistory(subcell)=thisOctal%kappaTimesFlux(subcell) * (1.0/decayFactor-1)/thisOctal%rho(subcell)
+          endif !assume if the history isnt set then the current monte carlo estimate is a better guess than nothing
+          
+          tmpVector=thisOctal%kappaTimesFlux(subcell)
+          thisOctal%kappaTimesFluxHistory(subcell) = thisOctal%kappaTimesFluxHistory(subcell) +thisOctal%kappaTimesFlux(subcell)&
+               /thisOctal%rho(subcell)
+          thisOctal%kappaTimesFlux(subcell) = thisOctal%kappaTimesFluxHistory(subcell) * (1.0/decayFactor-1)*decayFactor&
+               *thisOctal%rho(subcell)    ! sum_{i=0}^{inf} (exp(-i*a))== exp(a)/(exp(a)-1)
+          thisOctal%kappaTimesFlux(subcell) = thisOctal%kappaTimesFlux(subcell)*shotNoiseFac + tmpVector*(1-ShotNoiseFac)
+          ! each element in the infine series is now one step older so divide by decay factor
+          thisOctal%kappaTimesFluxHistory(subcell) = thisOctal%kappaTimesFluxHistory(subcell) * decayFactor
+
+          !distanceGrid
+           if (thisOctal%DistanceGridHistory(subcell) .eq. 0.0d0 .and.&
+                 thisOctal%DistanceGrid(subcell) .ne. 0.0d0) then
+             thisOctal%DistanceGridHistory(subcell)=thisOctal%DistanceGrid(subcell) * (1.0/decayFactor-1)
+          endif !assume if the history isnt set then the current monte carlo estimate is a better guess than nothing
+          
+          tmpDouble=thisOctal%DistanceGrid(subcell) 
+          thisOctal%DistanceGridHistory(subcell) = thisOctal%DistanceGridHistory(subcell) +thisOctal%DistanceGrid(subcell)
+          thisOctal%DistanceGrid(subcell) = thisOctal%DistanceGridHistory(subcell) * (1.0/decayFactor-1)*decayFactor    ! sum_{i=0}^{inf} (exp(-i*a))== exp(a)/(exp(a)-1);decay factor = exp(-a)
+          thisOctal%DistanceGrid(subcell) = thisOctal%DistanceGrid(subcell)*shotNoiseFac + tmpDouble*(1-ShotNoiseFac)
+          thisOctal%DistanceGridHistory(subcell) = thisOctal%DistanceGridHistory(subcell) * decayFactor                 ! each element in the infine series is now one step older so divide by decay factor
+
+          !hHeating
+           if (thisOctal%hHeatingHistory(subcell) .eq. 0.0d0 .and.&
+                 thisOctal%hHeating(subcell) .ne. 0.0d0) then	
+                thisOctal%hHeatingHistory(subcell)=thisOctal%hHeating(subcell) * (1.0/decayFactor-1)
+                write(*,*) "setting hydrogen Heating history", thisOctal%hHeating(subcell)
+          endif !assume if the history isnt set then the current monte carlo estimate is a better guess than nothing
+          
+          tmpDouble=thisOctal%hHeating(subcell) 
+          thisOctal%hHeatingHistory(subcell) = thisOctal%hHeatingHistory(subcell) +thisOctal%hHeating(subcell)
+          thisOctal%hHeating(subcell) = thisOctal%hHeatingHistory(subcell) * (1.0/decayFactor-1)*decayFactor    ! sum_{i=0}^{inf} (exp(-i*a))== exp(a)/(exp(a)-1);decay factor = exp(-a)
+          thisOctal%hHeating(subcell) = thisOctal%hHeating(subcell)*shotNoiseFac + tmpDouble*(1-ShotNoiseFac)
+          thisOctal%hHeatingHistory(subcell) = thisOctal%hHeatingHistory(subcell) * decayFactor                 ! each element in the infine series is now one step older so divide by decay factor
+
+          if (nGlobalIon > 2) then
+             !heHeating
+             if (thisOctal%heHeatingHistory(subcell) .eq. 0.0d0 .and.&
+                    thisOctal%heHeating(subcell) .ne. 0.0d0) then
+                thisOctal%heHeatingHistory(subcell)=thisOctal%heHeating(subcell) * (1.0/decayFactor-1)
+             endif !assume if the history isnt set then the current monte carlo estimate is a better guess than nothing
+             
+             tmpDouble=thisOctal%HeHeating(subcell) 
+             thisOctal%heHeatingHistory(subcell) = thisOctal%heHeatingHistory(subcell) +thisOctal%heHeating(subcell)
+             ! sum_{i=0}^{inf} (exp(-i*a))== exp(a)/(exp(a)-1);decay factor = exp(-a)
+             thisOctal%heHeating(subcell) = thisOctal%heHeatingHistory(subcell) * (1.0/decayFactor-1)*decayFactor
+             thisOctal%HeHeating(subcell) = thisOctal%heHeating(subcell)*shotNoiseFac + tmpDouble*(1-ShotNoiseFac)
+             ! each element in the infine series is now one step older so divide by decay factor
+             thisOctal%heHeatingHistory(subcell) = thisOctal%heHeatingHistory(subcell) * decayFactor
+          endif
+
+          !photoIonCoeff
+          if (all(thisOctal%photoIonCoeffHistory(subcell, :) .eq. 0.0d0) .and. &
+               any(thisOctal%photoIonCoeff(subcell,:) .ne. 0.0d0)) then
+             thisOctal%photoIonCoeffHistory(subcell,:)=thisOctal%photoIonCoeff(subcell,:) * (1.0/decayFactor-1)
+          endif !assume if the history isnt set then the current monte carlo estimate is a better guess than nothing
+
+          tmpDoubleArr = thisOctal%photoIonCoeff(subcell,:)
+          thisOctal%photoIonCoeffHistory(subcell,:) = thisOctal%photoIonCoeffHistory(subcell,:) +thisOctal%photoIonCoeff(subcell,:)
+          thisOctal%photoIonCoeff(subcell,:) = thisOctal%photoIonCoeffHistory(subcell,:) * (1.0/decayFactor-1)*decayFactor    ! sum_{i=0}^{inf} (exp(-i*a))== exp(a)/(exp(a)-1) ;decay factor = exp(-a)
+          thisOctal%photoIonCoeff(subcell,:) = thisOctal%PhotoIonCoeff(subcell,:)*shotNoiseFac + tmpDoubleArr*(1-ShotNoiseFac)
+          thisOctal%photoIonCoeffHistory(subcell,:) = thisOctal%photoIonCoeffHistory(subcell,:) * decayFactor                  ! each element in the infine series is now one step older so divide by decay factor
+
+       end if
+    end do
+    if (allocated(tmpDoubleArr)) deallocate(tmpDoubleArr)
+  end subroutine UpdateHistories
 
   recursive subroutine calculateKappaTimesFlux(thisOctal, epsOverDeltaT)
     type(octal), pointer   :: thisOctal
@@ -8954,7 +9362,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
     type(gridtype) :: grid
     integer :: nVoxels, i
-    real(double), allocatable :: nCrossings(:)
+    real(double), allocatable :: nCrossings(:), nCrossIonizing(:), nScatters(:)
     real(double), allocatable :: hHeating(:), heHeating(:)
     real(double), allocatable :: photoIonCoeff(:,:)
     real(double), allocatable :: tempDoubleArray(:)
@@ -8969,6 +9377,8 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     nVoxels = 0
     call countVoxelsOnThread(grid%octreeRoot,nVoxels)
     allocate(nCrossings(1:nVoxels))
+    allocate(nCrossIonizing(1:nVoxels))
+    allocate(nScatters(1:nVoxels))
     allocate(hHeating(1:nVoxels))
     allocate(heHeating(1:nVoxels))
     allocate(distanceGrid(1:nVoxels))
@@ -8978,8 +9388,8 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     allocate(uvvec(1:nVoxels))
 
     nIndex = 0
-    call packValues(grid%octreeRoot,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, &
-         kappaTimesFlux, uvvec)
+    call packValues(grid%octreeRoot,nIndex,nCrossings,nCrossIonizing, nScatters, photoIonCoeff, hHeating, HeHeating, &
+     distanceGrid, radMomVec, kappaTimesFlux, uvvec)
 
     allocate(tempDoubleArray(nVoxels))
 
@@ -9004,6 +9414,16 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     call MPI_ALLREDUCE(nCrossings,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
          MPI_SUM, amrParComm,ierr)
     nCrossings = tempDoubleArray 
+
+    tempDoubleArray = 0.0
+    call MPI_ALLREDUCE(nCrossIonizing,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+         MPI_SUM, amrParComm,ierr)
+    nCrossIonizing = tempDoubleArray 
+
+    tempDoubleArray = 0.0
+    call MPI_ALLREDUCE(nScatters,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+         MPI_SUM, amrParComm,ierr)
+    nScatters = tempDoubleArray 
 
     tempDoubleArray = 0.0
     call MPI_ALLREDUCE(distanceGrid,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
@@ -9062,10 +9482,11 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     call MPI_BARRIER(amrParComm, ierr) 
     
     nIndex = 0
-    call unpackValues(grid%octreeRoot, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid, radMomVec, &
-         kappaTimesFlux, uvvec)
+    call unpackValues(grid%octreeRoot, nIndex,nCrossings,nCrossIonizing, nScatters, photoIonCoeff, hHeating, HeHeating, &
+     distanceGrid, radMomVec, kappaTimesFlux, uvvec)
 
-    deallocate(nCrossings, photoIonCoeff, hHeating, heHeating, distanceGrid, radMomVec, kappaTimesFlux, uvvec)
+    deallocate(nCrossings,nCrossIonizing, nScatters, photoIonCoeff, hHeating, heHeating, &
+     distanceGrid, radMomVec, kappaTimesFlux, uvvec)
 
   end subroutine updateGridMPIphoto
 
@@ -9699,6 +10120,65 @@ end subroutine putStarsInGridAccordingToDensity
         endif 
      enddo
   end subroutine calculateMassInAccretionRadius
+  
+  subroutine subgridHIIexpansion(grid, source, nSource, ionizingTime)
+     type(GRIDTYPE) :: grid
+     type(OCTAL), pointer :: thisOctal
+     type(SOURCETYPE) :: source(:)
+     integer :: nSource, i, subcell
+     real(double) :: ionizingTime, r, flux
+     logical, save :: firstTime=.true.
+     integer :: j
+     
+     if (nSource == 0) goto 666
+     if (loadBalancingThreadGlobal) goto 666
+
+     thisOctal => grid%octreeRoot
+     do i = 1, nSource
+        call findSubcellLocal(source(i)%position, thisOctal, subcell) 
+        if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+           write(*,*) myrankglobal, " reached subgrid hii ", thisOctal%ionfrac(subcell,1), thisOctal%ionfrac(subcell, 2), &
+             thisOctal%temperature(subcell)
+           if (thisOctal%ionFrac(subcell, 1) > 0.9d0) then ! if neutral
+
+              flux = ionizingFlux(source(i)) 
+              r = thisOctal%subcellSize/2.d0 * 1.d10 !todo distance to cell boundary 
+              if (r < ionizedRadius(flux, thisOctal%rho(subcell), ionizingTime)) then
+                 thisOctal%ionFrac(subcell, 1) = 1.d-10
+                 thisOctal%ionFrac(subcell, 2) = 1.d0
+                 thisOctal%temperature(subcell) = 1.d4
+                 thisOctal%ne(subcell) = returnNe(thisOctal, subcell, grid%ion, grid%nion)
+!                 call writeVtkFile(grid, "subgridhii.vtk", &
+!                      valueTypeString=(/"crossings","ioncross","temperature", "HI", "tdust","rho"/))
+              else
+                 write(*,*) i, " Ri = ", ionizedRadius(flux, thisOctal%rho(subcell), ionizingTime), & 
+                  ionizedRadius(flux, thisOctal%rho(subcell), ionizingTime) / r 
+              endif
+              if (firstTime .and. i == 1) then
+                 open(unit=921, file='ionizedradii.dat', status='replace')
+                 write(921,'(2(a12,1x))') "# time (yr)", "radius (cm)"
+                 do j = 0, 100000, 1000
+                    write(921, '(2(es12.5,1x))') dble(j), ionizedRadius(flux, thisOctal%rho(subcell), dble(j)/secstoyears)
+                 enddo
+                 close(921)
+                 firstTime = .false.
+              endif
+
+           endif
+        endif
+     enddo
+     
+666 continue
+  end subroutine subgridHIIexpansion
+
+  real(double) function ionizedRadius(flux, rho, time)
+     real(double) :: flux, rho, time, cs, stromgrenRadius
+     
+     ! Spitzer 1978
+     stromgrenRadius = (3.d0 * flux/(fourPi * (rho/mHydrogen)**2 * 2.7d-13))**(1.d0/3.d0) 
+     cs = sqrt(2.d0 * kerg * 1.d4 / mHydrogen) 
+     ionizedRadius = stromgrenRadius * (1 + 7.d0*cs*time/(4.d0*stromgrenRadius))**(4.d0/7.d0)
+  end function ionizedRadius
 
 #endif
 

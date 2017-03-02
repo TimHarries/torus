@@ -4,7 +4,6 @@ module amr_mod
   ! 21 nov
   ! routines for adaptive mesh refinement. nhs
   ! twod stuff added by tjh started 25/08/04
-
   use amr_utils_mod
   use discwind_class
   USE octal_mod, only: OCTAL, wrapperArray, octalWrapper, subcellCentre, cellVolume, &
@@ -1002,6 +1001,9 @@ CONTAINS
 
     CASE("sphere")
        call calcSphere(thisOctal, subcell)
+
+    CASE("plumber")
+       call calcPlumber(thisOctal, subcell)
 
     CASE("krumholz") 
        ! uniform-density sphere with power-law falloff
@@ -2117,7 +2119,6 @@ CONTAINS
 
        CASE ("romanova")
           CALL calc_romanova_temperature(romData, thisOctal,subcell)
-
 
        CASE ("magstream")
 
@@ -3326,7 +3327,7 @@ CONTAINS
 
 
   FUNCTION amrGridDirectionalDeriv(grid,position,direction,startOctal,&
-                                   foundOctal,foundSubcell)
+                                   foundOctal,foundSubcell, Hydro)
     !
     ! POINT --> should be in unrotated coordinates for 2D case (not projected onto x-z plane!)
     !
@@ -3354,20 +3355,21 @@ CONTAINS
 
     TYPE(gridtype), INTENT(IN)     :: grid
     REAL                           :: amrGridDirectionalDeriv
-    TYPE(vector), INTENT(IN)  :: position
+    TYPE(vector), INTENT(IN)       :: position
     TYPE(vector), INTENT(IN)       :: direction
     TYPE(octal), OPTIONAL, POINTER :: startOctal
     TYPE(octal), OPTIONAL, POINTER :: foundOctal
-    TYPE(octal),  POINTER         :: thisOctal, currentOctal
+    TYPE(octal),  POINTER          :: thisOctal, currentOctal
     INTEGER, INTENT(OUT), OPTIONAL :: foundSubcell
+    Logical, Optional              :: Hydro
+    Logical                        :: Hydrovelocities 
 
-    TYPE(vector)              :: octalDirection
+    TYPE(vector)                   :: octalDirection
     TYPE(octal), POINTER           :: firstOctal
-    real(oct)           :: dr, dx, dphi
-    real(oct)           :: r
-    real(oct)           :: phi1, phi2
-    TYPE(vector)              :: position1
-    TYPE(vector)              :: position2
+    real(oct)                      :: dr, dx, dphi
+    real(oct)                      :: r
+    real(oct)                      :: phi1, phi2
+    TYPE(vector)                   :: position1, position2
     INTEGER                        :: subcell
 
 
@@ -3375,6 +3377,13 @@ CONTAINS
 !       amrGridDirectionalDeriv = 1.e30
 !       goto 666
 !    endif
+
+    
+    if(present(hydro)) then
+       hydrovelocities = hydro
+    else
+       hydrovelocities = .false.
+    endif
 
     octalDirection = direction
 
@@ -3406,7 +3415,7 @@ CONTAINS
     ! first line of sight velocity
     phi1 = direction .dot. (AMRgridVelocity(grid%octreeRoot,position1,&
                                             startOctal=startOctal,&
-                                            foundOctal=firstOctal))
+                                            foundOctal=firstOctal, hydro=hydrovelocities))
 
     ! now go forward a bit from current position
     position2 = position + (dr * octalDirection)
@@ -3421,7 +3430,7 @@ CONTAINS
     phi2 = direction .dot. (AMRgridVelocity(grid%octreeRoot,position2,&
                                             startOctal=firstOctal,&
                                             foundOctal=foundOctal,&
-                                            foundSubcell=subcell))
+                                            foundSubcell=subcell, hydro=hydrovelocities))
 
     IF (PRESENT(foundSubcell)) foundSubcell = subcell
 
@@ -3547,7 +3556,7 @@ CONTAINS
 
     use inputs_mod, only: height, betadisc, rheight, flaringpower, rinner, router, hydrodynamics
     use inputs_mod, only: drInner, drOuter, cavangle, erInner, erOuter, rCore, &
-         ttauriRouter, sphereRadius, amr2d
+         ttauriRouter, sphereRadius, spherePosition, amr2d
     use inputs_mod, only: warpFracHeight, warpRadius, warpSigma, warpAngle, hOverR
     use inputs_mod, only: solveVerticalHydro, hydroWarp, rsmooth
     use inputs_mod, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, &
@@ -3556,10 +3565,10 @@ CONTAINS
     use inputs_mod, only: DW_rMin, DW_rMax,rSublimation, ttauridisc, ttauriwarp, ttauriRinner, amr2d
     use inputs_mod, only : phiRefine, dPhiRefine, minPhiResolution, SphOnePerCell
     use inputs_mod, only : dorefine, dounrefine, maxcellmass
-    use inputs_mod, only : inputnsource, sourcepos, logspacegrid
+    use inputs_mod, only : inputnsource, sourcepos, logspacegrid, gridDistanceScale, AMRGridSize
     use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize, ttauriMagnetosphere, rCavity
-    use inputs_mod, only : cavdens, limitscalar, addDisc, flatdisc
-    use inputs_mod, only : discWind, planetDisc, sourceMass, rGapInner1, ttauristellarwind, SW_rMax, SW_rmin
+    use inputs_mod, only : cavdens, limitscalar, addDisc, flatdisc, ttauristellarwind, SW_rMax, SW_rmin
+    use inputs_mod, only : discWind, planetDisc, sourceMass, sourceRadius, sourceTeff, rGapInner1, accretionFeedback
     use inputs_mod, only : nDiscModule, rOuterMod, rInnerMod, betaMod, heightMod
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
@@ -4082,6 +4091,34 @@ CONTAINS
 
 
 
+
+
+          if (ttauriStellarWind) then
+
+
+             r = modulus(cellCentre)
+             if (firsttime) then
+                nr = 100
+                do i = 1, nr
+                   rgrid(i) = log10(SW_Rmin) + (dble(i-1)/dble(nr-1))*log10(SW_Rmax/SW_Rmin)
+                enddo
+                rgrid(1:nr) = 10.d0**rgrid(1:nr)
+                firsttime = .false.
+             endif
+
+             if ((r > SW_Rmin).and.(r < SW_Rmax)) then
+                call locate(rGrid, 100, r ,i)
+                if (thisOctal%subcellSize > (rgrid(i+1)-rGrid(i))) split = .true.
+             endif
+             if ( ((r + cellsize/2.d0) > SW_rMin).and.(r < SW_rMin)) then
+                if (cellsize > (rgrid(2)-rgrid(1))) split = .true.
+             endif
+
+          endif
+
+
+
+
           if (ttauriMagnetosphere) then
              if (inflowMahdavi(cellcentre*1.d10).and.&
                   cellVolume(thisOctal,subcell)*1.d30*density(cellCentre,grid) > maxCellMass) &
@@ -4523,14 +4560,38 @@ CONTAINS
 !                if (thisOctal%nDepth < maxDepthAMR) split = .true.
 !       endif
 !          endif
-          bigJ = 0.25d0
-          cs = sqrt(1.d0/(2.33d0*mHydrogen)*kerg*thisOctal%temperature(subcell))
-          rhoJeans = max(1.d-30,bigJ**2 * pi * cs**2 / (bigG * (thisOctal%subcellSize*1.d10)**2)) ! krumholz eq 6
-          massTol  = rhoJeans * 1.d30* cellVolume(thisOctal,subcell)
-          if (((thisOctal%rho(subcell)*cellVolume(thisOctal,subcell)*1.d30) > massTol) &
-               .and.(thisOctal%nDepth < maxDepthAMR)) then
-             split = .true.
-!             write(*,*) "split on jeans",thisOctal%rho(subcell)*1.d30*thisOCtal%subcellSize**3 / masstol
+          rVec = subcellCentre(thisOctal, subcell)-spherePosition
+          if (sqrt(rvec%x**2+rvec%z**2) <= (smallestCellSize * 5.6*2**(maxDepthAMR-thisOctal%nDepth))) then
+             split=.true.
+          else if (accretionFeedback .and. &
+                   sqrt((3*rvec%x)**2+(rvec%z/3)**2) <= (smallestCellSize * 5.6*2**(maxDepthAMR-thisOctal%nDepth))) then
+             split=.true.
+          else
+             if (sourceMass(1)>msol) then
+                thisScale=(sourceRadius(1)*GridDistanceScale)**0.25*11720*sqrt(sourceTeff(1))&
+                     /sqrt(sourceMass(1)*bigG)*(sqrt(rvec%x**2+rvec%y**2)*gridDistanceScale)**1.25
+             else
+                thisScale=1.0d-9
+             endif
+             if ((AMRgridSize*gridDistanceScale/2**thisOctal%ndepth)>thisScale .and. &
+                  2*thisScale < abs(rvec%z)*GridDistanceScale .and. abs(rvec%z)*gridDistanceScale < 10*thisScale) then
+                split=.true.
+             else
+                bigJ = 0.25d0
+                cs = sqrt(1.d0/(2.33d0*mHydrogen)*kerg*thisOctal%temperature(subcell))
+                rhoJeans = max(1.d-30,bigJ**2 * pi * cs**2 / (bigG * (thisOctal%subcellSize*1.d10)**2)) ! krumholz eq 6
+                massTol  = rhoJeans * 1.d30* cellVolume(thisOctal,subcell)
+                if (((thisOctal%rho(subcell)*cellVolume(thisOctal,subcell)*1.d30) > massTol) &
+                     .and.(thisOctal%nDepth < maxDepthAMR)) then
+                   split = .true.
+                   !                     write(*,*) "split on jeans",thisOctal%rho(subcell)*1.d30*thisOCtal%subcellSize**3 / masstol
+                endif
+             endif
+          endif
+       case("plumber")
+          rVec = subcellCentre(thisOctal, subcell)
+          if (sqrt(rvec%x**2+(0.25*rvec%z)**2) <= (smallestCellSize * 2.5**(1+maxDepthAMR-thisOctal%nDepth))) then
+              split=.true.
           endif
        case("spiral")
           call splitSpiral(thisOctal, split, splitInAzimuth)
@@ -5060,7 +5121,6 @@ CONTAINS
                    split = .false.
 
              end if
-
 
              if (inputnSource > 0) then
                 do iSource = 1, get_nptmass()
@@ -6957,9 +7017,9 @@ endif
     use  inputs_mod, only: dipoleoffset, thindiskrin, ttaurirstar
 
     implicit none
-
-    type(GRIDTYPE), intent(inout)      :: grid
-
+    
+    type(GRIDTYPE), intent(inout)      :: grid                
+   
     real :: rStar
 
 
@@ -7003,7 +7063,6 @@ endif
 
     ! add the accretion luminosity spectrum to the stellar spectrum,
     ! write it out and pass it to the stateq routine.
-
 
     !open(22,file="star_plus_acc.dat",form="formatted",status="unknown")
     !do i = 1, nNu
@@ -9427,14 +9486,14 @@ endif
 
   subroutine calcSphere(thisOctal,subcell)
 
-    use inputs_mod, only : sphereRadius, sphereMass, spherePosition, rhoFloor
-    use inputs_mod, only : beta, omega, hydrodynamics, rhoThreshold, cylindricalHydro, nbodytest
-    use inputs_mod, only : readTurb
+    use inputs_mod, only : sphereRadius, sphereMass, spherePosition, sphereSurroundingsFac, rhoFloor
+    use inputs_mod, only : beta, omega, hydrodynamics, rhoThreshold
+    use inputs_mod, only : readTurb, cylindricalHydro, nbodytest, isothermTemp
 !    use inputs_mod, only : smallestCellSize
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec, vVec
-    real(double) :: eThermal, rMod,  rhoSphere, rDash, fac
+    real(double) :: eThermal, rMod,  rhoSphere, rDash, fac, rsoft
     logical, save :: firsttime = .true.
 
     rVec = subcellCentre(thisOctal, subcell)
@@ -9455,23 +9514,29 @@ endif
        write(*,*) "Free fall time (years): ",secstoyears* 1.d0/sqrt(rhosphere*bigg)
        firsttime=.false.
     endif
+
     if (hydrodynamics) thisOctal%phi_gas(subcell) = -bigG *sphereMass / (rMod * 1.d10)
-    if (rMod < sphereRadius) then
+    if (rMod < sphereRadius *0.98) then
        thisOctal%rho(subcell) = min(rhoThreshold,rhoSphere * (rMod/sphereRadius)**beta)
-       thisOctal%temperature(subcell) = 20.d0 ! max(20.0,50.0*real(sqrt(smallestCellSize/rMod)))
+       thisOctal%temperature(subcell) = isothermTemp
        thisOctal%velocity(subcell) = ((rDash * 1.d10)*omega/cSpeed)*vVec
        if (cylindricalHydro) then
           if (hydrodynamics) thisOctal%rhov(subcell) = omega *  (rDash*1.d10) *(rDash*1.d10)*thisOctal%rho(subcell)
        endif
 ! set up density outside sphere
     else
-       fac = 1.d-2
+       fac = sphereSurroundingsFac
        if (readTurb) fac = 1.d-20
        if (rhosphere > 1.d-8) fac = 1.d-20
        if (nbodytest) fac = 1.d-20
        thisOctal%rho(subcell) = fac * rhoSphere
        thisOctal%temperature(subcell) = 20.d0
        thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+       if (rMod < sphereRadius *1.02) then
+          rsoft=(rMod-sphereRadius*0.98)/(sphereRadius*0.04)
+          thisOctal%rho(subcell) = min(rhoThreshold,rhoSphere * (fac*(rsoft)+(rMod/sphereRadius)**beta*(1-rsoft)))
+       thisOctal%velocity(subcell) = ((rDash * 1.d10)*omega/cSpeed)*vVec *(1-rsoft)
+       endif
     endif
     thisOctal%rho(subcell) = max(rhoFloor, thisOctal%rho(subcell))
 
@@ -9483,6 +9548,60 @@ endif
     endif
 
   end subroutine calcSphere
+
+  subroutine calcPlumber(thisOctal,subcell)
+
+    use inputs_mod, only : plumberRadius, plumberMass, plumberExponent, amrGridSize, rhoFloor, gridDistanceScale
+    use inputs_mod, only : beta, omega, hydrodynamics, rhoThreshold, cylindricalHydro, nbodytest
+    use inputs_mod, only : readTurb
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec, vVec
+    real(double) :: eThermal, rhoPlumber, rDash, theta
+
+    rVec = subcellCentre(thisOctal, subcell)
+    if (plumberExponent == 2.2d0) then
+        rhoPlumber = plumberMass  / (5*plumberRadius**2 * amrGridSize * gridDistanceScale**3)
+    else
+        write(*,*) plumberExponent, " is not 2.2"
+        write(*,*) "other plumber profiles not implemented"
+        stop
+    endif
+    vVec = Vector(rVec%x, rVec%y, 0.0)
+    rDash = modulus(vVec)
+    call normalize(vVec)
+    theta =atan2(rVec%y, rVec%x)
+    
+    if (hydrodynamics) thisOctal%phi_gas(subcell) = -bigG * plumberMass / (sqrt(rDash**2 * plumberRadius**2)*gridDistanceScale)
+    thisOctal%rho(subcell) = min(rhoThreshold,rhoPlumber * (1+(rDash/plumberRadius)**2)**-(plumberExponent/2))
+    thisOctal%temperature(subcell) = 20.d0 
+    thisOctal%velocity(subcell) = ((rDash * gridDistanceScale)*omega/cSpeed)*vVec
+    
+    if (Hydrodynamics)  then
+       if (cylindricalHydro) then
+          thisOctal%rhou(subcell) = thisOctal%velocity(subcell)%x * thisOctal%rho(subcell)
+          thisOctal%rhov(subcell) = omega * (rDash*gridDistanceScale)**2 * thisOctal%rho(subcell)
+          thisOctal%rhow(subcell) = 0.0
+       else
+          thisOctal%rhou(subcell) = thisOctal%velocity(subcell)%x * thisOctal%rho(subcell)*&
+                                    omega * (rDash*gridDistanceScale) * thisOctal%rho(subcell) * -sin(theta)
+          thisOctal%rhov(subcell) = thisOctal%velocity(subcell)%y * thisOctal%rho(subcell)*&
+                                    omega * (rDash*gridDistanceScale) * thisOctal%rho(subcell) * cos(theta)
+          thisOctal%rhow(subcell) = 0.0
+       endif
+    endif
+
+    thisOctal%rho(subcell) = max(rhoFloor, thisOctal%rho(subcell))
+
+    if (hydrodynamics) then
+       thisOctal%iequationOfState(subcell) = 1 ! isothermal
+       ethermal = 1.5d0*(1.d0/(2.33d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
+       thisOctal%energy(subcell) = eThermal
+       thisOctal%gamma(subcell) = 2.d0
+    endif
+
+  end subroutine calcPlumber
 
   ! geometry krumholz: uniform-density sphere with power-law falloff
   ! Krumholz et al 2011, ApJ, 740, 74 / Krumholz et al 2012, ApJ, 754, 71
@@ -13702,6 +13821,8 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%localInterfaces, source%localInterfaces)
     call copyAttribute(dest%localInterfacesCONTROL, source%localInterfacesCONTROL)
     call copyAttribute(dest%nCrossings, source%nCrossings)
+    call copyAttribute(dest%nCrossIonizing, source%nCrossIonizing)
+    call copyAttribute(dest%nScatters, source%nScatters)
     call copyAttribute(dest%iTissue, source%iTissue)
     call copyAttribute(dest%chiLine, source%chiLine)
     call copyAttribute(dest%etaLine, source%etaLine)
@@ -13709,6 +13830,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%biasCont3d, source%biasCont3d)
     call copyAttribute(dest%biasLine3d, source%biasLine3d)
     call copyAttribute(dest%distanceGrid, source%distanceGrid)
+    call copyAttribute(dest%distanceGridHistory, source%distanceGridHistory)
     call copyAttribute(dest%cornerVelocity, source%cornerVelocity)
     call copyAttribute(dest%cornerRho, source%cornerRho)
 
@@ -13727,8 +13849,10 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%NHeI,  source%NHeI)
     call copyAttribute(dest%NHeII,  source%NHeII)
     call copyAttribute(dest%Hheating,  source%Hheating)
+    call copyAttribute(dest%HheatingHistory,  source%HheatingHistory)
     call copyAttribute(dest%tDust,  source%tDust)
     call copyAttribute(dest%Heheating,  source%Heheating)
+    call copyAttribute(dest%HeheatingHistory,  source%HeheatingHistory)
     call copyAttribute(dest%changed,  source%changed)
 
     call copyAttribute(dest%fixedTemperature,  source%fixedTemperature)
@@ -13820,9 +13944,11 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%rhoe, source%rhoe)
     call copyAttribute(dest%rhoeLastTime, source%rhoeLastTime)
     call copyAttribute(dest%qViscosity, source%qViscosity)
+    call copyAttribute(dest%isOnBoundary, source%isOnBoundary)
     call copyAttribute(dest%refinedLastTime, source%refinedLastTime)
 
     call copyAttribute(dest%photoIonCoeff, source%photoIonCoeff)
+    call copyAttribute(dest%photoIonCoeffHistory, source%photoIonCoeffHistory)
     call copyAttribute(dest%source, source%source)
     call copyAttribute(dest%sourceContribution, source%sourceContribution)
     call copyAttribute(dest%diffuseContribution, source%diffuseContribution)
@@ -13902,6 +14028,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%radiationMomentum, source%radiationMomentum)
 
     call copyAttribute(dest%kappaTimesFlux, source%kappaTimesFlux)
+    call copyAttribute(dest%kappaTimesFluxHistory, source%kappaTimesFluxHistory)
     call copyAttribute(dest%UVvector, source%UVvector)
     call copyAttribute(dest%UVvectorplus, source%UVvectorplus)
     call copyAttribute(dest%UVvectorminus, source%UVvectorminus)
@@ -15060,20 +15187,13 @@ end function readparameterfrom2dmap
          kappaAbs = kappaAbs + (kappaH + kappaHe)
       endif
       if (PRESENT(kappaAbsGas)) kappaAbsGas = (kappaH + kappaHe)
-      if (present(dir).AND.CAKlineOpacity) then
-!         print *, "line opacity"
+      if (present(dir).AND.CAKlineOpacity.AND.&
+          thisOctal%Ne(subcell)>1.0d-40.AND. associated(thisOctal%rhoU)) then
          tempDouble = sigmaE*thisOctal%rho(subcell)
-!         print *, tempDouble
-!         print *, "rho " ,thisOctal%rho(subcell)
-!         print *, "temp ",thisOctal%temperature(subcell)
          tempDouble= tempDouble * sqrt(5.0/3.0*kErg*thisOctal%temperature(subcell)/mHydrogen)
-!         print *, tempDouble
-!         print *, subcellCentre(thisOctal,subcell)
-!         print *, dir
-         tempDouble = tempDouble / 1.0e10/amrGridDirectionalDeriv(grid,subcellCentre(thisOctal,subcell),dir,startOctal=thisOctal)
-!         print *, tempDouble
+         tempDouble = tempDouble / 1.0e10/amrGridDirectionalDeriv(grid,subcellCentre(thisOctal,subcell),&
+                                                                  dir,startOctal=thisOctal, Hydro=.true.)
          tempDouble=min(1.0d3,0.28*tempDouble**(-0.56)*(thisOctal%Ne(subcell)/1.0e11)**0.09) !Abbott 1982 temp invarient form of CAK line driving, valid for roughly 10kK < Teff < 50kK
-!         print *, "multiplier: ", tempDouble
       else
          tempDouble=0.0
       endif
@@ -15085,8 +15205,10 @@ end function readparameterfrom2dmap
          kappaSca = kappaSca + thisOctal%ne(subcell) * sigmaE * 1.e10 *(1+tempDouble)
       else if (PRESENT(kappaScaArray)) then
          kappaScaArray = kappaScaArray + thisOctal%ne(subcell) * sigmaE * 1.e10 *(1+tempDouble)
+
+      elseif (PRESENT(kappaScaGas)) then
+         kappaScaGas = thisOctal%ne(subcell) * sigmaE * 1.e10
       endif
-      if (PRESENT(kappaScaGas)) kappaScaGas = thisOctal%ne(subcell) * sigmaE * 1.e10
    endif
 #else
    if (PRESENT(kappaAbsGas)) kappaAbsGas = 0.0
@@ -15562,6 +15684,7 @@ end function readparameterfrom2dmap
        endif
     enddo
   end subroutine assignDensitiesAlphaDisc
+
 
   recursive subroutine assignDensitiesFlatDisc(grid, thisOctal)
     use magnetic_mod, only : rhoAlphaDisc, velocityAlphaDisc
@@ -17380,8 +17503,8 @@ end function readparameterfrom2dmap
 
           if (inflowMahdavi(rVec*1.d10)) then
 
-
              thisR = modulus(rVec)*1.d10
+
 
              v = modulus(velocityMahdavi(rVec))*cSpeed
 
@@ -17391,8 +17514,6 @@ end function readparameterfrom2dmap
              endif
 
              mdot = thisRho * v * area
-
-
 
              totalMdot = totalMdot + mdot
              power = 0.5d0 * mdot * v**2
@@ -17674,6 +17795,8 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%kappaRoss, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%distanceGrid, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%nCrossings, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nCrossIonizing, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nScatters, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%nTot, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%etaCont, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%etaLine, thisOctal%maxChildren)
@@ -17690,6 +17813,7 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%iTissue, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%distanceGrid, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%nCrossings, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nScatters, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%undersampled, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%uDens, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%etaline, thisOctal%maxChildren)
@@ -17769,7 +17893,10 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%oldTemperature, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%kappaRoss, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%distanceGrid, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%distanceGridHistory, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%nCrossings, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nCrossIonizing, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nScatters, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%nTot, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%chiLine, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%biasLine3D, thisOctal%maxChildren)
@@ -17789,10 +17916,13 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%etaLine, thisOctal%maxChildren)
 
        call allocateAttribute(thisOctal%HHeating, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%HHeatingHistory, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%tDust, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%HeHeating, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%HeHeatingHistory, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%radiationMomentum,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%kappaTimesFlux, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%kappaTimesFluxHistory, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%UVvector, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%UVvectorPlus, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%UVvectorminus, thisOctal%maxChildren)
@@ -17800,6 +17930,7 @@ end function readparameterfrom2dmap
 
        allocate(thisOctal%ionFrac(1:thisOctal%maxchildren, 1:grid%nIon))
        allocate(thisOctal%photoionCoeff(1:thisOctal%maxchildren, 1:grid%nIon))
+       allocate(thisOctal%photoionCoeffHistory(1:thisOctal%maxchildren, 1:grid%nIon))
        allocate(thisOctal%sourceContribution(1:thisOctal%maxchildren, 1:grid%nIon))
        allocate(thisOctal%diffuseContribution(1:thisOctal%maxchildren, 1:grid%nIon))
        allocate(thisOctal%normSourceContribution(1:thisOctal%maxchildren, 1:grid%nIon))
@@ -17873,6 +18004,7 @@ end function readparameterfrom2dmap
 
     if (associated(thisOctal%photoIonCoeff)) then
        thisOctal%photoIonCoeff = 0.d0
+       thisOctal%photoIonCoeffHistory = 0.d0
        thisOctal%sourceContribution = 0.d0
        thisOctal%diffuseContribution = 0.d0
        thisOctal%normSourceContribution = 0.d0
@@ -17940,6 +18072,14 @@ end function readparameterfrom2dmap
 
        call allocateAttribute(thisOctal%qViscosity,thisOctal%maxchildren,3,3)
 
+       if (thisOctal%threeD) then
+          call allocateAttribute(thisOctal%isOnBoundary,thisOctal%maxchildren,6)
+       else if (thisOctal%twoD) then
+          call allocateAttribute(thisOctal%isOnBoundary,thisOctal%maxchildren,4)
+       else
+          call allocateAttribute(thisOctal%isOnBoundary,thisOctal%maxchildren,2)
+       endif       
+
        call allocateAttribute(thisOctal%ghostCell,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%corner,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%feederCell,thisOctal%maxchildren)
@@ -17988,6 +18128,7 @@ end function readparameterfrom2dmap
 
        call allocateAttribute(thisOctal%radiationMomentum,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%kappaTimesFlux,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%kappaTimesFluxHistory, thisOctal%maxChildren)
 
     endif
     if (bioPhysics) then
@@ -18007,6 +18148,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%cornerVelocity)
     call deallocateAttribute(thisOctal%cornerrho)
     call deallocateAttribute(thisOctal%qViscosity)
+    call deallocateAttribute(thisOctal%isOnBoundary)
     call deallocateAttribute(thisOctal%diffusionApprox)
     call deallocateAttribute(thisOctal%fixedTemperature)
     call deallocateAttribute(thisOctal%nDiffusion)
@@ -18020,9 +18162,12 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%floorTemperature)
     call deallocateAttribute(thisOctal%kappaRoss)
     call deallocateAttribute(thisOctal%distanceGrid)
+    call deallocateAttribute(thisOctal%distanceGridHistory)
     call deallocateAttribute(thisOctal%scatteredIntensity)
     call deallocateAttribute(thisOctal%meanIntensity)
     call deallocateAttribute(thisOctal%nCrossings)
+    call deallocateAttribute(thisOctal%nCrossIonizing)
+    call deallocateAttribute(thisOctal%nScatters)
     call deallocateAttribute(thisOctal%iTissue)
     call deallocateAttribute(thisOctal%nTot)
     call deallocateAttribute(thisOctal%oldFrac)
@@ -18080,8 +18225,10 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%NHeI)
     call deallocateAttribute(thisOctal%NHeII)
     call deallocateAttribute(thisOctal%Hheating)
+    call deallocateAttribute(thisOctal%HheatingHistory)
     call deallocateAttribute(thisOctal%tDust)
     call deallocateAttribute(thisOctal%Heheating)
+    call deallocateAttribute(thisOctal%HeheatingHistory)
     call deallocateAttribute(thisOctal%ionFrac)
 #ifdef PDR
     call deallocateAttribute(thisOctal%ciiLine)
@@ -18122,6 +18269,7 @@ end function readparameterfrom2dmap
 #endif
     call deallocateAttribute(thisOctal%dust_T)
     call deallocateAttribute(thisOctal%photoIonCoeff)
+    call deallocateAttribute(thisOctal%photoIonCoeffHistory)
     call deallocateAttribute(thisOctal%sourceContribution)
     call deallocateAttribute(thisOctal%normsourceContribution)
     call deallocateAttribute(thisOctal%diffuseContribution)
@@ -18189,6 +18337,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%surfaceNormal)
     call deallocateAttribute(thisOctal%radiationMomentum)
     call deallocateAttribute(thisOctal%kappaTimesFlux)
+    call deallocateAttribute(thisOctal%kappaTimesFluxHistory)
 
     call deallocateAttribute(thisOctal%UVvector)
     call deallocateAttribute(thisOctal%UVvectorPlus)

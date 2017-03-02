@@ -34,6 +34,7 @@ module gridio_mod
 
   interface writeAttributePointerFlexi
      module procedure writeAttributePointerInteger1dFlexi
+     module procedure writeAttributePointerInteger2DFlexi
      module procedure writeAttributePointerBigInteger1dFlexi
      module procedure writeAttributePointerLogical1dFlexi
      module procedure writeAttributePointerReal1dFlexi
@@ -82,6 +83,7 @@ module gridio_mod
      module procedure readRealPointer1DFlexi
      module procedure readLogicalPointer1DFlexi
      module procedure readIntegerPointer1DFlexi
+     module procedure readIntegerPointer2DFlexi
      module procedure readBigIntegerPointer1DFlexi
      module procedure readVectorPointer1DFlexi
      module procedure readDoublePointer2DFlexi
@@ -105,6 +107,7 @@ module gridio_mod
      module procedure receiveRealPointer1DFlexi
      module procedure receiveLogicalPointer1DFlexi
      module procedure receiveIntegerPointer1DFlexi
+     module procedure receiveIntegerPointer2DFlexi
      module procedure receiveBigIntegerPointer1DFlexi
      module procedure receiveVectorPointer1DFlexi
      module procedure receiveDoublePointer2DFlexi
@@ -123,6 +126,7 @@ module gridio_mod
 
   interface sendAttributePointerFlexi
      module procedure sendAttributePointerInteger1dFlexi
+     module procedure sendAttributePointerInteger2dFlexi
      module procedure sendAttributePointerBigInteger1dFlexi
      module procedure sendAttributePointerLogical1dFlexi
      module procedure sendAttributePointerReal1dFlexi
@@ -766,13 +770,19 @@ contains
 
 
           call writeAttributePointerFlexi(20, "photoIonCoeff", thisOctal%photoIonCoeff, fileFormatted)
+          call writeAttributePointerFlexi(20, "photoIonCoeffHistory", thisOctal%photoIonCoeffHistory, fileFormatted)
           
           call writeAttributePointerFlexi(20, "distanceGrid", thisOctal%distanceGrid, fileFormatted)
+          call writeAttributePointerFlexi(20, "distanceGridHistory", thisOctal%distanceGridHistory, fileFormatted)
           
           call writeAttributePointerFlexi(20, "nCrossingsBig", thisOctal%nCrossings, fileFormatted)
+          call writeAttributePointerFlexi(20, "nCrossIonizing", thisOctal%nCrossIonizing, fileFormatted)
+          call writeAttributePointerFlexi(20, "nScatters", thisOctal%nScatters, fileFormatted)
           call writeAttributePointerFlexi(20, "hHeating", thisOctal%hHeating, fileFormatted)
+          call writeAttributePointerFlexi(20, "hHeatingHistory", thisOctal%hHeatingHistory, fileFormatted)
           call writeAttributePointerFlexi(20, "tDust", thisOctal%tDust, fileFormatted)
           call writeAttributePointerFlexi(20, "heHeating", thisOctal%heHeating, fileFormatted)
+          call writeAttributePointerFlexi(20, "heHeatingHistory", thisOctal%heHeatingHistory, fileFormatted)
           call writeAttributePointerFlexi(20, "undersampled", thisOctal%undersampled, fileFormatted)
           call writeAttributePointerFlexi(20, "nDiffusion", thisOctal%nDiffusion, fileFormatted)
           call writeAttributePointerFlexi(20, "diffusionApprox", thisOctal%diffusionApprox, fileFormatted)
@@ -854,7 +864,7 @@ contains
           call writeAttributePointerFlexi(20, "energy", thisOctal%energy, fileFormatted)
 
           call writeAttributePointerFlexi(20, "qViscosity", thisOctal%qViscosity, fileFormatted)
-       
+          call writeAttributePointerFlexi(20, "isOnBoundary", thisOctal%isOnBoundary, fileFormatted)
 
 
           call writeAttributePointerFlexi(20, "phi_i", thisOctal%phi_i, fileFormatted)
@@ -873,6 +883,7 @@ contains
           call writeAttributePointerFlexi(20, "boundaryCell", thisOctal%boundaryCell, fileFormatted)
           call writeAttributePointerFlexi(20, "radiationMomentum", thisOctal%radiationMomentum, fileFormatted)
           call writeAttributePointerFlexi(20, "kappaTimesFlux", thisOctal%kappaTimesFlux, fileFormatted)
+          call writeAttributePointerFlexi(20, "kappaTimesFluxHistory", thisOctal%kappaTimesFluxHistory, fileFormatted)
           call writeAttributePointerFlexi(20, "UVvector", thisOctal%UVvector, fileFormatted)
           call writeAttributePointerFlexi(20, "UVvectorPlus", thisOctal%UVvectorPlus, fileFormatted)
           call writeAttributePointerFlexi(20, "UVvectorMinus", thisOctal%UVvectorMinus, fileFormatted)
@@ -1326,7 +1337,7 @@ contains
                         do iThread = 1, myRankGlobal
                            thisChild => thisOctal%child(iChild)
                            topOctal => thisChild
-                           call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)               
+                           call readOctreePrivateFlexi(thisChild,thisOctal,fileFormatted, nOctal, grid)
                            if (iThread /= myRankGlobal) then
                               call deleteOctreeBranch(topOctal,onlyChildren=.false., adjustParent=.false.)
                            else
@@ -1345,7 +1356,7 @@ contains
                   allocate(thisOctal%child(1:thisOctal%nChildren)) 
                   do iChild = 1, thisOctal%nChildren, 1
                      tempChildPointer2 => thisOctal%child(iChild)
-                     call readOctreePrivateFlexi(tempChildPointer2,thisOctal,fileFormatted, nOctal, grid)               
+                     call readOctreePrivateFlexi(tempChildPointer2,thisOctal,fileFormatted, nOctal, grid)
                   end do
                end if
             else if (thisOctal%nDepth ==   1) then 
@@ -1365,7 +1376,7 @@ contains
                   allocate(grid%tempBranch)
                   tempChildPointer => grid%tempBranch
 
-                  call readOctreePrivateFlexi(tempChildPointer,thisOctal,fileFormatted, nOctal, grid)               
+                  call readOctreePrivateFlexi(tempChildPointer,thisOctal,fileFormatted, nOctal, grid)
 
                   if (thisOctal%mpiThread(iChild) /= myRankGlobal) then
                      call deleteOctreeBranch(tempChildPointer,onlyChildren=.true., adjustParent=.false.)
@@ -1984,6 +1995,42 @@ contains
     endif
   end subroutine writeAttributePointerInteger1DFlexi
 
+    subroutine writeAttributePointerInteger2DFlexi(lUnit, name, value, fileFormatted)
+    integer :: lUnit
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    integer, pointer :: value(:,:)
+    logical :: fileFormatted
+    character(len=10) :: dataType
+
+    dataType = "i2darray"
+
+    attributeName = name
+    if (associated(value)) then
+       if (fileFormatted) then
+          write(lUnit,*) attributeName
+          write(lUnit,*) dataType
+          write(lUnit,*) SIZE(value,1),SIZE(value,2)
+          write(lUnit,*) value(1:SIZE(value,1),1:SIZE(value,2))
+       else
+          if (uncompressedDumpFiles) then
+             write(lUnit) attributeName
+             write(lUnit) dataType
+             write(lUnit) SIZE(value,1),SIZE(value,2)
+             write(lUnit) value(1:SIZE(value,1),1:SIZE(value,2))
+          else
+#ifdef USEZLIB
+             call writeCompressedFile(lunit, attributeName)
+             call writeCompressedFile(lunit, dataType)
+             call writeCompressedFile(lunit, SIZE(value,1))
+             call writeCompressedFile(lunit, SIZE(value,2))
+             call writeCompressedFile(lunit, value(1:SIZE(value,1),1:SIZE(value,2)))
+#endif
+          endif
+       endif
+    endif
+  end subroutine writeAttributePointerInteger2DFlexi
+
   subroutine writeAttributePointerBigInteger1DFlexi(lUnit, name, value, fileFormatted)
     integer :: lUnit
     character(len=*) :: name
@@ -2460,6 +2507,37 @@ contains
          endif
       endif
     end subroutine readSingleCharacterFlexi
+
+    subroutine readIntegerPointer2DFlexi(lUnit, value, fileFormatted)
+      integer :: lUnit
+      integer, pointer :: value(:,:)
+      logical :: fileFormatted
+      integer :: n, m
+
+      call testDataType("i2darray", fileFormatted)
+      if (associated(value)) then
+         deallocate(value)
+         nullify(value)
+      endif
+      if (fileFormatted) then
+         read(lUnit,*) n,m
+         allocate(value(1:n,1:m))
+         read(lUnit,*) value(1:n,1:m)
+      else
+         if (uncompressedDumpFiles) then
+            read(lUnit) n, m
+            allocate(value(1:n,1:m))
+            read(lUnit) value(1:n,1:m)
+         else
+#ifdef USEZLIB
+            call readCompressedFile(lunit, n)
+            call readCompressedFile(lunit, m)
+            allocate(value(1:n,1:m))
+            call readCompressedFile(lunit,value)
+#endif
+         endif
+      endif
+    end subroutine readIntegerPointer2DFlexi
     
     subroutine readDoublePointer1DFlexi(lUnit, value, fileFormatted)
       integer :: lUnit
@@ -2887,6 +2965,32 @@ contains
 
     endif
   end subroutine sendAttributePointerInteger1DFlexi
+
+
+  subroutine sendAttributePointerInteger2DFlexi(iThread, name, value)
+    use mpi
+    integer :: iThread
+    character(len=*) :: name
+    character(len=20) :: attributeName
+    integer, pointer :: value(:,:)
+    integer, allocatable :: temp(:)
+    integer, parameter :: tag = 50
+    integer :: ierr
+
+
+    attributeName = name
+    if (associated(value)) then
+
+       call MPI_SEND(attributeName, 20, MPI_CHARACTER, iThread, tag, localWorldCommunicator, ierr)
+       call MPI_SEND(SIZE(value,1), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+       call MPI_SEND(SIZE(value,2), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+       allocate(temp(SIZE(value,1)*SIZE(value,2)))
+       temp = RESHAPE(value,SHAPE(temp))
+       call MPI_SEND(temp, SIZE(temp), MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)
+       deallocate(temp)
+       
+    endif
+  end subroutine sendAttributePointerInteger2DFlexi
 
   subroutine sendAttributePointerBigInteger1DFlexi(iThread, name, value)
     use mpi
@@ -3446,6 +3550,31 @@ contains
 
     end subroutine receiveIntegerPointer1dFlexi
 
+
+    subroutine receiveIntegerPointer2dFlexi(value,ithread)
+      use mpi
+      integer :: ithread
+      integer, pointer :: value(:,:)
+      integer, allocatable :: temp(:)
+      integer :: n,m
+      integer :: status(MPI_STATUS_SIZE)
+      integer, parameter :: tag = 50
+      integer :: ierr
+
+      if (associated(value)) then
+         deallocate(value)
+         nullify(value)
+      endif
+      call MPI_RECV(n, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
+      call MPI_RECV(m, 1, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
+      allocate(value(1:n, 1:m))
+      allocate(temp(1:(n*m)))
+      call MPI_RECV(temp, n*m, MPI_INTEGER, ithread, tag, localWorldCommunicator, status, ierr)
+      value(1:n,1:m) = RESHAPE(temp, SHAPE(value))
+      deallocate(temp)
+    end subroutine receiveIntegerPointer2dFlexi
+
+
     subroutine receiveBigIntegerPointer1dFlexi(value,ithread)
       use mpi
       integer :: ithread
@@ -3464,6 +3593,7 @@ contains
       call MPI_RECV(value, n, MPI_INTEGER8, ithread, tag, localWorldCommunicator, status, ierr)
 
     end subroutine receiveBigIntegerPointer1dFlexi
+
 
     subroutine receiveRealPointer1dFlexi(value,ithread)
       use mpi
@@ -3655,6 +3785,7 @@ contains
       real :: rDummy
       real, pointer :: rArray(:)
       integer, pointer :: iArray(:)
+      integer, pointer :: i2Array(:,:)
       integer(bigInt), pointer :: bArray(:)
       logical, pointer :: lArray(:)
       type(VECTOR), pointer :: vArray(:)
@@ -3833,6 +3964,28 @@ contains
                endif
             endif
             deallocate(iArray)
+
+         case("i2darray")
+            if (fileFormatted) then
+               read(lUnit,*) n,m
+               allocate(i2Array(1:n, 1:m))
+               read(lUnit,*) i2Array(1:n, 1:m)
+            else
+               if (uncompressedDumpFiles) then
+                  read(lUnit) n,m
+                  allocate(i2Array(1:n,1:m))
+                  read(lUnit) i2Array(1:n,1:m)
+               else
+#ifdef USEZLIB
+                  call readCompressedFile(lUnit, n)
+                  call readCompressedFile(lUnit, m)
+                  allocate(i2Array(1:n, 1:m))
+                  call readCompressedFile(lUnit, i2Array(1:n,1:m))
+#endif
+               endif
+            endif
+            deallocate(i2Array)
+
          case("b1darray")
             if (fileFormatted) then
                read(lUnit,*) n
@@ -3852,6 +4005,7 @@ contains
                endif
             endif
             deallocate(bArray)
+
          case("l1darray")
             if (fileFormatted) then
                read(lUnit,*) n
@@ -4524,6 +4678,11 @@ contains
                call readSingleFlexi(20,grid%DipoleOffset, fileFormatted)
             case("geometry")
                call readSingleFlexi(20,grid%geometry, fileFormatted)
+               if (grid%geometry(1:8) == "krumholz") then
+                  if (myrankglobal==0 .or. myrankglobal==1) write(*,*) myrankglobal, "before: ", grid%geometry, "*"
+                  grid%geometry = "krumholz"
+                  if (myrankglobal==0 .or. myrankglobal==1) write(*,*) myrankglobal, " after: ", grid%geometry, "*"
+               endif
             case("rCore")
                call readSingleFlexi(20,grid%rCore, fileFormatted)
             case("lCore")
@@ -4744,8 +4903,12 @@ contains
 
          case("photoIonCoeff")
             call readPointerFlexi(20, thisOctal%photoIonCoeff, fileFormatted)
+         case("photoIonCoeffHistory")
+            call readPointerFlexi(20, thisOctal%photoIonCoeffHistory, fileFormatted)
          case("distanceGrid")
             call readPointerFlexi(20, thisOctal%distanceGrid, fileFormatted)
+         case("distanceGridHistory")
+            call readPointerFlexi(20, thisOctal%distanceGridHistory, fileFormatted)
 
          case("nCrossings")
             ! deprecated - this is a 4-byte integer, but thisOctal%nCrossings is now an 8-byte integer.
@@ -4758,14 +4921,22 @@ contains
             call deallocateAttribute(nCrossings4Byte)
          case("nCrossingsBig")
             call readPointerFlexi(20, thisOctal%nCrossings, fileFormatted)
+         case("nCrossIonizing")
+            call readPointerFlexi(20, thisOctal%nCrossIonizing, fileFormatted)
+         case("nScatters")
+            call readPointerFlexi(20, thisOctal%nScatters, fileFormatted)
          case("hHeating")
             call readPointerFlexi(20, thisOctal%hHeating, fileFormatted)
+         case("hHeatingHistory")
+            call readPointerFlexi(20, thisOctal%hHeatingHistory, fileFormatted)
          case("tDust")
             call readPointerFlexi(20, thisOctal%tDust, fileFormatted)
          case("heHeating")
             call readPointerFlexi(20, thisOctal%heHeating, fileFormatted)
-
+         case("heHeatingHistory")
+            call readPointerFlexi(20, thisOctal%heHeatingHistory, fileFormatted)
          case("undersampled")
+
             call readPointerFlexi(20, thisOctal%undersampled, fileFormatted)
          case("nDiffusion")
             call readPointerFlexi(20, thisOctal%nDiffusion, fileFormatted)
@@ -4898,7 +5069,8 @@ contains
 
          case("qViscosity")
             call readPointerFlexi(20, thisOctal%qViscosity, fileFormatted)
-
+         case("isOnBoundary")
+            call readPointerFlexi(20, thisOctal%isOnBoundary, fileFormatted)
 
          case("phi_i")
             call readPointerFlexi(20, thisOctal%phi_i, fileFormatted)
@@ -4946,6 +5118,8 @@ contains
             call readPointerFlexi(20, thisOctal%radiationMomentum, fileFormatted)
          case("kappaTimesFlux")
             call readPointerFlexi(20, thisOctal%kappaTimesFlux, fileFormatted)
+         case("kappaTimesFluxHistory")
+            call readPointerFlexi(20, thisOctal%kappaTimesFluxHistory, fileFormatted)
          case("UVvector")
             call readPointerFlexi(20, thisOctal%UVvector, fileFormatted)
          case("UVvectorPlus")
@@ -5147,17 +5321,29 @@ contains
 
          case("photoIonCoeff")
             call receivePointerFlexi(thisOctal%photoIonCoeff, ithread)
+         case("photoIonCoeffHistory")
+            call receivePointerFlexi(thisOctal%photoIonCoeffHistory, ithread)
          case("distanceGrid")
             call receivePointerFlexi(thisOctal%distanceGrid, ithread)
+         case("distanceGridHistory")
+            call receivePointerFlexi(thisOctal%distanceGridHistory, ithread)
 
          case("nCrossingsBig")
             call receivePointerFlexi(thisOctal%nCrossings, ithread)
+         case("nCrossIonizing")
+            call receivePointerFlexi(thisOctal%nCrossIonizing, ithread)
+         case("nScatters")
+            call receivePointerFlexi(thisOctal%nScatters, ithread)
          case("hHeating")
             call receivePointerFlexi(thisOctal%hHeating, ithread)
+         case("hHeatingHistory")
+            call receivePointerFlexi(thisOctal%hHeatingHistory, ithread)
          case("tDust")
             call receivePointerFlexi(thisOctal%tDust, ithread)
          case("heHeating")
             call receivePointerFlexi(thisOctal%heHeating, ithread)
+         case("heHeatingHistory")
+            call receivePointerFlexi(thisOctal%heHeatingHistory, ithread)
 
          case("undersampled")
             call receivePointerFlexi(thisOctal%undersampled, ithread)
@@ -5291,7 +5477,8 @@ contains
 
          case("qViscosity")
             call receivePointerFlexi(thisOctal%qViscosity, ithread)
-
+         case("isOnBoundary")
+            call receivePointerFlexi(thisOctal%isOnBoundary, ithread)
 
          case("phi_i")
             call receivePointerFlexi(thisOctal%phi_i, ithread)
@@ -5323,6 +5510,8 @@ contains
             call receivePointerFlexi(thisOctal%radiationMomentum, ithread)
          case("kappaTimesFlux")
             call receivePointerFlexi(thisOctal%kappaTimesFlux, ithread)
+         case("kappaTimesFluxHistory")
+            call receivePointerFlexi(thisOctal%kappaTimesFluxHistory, ithread)
          case("UVvector")
             call receivePointerFlexi(thisOctal%UVvector, ithread)
          case("UVvectorPlus")
@@ -5455,13 +5644,19 @@ contains
 
 
       call sendAttributePointerFlexi(iThread, "photoIonCoeff", thisOctal%photoIonCoeff)
+      call sendAttributePointerFlexi(iThread, "photoIonCoeffHistory", thisOctal%photoIonCoeffHistory)
 
       call sendAttributePointerFlexi(iThread, "distanceGrid", thisOctal%distanceGrid)
+      call sendAttributePointerFlexi(iThread, "distanceGridHistory", thisOctal%distanceGridHistory)
 
       call sendAttributePointerFlexi(iThread, "nCrossingsBig", thisOctal%nCrossings)
+      call sendAttributePointerFlexi(iThread, "nCrossIonizing", thisOctal%nCrossIonizing)
+      call sendAttributePointerFlexi(iThread, "nScatters", thisOctal%nScatters)
       call sendAttributePointerFlexi(iThread, "hHeating", thisOctal%hHeating)
+      call sendAttributePointerFlexi(iThread, "hHeatingHistory", thisOctal%hHeatingHistory)
       call sendAttributePointerFlexi(iThread, "tDust", thisOctal%tDust)
       call sendAttributePointerFlexi(iThread, "heHeating", thisOctal%heHeating)
+      call sendAttributePointerFlexi(iThread, "heHeatingHistory", thisOctal%heHeatingHistory)
       call sendAttributePointerFlexi(iThread, "undersampled", thisOctal%undersampled)
       call sendAttributePointerFlexi(iThread, "nDiffusion", thisOctal%nDiffusion)
       call sendAttributePointerFlexi(iThread, "diffusionApprox", thisOctal%diffusionApprox)
@@ -5541,6 +5736,7 @@ contains
       call sendAttributePointerFlexi(iThread, "energy", thisOctal%energy)
 
       call sendAttributePointerFlexi(iThread, "qViscosity", thisOctal%qViscosity)
+      call sendAttributePointerFlexi(iThread, "isOnBoundary", thisOctal%isOnBoundary)
 
 
       call sendAttributePointerFlexi(iThread, "phi_i", thisOctal%phi_i)
@@ -5563,6 +5759,7 @@ contains
       call sendAttributePointerFlexi(iThread, "gravboundaryPartner", thisOctal%GravboundaryPartner)
       call sendAttributePointerFlexi(iThread, "radiationMomentum", thisOctal%radiationMomentum)
       call sendAttributePointerFlexi(iThread, "kappaTimesFlux", thisOctal%kappaTimesFlux)
+      call sendAttributePointerFlexi(iThread, "kappaTimesFluxHistory", thisOctal%kappaTimesFluxHistory)
       call sendAttributePointerFlexi(iThread, "UVvector", thisOctal%UVvector)
       call sendAttributePointerFlexi(iThread, "UVvectorPlus", thisOctal%UVvectorPlus)
       call sendAttributePointerFlexi(iThread, "UVvectorMinus", thisOctal%UVvectorMinus)
@@ -5665,10 +5862,26 @@ contains
        fac = MaxMinOverMean(rho,nc)
        if (useThresh .and. fac > splitLimit) then
           unrefine = .false.
+          
+          if (.not. (cornerCell .or. ghostcell)  .and. ALL(rho<lineUnrefineThresh)) then
+             
+             unrefine = .true.
+             
+             fac = MaxMinOverMean(rho,nc)
+             if (useThresh .and. fac > splitLimit) then
+                unrefine = .false.
+             endif
+             
+             
+          endif
+          if (thisOctal%nDepth <= minDepthAMR) unrefine = .false.
+          if ((thisOctal%nChildren == 0).and.unrefine) then
+             call deleteChild(thisOctal%parent, thisOctal%parentSubcell, adjustParent = .true., &
+                  grid = grid, adjustGridInfo = .true.)
+             nunrefine = nunrefine + 1
+          endif
        endif
-
-       
-    endif
+    END IF
     if (thisOctal%nDepth <= minDepthAMR) unrefine = .false.
     if ((thisOctal%nChildren == 0).and.unrefine) then
        call deleteChild(thisOctal%parent, thisOctal%parentSubcell, adjustParent = .true., &
@@ -5677,6 +5890,5 @@ contains
     endif
 666 continue    
   end subroutine lineUnrefineCells
-
 
  end module gridio_mod

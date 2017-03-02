@@ -2567,7 +2567,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
 
   subroutine updateGridMPI(grid)
-    use inputs_mod, only : usePAH
+    use inputs_mod, only : usePAH, storeScattered 
     use mpi
     implicit none
 
@@ -2831,7 +2831,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
   recursive subroutine packvalues(thisOctal,nIndex, nIndexScattered,&
        distanceGrid,adotPAH,nCrossings, nDiffusion, meanIntensity)
-    use inputs_mod, only : usePAH
+    use inputs_mod, only : usePAH, storeScattered
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: distanceGrid(:)
@@ -2874,7 +2874,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
   end subroutine packvalues
 
   recursive subroutine unpackvalues(thisOctal,nIndex,nIndexScattered,distanceGrid,adotPAH,nCrossings, nDiffusion, meanIntensity)
-    use inputs_mod, only : usePAH
+    use inputs_mod, only : usePAH,storeScattered
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: distanceGrid(:), adotPAH(:), meanIntensity(:)
@@ -3103,6 +3103,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
 
 subroutine addDustContinuumLucy(thisOctal, subcell, grid, nlambda, lamArray)
+  use inputs_mod, only : ndusttype
   use inputs_mod, only : usePAH
   type(OCTAL), pointer :: thisOctal
   integer :: subcell
@@ -3173,7 +3174,7 @@ end subroutine addDustContinuumLucyMono
 !-------------------------------------------------------------------------------
 
 subroutine addDustContinuumLucyMonoAtDustTemp(thisOctal, subcell, grid,  lambda, iPhotonLambda)
-  use inputs_mod, only : tminGlobal
+  use inputs_mod, only : tminGlobal, decoupleGasDustTemperature
   type(OCTAL), pointer :: thisOctal
   integer :: subcell
   type(GRIDTYPE) :: grid
@@ -3185,10 +3186,12 @@ subroutine addDustContinuumLucyMonoAtDustTemp(thisOctal, subcell, grid,  lambda,
   kappaAbs = 0.d0
   thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont(subcell))
 
-  if (thisOctal%tDust(subcell) < tMinglobal) then
-     if (firstTime.and.writeoutput) write(*,*) "Looks like tdust not set up, setting tdust to temperature"
-     thisOctal%tDust(subcell) = dble(thisOctal%temperature(subcell))
-     firstTime = .false.
+  if (.not.decoupleGasDustTemperature) then
+     if (thisOctal%tDust(subcell) < tMinglobal) then
+        if (firstTime.and.writeoutput) write(*,*) "Looks like tdust not set up, setting tdust to temperature"
+        thisOctal%tDust(subcell) = dble(thisOctal%temperature(subcell))
+        firstTime = .false.
+     endif
   endif
 
 

@@ -55,6 +55,7 @@ module zlib_mod
      module procedure writeCompressedFileRealArray1d
      module procedure writeCompressedFileRealArray2d
      module procedure writeCompressedFileIntegerArray1d
+     module procedure writeCompressedFileIntegerArray2d
      module procedure writeCompressedFileBigIntegerArray1d
   end interface
 
@@ -74,6 +75,7 @@ module zlib_mod
      module procedure readCompressedFileRealArray1d
      module procedure readCompressedFileRealArray2d
      module procedure readCompressedFileIntegerArray1d
+     module procedure readCompressedFileIntegerArray2d
      module procedure readCompressedFileBigIntegerArray1d
   end interface
 
@@ -257,6 +259,13 @@ contains
     call writeCompressedFileGeneric(lunit, intValue=intValue)
   end subroutine writeCompressedFileIntegerValue
 
+  subroutine writeCompressedFileIntegerArray2d(lunit, integerArray2d)
+    integer :: lunit
+    integer :: integerArray2d(:,:)
+
+    call writeCompressedFileGeneric(lunit, integerArray2d=integerArray2d)
+  end subroutine writeCompressedFileIntegerArray2d
+
   subroutine writeCompressedFileIntegerArray1d(lunit, integerArray1d)
     integer :: lunit
     integer :: integerArray1d(:)
@@ -338,7 +347,7 @@ contains
 
 
   subroutine writeCompressedFileGeneric(lunit, doubleArray1d, doubleArray2d, doubleArray3d, doubleValue, &
-       cString, intValue, integerArray1d, realValue, logicalArray1d, realArray1d, realArray2d, &
+       cString, intValue, integerArray1d, integerArray2d, realValue, logicalArray1d, realArray1d, realArray2d, &
        vectorArray1d, logicalValue, vectorValue, bigIntegerArray1d)
     integer :: lunit
     integer, optional :: intValue
@@ -346,6 +355,7 @@ contains
     real, optional :: realValue
     type(VECTOR), optional :: vectorValue
     integer, optional :: integerArray1d(:)
+    integer, optional :: integerArray2d(:,:)
     integer(bigInt), optional :: bigIntegerArray1d(:)
     type(VECTOR), optional :: vectorArray1d(:)
     logical, optional :: logicalArray1d(:)
@@ -440,6 +450,12 @@ contains
        nbytes = size(integerArray1d)*nBytesInteger
        allocate(inputBuffer(1:nBytes))
        inputBuffer(1:nBytes) = transfer(integerArray1d, inputBuffer(1:nBytes))
+    endif
+
+    if (present(integerArray2d)) then
+       nbytes = size(integerArray2d,1)*size(integerArray2d,2)*nBytesInteger
+       allocate(inputBuffer(1:nBytes))
+    inputBuffer(1:nBytes) = transfer(integerArray2d, inputBuffer(1:nBytes))
     endif
 
     if (present(bigIntegerArray1d)) then
@@ -569,6 +585,13 @@ contains
     call readCompressedFileGeneric(lunit, integerArray1d=value)
   end subroutine readCompressedFileIntegerArray1d
 
+  subroutine readCompressedFileIntegerArray2d(lunit, integerArray2d)
+    integer :: lunit
+    integer :: integerArray2d(:,:)
+    
+    call readCompressedFileGeneric(lunit, integerArray2d=integerArray2d)
+  end subroutine readCompressedFileIntegerArray2d
+
   subroutine readCompressedFileBigIntegerArray1d(lunit, value)
     integer :: lunit
     integer(bigInt) :: value(:)
@@ -628,13 +651,13 @@ contains
 
 
   subroutine readCompressedFileGeneric(lunit, doubleValue, doubleArray1d, doubleArray2d, doubleArray3d, &
-       vectorValue, logicalValue, integerValue, realValue, realArray1d, integerArray1d, realArray2d, cString, &
+       vectorValue, logicalValue, integerValue, realValue, realArray1d, integerArray1d, integerArray2d, realArray2d, cString, &
        logicalArray1d, vectorArray1d, bigIntegerArray1d)
     integer :: lunit
     real, optional :: realValue, realArray1d(:), realArray2d(:,:)
     logical, optional :: logicalValue, logicalArray1d(:)
     type(VECTOR), optional :: vectorvalue, vectorArray1d(:)
-    integer, optional :: integerValue, integerArray1d(:)
+    integer, optional :: integerValue, integerArray1d(:), integerArray2d(:,:)
     integer(bigInt), optional :: bigIntegerArray1d(:)
     character(len=*), optional :: cString
     real(double), optional :: doubleValue
@@ -715,6 +738,11 @@ contains
        allocate(inputBuffer(1:nBytes))
     endif
 
+    if (present(IntegerArray2d)) then
+       nbytes = size(IntegerArray2d,1)*size(IntegerArray2d,2)*4
+       allocate(inputBuffer(1:nBytes))
+    endif
+
     if (present(bigIntegerArray1d)) then
        nBytes = size(bigIntegerArray1d)*8
        allocate(inputBuffer(1:nBytes))
@@ -781,6 +809,10 @@ contains
 
     if (present(integerArray1d)) then
        integerArray1d = transfer(inputBuffer(1:nBytes), integerArray1d)
+    endif
+
+    if (present(IntegerArray2d)) then
+       IntegerArray2d = RESHAPE(transfer(inputBuffer(1:nBytes), IntegerArray2d), SHAPE(IntegerArray2d))
     endif
 
     if (present(bigIntegerArray1d)) then

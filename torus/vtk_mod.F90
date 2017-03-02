@@ -1162,6 +1162,25 @@ contains
                   value = real(thisOctal%ncrossings(subcell))
                   if (thisOctal%diffusionApprox(subcell)) value = 1.e6
                   write(lunit, *) real(value)
+
+               case("ncrossings")
+                  value = real(thisOctal%ncrossings(subcell))
+                  write(lunit, *) real(value)
+
+               case("ioncross")
+                  value = real(thisOctal%ncrossIonizing(subcell))
+                  write(lunit, *) real(value)
+
+               case("undersampled")
+                  if (thisOctal%undersampled(subcell)) then
+                     write(lunit, *) 1. 
+                  else
+                     write(lunit, *) 0. 
+                  endif
+
+               case("scatters")
+                  value = real(thisOctal%nScatters(subcell))
+                  write(lunit, *) real(value)
                   
                case("phi")
                   write(lunit, *) real(thisOctal%phi_i(subcell))
@@ -2938,7 +2957,8 @@ end subroutine writeXMLVtkFileAMR
       real, parameter :: min_single_prec = 1.0e-37
       logical, save :: firstTime=.true.
       logical :: found 
-!$OMP THREADPRIVATE (firstTime)
+!$!OMP THREADPRIVATE (firstTime)
+!$!OMP THREADPRIVATE (firstTimeGetSpecies)
 
 #ifdef CHEMISTRY
        species = krome_get_names()
@@ -3414,6 +3434,22 @@ end subroutine writeXMLVtkFileAMR
 
                case("ncrossings")
                   value = dble(thisOctal%ncrossings(subcell))
+                  rArray(1, n) = real(value)
+
+               case("ioncross")
+                  value = dble(thisOctal%ncrossIonizing(subcell))
+                  rArray(1, n) = real(value)
+
+               case("undersampled")
+                  if (thisOctal%undersampled(subcell)) then
+                     value = 1.
+                  else
+                     value = 0.
+                  endif
+                  rArray(1, n) = real(value)
+
+               case("scatters")
+                  value = dble(thisOctal%nScatters(subcell))
                   rArray(1, n) = real(value)
 
                case("tissue")

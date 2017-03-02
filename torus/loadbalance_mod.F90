@@ -17,7 +17,9 @@ contains
     type(GRIDTYPE) :: grid
     real(double) :: frac(:)
     character(len=*) :: method
-    integer :: i, iThread, j
+    integer :: i, iThread, j, nSolo
+    logical, save :: firstTime=.true.
+    logical :: writeList
 
     ! allocate and initilialise arrays
     if (associated(nLoadBalanceList)) then
@@ -46,6 +48,30 @@ contains
     ! calculate how many LB threads should be assigned to each hydro thread based on frac array 
     call normaliseLoadBalanceThreads(nHydroThreadsGlobal,  nLoadBalancingThreadsGlobal, nLoadBalanceList, frac)
 
+    ! don't want any lone LB threads 
+    if (method == "crossings" .and. any(nLoadBalanceList > 2)) then
+       nSolo = 0
+       do i = 1, nHydroThreadsGlobal
+          if (nLoadBalanceList(i) == 2) then
+             nSolo = nSolo + 1
+             nLoadBalanceList(i) = 1
+          endif
+       enddo
+       i = 1
+       do while (nSolo > 0)
+          if (nLoadBalanceList(i) > 2) then
+             nLoadBalanceList(i) = nLoadBalanceList(i) + 1
+             nSolo = nSolo - 1
+          endif
+          if (i == nHydroThreadsGlobal) then
+             i = 1
+          else
+             i = i+1
+          endif
+       enddo
+    endif
+
+
     ! assign LB rank numbers to hydro threads 
     iThread = nHydroThreadsGlobal+1
     do i = 1, nHydroThreadsGlobal
@@ -63,10 +89,26 @@ contains
 
     if (writeoutput) then
        write(*,*) "Load balancing thread list (balanced by "//method//")"
-       do i = 1, nHydroThreadsGlobal
-          if (nLoadbalanceList(i) > 1) &
-               write(*,'(20i4)') i, nLoadBalanceList(i), loadBalanceList(i,1:nLoadBalanceList(i))
-       enddo
+
+       writeList = .true.
+       ! if balancing by cells, only need to write out the list the first time
+       ! todo - add in condition that mindepth==maxdepth
+       if (method == "cells") then
+          if (firstTime) then
+             firstTime = .false.
+          else
+             writeList = .false.
+          endif
+       endif
+
+       if (writeList) then
+          do i = 1, nHydroThreadsGlobal
+             if (nLoadbalanceList(i) > 1) &
+                  write(*,'(20i4)') i, nLoadBalanceList(i), loadBalanceList(i,1:nLoadBalanceList(i))
+          enddo
+       else
+          write(*,*) "(...)"
+       endif
     end if
 
     ! mpi and grid copying
@@ -211,6 +253,51 @@ contains
     deallocate(numberOfCrossingsOnThread)
   end subroutine setLoadBalancingThreadsByCrossings
 
+  subroutine setLoadBalancingThreadsByScatters(grid)
+    use mpi
+    type(GRIDTYPE) :: grid
+    integer(bigint), allocatable :: itemp(:)
+    integer(bigint), allocatable :: numberOfScattersOnThread(:)
+    real(double), allocatable :: frac(:)
+    integer :: ierr
+
+
+    allocate(numberOfScattersOnThread(1:nHydroThreadsGlobal))
+    numberOfScattersOnThread = 0
+    if ((.not.loadBalancingThreadGlobal).and.(myrankGlobal /=0)) then
+       call sumScatters(grid%octreeRoot, numberOfScattersOnThread(myRankGlobal))
+       allocate(itemp(1:nHydroThreadsGlobal))
+       call MPI_ALLREDUCE(numberOfScattersOnThread, itemp, nHydroThreadsGlobal, MPI_INTEGER8, MPI_SUM, amrCommunicator, ierr)
+       numberOfScattersOnThread = itemp
+       deallocate(itemp)
+    endif
+
+    call MPI_BCAST(numberOfScattersOnThread, nHydroThreadsGlobal, MPI_INTEGER8, 1, localWorldCommunicator, ierr)
+
+    if (writeoutput) write(*,*) "Total number of scattering events: ", sum(numberOfScattersOnThread)
+
+    ! overflow check
+    if (any(numberOfScattersOnThread < 0)) then 
+       if (writeoutput) write(*,*) "WARNING: negative scatters on thread ", minloc(numberOfScattersOnThread), &
+          minval(numberOfScattersOnThread)
+    endif 
+    
+    ! if there are no scatters at all (e.g. grid hasn't had a photoion loop before)
+    if (sum(numberOfScattersOnThread) <= 0) then  
+       if (writeoutput) write(*,*) "Setting load balancing threads by crossings instead."
+       call setLoadBalancingThreadsByCrossings(grid)
+       goto 777
+    endif
+
+    allocate(frac(1:nHydroThreadsGlobal))
+    frac = dble(numberOfScattersOnThread)/dble(SUM(numberOfScattersOnThread))
+
+    call assignLoadBalancingThreads(grid, frac, "scatters")
+
+    deallocate(frac)
+777 continue
+    deallocate(numberOfScattersOnThread)
+  end subroutine setLoadBalancingThreadsByScatters
 
   subroutine setLoadBalancingThreadsByCells(grid)
     use mpi
@@ -354,6 +441,30 @@ contains
 
   end subroutine createLoadBalanceCommunicator
 
+recursive subroutine sumDensity(thisOctal, density)
+  TYPE(OCTAL),pointer :: thisOctal
+  TYPE(OCTAL),pointer :: child
+  integer :: i, subcell
+  real(double) :: density
+  
+  do subcell = 1, thisOctal%maxChildren
+     if (thisOctal%hasChild(subcell)) then
+        ! find the child
+        do i = 1, thisOctal%nChildren, 1
+           if (thisOctal%indexChild(i) == subcell) then
+              child => thisOctal%child(i)
+              call sumDensity(child, density)
+              exit
+           end if
+        end do
+     else
+        if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+
+        density = density + thisOctal%rho(subcell)
+     end if
+  end do
+end subroutine sumDensity
+
 recursive subroutine sumCrossings(thisOctal, n)
   TYPE(OCTAL),pointer :: thisOctal
   TYPE(OCTAL),pointer :: child
@@ -381,6 +492,34 @@ recursive subroutine sumCrossings(thisOctal, n)
      end if
   end do
 end subroutine sumCrossings
+
+recursive subroutine sumScatters(thisOctal, n)
+  TYPE(OCTAL),pointer :: thisOctal
+  TYPE(OCTAL),pointer :: child
+  integer :: i, subcell
+  integer(bigint) ::  n
+  
+  do subcell = 1, thisOctal%maxChildren
+     if (thisOctal%hasChild(subcell)) then
+        ! find the child
+        do i = 1, thisOctal%nChildren, 1
+           if (thisOctal%indexChild(i) == subcell) then
+              child => thisOctal%child(i)
+              call sumScatters(child, n)
+              exit
+           end if
+        end do
+     else
+        if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+
+        if (thisOctal%nScatters(subcell) < 0) then
+           write(*,*) myrankglobal, " %nScatters(subcell) negative ", thisOctal%nScatters(subcell)
+           write(*,*) myrankglobal, " negative location ", subcellCentre(thisOctal, subcell)
+        endif
+        n = n + thisOctal%nScatters(subcell)
+     end if
+  end do
+end subroutine sumScatters
 
 recursive subroutine sumCellsOnThread(thisOctal, n)
   TYPE(OCTAL),pointer :: thisOctal

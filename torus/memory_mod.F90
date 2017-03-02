@@ -86,6 +86,7 @@ module memory_mod
       tot = tot + mySizeOf(thisOctal%cornerVelocity)
       tot = tot + mySizeOf(thisOctal%cornerrho)
       tot = tot + mySizeOf(thisOctal%qViscosity)
+      tot = tot + mySizeOf(thisOctal%isOnBoundary)
       tot = tot + mySizeOf(thisOctal%diffusionApprox)
       tot = tot + mySizeOf(thisOctal%fixedTemperature)
       tot = tot + mySizeOf(thisOctal%nDiffusion)
@@ -108,6 +109,8 @@ module memory_mod
       tot = tot + mySizeOf(thisOctal%departCoeff)
       tot = tot + mySizeOf(thisOctal%kappaAbs)
       tot = tot + mySizeOf(thisOctal%kappaSca)
+      tot = tot + mySizeOf(thisOctal%kappaTimesFlux)
+      tot = tot + mySizeOf(thisOctal%kappaTimesFluxHistory)
       tot = tot + mySizeOf(thisOctal%chiLine)
       tot = tot + mySizeOf(thisOctal%etaLine)
       tot = tot + mySizeOf(thisOctal%etaCont)
@@ -155,8 +158,11 @@ module memory_mod
       tot = tot + mySizeOf(thisOctal%NHeII)
       tot = tot + mySizeOf(thisOctal%Hheating)
       tot = tot + mySizeOf(thisOctal%Heheating)
+      tot = tot + mySizeOf(thisOctal%HheatingHistory)
+      tot = tot + mySizeOf(thisOctal%HeheatingHistory)
       tot = tot + mySizeOf(thisOctal%ionFrac)
       tot = tot + mySizeOf(thisOctal%photoIonCoeff)
+      tot = tot + mySizeOf(thisOctal%photoIonCoeffHistory)
       tot = tot + mySizeOf(thisOctal%sourceContribution)
       tot = tot + mySizeOf(thisOctal%diffuseContribution)
       tot = tot + mySizeOf(thisOctal%normSourceContribution)
@@ -338,7 +344,7 @@ module memory_mod
       i = 0
       if (associated(p)) i = int(sizeof(p))
     end function mySizeOfLogical
-
+    
     function mySizeOfVector(p) result (i)
       type(VECTOR), pointer :: p(:)
       integer :: i

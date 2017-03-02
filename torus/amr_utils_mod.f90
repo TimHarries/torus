@@ -56,8 +56,8 @@ module amr_utils_mod
 
   END SUBROUTINE countVoxels
 
-  FUNCTION amrGridVelocity(octalTree,point,startOctal,foundOctal,&
-                                        foundSubcell,actualSubcell, linearinterp, debug) 
+  FUNCTION amrGridVelocity(octalTree,point,startOctal,foundOctal,foundSubcell,&
+                           actualSubcell, linearinterp, debug, Hydro) 
     ! POINT --> should be in unrotated coordinates for 2D case (not projected onto x-z plane!)
     !
 
@@ -74,6 +74,7 @@ module amr_utils_mod
     ! if actualSubcell and startSubcell are both supplied, these 
     !   locations are assumed to be correct and no search is performed.
 
+    use inputs_mod, only : cylindrical
     use analytical_velocity_mod, only : analyticalVelocity
     use utils_mod
     IMPLICIT NONE
@@ -83,8 +84,8 @@ module amr_utils_mod
     TYPE(vector), INTENT(IN)  :: point
     TYPE(octal), OPTIONAL, POINTER :: startOctal
     TYPE(octal), OPTIONAL, POINTER :: foundOctal
-    logical, optional :: debug
-    logical :: writedebug
+    logical, optional :: debug, hydro
+    logical :: writedebug, hydrovelocities
     INTEGER, INTENT(OUT), OPTIONAL :: foundSubcell
     INTEGER, INTENT(IN),  OPTIONAL :: actualSubcell
 
@@ -106,7 +107,9 @@ module amr_utils_mod
     logical, save :: firstTime = .true.
 
     writedebug = .false.
+    hydrovelocities = .false.
     if (present(debug)) writedebug = debug
+    if (present(hydro)) hydrovelocities = hydro
 
     amrGridVelocity = VECTOR(0.d0, 0.d0, 0.d0)
 
@@ -149,14 +152,26 @@ module amr_utils_mod
 
    END IF
 
-   if (resultOctal%iAnalyticalVelocity(subcell) == 0) then
-   if (.not.associated(resultOctal%cornerVelocity)) then
-      if(firstTime) then
-         call writeWarning("Corner velocities not allocated! ! ! ")      
-         firstTime = .false.
+   if (Hydrovelocities) then
+      if (cylindrical) then
+         centre = subcellCentre(resultOctal,subcell)
+         r1 = sqrt(centre%x**2+centre%y**2)
+         amrGridVelocity = VECTOR(resultOctal%rhou(subcell),& 
+                                  resultOctal%rhov(subcell)/r1,&
+                                  resultOctal%rhow(subcell))/resultOctal%rho(subcell)
+      else
+         amrGridVelocity = VECTOR(resultOctal%rhou(subcell),& 
+                                  resultOctal%rhov(subcell),&
+                                  resultOctal%rhow(subcell))/resultOctal%rho(subcell)
+      endif
+   else if (resultOctal%iAnalyticalVelocity(subcell) == 0) then
+      if (.not.associated(resultOctal%cornerVelocity)) then
+         if(firstTime) then
+            call writeWarning("Corner velocities not allocated! ! ! ")      
+            firstTime = .false.
+         end if
+         goto 666
       end if
-     goto 666
-   end if
       inc = 0.5 * resultOctal%subcellSize
       centre = subcellCentre(resultOctal,subcell)
       fac = 1. / resultOctal%subcellsize
@@ -1149,139 +1164,145 @@ module amr_utils_mod
       INTEGER :: i
       
       IF ( inOctal(thisOctal,point,alreadyRotated=.true.) ) THEN
-
-!         write(*,*) "this point is inOctal, setting havedescended to true"
-
-
-        haveDescended = .TRUE. ! record that we have gone down the tree.
-      
-        ! if the point lies within the current octal, we identify the
+         
+         !         write(*,*) "this point is inOctal, setting havedescended to true"
+         
+         
+         haveDescended = .TRUE. ! record that we have gone down the tree.
+         
+         ! if the point lies within the current octal, we identify the
         !   subcell
-        subcell = whichSubcell(thisOctal,point)
-!        write(*,*) "this point is in subcell ", subcell
-
-        ! if a problem has been detected, this is where we complete the search
-        IF (boundaryProblem) RETURN 
-      
-        ! if the subcell has a child, we look in the child for the point
-        IF ( thisOctal%hasChild(subcell) ) THEN
-!           write(*,*) "this subcell has a child"
-                
-          ! search the index to see where it is stored
-          DO i = 1, thisOctal%nChildren, 1
-            IF ( thisOctal%indexChild(i) == subcell ) THEN
-                    
-              thisOctal => thisOctal%child(i)
-
-!              write(*,*) "calling findsubcelllocalprivate recursively"
-              CALL findSubcellLocalPrivate(point,thisOctal,subcell,haveDescended,boundaryProblem)
-              RETURN
-              
-            END IF
-         END DO
-          
-      ELSE 
-          RETURN
-       END IF
-
+         subcell = whichSubcell(thisOctal,point)
+         !        write(*,*) "this point is in subcell ", subcell
+         
+         ! if a problem has been detected, this is where we complete the search
+         IF (boundaryProblem) RETURN 
+         
+         ! if the subcell has a child, we look in the child for the point
+         IF ( thisOctal%hasChild(subcell) ) THEN
+            !           write(*,*) "this subcell has a child"
+            
+            ! search the index to see where it is stored
+            DO i = 1, thisOctal%nChildren, 1
+               IF ( thisOctal%indexChild(i) == subcell ) THEN
+                  
+                  thisOctal => thisOctal%child(i)
+                  
+                  !              write(*,*) "calling findsubcelllocalprivate recursively"
+                  CALL findSubcellLocalPrivate(point,thisOctal,subcell,haveDescended,boundaryProblem)
+                  RETURN
+                  
+               END IF
+            END DO
+            
+         ELSE 
+            RETURN
+         END IF
+         
       ELSE
-        ! if the point is outside the current octal, we look in its
-        !   parent octal
-!         write(*,*) "this point is not in octal "
-!         write(*,*) "point ",point
-!         write(*,*) "xmin/max, zmin/max ",thisOctal%xmin, thisOctal%xmax, thisOctal%zmin,thisOctal%zmax
-        ! first check that we are not outside the grid
-        IF ( thisOctal%nDepth == 1 ) THEN
-           if(.not. suppresswarnings) then
+         ! if the point is outside the current octal, we look in its
+         !   parent octal
+         !         write(*,*) "this point is not in octal "
+         !         write(*,*) "point ",point
+         !         write(*,*) "xmin/max, zmin/max ",thisOctal%xmin, thisOctal%xmax, thisOctal%zmin,thisOctal%zmax
+         ! first check that we are not outside the grid
+         IF ( thisOctal%nDepth == 1 ) THEN
+            if(.not. suppresswarnings) then
            write(*,*) "octal", thisOctal%ndepth
            write(*,*) "inoctal min", thisOctal%xMin,thisOctal%yMin,thisOctal%zMin
            write(*,*) "inoctal max", thisOctal%xMax,thisOctal%yMax,thisOctal%zMax
-
-          PRINT *, 'Panic: In findSubcellLocalPrivate, point is outside the grid'
-          write(*,*) "currentlydoinghydrostep ",currentlydoinghydrostep
-          write(*,*) point
-          write(*,*) sqrt(point%x**2+point%y**2)
-          write(*,*) atan2(point%y,point%x)*radtodeg
-          write(*,*) " "
-          write(*,*) "cylindrical hydro ",cylindricalhydro
-          write(*,*) thisOctal%centre
-          write(*,*) thisOctal%subcellSize
-!          write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
-          write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
-       endif
-          if(.not. suppresswarnings) then
-             r = -2.d0
-             r = sqrt(r)
-                STOP
-          endif
-          boundaryProblem = .TRUE.
-          RETURN
-       END IF
-     
-        ! if we have previously gone down the tree, and are now going back up, there
-        !   must be a problem.
-       
-        IF (haveDescended) then
-           boundaryProblem = .TRUE.
-           phi =  atan2(point%y,point%x)
-           phimin = thisOctal%phi - thisOctal%dphi/2.d0
-           phimax = thisOctal%phi + thisOctal%dphi/2.d0
-           PRINT *, 'Panic: In findSubcellLocalPrivate, have descended and are now going back up'
-           write(*,*) "rank ",myrankglobal, thisOctal%mpithread(1:8)
-           write(*,*) "split az ",thisOctal%splitAzimuthally
+           
+           PRINT *, 'Panic: In findSubcellLocalPrivate, point is outside the grid'
+           write(*,*) "currentlydoinghydrostep ",currentlydoinghydrostep
            write(*,*) point
+           if (point%x >thisOctal%xmax) write(*,*) "x ", point%x, " > ", thisOctal%xMax 
+           if (point%x <thisOctal%xmin) write(*,*) "x ", point%x, " < ", thisOctal%xMin 
+           if (point%y >thisOctal%ymax) write(*,*) "y ", point%x, " > ", thisOctal%yMax 
+           if (point%y <thisOctal%ymin) write(*,*) "y ", point%x, " < ", thisOctal%yMin 
+           if (point%z >thisOctal%zmax) write(*,*) "z ", point%x, " > ", thisOctal%zMax
+           if (point%z <thisOctal%zmin) write(*,*) "z ", point%x, " < ", thisOctal%zMin 
+           write(*,*) sqrt(point%x**2+point%y**2)
            write(*,*) atan2(point%y,point%x)*radtodeg
-           write(*,*) sqrt(point%x**2 + point%y**2)
            write(*,*) " "
-           write(*,*) thisOctal%nDepth
+           write(*,*) "cylindrical hydro ",cylindricalhydro
            write(*,*) thisOctal%centre
            write(*,*) thisOctal%subcellSize
-           write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
+           !          write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
            write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
-           write(*,*) atan2(thisOctal%centre%y,thisOctal%centre%x)*radtodeg
-           write(*,*) " x min/max, z min max ",thisOctal%xMin, thisOctal%xMax, thisOctal%zMin, thisOctal%zMax
-           write(*,*) " r min/max ",thisOctal%r-thisOctal%subcellsize,thisOctal%r+thisOctal%subcellsize
-
-           write(*,*) "x > xMin ",point%x > thisOctal%xMin
-           write(*,*) "x < xMax ",point%x < thisOctal%xMax
-           write(*,*) "z > zMin ",point%z > thisOctal%zMin
-           write(*,*) "x < zMax ",point%z < thisOctal%zMax
-           write(*,*) "parent x min/max, z min max ",thisOctal%parent%xMin, thisOctal%parent%xMax, thisOctal%parent%zMin, &
-                thisOctal%parent%zMax
-           write(*,*) "cen ",thisOctal%centre
-           write(*,*) "size ",thisOctal%subcellsize
-           write(*,*) "inoctal ",inoctal(thisOctal,point), thisOctal%phimin*radtodeg, &
-                thisOctal%phimax*radtodeg,phi < phimin, phi > phimax, &
-                phi < thisOctal%phimax, phi > thisOctal%phimin
-           do while (thisOctal%nDepth > 2)
-              write(*,*) "nDepth ",thisOctal%nDepth, inoctal(thisOctal,point), " split ",thisOctal%splitAzimuthally
+        endif
+        if(.not. suppresswarnings) then
+           r = -2.d0
+           r = sqrt(r)
+           STOP
+        endif
+        boundaryProblem = .TRUE.
+        RETURN
+     END IF
+     
+     ! if we have previously gone down the tree, and are now going back up, there
+     !   must be a problem.
+     
+     IF (haveDescended) then
+        boundaryProblem = .TRUE.
+        phi =  atan2(point%y,point%x)
+        phimin = thisOctal%phi - thisOctal%dphi/2.d0
+        phimax = thisOctal%phi + thisOctal%dphi/2.d0
+        PRINT *, 'Panic: In findSubcellLocalPrivate, have descended and are now going back up'
+        write(*,*) "rank ",myrankglobal, thisOctal%mpithread(1:8)
+        write(*,*) "split az ",thisOctal%splitAzimuthally
+        write(*,*) point
+        write(*,*) atan2(point%y,point%x)*radtodeg
+        write(*,*) sqrt(point%x**2 + point%y**2)
+        write(*,*) " "
+        write(*,*) thisOctal%nDepth
+        write(*,*) thisOctal%centre
+        write(*,*) thisOctal%subcellSize
+        write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
+        write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
+        write(*,*) atan2(thisOctal%centre%y,thisOctal%centre%x)*radtodeg
+        write(*,*) " x min/max, z min max ",thisOctal%xMin, thisOctal%xMax, thisOctal%zMin, thisOctal%zMax
+        write(*,*) " r min/max ",thisOctal%r-thisOctal%subcellsize,thisOctal%r+thisOctal%subcellsize
+        
+        write(*,*) "x > xMin ",point%x > thisOctal%xMin
+        write(*,*) "x < xMax ",point%x < thisOctal%xMax
+        write(*,*) "z > zMin ",point%z > thisOctal%zMin
+        write(*,*) "z < zMax ",point%z < thisOctal%zMax
+        write(*,*) "parent x min/max, z min max ",thisOctal%parent%xMin, thisOctal%parent%xMax, thisOctal%parent%zMin, &
+             thisOctal%parent%zMax
+        write(*,*) "cen ",thisOctal%centre
+        write(*,*) "size ",thisOctal%subcellsize
+        write(*,*) "inoctal ",inoctal(thisOctal,point), thisOctal%phimin*radtodeg, &
+             thisOctal%phimax*radtodeg,phi < phimin, phi > phimax, &
+             phi < thisOctal%phimax, phi > thisOctal%phimin
+        do while (thisOctal%nDepth > 2)
+           write(*,*) "nDepth ",thisOctal%nDepth, inoctal(thisOctal,point), " split ",thisOctal%splitAzimuthally
            write(*,*) "inoctal ",inoctal(thisOctal,point), thisOctal%phimin*radtodeg, &
                 thisOctal%phimax*radtodeg,phi < phimin, phi > phimax, &
                 phi < thisOctal%phimax, phi > thisOctal%phimin
            write(*,*) "phi ",phi*radtodeg
            write(*,*) "phimin ",thisOctal%phimin*radtodeg, phi < thisOctal%phimin
            write(*,*) "phimax ",thisOctal%phimax*radtodeg, phi >= thisOctal%phimax
-              thisOctal => thisOctal%parent
-           enddo
-!           rVec = subcellCentre(thisOctal,subcell)
-!           write(*,*) rVec%x+thisOctal%subcellSize/2.
-!           write(*,*) rVec%x-thisOctal%subcellSize/2.
-!           write(*,*) rVec%y+thisOctal%subcellSize/2.
-!           write(*,*) rVec%y-thisOctal%subcellSize/2.
-!           write(*,*) rVec%z+thisOctal%subcellSize/2.
-!           write(*,*) rVec%z-thisOctal%subcellSize/2.
-           do ; enddo
-!           STOP
+           thisOctal => thisOctal%parent
+        enddo
+        !           rVec = subcellCentre(thisOctal,subcell)
+        !           write(*,*) rVec%x+thisOctal%subcellSize/2.
+        !           write(*,*) rVec%x-thisOctal%subcellSize/2.
+        !           write(*,*) rVec%y+thisOctal%subcellSize/2.
+        !           write(*,*) rVec%y-thisOctal%subcellSize/2.
+        !           write(*,*) rVec%z+thisOctal%subcellSize/2.
+        !           write(*,*) rVec%z-thisOctal%subcellSize/2.
+        do ; enddo
+           !           STOP
            return
         endif
         
         IF ( thisOctal%nDepth /= 1 ) THEN
-!           write(*,*) "ascending to octal above"
+           !           write(*,*) "ascending to octal above"
            thisOctal => thisOctal%parent
         ENDIF
-
+        
         CALL findSubcellLocalPrivate(point,thisOctal,subcell,haveDescended,boundaryProblem)
-       
+        
      END IF
     
     END SUBROUTINE findSubcellLocalPrivate

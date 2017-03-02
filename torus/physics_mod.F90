@@ -472,13 +472,17 @@ contains
        endif
     endif
 
+    if (bioPhysics) then
+       call photonLoop(grid)
+       call writeVtkFile(grid, "skin.vtu", &
+            valueTypeString=(/"tissue    ","udens     ","ncrossings","surfnorm  "/))
+    endif
 
     if (bioPhysics) then
        call photonLoop(grid)
        call writeVtkFile(grid, "skin.vtu", &
             valueTypeString=(/"udens     ","ncrossings","etaline   "/))
     endif
-
 
      if (dustPhysics.and.radiativeEquilibrium) then
         call setupXarray(grid, xarray, nLambda, dustRadeq=.true.)

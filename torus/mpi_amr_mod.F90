@@ -408,6 +408,94 @@ contains
     enddo
   end subroutine findTotalMassMPI
 
+  subroutine findIonizedVolumeOverAllThreads(grid, volume, mass)
+    use mpi
+    type(GRIDTYPE) :: grid
+    real(double), intent(out) :: volume, mass
+    real(double), allocatable :: massOnThreads(:), temp(:), volumeOnThreads(:)
+    integer :: ierr
+
+    if (loadBalancingThreadGlobal) goto 666
+
+    allocate(massOnThreads(1:nThreadsGlobal), temp(1:nThreadsGlobal))
+    allocate(volumeOnThreads(1:nThreadsGlobal))
+    massOnThreads = 0.d0
+    volumeOnThreads = 0.d0
+    temp = 0.d0
+    if (.not.grid%splitOverMpi) then
+       call writeWarning("findIonizedVolumeOverAllThreads: grid not split over MPI")
+       mass = 0.d0
+       volume = 0.d0
+       goto 666
+    endif
+
+    if (myRankGlobal /= 0) then
+       call findIonizedVolumeMPI(grid%octreeRoot, volumeOnThreads(myRankGlobal), massOnThreads(myRankGlobal))
+       call MPI_ALLREDUCE(massOnThreads, temp, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
+       mass = SUM(temp(1:nThreadsGlobal))
+       call MPI_ALLREDUCE(volumeOnThreads, temp, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
+       volume = sum(temp(1:nThreadsGlobal))
+    end if
+666 continue
+  end subroutine findIonizedVolumeOverAllThreads
+
+    
+  recursive subroutine findIonizedVolumeMPI(thisOctal, volume, mass)
+  use inputs_mod, only : hydrodynamics, cylindricalHydro, spherical
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  type(VECTOR) :: rVec
+  real(double) :: volume, mass
+  real(double) :: dv
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call findIonizedVolumeMPI(child, volume, mass) 
+                exit
+             end if
+          end do
+       else
+          if(.not. thisoctal%ghostcell(subcell)) then
+             if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+                if (thisOctal%ionfrac(subcell, 1) < 0.1d0 .and. .not.thisOctal%undersampled(subcell)) then
+                   dv = cellVolume(thisOctal, subcell)*1.d30
+   !                print *, "dv", dv, thisOctal%subcellSize**3
+
+                   if (hydrodynamics) then
+                      if (thisOctal%twoD) then
+                         if (cylindricalHydro) then
+                            dv = cellVolume(thisOctal, subcell) * 1.d30
+                            rVec = subcellCentre(thisOctal,subcell)
+                            if (rVec%x < 0.d0) dv = 0.d0
+                            if (thisOctal%ghostCell(subcell)) dv = 0.d0
+                         else
+                            dv = thisOctal%subcellSize**2
+                         endif
+                      else if (thisOctal%oned) then
+                         if (spherical) then
+                            dv = cellVolume(thisOctal, subcell) * 1.d30
+                            rVec = subcellCentre(thisOctal,subcell)
+                            if (rVec%x < 0.d0) dv = 0.d0
+                            if (thisOctal%ghostCell(subcell)) dv = 0.d0
+                         else
+                            dv = thisOctal%subcellSize**2
+                         endif
+                      endif
+                   endif
+                   mass = mass + thisOctal%rho(subcell) * dv
+                   volume = volume + dv
+                endif
+             endif
+          endif
+       end if
+    enddo
+  end subroutine findIonizedVolumeMPI
+
   subroutine findkeOverAllThreads(grid, ke)
     use mpi
     type(GRIDTYPE) :: grid
@@ -415,6 +503,8 @@ contains
     real(double), allocatable :: keOnThreads(:), temp(:)
     integer :: ierr
 !    real(double) :: totalVolume
+
+    if (loadBalancingThreadGlobal) goto 666
 
     allocate(keOnThreads(1:nThreadsGlobal), temp(1:nThreadsGlobal))
     keOnThreads = 0.d0
@@ -2869,6 +2959,7 @@ contains
                neighbourOctal%mpiThread(neighboursubcell), &
                thisOctal%mpiThread(subcell)
           write(*,*) "direction",  direction,nBound
+          write(*,*) "isonBoundary",  thisOctal%isOnBoundary(subcell,:)
           write(*,*) "depth ",thisOctal%nDepth
           write(*,*) "nChildren ",thisOctal%nChildren
           write(*,*) "rho ",thisOctal%rho(subcell)
@@ -4674,7 +4765,7 @@ subroutine write1dlist(grid, thisFile)
            close(55)
         endif
 
-        call MPI_BARRIER(localWorldCommunicator, ierr)
+        call MPI_BARRIER(amrCommunicator, ierr)
 
      enddo
 
@@ -8764,6 +8855,9 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     call packAttributePointer(thisOctal%nDiffusion)
     call packAttributePointer(thisOctal%underSampled)
     call packAttributePointer(thisOctal%distanceGrid)
+    call packAttributePointer(thisOctal%distanceGridHistory)
+    call packAttributePointer(thisOctal%nCrossIonizing)
+    call packAttributePointer(thisOctal%nScatters)
     call packAttributePointer(thisOctal%nCrossings)
     call packAttributePointer(thisOctal%nTot)
     call packAttributePointer(thisOctal%chiLine)
@@ -8772,14 +8866,18 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     call packAttributePointer(thisOctal%nh)
     call packAttributePointer(thisOctal%ne)
     call packAttributePointer(thisOctal%HHeating)
+    call packAttributePointer(thisOctal%HHeatingHistory)
     call packAttributePointer(thisOctal%HeHeating)
+    call packAttributePointer(thisOctal%HeHeatingHistory)
     call packAttributePointer(thisOctal%radiationMomentum)
     call packAttributePointer(thisOctal%ionFrac)
     call packAttributePointer(thisOctal%photoionCoeff)
+    call packAttributePointer(thisOctal%photoionCoeffHistory)
     call packAttributePointer(thisOctal%sourceContribution)
     call packAttributePointer(thisOctal%diffuseContribution)
     call packAttributePointer(thisOctal%normSourceContribution)
     call packAttributePointer(thisOctal%kappaTimesFlux)
+ !   call packAttributePointer(thisOctal%kappaTimesFluxHistory)
     call packAttributePointer(thisOctal%uvvector)
     call packAttributePointer(thisOctal%oldfrac)
 
@@ -8819,7 +8917,10 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     call unpackAttributePointer(thisOctal%nDiffusion)
     call unpackAttributePointer(thisOctal%underSampled)
     call unpackAttributePointer(thisOctal%distanceGrid)
+    call unpackAttributePointer(thisOctal%distanceGridHistory)
     call unpackAttributePointer(thisOctal%nCrossings)
+    call unpackAttributePointer(thisOctal%nCrossIonizing)
+    call unpackAttributePointer(thisOctal%nScatters)
     call unpackAttributePointer(thisOctal%nTot)
     call unpackAttributePointer(thisOctal%chiLine)
     call unpackAttributePointer(thisOctal%biasLine3D)
@@ -8827,14 +8928,18 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     call unpackAttributePointer(thisOctal%nh)
     call unpackAttributePointer(thisOctal%ne)
     call unpackAttributePointer(thisOctal%HHeating)
+    call unpackAttributePointer(thisOctal%HHeatingHistory)
     call unpackAttributePointer(thisOctal%HeHeating)
+    call unpackAttributePointer(thisOctal%HeHeatingHistory)
     call unpackAttributePointer(thisOctal%radiationMomentum)
     call unpackAttributePointer(thisOctal%ionFrac)
     call unpackAttributePointer(thisOctal%photoionCoeff)
+    call unpackAttributePointer(thisOctal%photoionCoeffHistory)
     call unpackAttributePointer(thisOctal%sourceContribution)
     call unpackAttributePointer(thisOctal%diffuseContribution)
     call unpackAttributePointer(thisOctal%normSourceContribution)
     call unpackAttributePointer(thisOctal%kappaTimesFlux)
+!    call unpackAttributePointer(thisOctal%kappaTimesFluxHistory)
     call unpackAttributePointer(thisOctal%uvvector)
     call unpackAttributePointer(thisOctal%oldfrac)
 

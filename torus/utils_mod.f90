@@ -74,6 +74,22 @@ module utils_mod
 
 contains
 
+  function ilog2(val ) result( res )
+    integer, intent(in) :: val
+    integer             :: res
+    integer             :: tmp
+
+    res = -1 
+    ! Negativ values not allowed
+    if ( val < 1 ) return
+
+    tmp = val
+    do while (tmp > 0)
+      res = res + 1
+      tmp = shiftr( tmp, 1 )
+    enddo
+  end function ilog2
+
   integer function median(iArray)
     integer :: n, iArray(:)
     integer, allocatable :: iT(:)
@@ -584,7 +600,7 @@ contains
     RA(I)=RRA
     GO TO 10
   END subroutine sortdouble
-
+  
   SUBROUTINE SORTdouble2(N,RA,rb)
     INTEGER N, L, IR, I, J
     real(double) RRA, rrb

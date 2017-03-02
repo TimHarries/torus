@@ -139,6 +139,7 @@
   logical :: stellarWinds      ! include stellar winds in hydro calc
   logical :: supernovae        ! include supernovae in hydro calc
   logical :: starburst         ! set sources from starburst
+  logical :: doSubgridHIIExpansion  ! use subgrid model for HII region expansion
   real(double) :: stellarWindRadius ! radius for stellar wind/SNe momentum input 
   real(double) :: burstAge
   real(double) :: burstTime
@@ -180,6 +181,7 @@
   logical :: doSelfGrav               !Do self gravity calculation
   real(double) :: gravTol             !Tolerance for gravity solver
   logical :: redoGravOnRead           !Resolve self-gravity on readin
+  logical :: forceVcycle              !Always do multigrid V cycle
   logical :: simpleGrav               !Do self gravity calculation
   logical :: advectHydro              ! perform advection
   logical :: doGasGravity             ! Include gas gravity in calculation
@@ -190,6 +192,14 @@
   logical :: radiationPressure        ! use radiation pressure terms
   logical :: CAKlineOpacity           !use Abbot82 temp invarient form of line driving
   logical :: RadForceMonte            !use a path length based estimation for the radation pressure rather than momentum tracking
+  logical :: AccretionFeedback        !Re-inject Fw* the acrreted mass back into the simulation with Fv* the keplerian velocity at the stellar surface
+  integer :: AccFeedbackCells
+  real(double) :: FeedbackTheta0      !Opening angle of feedback (see Cuningham11 for details)
+  real(double) :: FeedbackFw
+  real(double) :: FeedbackFv
+  real(double) :: FeedbackStartMass   !Do not apply feedback till the star reaches this mass 
+  real(double) :: RadTimeScale        !ratio of radation to hydro timescales
+  integer :: shotNoiseWeight          !The number of crossings above which current MC rad estimate is weighted more than the history estimate
   real :: cflNumber                   !Courant-Friedrichs-Lewy constant
   integer :: nHydroPerPhoto           !number of hydroSteps per photoionization loop
   logical :: forcegascourant          !use the gas condition only
@@ -212,7 +222,9 @@
   integer :: vtuToGrid
   real(double) :: gridDistanceScale   !Scale of grid
   integer :: CD_version               !Which version of contact discontinuity test to run? (1,2,3 or 4, StarBench)
-
+  logical :: imposeFixing             !Impose fixed regions on the hydro model
+  
+  logical :: pressureSupport ! include pressure support for sphere geometry
 
   logical :: readTurb !read in a turbulent velocity grid
   character(len=20) :: turbvelfilex    !file for tubrulent velocty field (x)
@@ -374,6 +386,7 @@
 
   logical :: readSources
   logical :: moveSources
+  logical :: evolveSources 
   logical :: hotspot
   character(len=80) :: sourceFilename
   logical :: sourceHistory
@@ -501,8 +514,9 @@
   character(len=80) :: intextFilename, outtextFilename ! ??? Fogel geometry
   logical :: doSpiral ! For a Shakara Sunyaev Disc
   logical :: addDisc
-  type(VECTOR) :: sphereVelocity, spherePosition ! unisphere geometry
-  real(double) :: sphereMass, sphereRadius       ! unisphere geometry
+  type(VECTOR) :: sphereVelocity, spherePosition                  ! unisphere geometry
+  real(double) :: sphereMass, sphereRadius, sphereSurroundingsFac ! unisphere geometry
+  real(double) :: plumberMass, plumberRadius, plumberExponent     ! Plumber filament geometry
   real(double) :: omega
   integer :: nSphereSurface ! number of points on spherical surface
   real :: rpower ! radial density power  r^-rpower. For proto geometry
@@ -983,6 +997,7 @@
 ! Other physical parameters
   real    :: vturb        ! Subsonic turbulent velocity
   real    :: TMinGlobal   ! globally applied minimum temperature
+  real    :: TMaxGlobal   ! globally applied maximum temperature
 
 ! Some other parameters   
   character(len=10) :: object
