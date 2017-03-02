@@ -997,11 +997,6 @@ contains
           call getReal("betadisc", betaDisc, 1., cLine, fLine, nLines, &
                "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
 
-          call getReal("midplanetemp", midplaneDiscTemp, 1., cLine, fLine, nLines, &
-               "Blackbody Disc temperature inside sub radius: ","(a,f8.1,a)", 0., ok, .true.)
-
-          call getReal("midplanepower", midplaneDiscPower, 1., cLine, fLine, nLines, &
-               "Blackbody disc power law index inside sub radius: ","(a,f8.1,a)", 0., ok, .true.)
 
           call getReal("disctemp", alphaDiscTemp, 1., cLine, fLine, nLines, &
                "Disc temperature inside sub radius: ","(a,f8.1,a)", 0., ok, .true.)
