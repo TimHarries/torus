@@ -356,8 +356,8 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
              call assignTemperaturesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
                      minRCubedRhoSquared)
           endif
-!          if (ttauriwind) call assignDensitiesBlandfordPayne(grid, grid%octreeRoot)
              
+       call writeVtkFile(grid, "temp1.vtk",  valueTypeString=(/"temperature"/))
           call checkAMRgrid(grid, .false.)
 #ifdef ATOMIC
           call writeInfo("Checking velocity interpolation...",TRIVIAL)
@@ -365,9 +365,12 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           call writeInfo("Done.",TRIVIAL)
 #endif
           if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
+          call writeVtkFile(grid, "temp2.vtk",  valueTypeString=(/"temperature"/))
           if (ttauriwind)  call addDiscWind(grid)
+          call writeVtkFile(grid, "temp3.vtk",  valueTypeString=(/"temperature"/))
           if (flatdisc) call assignDensitiesFlatDisc(grid, grid%octreeRoot)
           if (TTauriStellarWind) call assignDensitiesStellarWind(grid, grid%octreeRoot)
+          call writeVtkFile(grid, "temp4.vtk",  valueTypeString=(/"temperature"/))
 
           if (ttauriwarp) call addWarpedDisc(grid%octreeRoot)
           ! Finding the total mass in the accretion flow

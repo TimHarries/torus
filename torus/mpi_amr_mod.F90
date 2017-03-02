@@ -2795,6 +2795,7 @@ contains
           flux = neighbourOctal%flux_i(neighbourSubcell)
           phi = neighbourOctal%phi_i(neighbourSubcell)
           phigas = neighbourOctal%phi_gas(neighbourSubcell)
+          if (associated(neighbourOctal%correction)) &
           correction = neighbourOctal%correction(neighbourSubcell)
           xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
           qViscosity = neighbourOctal%qViscosity(neighbourSubcell,:,:)
@@ -2812,6 +2813,8 @@ contains
           pressure = neighbourOctal%pressure_i(neighbourSubcell)
           phi = neighbourOctal%phi_i(neighbourSubcell)
           phigas = neighbourOctal%phi_gas(neighbourSubcell)
+          correction = 0.d0
+          if (associated(neighbourOctal%correction)) &
           correction = neighbourOctal%correction(neighbourSubcell)
           xplus = neighbourOctal%x_i_minus_1(neighbourSubcell)
           qViscosity = neighbourOctal%qViscosity(neighbourSubcell,:,:)
