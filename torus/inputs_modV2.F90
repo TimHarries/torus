@@ -5104,7 +5104,7 @@ end subroutine getBigInteger
     default = " (default)"
  endif
  if (ok) then
-   write(output,*) trim(message)//" ",rval,default
+   write(output,format) trim(message)//" ",rval,default
     call writeInfo(output, TRIVIAL)
  endif
  rval = rval * unitConversion
