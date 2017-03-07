@@ -2831,7 +2831,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
   recursive subroutine packvalues(thisOctal,nIndex, nIndexScattered,&
        distanceGrid,adotPAH,nCrossings, nDiffusion, meanIntensity)
-    use inputs_mod, only : usePAH, storeScattered
+    use inputs_mod, only : usePAH
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: distanceGrid(:)
@@ -2874,7 +2874,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
   end subroutine packvalues
 
   recursive subroutine unpackvalues(thisOctal,nIndex,nIndexScattered,distanceGrid,adotPAH,nCrossings, nDiffusion, meanIntensity)
-    use inputs_mod, only : usePAH,storeScattered
+    use inputs_mod, only : usePAH
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: distanceGrid(:), adotPAH(:), meanIntensity(:)
@@ -3103,7 +3103,6 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
 
 subroutine addDustContinuumLucy(thisOctal, subcell, grid, nlambda, lamArray)
-  use inputs_mod, only : ndusttype
   use inputs_mod, only : usePAH
   type(OCTAL), pointer :: thisOctal
   integer :: subcell

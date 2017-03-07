@@ -9552,8 +9552,7 @@ endif
   subroutine calcPlumber(thisOctal,subcell)
 
     use inputs_mod, only : plumberRadius, plumberMass, plumberExponent, amrGridSize, rhoFloor, gridDistanceScale
-    use inputs_mod, only : beta, omega, hydrodynamics, rhoThreshold, cylindricalHydro, nbodytest
-    use inputs_mod, only : readTurb
+    use inputs_mod, only : omega, hydrodynamics, rhoThreshold, cylindricalHydro
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -9574,7 +9573,7 @@ endif
     theta =atan2(rVec%y, rVec%x)
     
     if (hydrodynamics) thisOctal%phi_gas(subcell) = -bigG * plumberMass / (sqrt(rDash**2 * plumberRadius**2)*gridDistanceScale)
-    thisOctal%rho(subcell) = min(rhoThreshold,rhoPlumber * (1+(rDash/plumberRadius)**2)**-(plumberExponent/2))
+    thisOctal%rho(subcell) = min(rhoThreshold,rhoPlumber * (1+(rDash/plumberRadius)**2)**(-plumberExponent/2))
     thisOctal%temperature(subcell) = 20.d0 
     thisOctal%velocity(subcell) = ((rDash * gridDistanceScale)*omega/cSpeed)*vVec
     
@@ -9585,7 +9584,7 @@ endif
           thisOctal%rhow(subcell) = 0.0
        else
           thisOctal%rhou(subcell) = thisOctal%velocity(subcell)%x * thisOctal%rho(subcell)*&
-                                    omega * (rDash*gridDistanceScale) * thisOctal%rho(subcell) * -sin(theta)
+                                    omega * (rDash*gridDistanceScale) * thisOctal%rho(subcell) * (-sin(theta))
           thisOctal%rhov(subcell) = thisOctal%velocity(subcell)%y * thisOctal%rho(subcell)*&
                                     omega * (rDash*gridDistanceScale) * thisOctal%rho(subcell) * cos(theta)
           thisOctal%rhow(subcell) = 0.0
