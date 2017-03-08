@@ -2567,7 +2567,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
 
   subroutine updateGridMPI(grid)
-    use inputs_mod, only : usePAH, storeScattered 
+    use inputs_mod, only : usePAH
     use mpi
     implicit none
 

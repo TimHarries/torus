@@ -1541,7 +1541,7 @@ end subroutine radiationHydro
          readGrid, dustOnly, bufferCap, doPhotorefine, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation, &
          radPressureTest, justdump, uv_vector, inputEV, xrayCalc, useionparam, dumpregularVTUs, decoupleGasDustTemperature,&
-         radTimeScale, cylindricalHydro
+         radTimeScale
 
     use inputs_mod, only : usePacketSplitting, inputNSmallPackets, amr2d, amr3d, forceminrho, nDustType, readgrid, &
          loadBalancing, loadBalancingMethod, tsub, bufferedSend 
@@ -1632,7 +1632,6 @@ end subroutine radiationHydro
     integer :: threadCounter
     
     integer :: maxStackLimit
-    integer :: sendStackLimit
 
     integer :: evenuparray(nHydroThreadsGlobal)
     integer :: k
@@ -1653,10 +1652,8 @@ end subroutine radiationHydro
     real(double) :: m1, m2
     real :: tauMax
   !  real :: oldTime = 1.e10
-    integer :: newStackLimit= 0!, oldStackLimit= 0
     real(double) :: oldT(8), oldF(8), fracT(8), fracF(8)
     logical :: subcellConverged(8)
-    integer :: thisPacket, sendCounter
     integer, allocatable :: nSaved(:)
     integer :: stackSize, p
     integer :: mpi_vector, mpi_photon_stack
@@ -1726,7 +1723,7 @@ end subroutine radiationHydro
     real(double) :: maxDiffRadius1(1:100), maxDiffRadius2(1:100)
     real(double) :: maxDiffRadius3(1:100), tauWanted, photonMomentum
     type(VECTOR) ::  vec_tmp, uNew
-    integer :: receivedStackSize, nToSend
+    integer :: receivedStackSize
     integer :: nDomainThreads, localRank, m, nBundles
     real :: FinishTime, WaitingTime, globalStartTime, globalTime
     real :: scatteringTime, scatteringStart, scatteringEnd
@@ -1743,13 +1740,9 @@ end subroutine radiationHydro
     logical, save :: firstCall = .true.
     integer :: photonOne, photonN
     ! *** diagnostics
-    real(double) :: diaghHeating, diagheHeating, diagdustHeating, diagtotalHeating, diagkappap
-    logical :: writediagnostics
-    integer :: scatterLim 
     ! *** end diagnostics
 
     !AMR
-    integer :: iUnrefine, nUnrefine
 
 
     !!Thaw - optimize stack will be run prior to a big job to ensure that the most efficient stack size is used
@@ -6086,8 +6079,8 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                          thisOctal%tdust(subcell) = thisOctal%tDust(subcell) + underCorrection * deltaTdust
 
                          ! floor and ceiling
-                         thisOctal%tdust(subcell) = max(thisOctal%tdust(subcell), tminglobal)
-                         thisOctal%tdust(subcell) = min(thisOctal%tdust(subcell), tMaxGlobal)
+                         thisOctal%tdust(subcell) = max(thisOctal%tdust(subcell), dble(tminglobal))
+                         thisOctal%tdust(subcell) = min(thisOctal%tdust(subcell), dble(tMaxGlobal))
                       else
                          thisOctal%tdust(subcell) = dble(thisOctal%temperature(subcell))
                       endif
@@ -8471,7 +8464,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
           !hHeating
            if (thisOctal%hHeatingHistory(subcell) .eq. 0.0d0 .and.&
-                 thisOctal%hHeating(subcell) .ne. 0.0d0) then	
+                 thisOctal%hHeating(subcell) .ne. 0.0d0) then
                 thisOctal%hHeatingHistory(subcell)=thisOctal%hHeating(subcell) * (1.0/decayFactor-1)
                 write(*,*) "setting hydrogen Heating history", thisOctal%hHeating(subcell)
           endif !assume if the history isnt set then the current monte carlo estimate is a better guess than nothing

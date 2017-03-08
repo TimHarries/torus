@@ -7147,7 +7147,7 @@ contains
   end subroutine advectqSpherical
 
   subroutine AccFeedback (grid, dt)
-    use inputs_mod, only : AccFeedbackCells, FeedbackFw, FeedbackFv, accretionRadius, feedbackTheta0
+    use inputs_mod, only : AccFeedbackCells, FeedbackFw, accretionRadius, feedbackTheta0
     use inputs_mod, only : feedbackStartMass, gridDistanceScale
     use constants_mod
     type(gridtype) :: grid
@@ -7163,7 +7163,7 @@ contains
 
 !    write(*,*) "starting feedback"
     if (.not. calculatedNormilization) then
-       arrSize=(accretionRadius+0.5)+AccFeedbackCells
+       arrSize=int((accretionRadius+0.5)+AccFeedbackCells)
        if(grid%octreeRoot%threed) then
           allocate(normConsts3(1:arrSize,1:arrSize,1:arrSize))
           allocate(rho3(1:arrSize,1:arrSize,1:arrSize))

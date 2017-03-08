@@ -566,7 +566,7 @@ contains
   end function ddudxx_oneSided
   
   real(double) function ddudxdz(thisOctal, subcell, dir_u, grid, oneSideIn)
-    use inputs_mod, only : smallestCellSize, gridDistanceScale, cylindricalHydro
+    use inputs_mod, only : smallestCellSize, gridDistanceScale
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, neighbourOctal
     integer :: subcell, neighbourSubcell
@@ -621,7 +621,7 @@ contains
           locator = cen + oneside(2)*1.0*(thisOctal%subcellSize/2.d0 + 0.1d0*smallestCellSize)*vector(0.0, 0.0, 1.0)
           neighbouroctal => thisoctal
           call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
-          dudx_m2 = dudx(neighbourOctal,neighbourSubcell, dir_u, vector(1.0, 0.0, 0.0), grid)*-1.0/2.0*oneSide(1)
+          dudx_m2 = dudx(neighbourOctal,neighbourSubcell, dir_u, vector(1.0, 0.0, 0.0), grid)*(-1.0/2.0)*oneSide(1)
           cen_i_minus_1= subcellCentre(neighbourOctal, neighbourSubcell)
              
        else
@@ -844,7 +844,7 @@ contains
   end function divQ
   
   function newdivQ(thisOctal, subcell,  grid) result(out)
-    use inputs_mod, only : smallestCellSize,gridDistanceScale, amrgridsize, amrGridCentreX, amrGridCentreY, amrGridCentreZ
+    use inputs_mod, only : smallestCellSize,gridDistanceScale
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
     type(VECTOR) :: out
@@ -1280,7 +1280,7 @@ contains
   end subroutine viscousTimescale
   
   recursive subroutine viscousTimescaleCylindrical(thisoctal, grid, dt)
-    use inputs_mod, only : smallestCellsize, gridDistanceScale, cflNumber
+    use inputs_mod, only : gridDistanceScale
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
