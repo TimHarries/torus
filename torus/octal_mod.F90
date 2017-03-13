@@ -220,6 +220,7 @@ MODULE octal_mod
     INTEGER, DIMENSION(:), pointer :: nDirectPhotons => null()
 
     logical, dimension(:), pointer :: undersampled => null()
+    logical, dimension(:), pointer :: temperatureConv => null()  ! thermal/ion balance has converged
     REAL, DIMENSION(:), pointer                 :: oldTemperature  => null()   ! grid subcell temperatures
     REAL, DIMENSION(:), pointer                 :: floorTemperature => null()  ! Minimum temperature (applied in photoion_mod)
     REAL(double), DIMENSION(:), pointer                 :: kappaRoss => null()
@@ -228,10 +229,10 @@ MODULE octal_mod
     REAL(double), DIMENSION(:), pointer         :: kappaP  => null()
     real(double), dimension(:,:,:), pointer       :: scatteredIntensity => null()
     real(double), dimension(:), pointer       :: meanIntensity => null()
+    INTEGER(bigint), DIMENSION(:), pointer      :: nCrossings  => null()     ! no of photon crossings used by lucy R Eq
     INTEGER(bigint), DIMENSION(:), pointer      :: nCrossIonizing  => null() ! no of H-ionizing photon crossings 
     INTEGER(bigint), DIMENSION(:), pointer      :: nScatters  => null()    ! no of scattering events 
     real(double), dimension(:), pointer       :: adotPAH => null()
-    INTEGER(bigint), DIMENSION(:), pointer      :: nCrossings  => null()    ! no of photon crossings used by lucy R Eq
     real(double), DIMENSION(:), pointer :: nTot => null()          ! total density
     real, dimension(:), pointer :: oldFrac  => null() ! Previous value of dust sublimation fraction
 
@@ -265,8 +266,12 @@ MODULE octal_mod
     real(double), pointer :: oldestmolecularLevel(:,:) => null() ! molecular level populations
 
 
+    ! cell emissivity spectrum attributes
     real(double), pointer :: spectrum(:,:) => null()
     integer, pointer :: nFreq(:) =>  null()
+    logical, DIMENSION(:), pointer :: gasSpectrumAdded => null()     
+    logical, DIMENSION(:), pointer :: dustContinuumAdded  => null()    
+
 
 ! time dependent RT stuff
 

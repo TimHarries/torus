@@ -784,6 +784,7 @@ contains
           call writeAttributePointerFlexi(20, "heHeating", thisOctal%heHeating, fileFormatted)
           call writeAttributePointerFlexi(20, "heHeatingHistory", thisOctal%heHeatingHistory, fileFormatted)
           call writeAttributePointerFlexi(20, "undersampled", thisOctal%undersampled, fileFormatted)
+          call writeAttributePointerFlexi(20, "temperatureConv", thisOctal%temperatureConv, fileFormatted)
           call writeAttributePointerFlexi(20, "nDiffusion", thisOctal%nDiffusion, fileFormatted)
           call writeAttributePointerFlexi(20, "diffusionApprox", thisOctal%diffusionApprox, fileFormatted)
           
@@ -4936,8 +4937,9 @@ contains
          case("heHeatingHistory")
             call readPointerFlexi(20, thisOctal%heHeatingHistory, fileFormatted)
          case("undersampled")
-
             call readPointerFlexi(20, thisOctal%undersampled, fileFormatted)
+         case("temperatureConv")
+            call readPointerFlexi(20, thisOctal%temperatureConv, fileFormatted)
          case("nDiffusion")
             call readPointerFlexi(20, thisOctal%nDiffusion, fileFormatted)
          case("diffusionApprox")
@@ -5347,6 +5349,8 @@ contains
 
          case("undersampled")
             call receivePointerFlexi(thisOctal%undersampled, ithread)
+         case("temperatureConv")
+            call receivePointerFlexi(thisOctal%temperatureConv, ithread)
          case("nDiffusion")
             call receivePointerFlexi(thisOctal%nDiffusion, ithread)
          case("diffusionApprox")
@@ -5658,6 +5662,7 @@ contains
       call sendAttributePointerFlexi(iThread, "heHeating", thisOctal%heHeating)
       call sendAttributePointerFlexi(iThread, "heHeatingHistory", thisOctal%heHeatingHistory)
       call sendAttributePointerFlexi(iThread, "undersampled", thisOctal%undersampled)
+      call sendAttributePointerFlexi(iThread, "temperatureConv", thisOctal%temperatureConv)
       call sendAttributePointerFlexi(iThread, "nDiffusion", thisOctal%nDiffusion)
       call sendAttributePointerFlexi(iThread, "diffusionApprox", thisOctal%diffusionApprox)
 

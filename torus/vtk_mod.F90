@@ -1178,6 +1178,13 @@ contains
                      write(lunit, *) 0. 
                   endif
 
+               case("tempconv")
+                  if (thisOctal%temperatureConv(subcell)) then
+                     write(lunit, *) 1. 
+                  else
+                     write(lunit, *) 0. 
+                  endif
+
                case("scatters")
                   value = real(thisOctal%nScatters(subcell))
                   write(lunit, *) real(value)
@@ -2957,8 +2964,7 @@ end subroutine writeXMLVtkFileAMR
       real, parameter :: min_single_prec = 1.0e-37
       logical, save :: firstTime=.true.
       logical :: found 
-!$!OMP THREADPRIVATE (firstTime)
-!$!OMP THREADPRIVATE (firstTimeGetSpecies)
+!$OMP THREADPRIVATE (firstTime)
 
 #ifdef CHEMISTRY
        species = krome_get_names()
@@ -3442,6 +3448,14 @@ end subroutine writeXMLVtkFileAMR
 
                case("undersampled")
                   if (thisOctal%undersampled(subcell)) then
+                     value = 1.
+                  else
+                     value = 0.
+                  endif
+                  rArray(1, n) = real(value)
+
+               case("tempconv")
+                  if (thisOctal%temperatureConv(subcell)) then
                      value = 1.
                   else
                      value = 0.

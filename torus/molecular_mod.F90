@@ -3054,6 +3054,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
       integer :: subpixels
       integer :: ipixels, jpixels
 
+      print *, "making image"
 ! pixelcorner initialised to TOPLEFT      
 ! Previous method: only works for cubes with equal sized spatial axes
 !      dnpixels    = dble(npixels) 
@@ -3081,6 +3082,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 !$OMP END DO
 !$OMP END PARALLEL
       enddo
+    print *, "image made"
     end subroutine makeImageGrid
 
  !!! Calculates the intensity for a square pixel of arbitrary size, position, orientation

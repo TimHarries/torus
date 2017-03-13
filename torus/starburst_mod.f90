@@ -91,13 +91,15 @@ contains
     real(double), allocatable :: initialMasses(:), temp(:)
     integer :: i, j
     integer :: nDead, nSupernova, nOB
-    integer, parameter :: nKurucz = 410
+!    integer, parameter :: nKurucz=69 !nKurucz = 410
     logical :: thirtyFound
-    type(SPECTRUMTYPE) :: kSpectrum(nKurucz)
-    character(len=80) :: klabel(nKurucz), filename
+!    type(SPECTRUMTYPE) :: kSpectrum(nKurucz)
+!    character(len=80) :: klabel(nKurucz)
+    character(len=80) :: filename
 
    
-    call  readKuruczGrid(klabel, kspectrum, nKurucz)
+!    call  readKuruczGrid(klabel, kspectrum, nKurucz)
+!    call  readTlustyGrid(klabel, kspectrum, nKurucz)
 
     nSource = 0
 
@@ -173,6 +175,8 @@ contains
       nSupernova = 0
       do while (i <= nSource)
          if (.not.isSourceDead(source(i), thisTable)) then
+            write(message, '(a,i4)') "Setting properties of source ", i
+            call writeInfo(message, TRIVIAL)
             call setSourceProperties(source(i))
             i = i + 1
          else
@@ -198,13 +202,10 @@ contains
       if (writeoutput) then
          write(*,*) "Number of OB stars (>15 msol): ",nOB
       endif
-      do i = 1, nSource
-         if (i < nSource) then
-            call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)
-         else
-            call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10, freeUp=.true.)
-         endif
-      enddo
+!      do i = 1, nSource
+!         ! use tlusty spectrum - if it's not found for a source, kurucz spectrum is used instead
+!         call fillSpectrumTlusty(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)
+!      enddo
 
       if (writeoutput) then
          do i = 1, nSource
@@ -391,7 +392,7 @@ contains
       type(VECTOR) :: vVec
       real(double) :: sigmaVel
 
-      ! set source mass, age, luminosity, Teff, radius, mass-loss rate
+      ! set source mass, age, luminosity, Teff, radius, mass-loss rate, spectrum
       call updateSourceProperties(source)
 
       source%position = randomUnitVector()
@@ -475,6 +476,9 @@ contains
          source%mdotWind = 10.d0**(logmdot1 + (logmdot2  - logmdot1) * u)
          source%mDotWind = source%mDotWind * msol/(365.25*24.d0*3600.d0)
       endif
+
+      ! update spectrum. If tlusty spectrum is not found for a source, kurucz spectrum is used instead
+      call fillSpectrumTlusty(source%spectrum, source%teff, source%mass, source%radius*1.d10)
       
       call emptySurface(source%surface)
       call buildSphereNBody(source%position, source%accretionRadius/1.d10, source%surface, 20)
@@ -687,7 +691,8 @@ contains
        nSource = nSource - 1
        do i = 1, nSource
           call buildSphereNBody(source(i)%position, 2.5d0*smallestCellSize, source(i)%surface, 20)
-          call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)
+!          call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)
+          call fillSpectrumTlusty(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)
        enddo
      end subroutine removeSource
 

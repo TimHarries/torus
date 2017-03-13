@@ -3372,13 +3372,13 @@ contains
                   weight*thisRhou/thisoctal%rho(subcell) + &
                   (1.d0-weight)*rhou_i_minus_1(1:4)/rho_i_minus_1(1:4)
 
-             if (ANY(thisOctal%u_amr_interface(subcell,:) > 3d7)) then
-                write(*,*) "u interface warning ",thisOctal%u_amr_interface(subcell,1:4)/1.d5
-                write(*,*) "thisrhou ",thisRhou, " thisrho ",thisOctal%rho(subcell), " this u ", &
-                     weight*thisRhou/thisoctal%rho(subcell)
-                write(*,*) "rhou_i_minus_1 ",rhou_i_minus_1(1:4), " rho_i_minus_1 ",rho_i_minus_1(1:4), &
-                     "u_i_minus_1 ",rhou_i_minus_1(1:4)/rho_i_minus_1(1:4)
-             endif
+!             if (ANY(thisOctal%u_amr_interface(subcell,:) > 3d7)) then
+!                write(*,*) "u interface warning ",thisOctal%u_amr_interface(subcell,1:4)/1.d5
+!                write(*,*) "thisrhou ",thisRhou, " thisrho ",thisOctal%rho(subcell), " this u ", &
+!                     weight*thisRhou/thisoctal%rho(subcell)
+!                write(*,*) "rhou_i_minus_1 ",rhou_i_minus_1(1:4), " rho_i_minus_1 ",rho_i_minus_1(1:4), &
+!                     "u_i_minus_1 ",rhou_i_minus_1(1:4)/rho_i_minus_1(1:4)
+!             endif
 
 
              if (.not.associated(thisOctal%u_i)) allocate(thisOctal%u_i(1:thisOctal%maxChildren))
@@ -19838,7 +19838,7 @@ end subroutine broadcastSinks
        if (writeoutput) then
 !
 !          write(*,*) "source ",isource
-          write(*,'(a,3f8.3)') "Before acc velocity (km/s): ", sourceArray(isource)%velocity/1.d5
+!          write(*,'(a,3f8.3)') "Before acc velocity (km/s): ", sourceArray(isource)%velocity/1.d5
 !          write(*,*) "before mass ",sourceArray(isource)%mass/msol
 !
 !          write(*,*) "accreted mass ", accretedMass(isource)
@@ -19860,7 +19860,7 @@ end subroutine broadcastSinks
        if (accretedMass(iSource) > 0.d0) write(*,*) "Accretion rate for source ",isource, ": ", &
             (accretedMass(isource)/timestep)/msol * (365.25d0*24.d0*3600.d0)
 !          write(*,*)  "position ",sourceArray(isource)%position
-          write(*,'(a,3f8.3)') "After acc velocity (km/s): ",sourceArray(isource)%velocity/1.d5
+!          write(*,'(a,3f8.3)') "After acc velocity (km/s): ",sourceArray(isource)%velocity/1.d5
 !          write(*,*) "mass (solar) ",sourceArray(isource)%mass/msol
        endif
     enddo
@@ -20423,7 +20423,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     type(octal), pointer  :: child 
     type(SOURCETYPE) :: source
     integer :: subcell, i
-    real(double) :: r, v, vterm, maxSpeed, mdot, dt, totalVolume
+    real(double) :: r, v, vterm, mdot, dt, totalVolume
     real(double) :: totalMassThisInterval, thisRho, thisMom
     type(VECTOR) :: cellCentre, rVec
     real(double) :: initialVelocity, currentVelocity
@@ -20444,7 +20444,6 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
           
           if (.not.octalonthread(thisoctal, subcell, myrankGlobal)) cycle
 
-          maxspeed = 0.2d5
           thisOctal%boundaryCell(subcell) = .false.
           cellCentre = subcellCentre(thisOctal, subcell)
           rVec = cellCentre - source%position
@@ -20979,6 +20978,91 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
        endif
     enddo
   end subroutine setEquationOfState
+
+  subroutine findJeansUnstableMass(grid, mass)
+    use mpi
+    type(GRIDTYPE) :: grid
+    real(double), intent(out) :: mass
+    real(double), allocatable :: massOnThreads(:), temp(:)
+    integer :: ierr
+
+    if (loadBalancingThreadGlobal) goto 666
+
+    allocate(massOnThreads(1:nHydroThreadsGlobal), temp(1:nHydroThreadsGlobal))
+    massOnThreads = 0.d0
+    temp = 0.d0
+    if (.not.grid%splitOverMpi) then
+       call writeWarning("findJeansUnstableMass: grid not split over MPI")
+       mass = 0.d0
+       goto 666
+    endif
+
+    if (myRankGlobal /= 0) then
+       call findJeansUnstableMassMPI(grid%octreeRoot, massOnThreads(myRankGlobal))
+       call MPI_ALLREDUCE(massOnThreads, temp, nHydroThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
+       mass = SUM(temp(1:nHydroThreadsGlobal))
+    end if
+666 continue
+  end subroutine findJeansUnstableMass
+    
+  recursive subroutine findJeansUnstableMassMPI(thisOctal, totalMass)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  type(VECTOR) :: rVec
+  real(double) :: totalMass
+  real(double) :: dv, dx, tsound, tff, cs
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call findJeansUnstableMassMPI(child, totalMass)
+                exit
+             end if
+          end do
+       else
+          if(.not. thisoctal%ghostcell(subcell)) then
+             if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+                dv = cellVolume(thisOctal, subcell)*1.d30
+!                print *, "dv", dv, thisOctal%subcellSize**3
+
+                if (hydrodynamics) then
+                   if (thisOctal%twoD) then
+                      if (cylindricalHydro) then
+                         dv = cellVolume(thisOctal, subcell) * 1.d30
+                         rVec = subcellCentre(thisOctal,subcell)
+                         if (rVec%x < 0.d0) dv = 0.d0
+                         if (thisOctal%ghostCell(subcell)) dv = 0.d0
+                      else
+                         dv = thisOctal%subcellSize**2
+                      endif
+                   else if (thisOctal%oned) then
+                      if (spherical) then
+                         dv = cellVolume(thisOctal, subcell) * 1.d30
+                         rVec = subcellCentre(thisOctal,subcell)
+                         if (rVec%x < 0.d0) dv = 0.d0
+                         if (thisOctal%ghostCell(subcell)) dv = 0.d0
+                      else
+                         dv = thisOctal%subcellSize**2
+                      endif
+                   endif
+                endif
+                cs = max(soundspeed(thisOctal, subcell), 1.d-30)
+                dx = thisOctal%subcellSize*1.d10
+                tsound = dx / cs 
+                tff = 1.d0/sqrt(bigG * thisOctal%rho(subcell))
+                thisOctal%etaCont(subcell) = tff/tsound !fixme
+                if (tff < tsound) then
+                   totalMass = totalMass + thisOctal%rho(subcell) * dv
+                endif
+             endif
+          endif
+       end if
+    enddo
+  end subroutine findJeansUnstableMassMPI
 
 #endif
 

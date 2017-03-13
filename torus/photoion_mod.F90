@@ -1223,7 +1223,7 @@ end subroutine photoIonizationloop
                       niter = niter + 1
 
 
-                      gasGrainCool =  gasGrainCoolingRate(thisOctal%rho(subcell), thisOctal%ionFrac(subcell,1), &
+                      gasGrainCool =  gasGrainCoolingRate(thisOctal%rho(subcell), thisOctal%ionFrac(subcell,2), &
                            dble(tm), thisOctal%tDust(subcell))
 
 
@@ -1320,7 +1320,7 @@ end subroutine photoIonizationloop
     nh = thisOctal%nh(subcell)
     ne = thisOctal%ne(subcell)
                 
-    gasGrainCool =  gasGrainCoolingRate(thisOctal%rho(subcell), thisOctal%ionFrac(subcell,1), &
+    gasGrainCool =  gasGrainCoolingRate(thisOctal%rho(subcell), thisOctal%ionFrac(subcell,2), &
          dble(temperature), thisOctal%tDust(subcell))
 
     becool = 0.

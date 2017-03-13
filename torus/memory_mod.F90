@@ -102,6 +102,8 @@ module memory_mod
       tot = tot + mySizeOf(thisOctal%scatteredIntensity)
       tot = tot + mySizeOf(thisOctal%meanIntensity)
       tot = tot + mySizeOf(thisOctal%nCrossings)
+      tot = tot + mySizeOf(thisOctal%nCrossIonizing)
+      tot = tot + mySizeOf(thisOctal%nScatters)
       tot = tot + mySizeOf(thisOctal%nTot)
       tot = tot + mySizeOf(thisOctal%oldFrac)
       tot = tot + mySizeOf(thisOctal%dusttype)

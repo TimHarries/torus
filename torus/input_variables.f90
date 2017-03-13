@@ -192,14 +192,15 @@
   logical :: radiationPressure        ! use radiation pressure terms
   logical :: CAKlineOpacity           !use Abbot82 temp invarient form of line driving
   logical :: RadForceMonte            !use a path length based estimation for the radation pressure rather than momentum tracking
+  logical :: MChistories              ! update Monte Carlo estimator histories
+  real(double) :: radiationTimescale  !ratio of radation to hydro timescales
+  integer :: shotNoiseWeight          !The number of crossings above which current MC rad estimate is weighted more than the history estimate
   logical :: AccretionFeedback        !Re-inject Fw* the acrreted mass back into the simulation with Fv* the keplerian velocity at the stellar surface
   integer :: AccFeedbackCells
   real(double) :: FeedbackTheta0      !Opening angle of feedback (see Cuningham11 for details)
   real(double) :: FeedbackFw
   real(double) :: FeedbackFv
   real(double) :: FeedbackStartMass   !Do not apply feedback till the star reaches this mass 
-  real(double) :: RadTimeScale        !ratio of radation to hydro timescales
-  integer :: shotNoiseWeight          !The number of crossings above which current MC rad estimate is weighted more than the history estimate
   real :: cflNumber                   !Courant-Friedrichs-Lewy constant
   integer :: nHydroPerPhoto           !number of hydroSteps per photoionization loop
   logical :: forcegascourant          !use the gas condition only
@@ -224,8 +225,6 @@
   integer :: CD_version               !Which version of contact discontinuity test to run? (1,2,3 or 4, StarBench)
   logical :: imposeFixing             !Impose fixed regions on the hydro model
   
-  logical :: pressureSupport ! include pressure support for sphere geometry
-
   logical :: readTurb !read in a turbulent velocity grid
   character(len=20) :: turbvelfilex    !file for tubrulent velocty field (x)
   character(len=20) :: turbvelfiley    !file for tubrulent velocty field (y)

@@ -504,7 +504,8 @@ contains
     call writeFormatted("(a,e12.3)","    a0    = ",  a0, TRIVIAL)
     call writeFormatted("(a,e12.3)","    qDist = ",  qDist, TRIVIAL)
     call writeFormatted("(a,e12.3)","    pDist = ",  pDist, TRIVIAL)
-    call writeFormatted("(a,f10.3)", "Porosity = ",  fillingFactor, TRIVIAL)
+    call writeFormatted("(a,f10.3)"," Porosity = ",  fillingFactor, TRIVIAL)
+    call writeFormatted("(a,f10.3)"," aMedian  = ", getMedianSize(aMin, aMax, a0, qDist, pDist), TRIVIAL)
 
 
     allocate(mReal(1:grid%nLambda))
@@ -2210,6 +2211,6 @@ real function getMedianSize(aMin, aMax, a0, qDist, pDist) result(aMedian)
      aMedian = a(i+1)
   endif
 end function getMedianSize
-
+ 
 end module dust_mod
 

@@ -342,8 +342,8 @@ contains
 
     if (noIonization) then
        do i = 1, nIon
-          call setIonizationPotential(ionArray(i), 1.e30)
-          if (writeoutput) write(*,'(a,i2.2,es9.2)') "Ionization potential for ion ", i, ionArray(i)%iPot
+          call setIonizationPotential(ionArray(i), 1.e10)
+          if (writeoutput) write(*,'(a,i2.2,es9.2)') "Ionization potential for species ", i, ionArray(i)%iPot
        enddo
     endif
 
@@ -607,7 +607,8 @@ subroutine addTransitions(thisIon)
      allocate(t(12), gamma(12))
      t = (/ 2000, 5000, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000, 90000, 100000 /)
      gamma = (/ 1.64, 1.82, 2.12, 2.30, 2.31, 2.27, 2.21, 2.16, 2.11, 2.05, 2.01, 1.96/)
-     call addTransition2(thisIon, "2P^0_3/2", "2P^0_1/2", 1.5774e5, 2.29e-6,t, gamma, 12)
+!     call addTransition2(thisIon, "2P^0_3/2", "2P^0_1/2", 1.5774e5, 2.29e-6,t, gamma, 12) ! lambda incorrect by factor 10?
+     call addTransition2(thisIon, "2P^0_3/2", "2P^0_1/2", 1.57679e6, 2.29e-6,t, gamma, 12) ! from NIST database
      gamma = (/ 0.291, 0.285, 0.280, 0.277, 0.272, 0.265, 0.258, 0.251, 0.245, 0.240, 0.235, 0.230/) 
      call addTransition2(thisIon, "4P_1/2", "2P^0_1/2", 2325., 5.53e1,t, gamma, 12)
      gamma = (/ 0.428, 0.420, 0.414, 0.411, 0.402, 0.393, 0.382, 0.373, 0.364, 0.356, 0.348, 0.342/) 
@@ -1381,7 +1382,15 @@ function returnNe(thisOctal, subcell, ionArray, nion) result (ne)
   enddo
   ne = tot
 
-  if (isnan(ne)) write(*,*) "ne is nan ", subcellCentre(thisOctal, subcell)
+  if (isnan(ne)) then
+     write(*,*) "ne is nan ", subcellCentre(thisOctal, subcell)
+     write(*,'(a3,3a9,a2)') "ion, abun, nh, ionfrac, Z, N"
+     do i = 1, nIon
+        write(*,'(i3.2,3es9.2,2i2)') i, ionArray(i)%abundance, thisOctal%nh(subcell), &
+          thisOctal%ionfrac(subcell, i), ionarray(i)%z, ionarray(i)%n
+     enddo
+     stop
+  endif
 end function returnNe
 
 end module ion_mod

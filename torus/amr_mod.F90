@@ -13867,6 +13867,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%diffusionApprox, source%diffusionApprox)
     call copyAttribute(dest%diffusionCoeff, source%diffusionCoeff)
     call copyAttribute(dest%undersampled, source%undersampled)
+    call copyAttribute(dest%temperatureConv, source%temperatureConv)
     call copyAttribute(dest%nDiffusion, source%nDiffusion)
     call copyAttribute(dest%kappaP, source%kappaP)
     call copyAttribute(dest%nDirectPhotons, source%nDirectPhotons)
@@ -17790,6 +17791,7 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%edgeCell,thisOctal%maxchildren)
 
        call allocateAttribute(thisOctal%underSampled, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%temperatureConv, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%oldTemperature, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%kappaRoss, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%distanceGrid, thisOctal%maxChildren)
@@ -17889,6 +17891,7 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%nDirectPhotons, thisOctal%maxChildren)
 
        call allocateAttribute(thisOctal%underSampled, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%temperatureConv, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%oldTemperature, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%kappaRoss, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%distanceGrid, thisOctal%maxChildren)
@@ -18157,6 +18160,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%oldeDens)
     call deallocateAttribute(thisOctal%nDirectPhotons)
     call deallocateAttribute(thisOctal%undersampled)
+    call deallocateAttribute(thisOctal%temperatureConv)
     call deallocateAttribute(thisOctal%oldTemperature)
     call deallocateAttribute(thisOctal%floorTemperature)
     call deallocateAttribute(thisOctal%kappaRoss)
@@ -18356,6 +18360,9 @@ end function readparameterfrom2dmap
 
     call deallocateAttribute(thisOctal%spectrum)
     call deallocateAttribute(thisOctal%nFreq)
+    call deallocateAttribute(thisOctal%gasSpectrumAdded)
+    call deallocateAttribute(thisOctal%dustContinuumAdded)
+
 
   end subroutine deallocateOctalDynamicAttributes
 

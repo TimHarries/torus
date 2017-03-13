@@ -738,7 +738,6 @@ module spectrum_mod
             read(31, *) teffArray(i)
          end do
          close(31)
-         firstTime = .false.
       endif
 
 
@@ -779,15 +778,17 @@ module spectrum_mod
          if (ok1.and.ok2) then
             call createInterpolatedSpectrum(spectrum, spec1, spec2, t)
          else
-            if (writeoutput) write(*,*) "Using blackbody spectrum instead."
+            if (writeoutput) write(*,*) "Kurucz not found. Using blackbody spectrum instead."
             call fillSpectrumBB(spectrum, teff, 10.d0, 1.d7, 200)
          endif
       else
-            call fillSpectrumBB(spectrum, teff, 10.d0, 1.d7, 200)
-         endif
+         if (writeoutput.and.firstTime) write(*,*) "Temp not in range. Using blackbody spectrum instead."
+         call fillSpectrumBB(spectrum, teff, 10.d0, 1.d7, 200)
+      endif
+      firstTime = .false.
 
 
-         if (PRESENT(freeUp)) then
+      if (PRESENT(freeUp)) then
          if (freeup) then
             do i = 1, nKurucz
                call freeSpectrum(kspectrum(i))
@@ -822,7 +823,8 @@ module spectrum_mod
       type(SPECTRUMTYPE),save :: kSpectrum(nKurucz)
       character(len=80),save :: klabel(nKurucz)
       if (firstTime) call  readTlustyGrid(klabel, kspectrum, nKurucz)
-         
+      
+      call freeSpectrum(spectrum)
 
       logg = log10(bigG * mass / radius**2)
 
@@ -848,7 +850,6 @@ module spectrum_mod
             read(31, *) teffArray(i)
          end do
          close(31)
-         firstTime = .false.
       endif
 
       if ((teff > teffArray(1)).and.(teff < teffArray(nFiles))) then
@@ -880,18 +881,21 @@ module spectrum_mod
          endif
          call readTlustySpectrum(spec2, label2, klabel, kspectrum, nKurucz, ok2)
          if (.not.ok2) then
-            if (writeoutput) write(*,*) "Can't find kurucz spectrum: ",trim(thisfile2), " ", trim(label2)
+            if (writeoutput) write(*,*) "Can't find tlusty spectrum: ",trim(thisfile2), " ", trim(label2)
          endif
          
          if (ok1.and.ok2) then
             call createInterpolatedSpectrum(spectrum, spec1, spec2, t)
          else
-            call fillSpectrumBB(spectrum, teff, 10.d0, 1.d7, 200)
+            if (writeoutput) write(*,*) "Tlusty not found. Using kurucz spectrum instead."
+            call fillSpectrumKurucz(spectrum, teff, mass, radius, freeup)
          endif
       else
-            call fillSpectrumBB(spectrum, teff, 10.d0, 1.d7, 200)
-         endif
+         if (writeoutput.and.firstTime) write(*,*) "Temp not in range. Using kurucz spectrum instead."
+         call fillSpectrumKurucz(spectrum, teff, mass, radius, freeup)
+      endif
 
+      firstTime = .false.
 
          if (PRESENT(freeUp)) then
          if (freeup) then
@@ -904,6 +908,7 @@ module spectrum_mod
       call freeSpectrum(spec1)
       call freeSpectrum(spec2)
       call probSpectrum(spectrum)
+
       
     end subroutine fillSpectrumTlusty
 
@@ -1006,7 +1011,7 @@ module spectrum_mod
        ok = .true.
        
        call unixGetenv("TORUS_DATA", dataDirectory, i)
-       
+
        call writeInfo("Reading Tlusty grid...",TRIVIAL)
        if(stellarmetallicity == 0.5) then
           tfile = trim(dataDirectory)//"/tlusty/z0p5sol/files.dat"                 
@@ -1014,6 +1019,9 @@ module spectrum_mod
           tfile = trim(dataDirectory)//"/tlusty/zsol/files.dat"       
        elseif(stellarmetallicity == 2.0) then             
           tfile = trim(dataDirectory)//"/tlusty/z2sol/files.dat"       
+      else
+         print *, "can only have 0.5, 1.0 or 2.0 times solar metallicity at present"
+         stop
        endif
 
        open(31, file = tfile, status = "old", form="formatted")

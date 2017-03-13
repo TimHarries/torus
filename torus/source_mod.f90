@@ -374,7 +374,7 @@
          weight = 1.d0
       else
          if (PRESENT(initialize)) then
-	    ! allocate array
+            ! allocate array
             if (allocated(prob)) then
                deallocate(prob)
             endif
@@ -383,7 +383,7 @@
             endif
             ALLOCATE(prob(1:nSource))
             prob = 0.d0
-	    ! Create the prob. dist. function.
+            ! Create the prob. dist. function.
             if (nLambda > 1) then
                do i = 1, nSource
                   prob(i) = integrateSpectrumOverBand(source(i)%spectrum, dble(lamArray(1)) , &
@@ -420,7 +420,7 @@
 !            if (writeoutput) write(*,*) "source%prob ",source(1:nSource)%prob
 !            if (writeoutput) write(*,*) "weight ",weightArray(1:nSource)
          end if
-	 
+ 
          if (nSource > 2) then
 !            do i = 1, nSource
 !               if (writeoutput) write(33,*) i,prob(i)

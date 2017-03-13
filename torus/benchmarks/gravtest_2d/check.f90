@@ -41,6 +41,7 @@ program check
     else
         phiAnalytical = (2.d0/3.d0)*pi*bigG*rhoMean*(r(i)**2 - 3.d0*(0.5d0*pc)**2)
      endif
+!     phiAnalytical = phiAnalytical-bigG*0.5d0*mSol/(sqrt(r(i)**2+5.d18**2))
 
      frac_gas = abs((phi_gas(i) - phiAnalytical)/phiAnalytical)
      maxFrac_Gas = max(maxFrac_gas, frac_gas)

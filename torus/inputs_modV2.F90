@@ -483,11 +483,16 @@ contains
     call getLogical("radiationHydrodynamics", radiationHydrodynamics, cLine, fLine, nLines, &
          "Perform a radiation-hydrodynamics calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
-    call getDouble("radiationtimescale", radTimeScale, 1.d0, cLine, fLine, nLines, &
-         "ratio of radiation to hydro timescales: ", "(a,f7.1,1x,a)", 0.0d0, ok, .false.)
-    
-    call getInteger("shotnoiseweight", ShotNoiseWeight, cLine, fLine, nLines, &
-         "#crossings for rad history weighted<current: ","(a,i8,a)", 400, ok, .false.)
+    call getLogical("mchistories", MChistories, cLine, fLine, nLines, &
+         "Update Monte Carlo estimator histories: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    if (MChistories) then
+       call getDouble("radiationtimescale", radiationTimeScale, 1.d0, cLine, fLine, nLines, &
+            "ratio of radiation to hydro timescales: ", "(a,f7.1,1x,a)", 0.0d0, ok, .false.)
+       
+       call getInteger("shotnoiseweight", ShotNoiseWeight, cLine, fLine, nLines, &
+            "#crossings for rad history weighted<current: ","(a,i8,a)", 400, ok, .false.)
+    endif
 
     call getLogical("caklineopacity", CAKlineOpacity, cLine, fLine, nLines, &
          "use Abbot82 temp invarient form of line driving: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -2814,9 +2819,6 @@ contains
          "Number of sources: ","(a,i2,a)",0,ok,.false.)
 
 
-    call getReal("metallicity", stellarMetallicity, 1.0, cLine, fLine, nLines, &
-         "Metallicity of sources in terms of solar: ","(a,f6.1,1x,a)", 1.0, ok, .false.)
-
     do i = 1, inputnSource
        if (writeoutput) write(*,*) " "
        write(message,'(a,i1)') "Source number: ",i
@@ -3144,7 +3146,7 @@ contains
          "Variable dust sublimation temperature: ", "(a,1l,1x,a)", .false., ok, .false.)
 
     call getLogical("nodiffuse", noDiffuseField, cLine, fLine, nLines, &
-         "Ignore diffuse radiation field: ","(a,1l,a)", .false., ok, .false.)
+         "Ignore diffuse ionizing radiation field: ","(a,1l,a)", .false., ok, .false.)
 
     call getLogical("noionization", noIonization, cLine, fLine, nLines, &
          "Don't ionize (set ionization potentials to high number): ","(a,1l,a)", .false., ok, .false.)
@@ -3194,9 +3196,6 @@ contains
 
     call getLogical("binPhotons", binPhotons, cLine, fLine, nLines, &
          "Bin and dump photons as a function of wavelength: ","(a,1l,1x,a)", .false., ok, .false.)
-
-    call getDouble("biasMagnitude", biasMagnitude, 1.d0, cLine, fLine, nLines, &
-            "Variance reduction, extent of bias: ", "(a,1p,e9.3,1x,a)", 100.d0, ok, .false.)
 
     call getLogical("hOnly", hOnly, cLine, fline, nLines, &
          "Hydrogen-only calculation: ", "(a,1l,1x,a)", .false., ok, .false.)

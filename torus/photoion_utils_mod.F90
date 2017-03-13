@@ -1013,8 +1013,8 @@ subroutine getCollisionalRates(thisIon, iTransition, temperature, excitation, de
   if(temperature > maxTemp) then
     if(firstTime) then
         firstTime = .false.
-        write(*,*) "Warning: Temperature Exceeds Scope Of Atomic Data"
-        write(*,*) "   Proceeding With The Maximum Known Value... ", maxTemp
+        write(*,*) "Warning: temperature ", temperature, " exceeds scope of atomic data for ", thision%species
+        write(*,*) "   proceeding with the max known value... ", maxtemp 
      end if
 
      t = maxTemp
@@ -1632,7 +1632,7 @@ function gasGrainCoolingRate(rhoGas, ionizationFraction, tGas, tDust) result (Ga
   real(double) :: vProton, nGrain, sigmaGrain, f, rGrain, dustToGas, grainVolume, grainDensity
   real(double) :: nHydrogen
   
-  rGrain = micronTocm * getMedianSize(aMin(1), aMax(1), a0(1), qDist(1), pDist(1)) 
+  rGrain = micronTocm * getMedianSize(aMin(1), aMax(1), a0(1), qDist(1), pDist(1)) !todo expand for ngrain > 1
   sigmaGrain = pi * rGrain**2
   grainVolume = (4.d0/3.d0)*pi*rGrain**3
 

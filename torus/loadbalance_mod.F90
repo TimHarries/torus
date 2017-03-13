@@ -18,7 +18,7 @@ contains
     real(double) :: frac(:)
     character(len=*) :: method
     integer :: i, iThread, j, nSolo
-    logical, save :: firstTime=.true.
+!    logical, save :: firstTime=.true.
     logical :: writeList
 
     ! allocate and initilialise arrays
@@ -91,19 +91,19 @@ contains
        write(*,*) "Load balancing thread list (balanced by "//method//")"
 
        writeList = .true.
-       ! if balancing by cells, only need to write out the list the first time
-       ! todo - add in condition that mindepth==maxdepth
-       if (method == "cells") then
-          if (firstTime) then
-             firstTime = .false.
-          else
-             writeList = .false.
-          endif
-       endif
+!       ! if balancing by cells, only need to write out the list the first time
+!       ! todo - add in condition that mindepth==maxdepth
+!       if (method == "cells") then
+!          if (firstTime) then
+!             firstTime = .false.
+!          else
+!             writeList = .false.
+!          endif
+!       endif
 
        if (writeList) then
           do i = 1, nHydroThreadsGlobal
-             if (nLoadbalanceList(i) > 1) &
+             if (nLoadbalanceList(i) >= 1) &
                   write(*,'(20i4)') i, nLoadBalanceList(i), loadBalanceList(i,1:nLoadBalanceList(i))
           enddo
        else
@@ -392,6 +392,10 @@ contains
   function loadBalancedThreadNumber(iThread) result(out)
     integer :: iThread, out
 
+    if (.not.associated(nLoadBalanceList)) then
+       out = iThread
+       goto 666
+    endif
     if (nLoadBalanceList(iThread) == 1) then
        out = ithread
     else
@@ -401,6 +405,7 @@ contains
           listCounter(iThread) = 1
        endif
     endif
+666 continue
   end function loadBalancedThreadNumber
 
 
