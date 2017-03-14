@@ -139,7 +139,6 @@
   logical :: stellarWinds      ! include stellar winds in hydro calc
   logical :: supernovae        ! include supernovae in hydro calc
   logical :: starburst         ! set sources from starburst
-  logical :: doSubgridHIIExpansion  ! use subgrid model for HII region expansion
   real(double) :: stellarWindRadius ! radius for stellar wind/SNe momentum input 
   real(double) :: burstAge
   real(double) :: burstTime

@@ -92,7 +92,7 @@ contains
     use dimensionality_mod, only: setCodeUnit
     use inputs_mod, only: timeUnit, massUnit, lengthUnit, readLucy, checkForPhoto, severeDamping, radiationPressure
     use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral
-    use inputs_mod, only: densitySpectrum, cflNumber, useionparam, xrayonly, isothermal, supernovae, doSubgridHIIExpansion, &
+    use inputs_mod, only: densitySpectrum, cflNumber, useionparam, xrayonly, isothermal, supernovae, &
           burstType, burstAge, mstarburst, burstTime, starburst, inputseed, doSelfGrav, redoGravOnRead, nHydroperPhoto,mchistories 
     use parallel_mod, only: torus_abort
     use mpi
@@ -913,9 +913,6 @@ contains
                 tmpcylindricalhydro=cylindricalhydro
                 cylindricalHydro = .false.
 
-                if (doFeedback .and. doSubgridHIIExpansion) then
-                   call subgridHIIexpansion(grid, globalSourceArray, globalnSource, grid%currentTime+dt-feedbackStartTime) 
-                endif
 !                nPhotoIter = 10
 !                nPhotoIter = int(10 - grid%idump)
 !                nphotoIter = max(1, nPhotoIter)
@@ -9988,65 +9985,6 @@ end subroutine putStarsInGridAccordingToDensity
         endif 
      enddo
   end subroutine calculateMassInAccretionRadius
-  
-  subroutine subgridHIIexpansion(grid, source, nSource, ionizingTime)
-     type(GRIDTYPE) :: grid
-     type(OCTAL), pointer :: thisOctal
-     type(SOURCETYPE) :: source(:)
-     integer :: nSource, i, subcell
-     real(double) :: ionizingTime, r, flux
-     logical, save :: firstTime=.true.
-     integer :: j
-     
-     if (nSource == 0) goto 666
-     if (loadBalancingThreadGlobal) goto 666
-
-     thisOctal => grid%octreeRoot
-     do i = 1, nSource
-        call findSubcellLocal(source(i)%position, thisOctal, subcell) 
-        if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
-           write(*,*) myrankglobal, " reached subgrid hii ", thisOctal%ionfrac(subcell,1), thisOctal%ionfrac(subcell, 2), &
-             thisOctal%temperature(subcell)
-           if (thisOctal%ionFrac(subcell, 1) > 0.9d0) then ! if neutral
-
-              flux = ionizingFlux(source(i)) 
-              r = thisOctal%subcellSize/2.d0 * 1.d10 !todo distance to cell boundary 
-              if (r < ionizedRadius(flux, thisOctal%rho(subcell), ionizingTime)) then
-                 thisOctal%ionFrac(subcell, 1) = 1.d-10
-                 thisOctal%ionFrac(subcell, 2) = 1.d0
-                 thisOctal%temperature(subcell) = 1.d4
-                 thisOctal%ne(subcell) = returnNe(thisOctal, subcell, grid%ion, grid%nion)
-!                 call writeVtkFile(grid, "subgridhii.vtk", &
-!                      valueTypeString=(/"crossings","ioncross","temperature", "HI", "tdust","rho"/))
-              else
-                 write(*,*) i, " Ri = ", ionizedRadius(flux, thisOctal%rho(subcell), ionizingTime), & 
-                  ionizedRadius(flux, thisOctal%rho(subcell), ionizingTime) / r 
-              endif
-              if (firstTime .and. i == 1) then
-                 open(unit=921, file='ionizedradii.dat', status='replace')
-                 write(921,'(2(a12,1x))') "# time (yr)", "radius (cm)"
-                 do j = 0, 100000, 1000
-                    write(921, '(2(es12.5,1x))') dble(j), ionizedRadius(flux, thisOctal%rho(subcell), dble(j)/secstoyears)
-                 enddo
-                 close(921)
-                 firstTime = .false.
-              endif
-
-           endif
-        endif
-     enddo
-     
-666 continue
-  end subroutine subgridHIIexpansion
-
-  real(double) function ionizedRadius(flux, rho, time)
-     real(double) :: flux, rho, time, cs, stromgrenRadius
-     
-     ! Spitzer 1978
-     stromgrenRadius = (3.d0 * flux/(fourPi * (rho/mHydrogen)**2 * 2.7d-13))**(1.d0/3.d0) 
-     cs = sqrt(2.d0 * kerg * 1.d4 / mHydrogen) 
-     ionizedRadius = stromgrenRadius * (1 + 7.d0*cs*time/(4.d0*stromgrenRadius))**(4.d0/7.d0)
-  end function ionizedRadius
 
 #endif
 

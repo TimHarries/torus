@@ -313,9 +313,6 @@ contains
     call getInteger("maxiter", maxPhotoionIter, cLine, fLine, nLines, &
          "Maximum number of iterations","(a,i8,a)", 10, ok, .false.)
 
-    call getLogical("subgridhii", doSubgridHIIExpansion, cLine, fline, nLines, &
-         "Use subgrid model for HII region expansion: ", "(a,1l,1x,a)", .false., ok, .false.)
-    
     call getLogical("starburst", starburst, cLine, fline, nLines, &
          "Generate sources as starburst: ", "(a,1l,1x,a)", .false., ok, .false.)
 
