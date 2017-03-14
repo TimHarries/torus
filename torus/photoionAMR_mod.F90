@@ -123,7 +123,7 @@ contains
     real(double) :: timeSinceLastRecomb=0.d0
     real(double) :: radDt, pressureDt, gravityDt, sourcesourceDt, gasSourceDt, gasDt, tempDouble, viscDt
     real(double) :: vBulk, vSound, recombinationDt, ionizationDt, thermalDt, fractionOfAccretionLum
-    logical :: noPhoto=.false., tmpCylindricalHydro, refinedSomeCells, sneAdded, lArray(1)
+    logical :: noPhoto=.false., tmpCylindricalHydro,tmpCylindrical, refinedSomeCells, sneAdded, lArray(1)
     integer :: evenUpArray(nHydroThreadsGlobal)
     real :: iterTime(3)
     integer :: iterStack(3), itemp
@@ -483,8 +483,11 @@ contains
                 if (nbodyPhysics.and.hosokawaTracks) then
                    call  setSourceArrayProperties(globalsourceArray, globalnSource, fractionOfAccretionLum)
                 endif
-                tmpcylindricalhydro=cylindricalhydro
+                tmpcylindricalhydro=cylindricalHydro
+                tmpcylindrical     =grid%octreeroot%cylindrical
+
                 cylindricalHydro = .false.
+                grid%octreeroot%cylindrical = tmpcylindricalHydro
                 if (.not.timedependentRT .and. .not. xrayonly .and. (.not.isothermal)) &
                      call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, &
                      maxPhotoionIter, &
@@ -496,6 +499,7 @@ contains
                    call setPhotoionIsothermal(grid%octreeRoot)
                 endif
                 cylindricalHydro = tmpCylindricalHydro
+                grid%octreeroot%cylindrical=tmpCylindrical
                 call writeInfo("Done",TRIVIAL)
                 if(useionparam) then
                    call writeInfo("Calling x-ray step with ionization parameter",TRIVIAL)
@@ -513,13 +517,19 @@ contains
                 if (nbodyPhysics.and.hosokawaTracks) then
                    call  setSourceArrayProperties(globalsourceArray, globalnSource, fractionOfAccretionLum)
                 endif
+
+                tmpcylindricalhydro=cylindricalHydro
+                tmpcylindrical     =grid%octreeroot%cylindrical
+
+                cylindricalHydro = .false.
+                grid%octreeroot%cylindrical = tmpcylindricalHydro
+
                 if (.not.timeDependentRT .and. .not. xrayonly .and. (.not. isothermal)) &
                      call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, lamArray, &
                      maxPhotoionIter, loopLimitTime, &
                      looplimittime, timeDependentRT,iterTime,.false., evenuparray, optID, iterStack, miePhase, nMuMie)
 
-                tmpcylindricalhydro=cylindricalhydro
-                cylindricalHydro = .false. !why is this here? photoIonAMR didnt check cylindricalHydro until i changed it to TD
+
 
                 if (isoThermal) then
                    call neutralGrid(grid%octreeRoot)
@@ -527,7 +537,9 @@ contains
                 endif
 
                 cylindricalHydro = tmpCylindricalHydro
+                grid%octreeroot%cylindrical=tmpCylindrical
                 call writeInfo("Done",TRIVIAL)
+
              endif
              
              call writeInfo("Dumping post-photoionization data", TRIVIAL)

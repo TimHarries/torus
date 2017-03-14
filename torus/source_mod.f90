@@ -743,7 +743,7 @@
 
 
     subroutine getPhotonPositionDirection(source, position, direction, rHat, grid, weight)
-      use inputs_mod, only : biasPhiDirection, biasPhiProb, biasPhiInterval
+      use inputs_mod, only : biasPhiDirection, biasPhiProb, biasPhiInterval, cylindricalHydro
       use inputs_mod, only : amrgridcentrey, amrgridcentrex, hotSpot, amrGridSize
       type(GRIDTYPE) :: grid
       real(double) :: r, t, u, v, w, ang, planetBiasWeight, rand
@@ -825,7 +825,7 @@
                
             else
                !change rHat here to random (R,z) vector for 2d cylindrical case TD
-               if (grid%octreeroot%twoD) then
+               if (grid%octreeroot%twoD .and. grid%octreeroot%cylindrical) then
                   call randomNumberGenerator(getDouble=rand)
                   rHat = Vector(sin(pi*rand), 0, cos(pi*rand))
                   call normalize(rHat)
