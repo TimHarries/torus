@@ -469,18 +469,18 @@
 ! Now held in sed_mod
 !------------------------------
 
-  real :: thisInclination  ! Inclination when atomicPhysics=T (calculateAtomSpectrum and compute_obs_line_flux)
-  real :: thisPA           ! position angle
-  real(double) :: thisimagePA
-  real(double) :: fwhmPixels ! FWHM in pixels of image resolution (for smoothing)
-  real(double) :: beamArea
-  logical :: freefreeSed   !include free-free emission in SED
-  logical :: recombinationSed   !include recombination line emission in SED
-  logical :: forbiddenSed   !include forbidden line emission in SED
-  logical :: resolveSilicateFeature ! add points to SED to full resolve silicate feature
-  logical :: dumpCut    !Dump pixel values in a cut across the image into a file
-  character(len=30) :: cutType    !direction of cut (horizontal or vertical)
-  integer :: sliceIndex !pixel through which the cut runs (x or y depends on cutType)
+  real, protected :: thisInclination  ! Inclination when atomicPhysics=T (calculateAtomSpectrum and compute_obs_line_flux)
+  real, protected :: thisPA           ! position angle
+  real(double), protected :: thisimagePA
+  real(double), protected :: fwhmPixels ! FWHM in pixels of image resolution (for smoothing)
+  real(double), protected :: beamArea
+  logical, protected :: freefreeSed   !include free-free emission in SED
+  logical, protected :: recombinationSed   !include recombination line emission in SED
+  logical, protected :: forbiddenSed   !include forbidden line emission in SED
+  logical, protected :: resolveSilicateFeature ! add points to SED to full resolve silicate feature
+  logical, protected :: dumpCut    !Dump pixel values in a cut across the image into a file
+  character(len=30), protected :: cutType    !direction of cut (horizontal or vertical)
+  integer, protected :: sliceIndex !pixel through which the cut runs (x or y depends on cutType)
 
 !--------------------------------
 ! Image and data cube parameters 

@@ -3678,10 +3678,6 @@ contains
     real :: cubeAspectRatio ! Aspect ratio of spatial axes
     real :: WV_background ! background level for moment maps
 
-    call getReal("inclination", thisinclination, real(degtorad), cLine, fLine, nLines, &
-         "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
-    call getReal("positionangle", cubePositionAngle, real(degtorad), cLine, fLine, nLines, &
-         "Position angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
     call getString("datacubefile", datacubeFilename, cLine, fLine, nLines, &
          "Output datacube  filename: ","(a,a,1x,a)","none", ok, .true.)
     call getReal("cubeaspectratio", cubeAspectRatio, 1.0, cLine, fLine, nLines, &
@@ -3711,51 +3707,55 @@ contains
 
 
     if (atomicPhysics) then
-          call getInteger("ninc", nDataCubeInclinations,cLine, fLine, nLines, &
-               "Number of inclinations: ","(a,i2,1x,a)", 1, ok, .true.)          
-          allocate(datacubeInclinations(nDataCubeInclinations))
-          call getRealArray("inclinations", datacubeInclinations, real(degtorad), cLine, fLine, nLines, &
-               "Inclinations (deg): ",90., ok, .true.)
-          call  getInteger("nlamline", nlamLine,cLine, fLine, nLines, &
-               "Number of line emission wavelength: ","(a,i2,1x,a)", 1, ok, .true.)          
-          allocate(lamLineArray(1:nLamLine))
-          call getRealArray("lamline", lamLineArray, 1.,cLine, fLine, nLines, &
-               "Line emission wavelengths: ", 850., ok, .true.)
-
-          call getReal("vturb", vturb, real(kmstoc), cLine, fLine, nLines, &
-               "Turbulent velocity (km/s):","(a,f6.1,1x,a)", 50., ok, .true.)
-
-          call  getInteger("nr1", nr1,cLine, fLine, nLines, &
-               "Number of radial rays to capture stellar photosphere: ","(a,i2,1x,a)", 200, ok, .false.)          
-          call  getInteger("nphi1", nphi1,cLine, fLine, nLines, &
-               "Number of azimuthal rays to capture stellar photosphere: ","(a,i2,1x,a)", 100, ok, .false.)          
-          nr2 = 0 
-          nphi2 = 0
-          if (ttauriMagnetosphere) then
-             call  getInteger("nr2", nr2,cLine, fLine, nLines, &
-                  "Number of radial rays to capture stellar magnetosphere: ","(a,i2,1x,a)", 200, ok, .false.)          
-             call  getInteger("nphi2", nphi2,cLine, fLine, nLines, &
-                  "Number of azimuthal rays to capture stellar magnetosphere: ","(a,i2,1x,a)", 100, ok, .false.)          
-          endif
-          nr3 = 0 
-          nphi3 = 0
-          if (ttauriWind) then
-             call  getInteger("nr3", nr3,cLine, fLine, nLines, &
-                  "Number of radial rays to capture disc wind: ","(a,i2,1x,a)", 200, ok, .false.)          
-             call  getInteger("nphi3", nphi3,cLine, fLine, nLines, &
-                  "Number of azimuthal rays to capture disc wind: ","(a,i2,1x,a)", 100, ok, .false.)          
-          endif
-          nr4 = 0 
-          nphi4 = 0
-
-          if (ttauristellarWind) then
-             call  getInteger("nr4", nr4,cLine, fLine, nLines, &
-                  "Number of radial rays to capture stellar wind: ","(a,i2,1x,a)", 200, ok, .false.)          
-             call  getInteger("nphi4", nphi4,cLine, fLine, nLines, &
-                  "Number of azimuthal rays to capture stellar wind: ","(a,i2,1x,a)", 100, ok, .false.) 
-          endif
-
+       call getReal("inclination", thisinclination, real(degtorad), cLine, fLine, nLines, &
+            "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
+       call getReal("positionangle", cubePositionAngle, real(degtorad), cLine, fLine, nLines, &
+            "Position angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
+       call getInteger("ninc", nDataCubeInclinations,cLine, fLine, nLines, &
+            "Number of inclinations: ","(a,i2,1x,a)", 1, ok, .true.)          
+       allocate(datacubeInclinations(nDataCubeInclinations))
+       call getRealArray("inclinations", datacubeInclinations, real(degtorad), cLine, fLine, nLines, &
+            "Inclinations (deg): ",90., ok, .true.)
+       call  getInteger("nlamline", nlamLine,cLine, fLine, nLines, &
+            "Number of line emission wavelength: ","(a,i2,1x,a)", 1, ok, .true.)          
+       allocate(lamLineArray(1:nLamLine))
+       call getRealArray("lamline", lamLineArray, 1.,cLine, fLine, nLines, &
+            "Line emission wavelengths: ", 850., ok, .true.)
+       
+       call getReal("vturb", vturb, real(kmstoc), cLine, fLine, nLines, &
+            "Turbulent velocity (km/s):","(a,f6.1,1x,a)", 50., ok, .true.)
+       
+       call  getInteger("nr1", nr1,cLine, fLine, nLines, &
+            "Number of radial rays to capture stellar photosphere: ","(a,i2,1x,a)", 200, ok, .false.)          
+       call  getInteger("nphi1", nphi1,cLine, fLine, nLines, &
+            "Number of azimuthal rays to capture stellar photosphere: ","(a,i2,1x,a)", 100, ok, .false.)          
+       nr2 = 0 
+       nphi2 = 0
+       if (ttauriMagnetosphere) then
+          call  getInteger("nr2", nr2,cLine, fLine, nLines, &
+               "Number of radial rays to capture stellar magnetosphere: ","(a,i2,1x,a)", 200, ok, .false.)          
+          call  getInteger("nphi2", nphi2,cLine, fLine, nLines, &
+               "Number of azimuthal rays to capture stellar magnetosphere: ","(a,i2,1x,a)", 100, ok, .false.)          
        endif
+       nr3 = 0 
+       nphi3 = 0
+       if (ttauriWind) then
+          call  getInteger("nr3", nr3,cLine, fLine, nLines, &
+               "Number of radial rays to capture disc wind: ","(a,i2,1x,a)", 200, ok, .false.)          
+          call  getInteger("nphi3", nphi3,cLine, fLine, nLines, &
+               "Number of azimuthal rays to capture disc wind: ","(a,i2,1x,a)", 100, ok, .false.)          
+       endif
+       nr4 = 0 
+       nphi4 = 0
+       
+       if (ttauristellarWind) then
+          call  getInteger("nr4", nr4,cLine, fLine, nLines, &
+               "Number of radial rays to capture stellar wind: ","(a,i2,1x,a)", 200, ok, .false.)          
+          call  getInteger("nphi4", nphi4,cLine, fLine, nLines, &
+               "Number of azimuthal rays to capture stellar wind: ","(a,i2,1x,a)", 100, ok, .false.) 
+       endif
+       
+    endif
 
     call getLogical("internalView", internalView, cLine, fLine, nLines, &
          "View as our Galaxy:", "(a,1l,1x,a)", .false., ok, .false.)
