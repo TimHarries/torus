@@ -743,7 +743,7 @@
 
 
     subroutine getPhotonPositionDirection(source, position, direction, rHat, grid, weight)
-      use inputs_mod, only : biasPhiDirection, biasPhiProb, biasPhiInterval, cylindricalHydro
+      use inputs_mod, only : biasPhiDirection, biasPhiProb, biasPhiInterval
       use inputs_mod, only : amrgridcentrey, amrgridcentrex, hotSpot, amrGridSize
       type(GRIDTYPE) :: grid
       real(double) :: r, t, u, v, w, ang, planetBiasWeight, rand
