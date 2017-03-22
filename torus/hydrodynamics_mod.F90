@@ -13820,7 +13820,7 @@ real(double) :: rho
   recursive subroutine refineGridGeneric2(thisOctal, grid, converged, limit, index, inheritval)
     use inputs_mod, only : maxDepthAMR, photoionization, refineOnMass, refineOnTemperature, refineOnJeans
     use inputs_mod, only : refineonionization, massTol, refineonrhoe, amrtemperaturetol, amrrhoetol
-    use inputs_mod, only : amrspeedtol, amrionfractol,  captureshocks, dorefine
+    use inputs_mod, only : amrspeedtol, amrionfractol,  captureshocks, dorefine, refineOnDensity, maxDensityGradient
     use mpi
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
@@ -13966,6 +13966,62 @@ real(double) :: rho
                       split = .true.
                    end if
                 end if
+
+                if (split) then
+
+ 
+                   if ((thisOctal%nDepth < maxDepthAMR).and.(.not.thisOctal%changed(subcell))) then
+                      call addNewChildWithInterp(thisOctal, subcell, grid)
+                      converged = .false.
+!                      print *, "split A ", thisOctal%nDepth
+                      exit
+                   endif
+                   
+
+                   !Thaw - I am going to assume that this is handled in evenupgridMPI and rm it for now
+!                   if ((neighbourOctal%nDepth < maxDepthAMR) .and. &
+!                        octalOnThread(neighbourOctal, neighbourSubcell, myrankglobal).and. &
+!                        (neighbourOctal%nDepth < thisOctal%nDepth)) then
+!                      call addNewChildWithInterp(neighbourOctal, neighboursubcell, grid)
+!                      print *, "split B ", neighbourOctal%nDepth, nd, thisOctal%nDepth
+!                      converged = .false.!
+!                      exit
+!                   endif
+   
+                   if(thisOctal%corner(subcell) .and. (thisOctal%nDepth < maxDepthAMR).and.(.not.thisOctal%changed(subcell))) then
+!                     print *, "split C ", thisOctal%nDepth
+                      call addNewChildWithInterp(neighbourOctal, neighboursubcell, grid)
+                      converged = .false.
+                      exit
+                   end if
+                
+                endif
+             endif
+          enddo
+       endif
+
+          if (refineOnDensity) then
+          do i = 1, nDir
+             maxGradient = 1.d-30
+             locator = subcellCentre(thisOctal, subcell) + &
+                  (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell) * dirVec(i)
+             if (inOctal(grid%octreeRoot, locator)) then
+                neighbourOctal => thisOctal
+                call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+                call getHydroValues(grid, locator, nd, rho, rhoe, rhou, rhov, rhow, energy, phi,x,y,z, pressure, .true.)
+
+                split = .false.
+
+                grad = abs((thisOctal%rho(subcell)-rho) / &
+                     thisOctal%rho(subcell))
+                maxGradient = max(grad, maxGradient)
+                if (grad > maxDensityGradient) then
+                   split = .true.
+                   write(*,*) "refined on density gradient ",grad,maxDensityGradient
+                endif
+
+                if(thisOctal%corner(subcell) .and. thisOCtal%nDepth < maxDepthAMR) split = .true.
+
 
                 if (split) then
 

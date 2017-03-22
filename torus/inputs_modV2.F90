@@ -2411,6 +2411,12 @@ contains
     call getLogical("refineonmass", refineonmass, cLine, fLine, nLines, &
          "Refine grid using mass in cell?: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("refineondensity", refineondensity, cLine, fLine, nLines, &
+         "Refine on density gradient?: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getDouble("densitygradient", maxDensityGradient, 1.d0 , cLine, fLine, nLines, &
+         "Maximum density gradient allowed before AMR grid refines: ","(a,1p,e9.3,1x,a)", 0.1d0, ok, .false.) 
+
     call getLogical("refineonjeans", refineonJeans, cLine, fLine, nLines, &
          "Refine grid using local jeans mass?: ","(a,1l,1x,a)", .false., ok, .false.)
 

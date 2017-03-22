@@ -904,6 +904,8 @@
   logical :: refineOnTemperature !refine grid using temperature gradient
   logical :: refineOnMass !refine grid using cell mass
   logical :: refineOnRhoe !refine grid using cell rhoe
+  logical :: refineOnDensity !refine grid using cell rho
+  real(double) :: maxDensityGradient
   logical :: refineOnJeans !refine grid using cell mass vs local jeans mass
   logical :: refineOnSpeed !refine grid using cell speed
   real(double) :: massTol !cell mass tolerance

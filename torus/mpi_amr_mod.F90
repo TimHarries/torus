@@ -1515,13 +1515,11 @@ contains
           
           if (neighbourOctal%nDepth <= nDepth) then
              if ((nDepth - neighbourOctal%nDepth) > 1) then
-                write(*,*) "Octal depth differs by more than 1 across boundary!!!"
+                write(*,*) "WARNING: Octal depth differs by more than 1 across boundary!!!"
                 write(*,*) "ndepth ",nDepth, " neighbour%nDepth ",neighbourOctal%nDepth
                 write(*,*) "myrank ",myrankGlobal
                 write(*,*) "sendThread ",sendThread, " receivethread ",receivethread
                 write(*,*) "at ", pVec%x, pVec%y, pVec%z
-                stop
-                
              endif
              tempStorage(i,1) = neighbourOctal%q_i(neighbourSubcell)
              tempStorage(i,2) = neighbourOctal%rho(neighbourSubcell)
