@@ -957,7 +957,9 @@
   real(double), protected :: sphspherey      ! Sphere centre y
   real(double), protected :: sphspherez      ! Sphere centre z
   real(double), protected :: sphsphereradius ! Sphere radius
-
+  ! Select SPH particles above a density threshold
+  real(double), protected :: sphdensitycut
+  
 !------------------
 ! Other parameters 
 !------------------

@@ -1507,6 +1507,10 @@ contains
     call getDouble("sphsphereradius", sphsphereradius, 1.0_db, cLine, fLine, nLines, &
          "SPH sphere radius: ","(a,1pe8.1,1x,a)", real(0.5*amrgridsize,db), ok, .false.) 
 
+! Select SPH particles above a minimum density threshold
+        call getDouble("sphdensitycut", sphdensitycut, 1.0_db, cLine, fLine, nLines, &
+             "SPH density cut: ","(a,1pe8.1,1x,a)", -1.0_db, ok, .false.)
+        
           if ( geometry == "cluster" ) then 
              call getReal("removeradius", rCore, 1.0, cLine, fLine, nLines, &
                   "Clearing radius (Torus units): ","(a,f7.3,a)", 2000.0, ok, .false.)

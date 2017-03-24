@@ -389,10 +389,11 @@ contains
 ! Read SPH data from a splash ASCII dump.
   subroutine new_read_sph_data(rootfilename)
     use inputs_mod, only: convertRhoToHI, ih2frac, iCO, sphwithchem, iModel, discardSinks
-    use inputs_mod, only: dragon
+    use inputs_mod, only: dragon, sphdensitycut
     use angularImage_utils, only:  internalView, galaxyPositionAngle, galaxyInclination
     use utils_mod, only : findMultiFilename
-
+    use parallel_mod, only: torus_abort
+    
     implicit none
 
     character(LEN=*), intent(in)  :: rootfilename
@@ -406,7 +407,9 @@ contains
     integer :: itype ! splash particle type, different convention to SPHNG 
     integer :: ipart, icount, iptmass, igas, idead, i
     integer :: nptmass, nstar, nother, nlines
-    real(double) :: junkArray(50)
+    integer :: irequired, irejected ! Record number of gas particles required and not required
+    integer, parameter :: maxNumVals=50 ! Maximum number of values per line (first dim of junkArray)
+    real(double), allocatable :: junkArray(:,:)
     character(LEN=1)  :: junkchar
     character(LEN=150) :: message
     character(len=MaxAsciiLineLength) :: namestring, unitString, pTypeString
@@ -415,7 +418,7 @@ contains
     integer :: iDustfrac
     real(double) :: dustfrac
     integer, allocatable :: pNumArray(:) ! Array of particle numbers read from header
-    
+
 !
 ! For SPH simulations with chemistry
 !
@@ -426,6 +429,11 @@ contains
     logical, parameter :: multiTime=.false.
     real(double) :: extraPA
 
+
+!
+! 1. Read in data from an ASCII SPH dump
+!
+
     if (gadget) then
        call writeInfo("Reading ASCII dump from Gadget", FORINFO)
     else if (dragon) then 
@@ -434,8 +442,13 @@ contains
        call writeInfo("Reading ASCII dump", FORINFO)
     end if
 
+! 1.1 Open the file
+
     call findMultiFilename(rootfilename, iModel, filename)
     open(unit=LUIN, file=TRIM(filename), form="formatted",status="old")
+
+! 1.2 Read the header
+
     read(LUIN,*) 
     read(LUIN,*)
     read(LUIN,*)
@@ -587,15 +600,6 @@ contains
     irho = indexWord("density",word,nWord)
     ih = indexWord("h",word,nWord)
 
-! Say what is going to be stored. In init_sph_data sphdata%npart is set to npart and gas particle arrays are 
-! allocated to be sphdata%npart in size. The point mass arrays are allocated as nptmass in size. 
-    if (discardSinks) then 
-       write(message,*) "Allocating ", npart, " gas particles"
-    else
-       write(message,*) "Allocating ", npart, " gas particles and ", nptmass, " sink particles"
-    endif
-    call writeinfo(message, TRIVIAL)
-
 ! A Gadget ASCII dump doesn't contain the physical unit information so hardwire here
     if (gadget) then
        call writeInfo("Resetting physical unit conversion for Gadget dump", FORINFO)
@@ -606,11 +610,7 @@ contains
        write(message,*) "udist/umass/uvel=", udist, umass, uvel
        call writeInfo(message,FORINFO)
     end if
-
-    call init_sph_data(udist, umass, utime, time, nptmass, uvel, utemp)
-    ! velocity unit is derived from distance and time unit (converted to seconds from years)
-    sphdata%codeVelocitytoTORUS = uvel / cspeed 
-
+    
 ! Check whether this SPH dump has u and u/T  available (e.g. SPH with radiative transfer). 
 ! If they are both present then set the temperature from these columns. 
     if ( wordIsPresent("u",word,nWord) .and. wordIsPresent("u/T",word,nWord) ) then
@@ -629,6 +629,98 @@ contains
        haveDustTemperature = .false.
     end if
 
+!
+! 1.3 Read in particle data
+!
+    nlines = npart + nptmass + nstar + nother ! nlines now equal to no. lines - 12 = sum of particles dead or alive
+
+    ! Allocate an array for storing the values we are about to read in from the SPH file
+    allocate(junkArray(maxNumVals,nlines))
+
+    ! Zero counters and accumulators
+    iptmass = 0
+    icount = 12 ! There are 12 header lines
+    igas = 0
+    idead = 0
+    status=0
+
+    sphdata%totalgasmass = 0.d0
+    sphdata%totalHImass  = 0.d0
+    sphdata%totalMolmass = 0.d0
+    
+    ! Read in SPH data and store it in junkArray
+    call writeinfo("Reading particle data", TRIVIAL)
+    
+    do ipart=1, nlines
+       icount = icount + 1
+       read(LUIN,*,iostat=status) junkArray(1:nWord,ipart)
+       if (status /= 0) then
+          write(message,*) "Error reading from line ", icount
+          call writeFatal(message)
+          STOP
+       endif
+    end do
+
+    ! Finished reading SPH dump so close the file
+    write(message,*) "Read ",icount, " lines from file"
+    call writeinfo(message, TRIVIAL)
+    call writeinfo("Closing ASCII file", TRIVIAL)
+    close(LUIN)
+
+    ! 1.4 Work out which particles need to be stored
+    if ( sphdensitycut > 0 ) then 
+       irequired=0
+       irejected=0
+       do ipart=1, nlines
+          if ( iitype == 0 ) then
+             itype=get_gadget_itype(ipart, npart, nptmass) 
+          else
+             itype = int(junkArray(iitype,ipart))
+          endif
+          ! Only consider gas particles
+          if ( itype /= 1 ) cycle
+          rhon = junkArray(irho,ipart)
+          if ( rhon > sphdensitycut ) then
+             irequired=irequired+1
+          else
+             irejected=irejected+1
+          end if
+       end do
+
+       write(message,*) "Applied density cut. ", irequired, "particles retained and ", irejected, " rejected"
+       call writeinfo(message, TRIVIAL)
+       if ( irequired==0 ) then
+          call writeFatal("No particles remaining after density cut")
+          call torus_abort
+       endif
+       
+    ! Set npart to the number of particles required so that arrays are allocated to correct size
+       npart = int(irequired)
+       
+    else
+       ! No density cut applied
+       irequired=npart
+       irejected=0
+    endif
+
+! Say what is going to be stored. In init_sph_data sphdata%npart is set to npart and gas particle arrays are 
+! allocated to be sphdata%npart in size. The point mass arrays are allocated as nptmass in size. 
+    if (discardSinks) then 
+       write(message,*) "Allocating ", npart, " gas particles"
+    else
+       write(message,*) "Allocating ", npart, " gas particles and ", nptmass, " sink particles"
+    endif
+    call writeinfo(message, TRIVIAL)
+
+! Allocate storage for SPH data     
+    call init_sph_data(udist, umass, utime, time, nptmass, uvel, utemp)
+! velocity unit is derived from distance and time unit (converted to seconds from years)
+    sphdata%codeVelocitytoTORUS = uvel / cspeed
+
+!
+! Chemistry section: allocates memory for chemistry data if required
+!
+    
 ! Decide how to convert between internal energy and temperature. If there is information about
 ! the H2 fraction then use this to calculate the molecular weight later on.
     if (convertRhoToHI) then
@@ -675,73 +767,46 @@ contains
        ALLOCATE(sphdata%dustfrac(sphdata%npart))
     endif
 
-
-    sphdata%totalgasmass = 0.d0
-    sphdata%totalHImass  = 0.d0
-    sphdata%totalMolmass = 0.d0
-
-    nlines = npart + nptmass + nstar + nother ! nlines now equal to no. lines - 12 = sum of particles dead or alive
-
-    write(message,*) "Reading SPH data from ASCII...."
-    call writeinfo(message, TRIVIAL)
-
-    iptmass = 0
-    icount = 12 ! header lines
-    igas = 0
-    idead = 0
-    status=0
-
+    
+! Populate Torus's SPH data structure
 part_loop: do ipart=1, nlines
-
-       read(LUIN,*,iostat=status) junkArray(1:nWord)
-       if (status /= 0) then
-          write(message,*) "Error reading from line ", icount+1
-          call writeFatal(message)
-          STOP
-       endif
-
-       xn = junkArray(ix)
-       yn = junkArray(iy)
-       zn = junkArray(iz)
-       vx = junkArray(ivx)
-       vy = junkArray(ivy)
-       vz = junkArray(ivz)
+       
+       xn = junkArray(ix,ipart)
+       yn = junkArray(iy,ipart)
+       zn = junkArray(iz,ipart)
+       vx = junkArray(ivx,ipart)
+       vy = junkArray(ivy,ipart)
+       vz = junkArray(ivz,ipart)
 
        if (internalView) call rotate_particles(galaxyPositionAngle+extraPA, galaxyInclination)
 
        u = 0.d0
-       if (iu /= 0) u = junkArray(iu)
-       rhon = junkArray(irho)
-       h = junkArray(ih)
+       if (iu /= 0) u = junkArray(iu,ipart)
+       rhon = junkArray(irho,ipart)
+       h = junkArray(ih,ipart)
 
 
        dustfrac = 0.1
        if (idustFrac /= 0) then
-          dustfrac = junkArray(idustfrac)
+          dustfrac = junkArray(idustfrac,ipart)
        endif
 
-
-       if (iitype == 0) then
-! If we don't have itype then assume splash has written out the particles in the order gas, sinks, others
-! This should work for Gadget where particles don't have an itype parameter
-          if (ipart<=npart) then
-             itype = 1
-          else if (ipart <= npart+nptmass) then 
-             itype = 3
-          else
-             itype = 5
-          end if
+       if ( iitype == 0 ) then
+          itype=get_gadget_itype(ipart, irequired+irejected, nptmass)
        else
-          itype = int(junkArray(iitype))
+          itype = int(junkArray(iitype,ipart))
        endif
-       gaspartmass = junkArray(imass)
-
-       icount = icount + 1
+       
+       gaspartmass = junkArray(imass,ipart)
 
 ! 1=gas particle
        !FOR MHD DUMPS MAY WISH TO EXCLUDE LOW DENSITY ENVELOPE
        !if ((itype == 1) .AND. (rhon > 5.e-5))  then
-       if (itype == 1) then 
+       if (itype == 1) then
+
+          ! Exclude particles with density below mininum threshold
+          if ( rhon < sphdensitycut ) cycle
+          
           igas = igas + 1
 
           sphdata%xn(igas) = xn
@@ -759,7 +824,7 @@ part_loop: do ipart=1, nlines
 
 ! For SPH simulations with chemistry we need to set up H2
           if ( convertRhoToHI.or.sphwithChem ) then
-             h2ratio = junkArray(ih2frac)
+             h2ratio = junkArray(ih2frac,ipart)
           endif
 
 ! Set up temperature or internal energy
@@ -771,9 +836,9 @@ part_loop: do ipart=1, nlines
                 sphdata%temperature(igas) = (2.0/3.0) * u * ( gmw / Rgas) * utemp
              endif
           else if (haveDustTemperature) then
-             sphdata%temperature(igas) = junkArray(iDustTemperature)
+             sphdata%temperature(igas) = junkArray(iDustTemperature,ipart)
           else if (haveUandUoverT) then 
-             sphdata%temperature(igas) = u / junkArray(iUoverT)
+             sphdata%temperature(igas) = u / junkArray(iUoverT,ipart)
           else
              sphdata%temperature(igas) = u
           end if
@@ -787,7 +852,7 @@ part_loop: do ipart=1, nlines
           endif
 
           if (sphwithChem) then 
-             COfrac = junkArray(iCO)
+             COfrac = junkArray(iCO,ipart)
              sphdata%rhoCO(igas) = COfrac * rhon
           endif
 
@@ -838,10 +903,7 @@ part_loop: do ipart=1, nlines
 
     enddo part_loop
 
- write(message,*) "Read ",icount, " lines"
- call writeinfo(message, TRIVIAL)
-
- write(message,*)  iptmass," are sink particles and ",igas," are gas particles and ", idead, " were discarded"
+ write(message,*)  iptmass," are sink particles and ",igas," are gas particles and ", idead, " are unknown/dead"
  call writeinfo(message, TRIVIAL)
 
  write(message,*) "Total Mass in all particles, ", sphdata%totalgasmass * umass/mSol, " Msol"
@@ -859,11 +921,11 @@ part_loop: do ipart=1, nlines
  endif
 
  if (idead /= nother ) then
-    write(message,*) "Expected to discard", nother, " particles but discarded ", idead
+    write(message,*) "Expected ", nother, " unknown/dead particles but found ", idead
     call writeWarning(message)
  endif
- 
- close(LUIN)
+
+ deallocate(junkArray)
    
  contains
 
@@ -904,9 +966,30 @@ part_loop: do ipart=1, nlines
      call writeInfo(message,FORINFO)
 
    end subroutine rotateForTime
-
+   
   end subroutine new_read_sph_data
 
+   ! Return an integer which specifies the particle type for Gadget.
+   ! Gadget output doesn't include this information so we work it out based
+   ! on the order of particles in the file. Assume splash has written out the
+   ! particles in the order gas, sinks, others. 
+   ! Moved to function (D. Acreman, March 2017)
+  integer function get_gadget_itype(this_index, this_npart, this_nptmass)
+
+    integer, intent(in) :: this_index   ! Index of this particle
+    integer, intent(in) :: this_npart   ! number of gas particles (for gadget)
+    integer, intent(in) :: this_nptmass ! number of point masses  (for gadget)
+     
+    if (this_index<=this_npart) then
+       get_gadget_itype = 1
+    else if (this_index <= this_npart+this_nptmass) then 
+       get_gadget_itype = 3
+    else
+       get_gadget_itype = 5
+    end if
+
+  end function get_gadget_itype
+  
 !---------------------------------------------------------------------------------------------------------------------------------
 
 ! Read data from a Gadget2 snapshot file.
