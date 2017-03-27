@@ -714,7 +714,7 @@ contains
 end subroutine gaussSeidelSweep
 
   subroutine solveArbitraryDiffusionZones(grid)
-    use inputs_mod, only : eDensTol !, tauforce
+    use inputs_mod, only : eDensTol, maxGaussIter !, tauforce
     use messages_mod, only : myRankIsZero
 
     type(GRIDTYPE) :: grid
@@ -722,7 +722,6 @@ end subroutine gaussSeidelSweep
     logical :: gridConverged
     real(double) :: deMax
     integer :: niter, i
-    integer, parameter :: maxIter = 10000
     
 !    logical, save :: firstTime = .true.
 
@@ -763,8 +762,8 @@ end subroutine gaussSeidelSweep
 !        write(message,*) nIter," Maximum relative change in eDens:",deMax
 !	call writeInfo(message, TRIVIAL)
         if (nIter < 3) gridConverged = .false.
-        if (nIter > maxIter) then
-           if (myRankIsZero) write(*,*) "No solution found after ",maxIter," iterations"
+        if (nIter > maxGaussIter) then
+           if (myRankIsZero) write(*,*) "No solution found after ",maxGaussIter," iterations"
            gridConverged = .true.
         endif
      enddo

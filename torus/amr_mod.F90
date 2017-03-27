@@ -10037,11 +10037,12 @@ endif
 
   subroutine calcProtoBinDensity(thisOctal,subcell)
 
+    use inputs_mod, only : beta
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
     real(double) :: omega,r, v, phi, ethermal
-    real(double) :: inertia, beta, rCloud, mCloud, eGrav
+    real(double) :: inertia, rCloud, mCloud, eGrav
 
 
 !    mCloud = 1.d0 * msol
@@ -10058,7 +10059,7 @@ endif
     beta = 0.16d0
     thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
     rVec = subcellCentre(thisOctal,subcell)
-    omega = sqrt(2.d0 * beta * eGrav / inertia)
+    omega = sqrt(2.d0 * dble(beta) * eGrav / inertia)
 !    omega = 1.6d-12
     thisOctal%phi_i(subcell) = -bigG * mCloud / (modulus(rVec)*1.d10)
     thisOctal%velocity(subcell) = vector(0., 0., 0.)
@@ -10102,7 +10103,8 @@ endif
 !    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
 !    thisOctal%boundaryCondition(subcell) = 4
 
-    thisOctal%iequationOfState(subcell) = 1 ! isothermal
+!    thisOctal%iequationOfState(subcell) = 1 ! isothermal
+    thisOctal%iequationOfState(subcell) = 2 ! bonnell
     ethermal = 1.5d0*(1.d0/(2.33d0*mHydrogen))*kerg*thisOctal%temperature(subcell)
     thisOctal%energy(subcell) = eThermal
     thisOctal%gamma(subcell) = 2.d0
@@ -12374,10 +12376,10 @@ end function readparameterfrom2dmap
        if (r < rGapInner1) then
           thisOctal%dustTypeFraction(subcell,:) = 1.d-30
        else
-          thisOctal%dustTypeFraction(subcell,1) = fac * scalefac * grainFrac(1)
-          thisOctal%dustTypeFraction(subcell,3) = fac * scalefac * grainFrac(3)
-          thisOctal%dustTypeFraction(subcell,2) = (1.d0-fac) * scalefac * grainFrac(2)
-          thisOctal%dustTypeFraction(subcell,4) = (1.d0-fac) * scalefac * grainFrac(4)
+          thisOctal%dustTypeFraction(subcell,1) = fac * grainFrac(1)
+          thisOctal%dustTypeFraction(subcell,3) = fac * grainFrac(3)
+          thisOctal%dustTypeFraction(subcell,2) = (1.d0-fac) * grainFrac(2)
+          thisOctal%dustTypeFraction(subcell,4) = (1.d0-fac) * grainFrac(4)
        endif
 
 

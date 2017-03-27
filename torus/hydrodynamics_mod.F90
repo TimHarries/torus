@@ -7671,7 +7671,7 @@ end subroutine sumFluxes
    if (selfGravity) then
       if (writeoutput) call writeInfo("Solving self gravity...")
       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
-      if (dogasGravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)!, multigrid=.true.)
+      if (dogasGravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, domultigridvcycle=.true.)
       call zeroSourcepotential(grid%octreeRoot)
       if (globalnSource > 0) then
          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
@@ -7947,7 +7947,7 @@ end subroutine sumFluxes
 
       if (writeoutput) call writeInfo("Solving self gravity...")
       if (myrankWorldglobal == 1) call tune(6,"Self-gravity")
-      if (dogasGravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup) !, multigrid=.true.)
+      if (dogasGravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup, domultigridvcycle=.true.)
       call zeroSourcepotential(grid%octreeRoot)
       if (globalnSource > 0) then
          call applySourcePotential(grid%octreeRoot, globalsourcearray, globalnSource, smallestCellSize)
@@ -13819,7 +13819,7 @@ real(double) :: rho
 
   recursive subroutine refineGridGeneric2(thisOctal, grid, converged, limit, index, inheritval)
     use inputs_mod, only : maxDepthAMR, photoionization, refineOnMass, refineOnTemperature, refineOnJeans
-    use inputs_mod, only : refineonionization, massTol, refineonrhoe, amrtemperaturetol, amrrhoetol
+    use inputs_mod, only : refineonionization, massTol, refineonrhoe, amrtemperaturetol, amrrhoetol, maxDepthAMR
     use inputs_mod, only : amrspeedtol, amrionfractol,  captureshocks, dorefine, refineOnDensity, maxDensityGradient
     use mpi
     type(gridtype) :: grid
@@ -13893,6 +13893,8 @@ real(double) :: rho
           if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
 
           if (thisOctal%ghostCell(subcell)) cycle
+
+	  if (thisOctal%nDepth == maxDepthAMR) cycle
 
           r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
           centre = subcellCentre(thisOctal, subcell)
@@ -14103,7 +14105,7 @@ real(double) :: rho
        massTol = rhoJeans*1.d30*cellVolume(thisOctal,subcell)
        if (((thisOctal%rho(subcell)*1.d30*cellVolume(thisOctal,subcell)) > massTol) &
             .and.(thisOctal%nDepth < maxDepthAMR).and.(.not.thisOctal%changed(subcell)))  then
-          write(*,*)  myrankGlobal," splitting on mass: ",thisOctal%rho(subcell)*1.d30*thisOCtal%subcellSize**3 / masstol
+          write(*,*)  myrankGlobal," splitting on jeans mass: ",thisOctal%rho(subcell)*1.d30*thisOCtal%subcellSize**3 / masstol
 !          write(*,*) "mass tol ",masstol
 
 !          write(*,*) myrankglobal, " calling interp after split on jeans"
@@ -17351,6 +17353,12 @@ end subroutine refineGridGeneric2
           call multiGridVcycle(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           goto 666
        endif
+
+       if ((maxDepthAMR /= minDepthAMR).and.(amr3d)) then
+          call multiGridVcycle(grid, nPairs, thread1, thread2, nBound, group, nGroup, fromdepth=minDepthAMR)
+       endif
+
+
     endif
 
 
@@ -17560,7 +17568,7 @@ end subroutine refineGridGeneric2
           exit
        endif
     enddo
-    if (myRankWorldGlobal == 1) write(*,*) "Gravity solver completed after: ",it, " iterations"
+    if (myRankWorldGlobal == 1) write(*,*) "Gravity solver completed after: ",it, " iterations",maxval(fracchange2(1:nHydroThreadsGlobal))
 
 
 !          call writeVtkFile(grid, "grav.vtk", &

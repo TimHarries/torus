@@ -356,6 +356,7 @@
   logical :: quickSublimate
   integer :: iterLucy
   integer :: maxIterLucy
+  integer :: maxGaussIter
   logical :: narrowBandImage
   real    :: lucy_undersampled  
   logical :: convergeOnUndersampled

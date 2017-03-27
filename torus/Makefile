@@ -233,6 +233,7 @@ ifeq ($(SYSTEM), complexity)
        F95COMP= mpif90
        MPIFLAG= -DMPI
     endif
+    OPENMPFLAG = -fopenmp
     FASTFLAG= -O3 
 # For debugging with optimisations enabled use
 #    DEBUGFLAG= -O3 -g -debug extended

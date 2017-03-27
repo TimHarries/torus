@@ -686,18 +686,6 @@ contains
     endif
     
 
-    if (.not.loadBalancingThreadGlobal) then
-    if (writeoutput) write(*,*) "Refine grid test"
-             call evenUpGridMPI(grid,.false.,.true., evenuparray)      
-             call setAllUnchanged(grid%octreeRoot)
-             call refineGridGeneric(grid, amrtolerance, evenuparray)
-             call writeInfo("Evening up grid", TRIVIAL)    
-             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-             call evenUpGridMPI(grid, .false.,.true., evenuparray)
-             call writeVtkFile(grid, "testrefine.vtk", &
-                  valueTypeString=(/"rho          ","hydrovelocity"/))
-    if (writeoutput) write(*,*) "Refine grid test done"
-    endif
 
 
 !    !Thaw - trace courant time history                                                                                                                              

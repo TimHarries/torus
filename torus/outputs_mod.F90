@@ -55,7 +55,7 @@ contains
     use lucy_mod, only : getSublimationRadius
     use inputs_mod, only : fastIntegrate, geometry, intextfilename, outtextfilename, sourceHistoryFilename, lambdatau, itrans
     use inputs_mod, only : lambdaFilename, polarWavelength, polarFilename, nPhotSpec, nPhotImage, nPhotons
-    use inputs_mod, only : nDataCubeInclinations, datacubeInclinations, nLamLine, lamLineArray
+    use inputs_mod, only : nDataCubeInclinations, datacubeInclinations, nLamLine, lamLineArray, rgapinner1
     use formal_solutions, only :compute_obs_line_flux
 #ifdef PHOTOION
     use photoion_utils_mod, only: quickSublimate
@@ -411,6 +411,12 @@ if (.false.) then
 #endif
              nPhotons = nPhotImage
              fastIntegrate=.true.
+
+
+!             call setDustInsideRadiusTozero(grid%octreeRoot, dble(rgapinner1))
+!             write(*,*) "setting inner dust to zero"
+
+
                 call do_phaseloop(grid, .false., 10000, &
                      miePhase, globalnsource, globalsourcearray, nmumie, imNum=i)
           enddo
@@ -569,6 +575,33 @@ if (.false.) then
        endif
     enddo
   end subroutine getRadial
+
+  recursive subroutine setDustInsideRadiusTozero(thisOctal, radius)
+  real(double) :: radius
+  type(VECTOR) :: centre
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call  setDustInsideRadiusToZero(child, radius)
+                exit
+             end if
+          end do
+
+       else
+          centre = subcellCentre(thisOctal, subcell)
+          if ((centre%x**2 + centre%y**2) < radius**2) then
+             thisOctal%dustTypeFraction(subcell,:) = 1.d-30
+          endif
+       endif
+    enddo
+  end subroutine setDustInsideRadiusTozero
 
   subroutine writeEduard(grid)
     type(GRIDTYPE) :: grid
