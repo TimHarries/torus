@@ -543,7 +543,7 @@ suite_status="PASSED"
 echo "Summary of test results: " > header
 echo " " >> header
 
-grepper="/usr/bin/grep -c -i"
+grepper="/bin/grep -c -i"
 
 # Test for success of disc benchmark
 num_success=`${grepper} "TORUS: Test successful"  benchmarks_hybrid/benchmarks/disc/check_log_hybrid_disc.txt`
@@ -721,7 +721,7 @@ echo  >> header
 
 # Send mail for daily test or write to terminal for other modes
 if [[ ${MODE} == "daily" ]]; then
-    mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk aali@astro.ex.ac.uk tdouglas@astro.ex.ac.uk haworth@astro.ex.ac.uk fjmw201@exeter.ac.uk"
+    mail_to="acreman@astro.ex.ac.uk th@astro.ex.ac.uk aali@astro.ex.ac.uk tdouglas@astro.ex.ac.uk t.haworth@imperial.ac.uk fjmw201@exeter.ac.uk"
 # Set up the message body 
     cat header ${TORUS_DAILY_TEST_LOG} > /home/torustest/torus_daily_test_email
     for user in ${mail_to}; do
