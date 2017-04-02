@@ -3360,7 +3360,8 @@ contains
 
     call getInteger("maxiter", maxIterLucy, cline, fLine, nlines, "Maximum number of Lucy iterations: ", "(a,i3,a)",20,ok,.false.)
 
-    call getInteger("maxgaussiter", maxGaussIter, cline, fLine, nlines, "Maximum number of G-S iterations: ", "(a,i3,a)",10000,ok,.false.)
+    call getInteger("maxgaussiter", maxGaussIter, cline, fLine, nlines, "Maximum number of G-S iterations: ", "(a,i3,a)", &
+         10000,ok,.false.)
 
     call getLogical("forceLucyConv", forceLucyConv, cLine, fLine, nLines, &
          "Force convergence of Lucy algorithm: ","(a,1l,1x,a)", .false., ok, .false.)

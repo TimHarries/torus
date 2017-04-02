@@ -10056,7 +10056,7 @@ endif
 
     inertia = (2.d0/5.d0)*mCloud*rCloud**2
     eGrav = 3.d0/5.d0 * bigG * mCloud**2 / rCloud
-    beta = 0.16d0
+    beta = 0.16e0
     thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
     rVec = subcellCentre(thisOctal,subcell)
     omega = sqrt(2.d0 * dble(beta) * eGrav / inertia)

@@ -55,7 +55,7 @@ contains
     use lucy_mod, only : getSublimationRadius
     use inputs_mod, only : fastIntegrate, geometry, intextfilename, outtextfilename, sourceHistoryFilename, lambdatau, itrans
     use inputs_mod, only : lambdaFilename, polarWavelength, polarFilename, nPhotSpec, nPhotImage, nPhotons
-    use inputs_mod, only : nDataCubeInclinations, datacubeInclinations, nLamLine, lamLineArray, rgapinner1
+    use inputs_mod, only : nDataCubeInclinations, datacubeInclinations, nLamLine, lamLineArray !, rgapinner1
     use formal_solutions, only :compute_obs_line_flux
 #ifdef PHOTOION
     use photoion_utils_mod, only: quickSublimate
