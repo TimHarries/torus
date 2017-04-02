@@ -13894,7 +13894,7 @@ real(double) :: rho
 
           if (thisOctal%ghostCell(subcell)) cycle
 
-	  if (thisOctal%nDepth == maxDepthAMR) cycle
+          if (thisOctal%nDepth == maxDepthAMR) cycle
 
           r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
           centre = subcellCentre(thisOctal, subcell)
@@ -17568,7 +17568,8 @@ end subroutine refineGridGeneric2
           exit
        endif
     enddo
-    if (myRankWorldGlobal == 1) write(*,*) "Gravity solver completed after: ",it, " iterations",maxval(fracchange2(1:nHydroThreadsGlobal))
+    if (myRankWorldGlobal == 1) write(*,*) "Gravity solver completed after: ",it, " iterations", &
+         maxval(fracchange2(1:nHydroThreadsGlobal))
 
 
 !          call writeVtkFile(grid, "grav.vtk", &
