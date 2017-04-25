@@ -9823,6 +9823,7 @@ globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age 
                 call refineGridGeneric(grid, amrTolerance, evenuparray, refinedSomeCells=refinedSomeCells)
                 if (refinedSomeCells) then
                    call writeInfo("Done the refine part", TRIVIAL)                 
+                   call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
                    call evenUpGridMPI(grid, .true., dorefine, evenUpArray)
                    call writeInfo("Done the even up part", TRIVIAL)    
                 endif
