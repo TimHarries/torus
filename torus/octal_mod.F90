@@ -193,7 +193,10 @@ MODULE octal_mod
 #ifdef SPH
     real(double) :: h(8) ! used for cluster geometries where the smoothing length of a cell can be stored
 #endif
-
+#ifdef HYDRO
+    real(double) :: radiationTimeScale=0.0
+#endif
+    
     LOGICAL, DIMENSION(8)              :: inFlow
 
     TYPE(OCTALPOINTER), pointer :: neighbourOctal(:,:,:) => null() ! pointer to neighbour

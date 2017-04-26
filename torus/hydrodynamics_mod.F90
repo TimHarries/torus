@@ -8894,6 +8894,29 @@ globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age 
        call setuppressure(grid%octreeroot, grid, direction)
        call setuprhoPhi(grid%octreeroot, grid, direction)
        call pressureTimeStep(grid%octreeRoot, dt)
+       if (dt<=1.0d4) then
+          call writeVtkFile(grid, "pressureDump.vtk", &
+               valueTypeString=(/"rho          ","velocity     ","rhoe         " , &
+               "u_i          ", &
+               "hydrovelocity", &
+               "chiline      ", &
+               "mass         ", &
+               "rhou         ", &
+               "rhov         ", &
+               "vrot         ", &
+               "rhow         ", &
+               "phi          ", &
+               "pressure     ", &
+               "ghosts       ", &
+               "edges        ", &
+               "q11          ", &
+               "q22          ", &
+               "temperature  ", &
+               "fvisc1       ", &
+               "fvisc2       ", &
+               "fvisc3       ", &
+               "q_i          "/))
+       endif
     endif
   end subroutine pressureGradientTimeStep
 
@@ -8970,8 +8993,8 @@ globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age 
 !                     / (thisOctal%rho(subcell)*thisOctal%x_i(subcell)**3)
 !                dt = min(dt, 0.5d0*sqrt(smallestCellSize*gridDistanceScale/max(acc,1.d-10)))
 !             endif
-             if (dt == 0.d0) then 
-                write(*,*) myrankGlobal, " dt is zero ",thisOctal%rho(subcell),thisOctal%rhov(subcell), &
+             if (dt < 1.0d4) then 
+                write(*,*) myrankGlobal, " dt close to 0 ",thisOctal%rho(subcell),thisOctal%rhov(subcell), &
                      thisoctal%pressure_i_plus_1(subcell), &
                      thisOctal%pressure_i_minus_1(subcell),acc
              endif

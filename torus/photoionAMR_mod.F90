@@ -8278,7 +8278,11 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
        else
           !assuming relevence of the MC estimate decays away at the somewhere between the hydro timescale for this cell 
           !and the hydro time for the smallest cell
-          decayFactor = exp (-cflNumber * nHydroPerPhoto /( radiationTimescale * 2.d0**(maxDepthAMR-thisOctal%nDepth))) 
+          if (thisOctal%radiationtimescale .EQ. 0) then
+             thisOctal%radiationtimescale =radiationTimescale
+          endif !radiationTimescale changed to a octal attribute so it can be varied on a per cell basis
+          
+          decayFactor = exp (-cflNumber * nHydroPerPhoto /( thisOctal%radiationTimescale * 2.d0**(maxDepthAMR-thisOctal%nDepth))) 
           shotNoiseFac= 1.0/sqrt(1.0+thisOctal%ncrossings(subcell)/shotNoiseWeight)
 
           if ((decayFactor.ne.decayFactor).or.decayfactor<1.0d-6) decayfactor=1.0d-6

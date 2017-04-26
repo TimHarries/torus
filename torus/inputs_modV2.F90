@@ -485,7 +485,7 @@ contains
 
     if (MChistories) then
        call getDouble("radiationtimescale", radiationTimeScale, 1.d0, cLine, fLine, nLines, &
-            "ratio of radiation to hydro timescales: ", "(a,f7.1,1x,a)", 0.0d0, ok, .false.)
+            "ratio of radiation to hydro timescales: ", "(a,f7.1,1x,a)", 1.0d0, ok, .false.)
        
        call getInteger("shotnoiseweight", ShotNoiseWeight, cLine, fLine, nLines, &
             "#crossings for rad history weighted<current: ","(a,i8,a)", 400, ok, .false.)
