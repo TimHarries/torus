@@ -1785,7 +1785,7 @@ contains
 
   recursive subroutine setupAlphaViscosityPrivate(grid, thisoctal, alpha, HoverR, rAxis, mr, nr)
     use mpi
-    use inputs_mod, only : rhoThreshold
+    use inputs_mod, only : rhoThreshold, cylindricalHydro
     type(octal), pointer   :: thisoctal, neighbourOctal
     type(octal), pointer  :: child 
     integer :: subcell, i, nr, neighbourSubcell
@@ -1837,7 +1837,7 @@ contains
              fac = 1.d0
              if (.not.thisOctal%ghostCell(subcell)) then
                 if (toomreQ < Qcrit) then
-                   fac = min((Qcrit / toomreQ)**2,100.d0)
+                   fac = min((Qcrit / toomreQ)**2,1000.d0)
 !                   write(*,*) "toomreQ ",toomreQ,fac
                 endif
              endif
@@ -1858,9 +1858,9 @@ contains
 
 
              thisOctal%etaLine(subcell) = fac * alpha * omegaK * (r*gridDistanceScale)**2 * hOverR**2 * thisRho
-             if ((rvec%x-globalSourceArray(1)%position%x)/(1.0d-9+abs(rvec%z-globalSourceArray(1)%position%z)) > 5 .and.&
+             if (cylindricalHydro .and. (rvec%x-globalSourceArray(1)%position%x)/(1.0d-9+abs(rvec%z-globalSourceArray(1)%position%z)) > 3 .and.&
                   thisRho > rhoThreshold) then
-                thisOctal%etaLine(subcell) = thisOctal%etaLine(subcell) * 10 ! crank up viscosity in disc cells with density above accretion threshold
+                thisOctal%etaLine(subcell) = thisOctal%etaLine(subcell) * 100 ! crank up viscosity in disc cells with density above accretion threshold
              endif
 
              if (alpha < 0.d0) then
@@ -8921,13 +8921,13 @@ globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age 
   end subroutine pressureGradientTimeStep
 
   recursive subroutine pressureTimeStep(thisoctal, dt)
-    use inputs_mod, only : gridDistanceScale, smallestCellSize, includePressureTerms !, cylindricalHydro
+    use inputs_mod, only : gridDistanceScale, smallestCellSize, includePressureTerms, cylindricalHydro
     use mpi
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: dt, dx, acc, acc_adj
-    
+    type(vector) :: rVec
 
 
 
@@ -8993,6 +8993,14 @@ globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age 
 !                     / (thisOctal%rho(subcell)*thisOctal%x_i(subcell)**3)
 !                dt = min(dt, 0.5d0*sqrt(smallestCellSize*gridDistanceScale/max(acc,1.d-10)))
 !             endif
+
+             if (cylindricalHydro) then 
+                rVec = subcellCentre(thisOctal, subcell)
+                if (rvec%x .le. thisOctal%subcellsize/1.99) then
+                   dt=1.0d30
+                endif
+             endif
+
              if (dt < 1.0d4) then 
                 write(*,*) myrankGlobal, " dt close to 0 ",thisOctal%rho(subcell),thisOctal%rhov(subcell), &
                      thisoctal%pressure_i_plus_1(subcell), &
