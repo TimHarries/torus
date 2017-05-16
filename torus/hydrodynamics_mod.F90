@@ -1858,8 +1858,9 @@ contains
 
 
              thisOctal%etaLine(subcell) = fac * alpha * omegaK * (r*gridDistanceScale)**2 * hOverR**2 * thisRho
-             if (cylindricalHydro .and. (rvec%x-globalSourceArray(1)%position%x)/(1.0d-9+abs(rvec%z-globalSourceArray(1)%position%z)) > 3 .and.&
-                  thisRho > rhoThreshold) then
+             if (cylindricalHydro .and. &
+                 (rvec%x-globalSourceArray(1)%position%x)/(1.0d-9+abs(rvec%z-globalSourceArray(1)%position%z)) > 3 .and.&
+                 thisRho > rhoThreshold) then
                 thisOctal%etaLine(subcell) = thisOctal%etaLine(subcell) * 100 ! crank up viscosity in disc cells with density above accretion threshold
              endif
 
