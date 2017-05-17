@@ -1860,7 +1860,7 @@ contains
              thisOctal%etaLine(subcell) = fac * alpha * omegaK * (r*gridDistanceScale)**2 * hOverR**2 * thisRho
              if (cylindricalHydro .and. &
                  (rvec%x-globalSourceArray(1)%position%x)/(1.0d-9+abs(rvec%z-globalSourceArray(1)%position%z)) > 3 .and.&
-                 thisRho > rhoThreshold) then
+                 thisRho > rhoThreshold/3) then
                 thisOctal%etaLine(subcell) = thisOctal%etaLine(subcell) * 100 ! crank up viscosity in disc cells with density above accretion threshold
              endif
 
@@ -8997,15 +8997,16 @@ globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age 
 
              if (cylindricalHydro) then 
                 rVec = subcellCentre(thisOctal, subcell)
-                if (rvec%x .le. thisOctal%subcellsize/1.99) then
+                if (rvec%x .le. thisOctal%subcellsize*2 ) then !cells on or adjacent to the axis in 2dCylindrical can give screwy pressure timesteps
                    dt=1.0d30
                 endif
              endif
 
-             if (dt < 1.0d4) then 
+             if (dt < 1.0d5) then 
                 write(*,*) myrankGlobal, " dt close to 0 ",thisOctal%rho(subcell),thisOctal%rhov(subcell), &
                      thisoctal%pressure_i_plus_1(subcell), &
                      thisOctal%pressure_i_minus_1(subcell),acc
+                write(*,*) rvec
              endif
           endif
        endif

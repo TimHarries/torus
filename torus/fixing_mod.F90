@@ -5,6 +5,7 @@ module fixing_mod
   use inputs_mod, ONLY: griddistancescale, cylindricalHydro, nHydroThreadsInput, smallestCellSize
   use grid_mod
   use source_mod, only: globalsourcearray
+use amr_mod, only: findsubcelllocal
 
   IMPLICIT NONE
 
@@ -25,13 +26,13 @@ contains
     
   
   recursive subroutine fixOctalValues_pri(thisOctal, currentTime) 
-    type(octal), pointer   :: thisOctal, child
+    type(octal), pointer   :: thisOctal, child, neighbourOctal
     real(double) :: currentTime
 !    real(double) :: r,theta,phi
     real(double) :: R
-    type(vector) :: cen
+    type(vector) :: cen, locator
 !    real(double) :: fixedRho, fixedTemp, ethermal, uSquared
-    integer :: subcell, i
+    integer :: subcell, i, neighbourSubcell
  !   integer :: ri,thetai
  !   real(double), save :: rho(1000,1500), ur(1000,1500), uz(1000,1500), uphi(1000,1500)
  !   logical, save :: gotdata=.false.
@@ -137,6 +138,14 @@ contains
              if (cen%x <=(thisOctal%subcellSize)) then
                 thisOctal%rhou(subcell)=0!cells on the axis cant have radial momentum
                 thisOctal%rhov(subcell)=0!cells on the axis cant have momentum in the phi direction 
+             endif
+             if (cen%x <=smallestCellsize) then
+                locator=cen
+                locator%x=locator%x+smallestCellsize
+                neighbouroctal => thisoctal
+                call findsubcelllocal(locator, neighbouroctal, neighboursubcell)
+                thisOctal%pressure_i(subcell)=max(thisOctal%pressure_i(subcell),&
+                                                  neighbourOctal%pressure_i(neighboursubcell)/10) !prevent severe underpressureing of cells on axis
              endif
              R=(cen%x*gridDistanceScale)
              if (abs(cen%z) <= smallestCellSize/2 ) then
