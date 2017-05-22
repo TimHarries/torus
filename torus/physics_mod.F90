@@ -353,7 +353,7 @@ contains
     use inputs_mod, only : dustPhysics, lowmemory, radiativeEquilibrium, gasOpacityPhysics
     use inputs_mod, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
          lucy_undersampled, molecularPhysics, hydrodynamics, setupMolecularLteOnly !, UV_vector
-    use inputs_mod, only : useDust, realDust, variableDustSublimation, massEnvelope
+    use inputs_mod, only : useDust, realDust, variableDustSublimation, massEnvelope, dustSettling
     use inputs_mod, only : mCore, solveVerticalHydro, sigma0!, scatteredLightWavelength,  storeScattered
     use inputs_mod, only : tEnd, tDump, usepah
     use gas_opacity_mod
@@ -494,6 +494,7 @@ contains
 
         if (grid%geometry == "shakara") then
            call fillDustShakara(grid, grid%octreeRoot, dustmass)
+	   if (dustSettling) call fillDustSettled(grid)
         endif
 !        call fillDustUniform(grid, grid%octreeRoot)
 #ifdef MPI

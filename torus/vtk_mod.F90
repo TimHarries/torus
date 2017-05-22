@@ -3196,7 +3196,11 @@ end subroutine writeXMLVtkFileAMR
 
 
                case("deltaT")
-                  rArray(1, n) = real(real(thisOctal%temperature(subcell)-thisOctal%oldtemperature(subcell)))
+                  if (associated(thisOctal%oldTemperature)) then
+                     rArray(1, n) = real(real(thisOctal%temperature(subcell)-thisOctal%oldtemperature(subcell)))
+                  else
+                     rArray(1,n) = 0.d0
+                  endif
 
 
                case("scattered")

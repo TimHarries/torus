@@ -15,8 +15,8 @@ module disc_hydro_mod
   use inputs_mod
   use gridtype_mod, only: GRIDTYPE
   use octal_mod, only: OCTAL, subcellCentre
-  use lucy_mod, only: lucyRadiativeEquilibriumAMR, fillDustSettled
-
+  use lucy_mod, only: lucyRadiativeEquilibriumAMR
+  use dust_mod, only : fillDustSettled
   implicit none
 
   public
@@ -398,8 +398,8 @@ contains
     nIter = 1
 
 
-    if (nDusttype >=2 ) then
-       call fillDustSettled(grid, grid%octreeRoot)
+    if (dustSettling) then
+       call fillDustSettled(grid)
        call writeVtkFile(grid, "settled.vtu", &
             valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
             "dust1      ","dust2      ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", &
@@ -466,7 +466,7 @@ contains
 
 
        if (nDusttype >=2 ) then
-          call fillDustSettled(grid, grid%octreeRoot)
+          call fillDustSettled(grid)
           call writeVtkFile(grid, "settled.vtu", &
                valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
                "dust1      ","dust2      ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", &
@@ -630,7 +630,7 @@ contains
 
 
     if (nDusttype >=2 ) then
-       call fillDustSettled(grid, grid%octreeRoot)
+       call fillDustSettled(grid)
        call writeVtkFile(grid, "settled.vtu", &
             valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
             "dust1      ","dust2      ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", &

@@ -6,7 +6,7 @@ module dust_mod
   use vector_mod
   use gridtype_mod, only: GRIDTYPE
   use utils_mod, only: locate
-  use octal_mod, only: OCTAL, subcellCentre
+  use octal_mod, only: OCTAL, subcellCentre, cellVolume
   use amr_mod, only: amrGridValues, returnKappa, octalOnThread, findTotalMass
   use mpi_global_mod
   use mieDistCrossSection_mod, only: mieDistCrossSection
@@ -926,20 +926,6 @@ contains
              thisOctal%dustTypeFraction(subcell,1:nDustType) = max(1.d-20,grainFrac(1:nDustType)*exp(-fac))
           endif
 
-          if (dustSettling) then
-
-
-             if ( (r > rSublimation).and.(r < rOuter)) then
-                do iDust = 1, nDustType
-                   thisHeight = dustHeight(iDust)*(r/(100.d0*autocm/1.d10))**dustBeta(iDust)
-                   gasHeight =  height*(r/(100.d0*autocm/1.d10))**betaDisc
-                   fracGas = max(1.d0/(gasHeight*sqrt(2.d0*pi)) * exp(-0.5d0*(z/gasHeight)**2),1.d-30)
-                   fracDust = max(1.d-30,1.d0/(thisHeight*sqrt(2.d0*pi)) * exp(-0.5d0*(z/thisHeight)**2))
-                   thisOctal%dustTypeFraction(subcell, iDust) = max(1.d-30,grainFrac(iDust) * fracDust / fracGas)
-                enddo
-             endif
-             
-          endif
 
  !         thisOctal%dustTypeFraction(subcell,1:nDustType) = thisRsub/1496.
 !          if (nDustType > 1) then
@@ -1146,7 +1132,7 @@ contains
 
   recursive subroutine sublimateDust(grid, thisOctal, totFrac, nFrac, tauMax, subTemp, minLevel)
 
-    use inputs_mod, only : grainFrac, nDustType, tThresh, tSub, decoupleGasDustTemperature
+    use inputs_mod, only : grainFrac, nDustType, tThresh, tSub, decoupleGasDustTemperature, tsubpower
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -1194,8 +1180,7 @@ contains
              if (present(subTemp)) then
                 sublimationTemp = real(subTemp)
              else
-                sublimationTemp = real(max(700.d0,tSub(j) * thisOctal%rho(subcell)**(1.95d-2)))
-                sublimationTemp = real(tSub(j))
+                sublimationTemp = real(max(700.d0,tSub(j) * thisOctal%rho(subcell)**(tsubpower(j))))
              endif
 
              if (tThresh /= 0.) sublimationTemp = tThresh
@@ -2211,6 +2196,294 @@ real function getMedianSize(aMin, aMax, a0, qDist, pDist) result(aMedian)
      aMedian = a(i+1)
   endif
 end function getMedianSize
+  subroutine fillDustSettled(grid)
+    type(GRIDTYPE) :: grid
+    real(double) :: gasMass, dustMass(1:10)
+    call writeInfo("Doing dust settling calculation...",TRIVIAL)
+    call fillDustSettledRecur(grid, grid%octreeRoot)
+    gasMass = 0.d0
+    dustMass = 0.d0
+    call sumDustMass(grid%octreeRoot, gasMass, dustMass)
+    call normDustMass(grid%octreeRoot, gasMass, dustMass)
+!    call testDustScaleheight(grid, grid%octreeRoot)
+    call writeInfo("Done.",TRIVIAL)
+  end subroutine fillDustSettled
+
+  recursive subroutine fillDustSettledRecur(grid, thisOctal)
+
+    use inputs_mod, only : rinner, router, grainFrac, nDustType, fracdustHeight, height, betadisc, rsublimation
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    type(VECTOR) :: rvec
+    real(double) :: fitheight
+    integer :: subcell, i, j, k
+    real(double), allocatable :: zAxis(:), rho(:), subcellsize(:), normrho(:)
+    real, allocatable :: temperature(:)
+    integer :: nz
+    integer, parameter :: m = 10000
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call fillDustSettledRecur(grid, child)
+                exit
+             end if
+          end do
+       else
+          rVec = subcellCentre(thisOctal,subcell)
+          if ((rVec%x > rinner).and.(rVec%x< rOuter)) then
+             allocate(zAxis(m), rho(m), temperature(m), subcellsize(m), normrho(m))
+             call getTemperatureDensityRun(grid, zAxis, subcellsize, rho, temperature, real(rVec%x), 0., nz, 1.)
+             zAxis(1:nz) = zAxis(1:nz) / 1.d10
+             zAxis(1:nz) = zAxis(1:nz)**2
+             normrho(1:nz) = log(rho(1:nz)/rho(1))
+             j = 1
+             do while ((normrho(j) > -8.d0).and.(.not.(j > nz)))
+                j = j + 1
+             enddo
+             nz  = j - 1
+             
+!             if (writeoutput) then
+!                do j = 1,nz
+!                   write(*,*) j,zaxis(j),normrho(j)
+!                enddo
+!                write(*,*) " "
+!             endif
+             
+             if (all(normrho(1:nz) == 0.d0).or.(nz <= 2)) then
+                fitHeight = 1.d30
+             else
+                call getLocalScaleheight(zAxis, normrho, nz, fitheight)
+             endif
+
+
+!             if (writeoutput) write(*,*) "expected height ",height*(rVec%x/(100.d0*autocm/1.d10))**betadisc, " fit ", fitheight
+
+             do k = 1, nDustType
+                thisOctal%dustTypeFraction(subcell,k) = 1.d-30
+                if (thisOctal%rho(subcell) > 1d-30) then
+                   thisOctal%dustTypeFraction(subcell, k) =  &
+                        exp(-0.5d0 * (rVec%z**2)/((fracdustheight(k) * fitheight)**2))*rho(1)/thisOctal%rho(subcell)
+                endif
+             enddo
+             if (rVec%x < rSublimation) thisOctal%dustTypeFraction(subcell,:) = 1.d-30
+
+!             thisOctal%dustTypeFraction(subcell, 2)  = grainfrac(2)
+!             thisOctal%origDustTypeFraction(subcell,1:2) = thisOctal%dustTypeFraction(subcell,1:2)
+             deallocate( zAxis, rho, temperature, subcellsize, normrho)
+
+          endif
+       end if
+    end do
+
+  end subroutine fillDustSettledRecur
+
+  recursive subroutine testDustScaleheight(grid, thisOctal)
+
+    use inputs_mod, only : rinner, router, grainFrac, nDustType, fracdustHeight, height, betadisc
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    type(VECTOR) :: rvec
+    real(double) :: fitheight
+    integer :: subcell, i, j, k
+    real(double), allocatable :: zAxis(:), rho(:), subcellsize(:), normrho(:)
+    real, allocatable :: temperature(:)
+    real(double) :: dustHeight(10), gasheight
+    integer :: nz
+    integer, parameter :: m = 10000
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call testDustScaleheight(grid, child)
+                exit
+             end if
+          end do
+       else
+          rVec = subcellCentre(thisOctal,subcell)
+          if ((rVec%x > rinner).and.(rVec%x< rOuter)) then
+
+             allocate(zAxis(m), rho(m), temperature(m), subcellsize(m), normrho(m))
+
+
+             call getTemperatureDensityRun(grid, zAxis, subcellsize, rho, temperature, real(rVec%x), 0., nz, 1.)
+             zAxis(1:nz) = zAxis(1:nz) / 1.d10
+             zAxis(1:nz) = zAxis(1:nz)**2
+             normrho(1:nz) = log(rho(1:nz)/rho(1))
+             j = 1
+             do while ((normrho(j) > -8.d0).and.(.not.(j > nz)))
+                j = j + 1
+             enddo
+             nz  = j - 1
+             call getLocalScaleheight(zAxis, normrho, nz, gasheight)
+
+             do k = 1, nDustType
+                call getTemperatureDensityRun(grid, zAxis, subcellsize, rho, temperature, real(rVec%x), 0., nz, 1., dustType=k)
+                zAxis(1:nz) = zAxis(1:nz) / 1.d10
+                zAxis(1:nz) = zAxis(1:nz)**2
+                normrho(1:nz) = log(rho(1:nz)/rho(1))
+                j = 1
+                do while ((normrho(j) > -8.d0).and.(.not.(j > nz)))
+                   j = j + 1
+                enddo
+                nz  = j - 1
+                call getLocalScaleheight(zAxis, normrho, nz, dustheight(k))
+
+             enddo
+             if (writeoutput) write(*,*) "scaleheights ",dustheight(1:nDustType)/gasHeight
+
+
+             deallocate( zAxis, rho, temperature, subcellsize, normrho)
+
+          endif
+       end if
+    end do
+
+  end subroutine testDustScaleheight
+
+  recursive subroutine sumDustMass(thisOctal, gasMass, dustMass)
+
+    use inputs_mod, only :  grainFrac, nDustType
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    real(double) :: dustMass(:), gasMass
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call sumDustMass(child, gasMass, dustMass)
+                exit
+             end if
+          end do
+       else
+
+          dustMass(1:nDustType) = dustMass(1:nDustType) + &
+               cellVolume(thisOctal,subcell) * thisOctal%dustTypeFraction(subcell,1:nDustType) * thisOctal%rho(subcell) * 1.d30
+          gasMass = gasMass + cellVolume(thisOctal,subcell) * thisOctal%rho(subcell) * 1.d30
+       end if
+    end do
+
+  end subroutine sumDustMass
+
+  recursive subroutine normDustMass(thisOctal, gasMass, dustMass)
+ 
+    use inputs_mod, only :  grainFrac, nDustType
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    real(double) :: dustMass(:), gasMass, scaleFac(10)
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call normDustMass(child, gasMass, dustMass)
+                exit
+             end if
+          end do
+       else
+
+          scaleFac(1:nDustType) = GrainFrac(1:nDustType) / (dustMass(1:nDustType) / gasMass)
+
+          if (thisOctal%rho(subcell) > 1d-30) then
+             thisOctal%dustTypeFraction(subcell,1:nDustType) = & 
+                  thisOctal%dustTypeFraction(subcell,1:nDustType) * scaleFac(1:nDustType)
+
+             if (.not.associated(thisOctal%origDustTypeFraction)) &
+                  allocate(thisOctal%origDustTypeFraction(1:thisOctal%maxChildren, 1:nDustType))
+             thisOctal%origDustTypeFraction(subcell,1:nDustType) = thisOctal%dustTypeFraction(subcell,1:nDustType)
+          endif
+       end if
+    end do
+
+  end subroutine normDustMass
+
+  
+
+
+
+  subroutine getLocalScaleheight(z, rho, nz, height)
+    use utils_mod, only: linfit 
+
+    use utils_mod, only : locate
+    real(double) :: z(:), rho(:), height
+    integer :: nz
+    real(double) :: a, sigmaa, b, sigmab, rcoeff
+
+    call LINFIT(z,rho,rho,nz, 0, A, SIGMAA, B, SIGMAB, Rcoeff)
+    if (b < 0.d0) then
+       height = sqrt(-1.d0/(2.d0*b))
+    else
+       height = 1.d30
+    endif
+
+
+  end subroutine getLocalScaleheight
+
+
+
+  subroutine getTemperatureDensityRun(grid, zAxis, subcellsize, rho, temperature, xPos, yPos, nz, direction, dusttype)
+    use amr_mod, only: amrGridValues
+    use parallel_mod, only: torus_abort
+    integer, optional :: dustType
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    integer, intent(out) :: nz
+    real(double) :: rho(:)
+    real :: temperature(:)
+    real(double) :: zAxis(:), subcellsize(:)
+    real :: xPos, yPos
+    integer :: subcell
+    real(double) :: rhotemp
+    real :: temptemp
+    real :: direction
+    type(VECTOR) :: currentPos, temp
+    real :: halfSmallestSubcell
+    integer :: nzMax
+
+    nzMax = SIZE(temperature)
+    nz = 0
+    halfSmallestSubcell = real(grid%halfSmallestSubcell)
+
+    currentPos = VECTOR(xPos, yPos, direction*halfSmallestSubcell)
+
+    do while(abs(currentPos%z) < grid%ocTreeRoot%subcellsize)
+       call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
+            foundSubcell=subcell, rho=rhotemp, temperature=temptemp)
+       thisOctal%chiLine(subcell) = 1.e-30
+!       if (thisOctal%inFlow(subcell)) then
+          nz = nz + 1
+          if (nz>nzmax) then
+             call torus_abort("nz>nzMax in getTemperatureDensityRun. Aborting ...")
+          endif
+          temperature(nz) = temptemp
+          rho(nz) = rhotemp
+          if (present(dustType)) rho(nz) = thisOctal%rho(subcell) * thisOctal%dustTypeFraction(subcell,dustType)
+          temp = subCellCentre(thisOctal, subcell)
+          zAxis(nz) = temp%z
+          subcellsize(nz) = thisOctal%subcellsize
+!       endif
+          currentPos = VECTOR(xPos, yPos, zAxis(nz)+0.5*direction*thisOctal%subcellsize+direction*halfSmallestSubcell)
+!       else
+!          currentPos = VECTOR(xPos, yPos, grid%octreeRoot%subcellsize+halfSmallestSubcell)
+!       endif
+    end do
+    zAxis(1:nz) = abs(zAxis(1:nz)) * 1.d10  ! convert to cm
+  end subroutine getTemperatureDensityRun
  
 end module dust_mod
 

@@ -2707,6 +2707,7 @@ i_loop: do i = 1, n-1
       SUMX2 = 0.
       SUMY2 = 0.
       SUMXY = 0.
+      VARNCE = 1.
       DO I = 1,NPTS
         XI = X(I)
         YI = Y(I)

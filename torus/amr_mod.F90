@@ -3582,7 +3582,7 @@ CONTAINS
     use magnetic_mod, only : safierfits
     use biophysics_mod, only : splitSkin
 ! Currently commented out. Reinstate if required.
-    use inputs_mod, only : smoothInnerEdge
+    use inputs_mod, only : smoothInnerEdge, variableDustSublimation
 !    use inputs_mod, only: ttauriwind, smoothinneredge, amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
 
 #ifdef USECFITSIO
@@ -5301,7 +5301,7 @@ CONTAINS
 
           if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
-          if (.not.smoothinneredge) then
+          if ((.not.smoothinneredge).and.(.not.variableDustSublimation)) then
              if (((r-cellsize/2.d0) < rSublimation).and. ((r+cellsize/2.d0) > rSublimation) .and. &
                   (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 1.d0) .and. &
                   (.not.thisOctal%cylindrical)) split=.true.

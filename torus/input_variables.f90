@@ -442,6 +442,7 @@
   character(len=80) :: kappafilename(10)
   logical :: variableDustSublimation
   real(double) :: tSub(10) ! variable dust sublimation temperature factor
+  real(double) :: tSubPower(10) ! variable dust sublimation density factor
   logical :: dustSettling
   integer :: nDustType
   logical :: readDustFromFile, writeDustToFile
@@ -462,6 +463,7 @@
   real :: a0(maxDustTypes)      !  scale length in the equation above.
   real :: pDist(maxDustTypes)   !  p exponent in the equation above.
   real(double) :: dustHeight(maxDustTypes)   !  p exponent in the equation above.
+  real(double) :: fracdustHeight(maxDustTypes)   !  p exponent in the equation above.
   real(double) :: dustBeta(maxDustTypes)   !  p exponent in the equation above.
   real :: porousFillingFactor(maxDustTypes)
 

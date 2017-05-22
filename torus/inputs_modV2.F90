@@ -1637,8 +1637,8 @@ contains
        call getLogical("curvedinneredge", curvedInnerEdge, cLine, fLine, nLines, &
             "Curved inner edge: ","(a,1l,1x,a)", .false., ok, .false.)
 
-!       call getReal("radius1", rCore, real(rsol/1.e10), cLine, fLine, nLines, &
-!            "Core radius (solar radii): ","(a,f7.3,a)", 10., ok, .true.)
+       call getReal("radius1", rCore, real(rsol/1.e10), cLine, fLine, nLines, &
+            "Core radius (solar radii): ","(a,f7.3,a)", 10., ok, .true.)
 
        call getReal("rinner", rInner, real(sourceRadius(1)), cLine, fLine, nLines, &
             "Inner Radius (stellar radii): ","(a,f7.3,a)", 12., ok, .true.)
@@ -1807,6 +1807,11 @@ contains
 
 
        do i = 1, nDustType
+
+
+          write(heightLabel, '(a,i1.1)') "fracheight",i
+          call getDouble(heightLabel, fracdustHeight(i), 1.d0, cLine, fLine, nLines, &
+               "Dust scale height as fraction of gas scale height: ","(a,f10.5,1x,a)", 1.d0, ok, .false.)
 
 
           write(heightLabel, '(a,i1.1)') "dustheight",i
@@ -2583,7 +2588,7 @@ contains
     integer :: i
     character(len=20) :: grainTypeLabel, grainFracLabel, aMinLabel, grainDensityLabel, &
          aMaxLabel, qDistLabel, pdistLabel, a0label, fillingFactorLabel, tsubLabel, kappaFileLabel, &
-         dustFileLabel, heightLabel, betaLabel
+         dustFileLabel, heightLabel, betaLabel, tsubPowerLabel
 
        oneKappa = .true.
 
@@ -2639,6 +2644,7 @@ contains
              write(grainTypeLabel, '(a,i1.1)') "graintype",i
              write(grainFracLabel, '(a,i1.1)') "grainfrac",i
              write(tsubLabel, '(a,i1.1)') "tsub",i
+             write(tsubPowerLabel, '(a,i1.1)') "tsubpower",i
              write(grainDensityLabel, '(a,i1.1)') "graindensity",i
              write(aMinLabel, '(a,i1.1)') "amin",i
              write(aMaxLabel, '(a,i1.1)') "amax",i
@@ -2689,6 +2695,9 @@ contains
 
              call getDouble(tsublabel, tsub(i), 1.d0, cLine, fLine, nLines, &
                   "Temperature for dust sublimation (K):  ","(a,e12.3,1x,a)", 1500.d0, ok, .false.)
+
+             call getDouble(tsubpowerlabel, tsubpower(i), 1.d0, cLine, fLine, nLines, &
+                  "Density power-law index  for dust sublimation (K):  ","(a,e12.3,1x,a)", 0.d0, ok, .false.)
 
              if (.not. readDustFromFile) &
                   call getReal(aminLabel, aMin(i), 1., cLine, fLine, nLines, &
