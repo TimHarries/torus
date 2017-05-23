@@ -110,10 +110,10 @@ module molecular_mod
    ! Read in molecular parameters from file - note: abundance hard-coded here
 
 
-   function criticalDensity(thisMolecule, iTransition, temperature)
+   subroutine findcriticalDensity(criticalDensity, thisMolecule, iTransition, temperature)
      type(MOLECULETYPE) :: thisMolecule
      real(double) :: temperature, criticalDensity
-     integer :: iTransition
+     integer :: iTransition, iCollTrans
      integer :: iUp, iLow
      real(double) :: a,Qul
 
@@ -121,11 +121,12 @@ module molecular_mod
      a = thisMolecule%einsteinA(iTransition)
      iUp = thisMolecule%itransUpper(iTransition)
      iLow = thisMolecule%itransLower(iTransition)
+     call findcollTransition(iCollTrans,thisMolecule,ilow, iup, 1)
      
-     qUl = collRate(thisMolecule, temperature, iPart, iTrans)
+     qUl = collRate(thisMolecule, temperature, 1, iCollTrans)
 
      criticalDensity = a / qUl
-   end function criticalDensity
+   end subroutine findcriticalDensity
 
    subroutine reduceMolecule(thisMolecule,maxLevel)
      type(MOLECULETYPE) :: thisMolecule
@@ -2651,6 +2652,21 @@ endif
      end select
 
    end function collPartnerDensity
+
+   subroutine findcollTransition(collTransition, thisMolecule,ilower, iupper, ipart)
+     type(MOLECULETYPE) :: thisMolecule
+     integer :: ilower, iupper, ipart,i, collTransition
+     collTransition = 0
+     do i = 1, thisMolecule%nCollTrans(ipart)
+!        if (writeoutput) write(*,*) i, thisMolecule%iCollLower(ipart,i), &
+!             thisMolecule%iCollUpper(ipart,i)
+        if ( (thisMolecule%iCollLower(ipart, i) == ilower).and. &
+             (thisMolecule%iCollUpper(ipart, i) == iupper)) then
+           collTransition = i
+           exit
+        endif
+     enddo
+   end subroutine findcollTransition
 
    subroutine getCollMatrix(nh2, temperature, thismolecule, nh, nhe, ne, nprotons, collT, ctot)
 
