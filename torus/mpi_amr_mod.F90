@@ -67,7 +67,7 @@ contains
     integer :: worldGroup, amrGroup, localWorldGroup
     integer :: amrParallelGroup, zeroThreadGroup
     integer, parameter :: tag = 22
-    character(len=40) :: proc, thisProc
+    character(len=MPI_MAX_PROCESSOR_NAME) :: proc, thisProc
     logical :: optimized
     integer :: status(MPI_STATUS_SIZE)
     character(len=80) :: message
