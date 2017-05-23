@@ -17152,11 +17152,11 @@ end subroutine refineGridGeneric2
     integer, optional :: fromDepth
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
     integer :: iDepth
-    real(double) :: residual, deltaT, tauMin
-    real(double) :: fracChange, fracChange1, fracChange2, tempFracChange
+    real(double) :: residual
+    real(double) :: fracChange, tempFracChange
 
     integer :: ierr, iter, bigIter, i
-    character(len=80) :: plotfile
+!    character(len=80) :: plotfile
     integer, parameter :: minDepth = 4
     integer :: maxDepth
 
@@ -17638,7 +17638,8 @@ end subroutine refineGridGeneric2
                valueTypeString=(/"phigas ", "rho    ","chiline","adot   "/))
        endif
 
-       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreadsGlobal)),tol2,maxval(fracChange2(1:nHydroThreadsGlobal))
+       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreadsGlobal)), &
+            tol2,maxval(fracChange2(1:nHydroThreadsGlobal))
 !       if (writeoutput) write(*,*) it," frac change ",maxval(fracChange2(1:nHydroThreadsGlobal)),tol2
        if (it > 50000) then
           if (Writeoutput) write(*,*) "Maximum number of iterations exceeded in gravity solver", &

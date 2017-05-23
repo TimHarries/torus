@@ -124,7 +124,7 @@ contains
     logical :: thermalPhoton, scatteredPhoton
     integer :: nCellsInDiffusion
     real(double) :: fac1(nLambda), fac1dnu(nlambda)
-    integer :: nVoxels, nOctals, nInFlow, nUnrefine
+    integer :: nVoxels, nOctals, nInFlow
 
     integer :: icritupper, icritlower
     real(double) :: logt, weight

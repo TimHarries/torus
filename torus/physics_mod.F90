@@ -494,7 +494,7 @@ contains
 
         if (grid%geometry == "shakara") then
            call fillDustShakara(grid, grid%octreeRoot, dustmass)
-	   if (dustSettling) call fillDustSettled(grid)
+           if (dustSettling) call fillDustSettled(grid)
         endif
 !        call fillDustUniform(grid, grid%octreeRoot)
 #ifdef MPI

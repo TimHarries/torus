@@ -879,17 +879,15 @@ contains
 
   recursive subroutine fillDustShakara(grid, thisOctal, dustmass)
 
-    use inputs_mod, only : rOuter, dustHeight, dustBeta, height, betaDisc, dustSettling
     use inputs_mod, only: rSublimation, nDustType, curvedInnerEdge, grainFrac
     use octal_mod, only : cellVolume
     use density_mod
-    integer :: iDust
-    real(double) :: thisHeight, gasHeight
+
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     type(VECTOR) :: rVec
-    real(double) :: r, z, fracGas, fracDust
+    real(double) :: r, z
     real(double) :: dustMass, cellMass
     real(double) :: fac, rhoFid, rho, thisRsub
     integer :: subcell, i
@@ -2211,7 +2209,7 @@ end function getMedianSize
 
   recursive subroutine fillDustSettledRecur(grid, thisOctal)
 
-    use inputs_mod, only : rinner, router, grainFrac, nDustType, fracdustHeight, height, betadisc, rsublimation
+    use inputs_mod, only : rinner, router, nDustType, fracdustHeight,  rsublimation
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -2283,12 +2281,11 @@ end function getMedianSize
 
   recursive subroutine testDustScaleheight(grid, thisOctal)
 
-    use inputs_mod, only : rinner, router, grainFrac, nDustType, fracdustHeight, height, betadisc
+    use inputs_mod, only : rinner, router, nDustType
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     type(VECTOR) :: rvec
-    real(double) :: fitheight
     integer :: subcell, i, j, k
     real(double), allocatable :: zAxis(:), rho(:), subcellsize(:), normrho(:)
     real, allocatable :: temperature(:)
@@ -2349,8 +2346,7 @@ end function getMedianSize
 
   recursive subroutine sumDustMass(thisOctal, gasMass, dustMass)
 
-    use inputs_mod, only :  grainFrac, nDustType
-    type(GRIDTYPE) :: grid
+    use inputs_mod, only :  nDustType
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     real(double) :: dustMass(:), gasMass
@@ -2379,7 +2375,6 @@ end function getMedianSize
   recursive subroutine normDustMass(thisOctal, gasMass, dustMass)
  
     use inputs_mod, only :  grainFrac, nDustType
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     real(double) :: dustMass(:), gasMass, scaleFac(10)
