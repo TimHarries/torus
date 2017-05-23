@@ -18456,7 +18456,7 @@ end subroutine minMaxDepth
         else
            if (.not.OctalOnThread(thisOctal, subcell, myrankGlobal)) cycle
 
-           if (thisOctal%ghostCell(subcell)) then
+           if (thisOctal%edgeCell(subcell)) then
               point = subcellCentre(thisOctal, subcell)
 
               if (thisOctal%threed.or.(thisOctal%twoD.and.(point%x > 0.d0))) then

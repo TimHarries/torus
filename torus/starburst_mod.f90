@@ -603,7 +603,7 @@ contains
      subroutine getHosokawaProperties(source)
        type(SOURCETYPE) :: source
        integer, parameter :: nSteps = 176
-       real(double) :: mStar(nSteps), rStar(nSteps), rPhot(nSteps), lstar(nSteps), ltot(nSteps), tstep(nSteps)
+       real(double),save :: mStar(nSteps), rStar(nSteps), rPhot(nSteps), lstar(nSteps), ltot(nSteps), tstep(nSteps)
        real(double) :: t 
        integer :: i, j
        character(len=80) :: message

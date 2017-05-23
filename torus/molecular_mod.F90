@@ -109,6 +109,24 @@ module molecular_mod
  contains
    ! Read in molecular parameters from file - note: abundance hard-coded here
 
+
+   function criticalDensity(thisMolecule, iTransition, temperature)
+     type(MOLECULETYPE) :: thisMolecule
+     real(double) :: temperature, criticalDensity
+     integer :: iTransition
+     integer :: iUp, iLow
+     real(double) :: a,Qul
+
+
+     a = thisMolecule%einsteinA(iTransition)
+     iUp = thisMolecule%itransUpper(iTransition)
+     iLow = thisMolecule%itransLower(iTransition)
+     
+     qUl = collRate(thisMolecule, temperature, iPart, iTrans)
+
+     criticalDensity = a / qUl
+   end function criticalDensity
+
    subroutine reduceMolecule(thisMolecule,maxLevel)
      type(MOLECULETYPE) :: thisMolecule
      integer :: maxLevel

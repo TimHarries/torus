@@ -922,6 +922,7 @@ contains
           if (nbodyPhysics.and.hosokawaTracks) then
              call  setSourceArrayProperties(globalsourceArray, globalnSource, fractionOfAccretionLum)
           endif
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 !          call photoIonizationloopAMR(grid, source, nSource, nLambda,lamArray, 1, loopLimitTime, loopLimitTime, .false., iterTime, &
 !               .true., evenuparray, sign)
                 tmpcylindricalhydro=cylindricalhydro
