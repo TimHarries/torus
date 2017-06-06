@@ -623,6 +623,9 @@ contains
     call getLogical("image", calcImage, cLine, fLine, nLines, &
          "Calculate an image: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("columnimage", calcColumnImage, cLine, fLine, nLines, &
+         "Calculate a column density image: ","(a,1l,1x,a)", .false., ok, .false.)
+
 
     call getLogical("movie", calcMovie, cLine, fLine, nLines, &
          "Calculate a movie: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -664,8 +667,10 @@ contains
     if (calcDataCube) call readDataCubeParameters(cLine, fLine, nLines)
 #endif
     if (calcImage) call readImageParameters(cLine, fLine, nLines)
+    if (calcColumnImage) call readColumnImageParameters(cLine, fLine, nLines)
     if (calcMovie) call readMovieParameters(cLine, fLine, nLines)
-    if (calcDataCube.or.calcImage.or.calcMovie.or.calcDustCube) call readFitsParameters(cLine, fLine, nLines)
+    if (calcDataCube.or.calcImage.or.calcMovie.or.calcDustCube.or.calcColumnImage) &
+         call readFitsParameters(cLine, fLine, nLines)
     if (calcSpectrum) call readSpectrumParameters(cLine, fLine, nLines)
     if (calcPhotometry) call readPhotometryParameters(cLine, fLine, nLines)
 
@@ -4051,6 +4056,25 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
   end subroutine readDetectorParameters
     
 
+  subroutine readColumnImageParameters(cLine, fLine, nLines)
+    use constants_mod
+    use image_utils_mod
+
+    character(len=lencLine) :: cLine(:)
+    character(len=80) :: message
+    logical :: fLine(:)
+    integer :: nLines
+    logical :: ok
+    integer :: i
+
+    call getString("columnfile", columnImageFilename, cLine, fLine, nLines, &
+         "Output column image  filename: ","(a,a,1x,a)","none", ok, .true.)
+
+    call getVector("columndir", columnImageDirection, 1.d0, cLine, fLine, nLines, &
+                  "Direction for column image: ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
+
+
+  end subroutine readColumnImageParameters
 
   subroutine readImageParameters(cLine, fLine, nLines)
     use constants_mod

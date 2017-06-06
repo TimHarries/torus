@@ -4165,6 +4165,49 @@ contains
 
   end function
 
+  subroutine createColumnDensityImage(grid, direction, image)
+    use mpi
+    use inputs_mod, only : maxDepthAMR, amrGridSize
+    real(double), pointer :: image(:,:)
+    real(double) :: halfGridSize, cellSize, xVal, yVal, sigma
+    type(VECTOR) :: direction, pos, centre, xAxisDir, yAxisDir
+    type(GRIDTYPE) :: grid
+    integer :: npix, i, j, ierr
+
+    if (abs(direction%x) > 0.d0) then
+       xAxisDir = VECTOR(0.d0, 1.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 0.d0, 1.d0)
+    else if (abs(direction%y) > 0.d0) then
+       xAxisDir = VECTOR(1.d0, 0.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 0.d0, 1.d0)
+    else
+       xAxisDir = VECTOR(1.d0, 0.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 1.d0, 0.d0)
+    endif
+    npix = 2**maxDepthAmr
+    centre = grid%octreeRoot%centre
+    halfGridSize = grid%octreeRoot%subcellSize
+    cellSize = amrGridSize/dble(npix)
+    allocate(image(1:npix, 1:npix))
+    image = 0.d0
+    do i = 1, nPix
+       do j = 1, nPix
+          pos = centre - (halfGridSize*direction) + (1.d-4*cellSize)*direction
+          xVal = -halfGridSize + ((dble(i-1)/dble(npix))) * amrGridSize + cellSize/2.d0
+          yVal = -halfGridSize + ((dble(j-1)/dble(npix))) * amrGridSize + cellSize/2.d0
+          pos = pos + (xVal * xAxisDir) + (yVal * yAxisDir)
+          sigma = 0.d0
+          if (myrankGlobal /= 0) then
+             call columnAlongPathAMR(grid, pos, direction, sigma)
+          endif
+!          write(*,*) myrankGlobal,sigma
+          call MPI_ALLREDUCE(sigma, image(i,j), 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
+       enddo
+    enddo
+  end subroutine createColumnDensityImage
+          
+          
+
   subroutine columnAlongPathAMR(grid, rVec, direction, sigma)
     use mpi
     type(GRIDTYPE) :: grid
@@ -4181,6 +4224,7 @@ contains
 
     CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
 
+    if (.not.inOctal(grid%octreeRoot, currentPosition)) write(*,*) "pos not in grid"
 
     do while (inOctal(grid%octreeRoot, currentPosition))
 

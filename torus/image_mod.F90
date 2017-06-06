@@ -962,6 +962,118 @@ module image_mod
        end if
 
      End subroutine writeFitsImage
+
+     subroutine writeFitsColumnDensityImage(image, filename)
+
+       use fits_utils_mod
+       use image_utils_mod
+       use inputs_mod, only : amrgridsize
+
+! Arguments
+       real(double), pointer ,intent(in) :: image(:,:)
+       character (len=*), intent(in) :: filename
+       character(len=80) :: rFile
+! Local variables
+       integer :: status,unit,blocksize,bitpix,naxis,naxes(2)
+       integer :: group,fpixel,nelements
+       real, allocatable :: array(:,:)
+       integer, allocatable :: samplings(:,:)
+       integer :: i, j,k, npix
+       real(double) :: scale,  dx, dy, phi
+       logical :: simple,extend
+       logical :: oldFilePresent
+       character(len=80) :: message
+       real(double) :: refValX, refValY ! co-ordinate values in reference pixel
+       real(double) :: xt, yt
+
+       npix = size(image,1)
+       allocate(array(1:npix, 1:npix))
+       call writeInfo("Writing column density image to: "//trim(filename),TRIVIAL)
+
+       call checkBitpix(FitsBitpix)
+
+       status=0
+       !
+       !  Delete the file if it already exists, so we can then recreate it.
+       !
+       inquire(file=filename, exist=oldFilePresent)
+       if (oldFilePresent) then 
+          call writeInfo("Removing old file", FORINFO)
+          call deleteFile(filename, status)
+       end if
+
+       !
+       !  Get an unused Logical Unit Number to use to open the FITS file.
+       !
+       call ftgiou ( unit, status )
+       !
+       !  Create the new empty FITS file.
+       !
+       blocksize=1
+       call ftinit(unit,filename,blocksize,status)
+       !
+       !  Initialize parameters about the FITS image (300 x 200 16-bit integers).
+       !
+       simple=.true.
+       bitpix=fitsbitpix
+       naxis=2
+       naxes(1)=npix
+       naxes(2)=npix
+       extend=.true.
+       !
+       !  Write the required header keywords.
+       !
+       call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+       !
+       !  Write the array to the FITS file.
+       !
+       group=1
+       fpixel=1
+       nelements=naxes(1)*naxes(2)
+
+
+       scale = 1.
+       array = real(image * scale)
+
+
+       dx = amrgridsize/dble(npix)
+       dy = amrgridsize/dble(npix)
+       refvalx = -amrgridSize/2.d0 + (amrgridsize/dble(npix))/2.d0
+       refvaly = -amrgridSize/2.d0 + (amrgridsize/dble(npix))/2.d0
+
+       ! Add keywords for bitpix=16 and bitpix=8 
+       call addScalingKeywords(maxval(array), minval(array), unit, bitpix)
+
+       call ftppre(unit,group,fpixel,nelements,array,status)
+
+       !
+       !  Write another optional keyword to the header.
+       !
+
+       call ftpkys(unit,'BUNIT', "g cm^-2", "units of image values", status)
+
+
+       call ftpkys(unit,'CUNIT1', "PC", "x axis unit", status)
+       call ftpkys(unit,'CUNIT2', "PC", "y axis unit", status)
+          call ftpkys(unit,'CTYPE1'," X","x axis", status)
+          call ftpkyd(unit,'CRPIX1',0.5_db,-3,'reference pixel',status)
+          call ftpkyd(unit,'CDELT1',dx,10,' ',status)
+          call ftpkyd(unit,'CRVAL1',refValX,-3,'coordinate value at reference point',status)
+
+          ! write y-axis keywords
+          call ftpkys(unit,'CTYPE2'," Y","y axis", status)
+          call ftpkyd(unit,'CRPIX2',0.5_db,-3,'reference pixel',status)
+          call ftpkyd(unit,'CDELT2',dy,10 ,' ',status)
+          call ftpkyd(unit,'CRVAL2',refValY,-3,'coordinate value at reference point',status)
+
+       call ftclos(unit, status)
+       call ftfiou(unit, status)
+
+       if (status > 0) then
+          call printFitserror(status)
+       end if
+
+     End subroutine writeFitsColumnDensityImage
 #endif
 
      subroutine pixelLocate(image, xDist, yDist, ix, iy)

@@ -78,6 +78,7 @@
   logical :: calcDustCube
   logical :: calcPhotometry
   logical :: calcImage
+  logical :: calcColumnImage
   logical :: calcMovie
   Logical :: calcSpectrum
   logical :: calcBenchmark
@@ -85,6 +86,8 @@
 
   logical :: dowriteRadialFile
   character(len=200) :: radialFilename
+  character(len=80) :: columnImageFilename
+  type(VECTOR) :: columnImageDirection
 
 !-----------------------------------
 ! Write/read a grid for a warm start

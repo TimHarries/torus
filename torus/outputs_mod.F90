@@ -17,9 +17,9 @@ contains
     use inputs_mod, only : calcDataCube, atomicPhysics, nAtom, sourceHistory, calcDustCube, doAnalysis
     use inputs_mod, only : iTransLine, iTransAtom, gridDistance, gasOpacityPhysics
     use inputs_mod, only : writePolar
-    use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark, calcMovie
+    use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark, calcMovie, calcColumnImage
     use inputs_mod, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
-    use inputs_mod, only : mie, gridDistance, nLambda, ncubes
+    use inputs_mod, only : mie, gridDistance, nLambda, ncubes, columnImageFilename, columnImageDirection
     use inputs_mod, only : postsublimate !, lineEmission, monteCarloRT, nv
     use inputs_mod, only : dowriteradialfile, radialfilename
     use inputs_mod, only : sourcelimbaB, sourcelimbbB ,sourcelimbaV, sourcelimbbV
@@ -54,7 +54,7 @@ contains
     use setupamr_mod, only : writegridkengo, writeFogel
     use lucy_mod, only : getSublimationRadius
     use inputs_mod, only : fastIntegrate, geometry, intextfilename, outtextfilename, sourceHistoryFilename, lambdatau, itrans
-    use inputs_mod, only : lambdaFilename, polarWavelength, polarFilename, nPhotSpec, nPhotImage, nPhotons
+    use inputs_mod, only : lambdaFilename, polarWavelength, polarFilename, nPhotSpec, nPhotImage, nPhotons, imodel
     use inputs_mod, only : nDataCubeInclinations, datacubeInclinations, nLamLine, lamLineArray !, rgapinner1
     use formal_solutions, only :compute_obs_line_flux
 #ifdef PHOTOION
@@ -62,6 +62,7 @@ contains
     use photoion_mod, only: createImagePhotoion
 #ifdef MPI
     use photoionAMR_mod, only : createImageSplitGrid
+    use mpi_global_mod, only : loadBalancingThreadGlobal
 #endif
 #endif
 
@@ -73,11 +74,13 @@ contains
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 180
     integer :: i, j
-    character(len=80) :: message
+    character(len=80) :: message, thisFile
     real(double) :: lambdaArray(2000), dx
     integer :: nimage, nCubeLambda
     type(IMAGETYPE) :: imageSlice
 
+    real(double), pointer :: image(:,:)
+    type(VECTOR) :: direction, xAxisDir, yAxisDir
     real :: lambdaImage
     real, allocatable :: tarray(:,:)
     real(double), allocatable :: xArrayDouble(:)
@@ -131,6 +134,7 @@ contains
 
     if ( (.not.calcImage).and. &
          (.not.calcSpectrum).and. &
+         (.not.calcColumnImage).and. &
          (.not.calcMovie).and. &
          (.not.doAnalysis).and. &
          (.not.calcDataCube).and. &
@@ -143,6 +147,17 @@ contains
     endif
 
     nimage = getnImage()
+
+    if (calcColumnImage) then
+       if (.not.loadBalancingThreadGlobal) then
+          direction = VECTOR(0.d0, 0.d0, -1.d0)
+          xAxisDir = VECTOR(1.d0, 0.d0, 0.d0)
+          yAxisDir = VECTOR(0.d0, 1.d0, 0.d0)
+          call createColumnDensityImage(grid, columnImageDirection,image)
+          call findmultifilename(columnImageFilename, iModel, thisFile)
+          if (writeoutput) call writeFitsColumnDensityImage(image, thisFile)
+       endif
+    endif
 
     if (doAnalysis) call analysis(grid)
 !    if (doAnalysis) call calculateToomreQ(grid%octreeRoot, grid)
@@ -496,6 +511,9 @@ if (.false.) then
     if (sourceHistory) then
        call writeSourceHistory(sourceHistoryfilename,globalSourceArray,globalnSource, oldMass, oldAge)
     endif
+
+
+
 
     if (dowriteRadialFile) then
        if (splitOverMpi) then
