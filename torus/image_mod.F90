@@ -972,19 +972,15 @@ module image_mod
 ! Arguments
        real(double), pointer ,intent(in) :: image(:,:)
        character (len=*), intent(in) :: filename
-       character(len=80) :: rFile
 ! Local variables
        integer :: status,unit,blocksize,bitpix,naxis,naxes(2)
        integer :: group,fpixel,nelements
        real, allocatable :: array(:,:)
-       integer, allocatable :: samplings(:,:)
-       integer :: i, j,k, npix
-       real(double) :: scale,  dx, dy, phi
+       integer :: npix
+       real(double) :: scale,  dx, dy
        logical :: simple,extend
        logical :: oldFilePresent
-       character(len=80) :: message
        real(double) :: refValX, refValY ! co-ordinate values in reference pixel
-       real(double) :: xt, yt
 
        npix = size(image,1)
        allocate(array(1:npix, 1:npix))

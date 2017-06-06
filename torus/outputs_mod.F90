@@ -19,7 +19,7 @@ contains
     use inputs_mod, only : writePolar
     use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark, calcMovie, calcColumnImage
     use inputs_mod, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
-    use inputs_mod, only : mie, gridDistance, nLambda, ncubes, columnImageFilename, columnImageDirection
+    use inputs_mod, only : mie, gridDistance, nLambda, ncubes
     use inputs_mod, only : postsublimate !, lineEmission, monteCarloRT, nv
     use inputs_mod, only : dowriteradialfile, radialfilename
     use inputs_mod, only : sourcelimbaB, sourcelimbbB ,sourcelimbaV, sourcelimbbV
@@ -54,13 +54,14 @@ contains
     use setupamr_mod, only : writegridkengo, writeFogel
     use lucy_mod, only : getSublimationRadius
     use inputs_mod, only : fastIntegrate, geometry, intextfilename, outtextfilename, sourceHistoryFilename, lambdatau, itrans
-    use inputs_mod, only : lambdaFilename, polarWavelength, polarFilename, nPhotSpec, nPhotImage, nPhotons, imodel
+    use inputs_mod, only : lambdaFilename, polarWavelength, polarFilename, nPhotSpec, nPhotImage, nPhotons
     use inputs_mod, only : nDataCubeInclinations, datacubeInclinations, nLamLine, lamLineArray !, rgapinner1
     use formal_solutions, only :compute_obs_line_flux
 #ifdef PHOTOION
     use photoion_utils_mod, only: quickSublimate
     use photoion_mod, only: createImagePhotoion
 #ifdef MPI
+    use inputs_mod, only : columnimagedirection, imodel
     use photoionAMR_mod, only : createImageSplitGrid
     use mpi_global_mod, only : loadBalancingThreadGlobal
 #endif
@@ -74,13 +75,15 @@ contains
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 180
     integer :: i, j
-    character(len=80) :: message, thisFile
+    character(len=80) :: message
     real(double) :: lambdaArray(2000), dx
     integer :: nimage, nCubeLambda
     type(IMAGETYPE) :: imageSlice
 
+#ifdef MPI
     real(double), pointer :: image(:,:)
-    type(VECTOR) :: direction, xAxisDir, yAxisDir
+    type(VECTOR) :: direction, xAxisDir, yAxisDir,  columnImageDirection
+#endif
     real :: lambdaImage
     real, allocatable :: tarray(:,:)
     real(double), allocatable :: xArrayDouble(:)
@@ -149,6 +152,7 @@ contains
     nimage = getnImage()
 
     if (calcColumnImage) then
+#ifdef MPI
        if (.not.loadBalancingThreadGlobal) then
           direction = VECTOR(0.d0, 0.d0, -1.d0)
           xAxisDir = VECTOR(1.d0, 0.d0, 0.d0)
@@ -157,6 +161,7 @@ contains
           call findmultifilename(columnImageFilename, iModel, thisFile)
           if (writeoutput) call writeFitsColumnDensityImage(image, thisFile)
        endif
+#endif
     endif
 
     if (doAnalysis) call analysis(grid)

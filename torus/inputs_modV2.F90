@@ -4061,11 +4061,9 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     use image_utils_mod
 
     character(len=lencLine) :: cLine(:)
-    character(len=80) :: message
     logical :: fLine(:)
     integer :: nLines
     logical :: ok
-    integer :: i
 
     call getString("columnfile", columnImageFilename, cLine, fLine, nLines, &
          "Output column image  filename: ","(a,a,1x,a)","none", ok, .true.)
