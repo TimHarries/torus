@@ -61,7 +61,7 @@ contains
     use photoion_utils_mod, only: quickSublimate
     use photoion_mod, only: createImagePhotoion
 #ifdef MPI
-    use inputs_mod, only : columnimagedirection, imodel
+    use inputs_mod, only : columnimagedirection, imodel, columnimagefilename
     use photoionAMR_mod, only : createImageSplitGrid
     use mpi_global_mod, only : loadBalancingThreadGlobal
 #endif
@@ -75,14 +75,14 @@ contains
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 180
     integer :: i, j
-    character(len=80) :: message
+    character(len=80) :: message, thisfile
     real(double) :: lambdaArray(2000), dx
     integer :: nimage, nCubeLambda
     type(IMAGETYPE) :: imageSlice
 
 #ifdef MPI
     real(double), pointer :: image(:,:)
-    type(VECTOR) :: direction, xAxisDir, yAxisDir,  columnImageDirection
+    type(VECTOR) :: direction, xAxisDir, yAxisDir
 #endif
     real :: lambdaImage
     real, allocatable :: tarray(:,:)
