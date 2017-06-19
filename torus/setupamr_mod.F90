@@ -34,7 +34,7 @@ contains
     use inputs_mod, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp, ttauriStellarWind
     use inputs_mod, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, mDisc
-    use inputs_mod, only : rCore, rInner, rOuter, gridDistance, massEnvelope, readTurb, virialAlpha
+    use inputs_mod, only : rCore, rInner, rOuter, gridDistance, massEnvelope, readTurb, virialAlpha, restartLucy
     use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, logspacegrid, nmag, dospiral, sphereMass,sphereRadius
     use disc_class, only:  new
 #ifdef ATOMIC
@@ -72,6 +72,8 @@ contains
     ! For romanova geometry case
     type(romanova) :: romData ! parameters and data for romanova geometry
     type(VECTOR) :: amrGridCentre
+    integer :: ihydro, iIter_grand, iMultiplier
+    character(len=80) :: tfilename
     type(GRIDTYPE) :: grid
     logical :: gridConverged
     real(double) :: astar, mass_accretion_old, totalMass
@@ -107,6 +109,18 @@ contains
 
 
     call writeBanner("Setting up AMR grid","-",TRIVIAL)
+
+
+    if (restartLucy) then
+       open(33, file="restart.dat", status="unknown",form="formatted")
+       read(33,'(a)') tfilename
+       read(33, *) ihydro, iiter_grand, iMultiplier
+       close(33)
+       write(tfilename, '(a,i3.3,a,i3.3,a,i3.3,a)') "lucy_",ihydro,"_",iIter_grand,"_",imultiplier,".dat"
+       call readAMRgrid(tfilename, .false., grid)
+       goto 666
+    endif
+
 
     totalmass = 0.
 

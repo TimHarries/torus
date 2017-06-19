@@ -950,7 +950,7 @@ contains
     use inputs_mod, only: massRatio, binarySep, rInner, rOuter, betaDisc, height, &
          alphaDisc, rho0, smoothInnerEdge, streamFac, rGapInner, rGapOuter, rhoGap, &
          deltaCav,  rhoAmbient, planetDisc
-    use inputs_mod, only : sourcePos, sourceMass, sourceRadius, hydrodynamics, cavDens
+    use inputs_mod, only : sourcePos, sourceMass, sourceRadius, hydrodynamics, cavDens, rhoFloor
     use utils_mod, only: solveQuad
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(VECTOR), INTENT(IN) :: point
@@ -1128,7 +1128,7 @@ contains
        endif
     endif
        
-
+    rhoOut = max(rhoFloor, rhoOut)
 
   end function shakaraSunyaevDisc
 

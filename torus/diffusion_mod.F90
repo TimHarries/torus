@@ -12,6 +12,7 @@ use vtk_mod, only: writeVTKfile
 use octal_mod, only: OCTAL, OCTALWRAPPER, subcellCentre, returndPhi
 use amr_mod, only: returnKappa, tauAlongPath, inOctal, amrGridValues, &	
      countVoxels, getOctalArray, octalOnThread, randomPositionInCell
+use amr_utils_mod, only : findSubcellLocal
 implicit none
 
 
@@ -146,6 +147,49 @@ contains
        endif
     enddo
   end subroutine seteDens
+
+  recursive subroutine unsetDiffusionOnBoundary(grid, thisOctal)
+    use inputs_mod, only : smallestCellSize
+    type(octal), pointer   :: thisOctal, neighbourOctal
+    type(octal), pointer  :: child 
+    type(GRIDTYPE) :: grid
+    integer :: subcell, i, j, neighboursubcell
+    type(VECTOR) :: arrayVec(4),rVec
+    real(double) :: d
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call unsetDiffusionOnBoundary(grid, child)
+                exit
+             end if
+          end do
+       else
+          arrayVec(1) = VECTOR(1.d0, 0.d0, 0.d0)
+          arrayVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+          arrayVec(3) = VECTOR(0.d0, 0.d0, 1.d0)
+          arrayVec(4) = VECTOR(0.d0, 0.d0,-1.d0)
+          
+          d = thisOctal%subcellSize/2.d0+0.01d0*smallestCellSize
+          if (thisOctal%diffusionApprox(subcell)) then
+             do j = 1, 4
+                rVec = subcellCentre(thisOctal, subcell) + d*arrayVec(j)
+                neighbourOctal => thisOctal
+                call findSubcellLocal(rVec, neighbourOctal, neighbourSubcell)
+                if (neighbourOctal%chiline(neighbourSubcell) < 1.d0) then
+                   thisOctal%diffusionApprox(subcell) = .false.
+!		   write(*,*) "unsetting diffusion cell ",thisOctal%chiline(subcell),neighbourOctal%chiline(neighbourSubcell)
+                   exit
+                endif
+             enddo
+          endif
+
+       endif
+    enddo
+  end subroutine unsetDiffusionOnBoundary
 
   recursive subroutine checkConvergence(thisOctal, tol, dtmax, converged)
     type(octal), pointer   :: thisOctal
@@ -713,7 +757,7 @@ contains
 #endif
 end subroutine gaussSeidelSweep
 
-  subroutine solveArbitraryDiffusionZones(grid)
+  subroutine solveArbitraryDiffusionZones(grid, onlyUndersampled)
     use inputs_mod, only : eDensTol, maxGaussIter !, tauforce
     use messages_mod, only : myRankIsZero
 
@@ -722,6 +766,7 @@ end subroutine gaussSeidelSweep
     logical :: gridConverged
     real(double) :: deMax
     integer :: niter, i
+    logical, optional :: onlyUndersampled
     
 !    logical, save :: firstTime = .true.
 
@@ -738,12 +783,22 @@ end subroutine gaussSeidelSweep
 
 
     call setDiffOnTau(grid)
+
+    if (present(onlyUndersampled)) then
+       if (onlyUndersampled) then
+          call defineDiffusionOnUndersampled(grid%octreeRoot, reset=.true.)
+       endif
+    endif
+
 !    if (writeoutput) call writeVtkFile(grid, "bias.vtk", valueTypeString=(/"chiline    ","temperature"/))
 
 !    endif
 !    call defineDiffusiononRho(grid%octreeRoot, 1.d-10)
 !       call defineDiffusionOnUndersampled(grid%octreeRoot)
 !    call resetDiffusionTemp(grid%octreeRoot, 100.)
+    call writeVtkFile(grid, "before.vtk", valueTypeString=(/"chiline    ","temperature","diff"/))
+    call unsetDiffusionOnBoundary(grid, grid%octreeRoot)
+    call writeVtkFile(grid, "after.vtk", valueTypeString=(/"chiline    ","temperature","diff"/))
 
     i  = 0
     call countDiffusionCells(grid%octreeRoot, i)
@@ -772,11 +827,12 @@ end subroutine gaussSeidelSweep
    end subroutine solveArbitraryDiffusionZones
 
 
-  recursive subroutine defineDiffusionOnUndersampled(thisOctal, nDiff)
+  recursive subroutine defineDiffusionOnUndersampled(thisOctal, nDiff, reset)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     integer :: subcell
     integer, optional :: nDiff
+    logical, optional :: reset
     integer :: i
 
     do subcell = 1, thisOctal%maxChildren
@@ -785,11 +841,14 @@ end subroutine gaussSeidelSweep
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call defineDiffusionOnUndersampled(child, ndiff)
+                call defineDiffusionOnUndersampled(child, ndiff, reset)
                 exit
              end if
           end do
        else
+          if (present(reset)) then
+             if (reset) thisOctal%diffusionApprox(subcell) = .false.
+          endif
           if (thisOctal%undersampled(subcell)) then
              thisOctal%diffusionApprox(subcell) = .true.
              if (PRESENT(nDiff)) then
@@ -827,10 +886,11 @@ end subroutine gaussSeidelSweep
 
   end subroutine defineDiffusionOnRho
 
-  recursive subroutine defineDiffusionOnRosseland(grid, thisOctal, taudiff, nDiff)
+  recursive subroutine defineDiffusionOnRosseland(grid, thisOctal, taudiff, nDiff, reset)
     use inputs_mod, only :  resetDiffusion
     real :: tauDiff
     type(GRIDTYPE) :: grid
+    logical, optional :: reset
     integer, optional :: nDiff
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -844,7 +904,7 @@ end subroutine gaussSeidelSweep
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call defineDiffusionOnRosseland(grid, child, taudiff, nDiff)
+                call defineDiffusionOnRosseland(grid, child, taudiff, nDiff, reset)
                 exit
              end if
           end do
@@ -862,6 +922,9 @@ end subroutine gaussSeidelSweep
              if (PRESENT(ndiff))  nDiff = nDiff + 1
           else
              if (resetDiffusion) thisOctal%diffusionApprox(subcell) = .false.
+             if (present(reset)) then
+                if (reset)  thisOctal%diffusionApprox(subcell) = .false.
+             endif
           endif
        end if
     end do
@@ -1186,7 +1249,7 @@ end subroutine gaussSeidelSweep
 #endif
 
 subroutine setDiffOnTau(grid)
-    use inputs_mod, only : tauForce, cylindrical, rGapInner, rGapOuter
+    use inputs_mod, only : tauForce, cylindrical, rGapInner, rGapOuter, mincrossings
 #ifdef MPI
     use inputs_mod, only : blockHandout
     use parallel_mod, only: mpiBlockHandout, mpiGetBlock

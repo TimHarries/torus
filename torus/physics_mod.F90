@@ -361,7 +361,7 @@ contains
     use phasematrix_mod
     use dust_mod
     use biophysics_mod
-    use inputs_mod, only : atomicPhysics, photoionPhysics, photoionEquilibrium, cmf, nBodyPhysics, bioPhysics
+    use inputs_mod, only : atomicPhysics, photoionPhysics, photoionEquilibrium, cmf, nBodyPhysics, bioPhysics, restartLucy
     use inputs_mod, only : dustPhysics, lowmemory, radiativeEquilibrium, gasOpacityPhysics
     use inputs_mod, only : statisticalEquilibrium, nAtom, nDustType, nLucy, &
          lucy_undersampled, molecularPhysics, hydrodynamics, setupMolecularLteOnly !, UV_vector
@@ -434,7 +434,7 @@ contains
 
     real, pointer :: xArray(:) => null()
     real(double), pointer :: xArrayDouble(:) => null()
-    integer :: nLambda 
+    integer :: nLambda , iHydro
     real(double) :: packetWeight
     real(double) :: temp, dustMass, ksca, kabs
     real(double) :: temp2
@@ -504,7 +504,7 @@ contains
         endif
         call setupDust(grid, xArray, nLambda, miePhase, nMumie, filestart="dust")
 
-        if (grid%geometry == "shakara") then
+        if ((grid%geometry == "shakara").and.(.not.restartLucy)) then
            call fillDustShakara(grid, grid%octreeRoot, dustmass)
            if (dustSettling) call fillDustSettled(grid)
         endif
@@ -535,8 +535,9 @@ contains
            call verticalHydrostatic(grid, mCore, sigma0, miePhase, nDustType, nMuMie, nLambda, xArray, &
                 globalsourcearray, globalnSource, nLucy, massEnvelope)
         else
+           iHydro = 0
            call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, xArray, &
-                globalsourcearray, globalnSource, nLucy, massEnvelope, lucy_undersampled, finalPass=.true.)
+                globalsourcearray, globalnSource, nLucy, massEnvelope, lucy_undersampled, iHydro, finalPass=.true.)
         endif
      endif
 

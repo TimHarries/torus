@@ -12001,7 +12001,7 @@ end function readparameterfrom2dmap
     use inputs_mod, only : rOuter, betaDisc !, rInner, erInner, erOuter, alphaDisc
     use inputs_mod, only : curvedInnerEdge, nDustType, grainFrac, gridDistanceScale, rInner
     use inputs_mod, only : height, hydrodynamics, dustPhysics, mCore, molecular, photoionization
-    use inputs_mod, only : rSublimation, erInner, erOuter, mDotEnv
+    use inputs_mod, only : rSublimation, erInner, erOuter, mDotEnv, rhofloor
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     complex(double) :: a(3), za(3)
@@ -12165,7 +12165,7 @@ end function readparameterfrom2dmap
        endif
     endif
 
-
+    thisOctal%rho(subcell) = max(rhofloor, thisOctal%rho(subcell))
 
   end subroutine shakaraDisk
 

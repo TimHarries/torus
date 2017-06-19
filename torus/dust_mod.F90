@@ -1219,10 +1219,11 @@ contains
                 frac = tauMax / thisTau 
                 thisOctal%dustTypeFraction(subcell,j) = thisOctal%dustTypeFraction(subcell,j) * frac
              endif
+
           enddo
-          where (thisOctal%dustTypeFraction(subcell,1:nDustType) < 1.d-20) 
-             thisOctal%dustTypeFraction(subcell,1:nDustType) = 1.d-20
-          end where
+!          where (thisOctal%dustTypeFraction(subcell,1:nDustType) < 1.d-25) 
+!             thisOctal%dustTypeFraction(subcell,1:nDustType) = 1.d-25
+!          end where
           
           if (deltaFrac /= 0.) then
              nfrac = nfrac + 1
@@ -1230,8 +1231,7 @@ contains
           endif
           
           thisOctal%oldFrac(subcell) = real(frac)
-
-       end if
+       endif
     end do
 
   end subroutine sublimateDust

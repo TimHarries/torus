@@ -62,6 +62,7 @@ contains
     nDustType = 1
     nDiscModule = 1
     tMinGlobal = 3.
+    restartLucy = .false.
     filter_set_name = "natural"
     noscattering = .false.
     forceFirstScat = .false.
@@ -1656,6 +1657,9 @@ contains
 
        call getLogical("setsubradius", setSubRadius, cLine, fLine, nLines, &
             "Set sublimation radius empirically (Whitney et al 2004): ","(a,1l,1x,a)", .false., ok, .false.)
+
+       call getDouble("rhofloor", rhoFloor, 1.d0, cLine, fLine, nLines, &
+            "Minimum density:  ","(a,e12.3,1x,a)", 1.d-30, ok, .false.)
 
        if (.not.setSubRadius) then
           if (rSublimation == 0.) then
@@ -3379,6 +3383,10 @@ contains
 
     call getLogical("forceLucyConv", forceLucyConv, cLine, fLine, nLines, &
          "Force convergence of Lucy algorithm: ","(a,1l,1x,a)", .false., ok, .false.)
+
+
+    call getLogical("restart", restartLucy, cLine, fLine, nLines, &
+         "Restart Lucy algorithm from save point: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getLogical("solvediffusion", solveDiffusionZone, cLine, fLine, nLines, &
          "Solve diffusion region using Gauss-Seidel: ","(a,1l,1x,a)", .true., ok, .false.)

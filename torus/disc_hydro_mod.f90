@@ -355,7 +355,7 @@ contains
 
   subroutine verticalHydrostatic(grid, mStar, sigma0,  miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope)
-    use inputs_mod, only : variableDustsublimation, rGap, rSublimation
+    use inputs_mod, only : variableDustsublimation, rGap, rSublimation, restartLucy
     use messages_mod, only: myRankIsZero
     use parallel_mod, only: torus_mpi_barrier
     use source_mod, only: SOURCETYPE
@@ -398,25 +398,28 @@ contains
     nIter = 1
 
 
-    if (dustSettling) then
-       call fillDustSettled(grid)
-       call writeVtkFile(grid, "settled.vtu", &
-            valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-            "dust1      ","dust2      ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", &
-            "diff       "/))
-       dustMass = 0.d0
-       call findDustMass(grid, grid%octreeRoot, dustMass)
-       if (writeoutput) write(*,*) "Total dust mass (solar)",dustMass/mSol
 
+
+    if (.not.restartLucy) then
+       if (dustSettling) then
+          call fillDustSettled(grid)
+          call writeVtkFile(grid, "settled.vtu", &
+               valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+               "dust1      ","dust2      ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", &
+               "diff       "/))
+          dustMass = 0.d0
+          call findDustMass(grid, grid%octreeRoot, dustMass)
+          if (writeoutput) write(*,*) "Total dust mass (solar)",dustMass/mSol
+          
+       endif
+
+       totalMass = 0.
+       call findTotalMass(grid%octreeRoot, totalMass)
+
+       
+       if(myRankIsZero) &
+            write(*,*) "Total disc mass: ",totalMass/msol," solar masses"
     endif
-
-    totalMass = 0.
-    call findTotalMass(grid%octreeRoot, totalMass)
-
-
-    if(myRankIsZero) &
-         write(*,*) "Total disc mass: ",totalMass/msol," solar masses"
-
 
 
     do while(.not.converged)
@@ -436,7 +439,8 @@ contains
        endif
 
        call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
-            nLambda, lamArray, source, nSource, nLucy, massEnvelope, lucy_undersampled)
+            nLambda, lamArray, source, nSource, nLucy, massEnvelope, lucy_undersampled, nIter)
+       if (restartLucy) restartLucy = .false. ! we have now restarted
 
 
        if(myRankIsZero) &
@@ -613,11 +617,7 @@ contains
        if(myRankIsZero) &
             write(*,*) "Maximum number of iterations exceeded. Aborting."
        converged = .true.
-    else
-       temp = 20.
-       call setTemperature(grid%octreeRoot, temp)
     endif
-
 
  enddo
 
@@ -641,10 +641,8 @@ contains
        
     endif
 
- temp = 20.
- call setTemperature(grid%octreeRoot, temp)
  call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
-      nLambda, lamArray, source, nSource, nLucy, massEnvelope, lucy_undersampled,  finalpass = .true.)
+      nLambda, lamArray, source, nSource, nLucy, massEnvelope, lucy_undersampled, nIter, finalpass = .true.)
 
 
 

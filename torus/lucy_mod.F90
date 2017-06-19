@@ -26,8 +26,8 @@ contains
 
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
-       source, nSource, nLucy, massEnvelope,  percent_undersampled_min, finalPass)
-    use inputs_mod, only : variableDustSublimation, iterlucy, rCore, solveVerticalHydro, dustSettling
+       source, nSource, nLucy, massEnvelope,  percent_undersampled_min, iHydro, finalPass)
+    use inputs_mod, only : variableDustSublimation, iterlucy, rCore, solveVerticalHydro, dustSettling, restartLucy
     use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau
     use inputs_mod, only : object, convergeOnUndersampled, maxMemoryAvailable !, mDisc, dusttogas, dustSettling
     use inputs_mod, only : writelucyTmpfile, discWind, mincrossings, maxiterLucy, solveDiffusionZone, quickSublimate, usePAH
@@ -109,7 +109,7 @@ contains
     real :: totFrac
     integer :: nFrac
     integer, parameter :: LU_OUT = 42
-    integer :: iIter_grand, iMultiplier
+    integer :: iIter_grand, iMultiplier, iHydro
     real(oct)::  dT_mean_new, dT_mean_old ! [Kelvins]
     logical :: converged
     real:: percent_undersampled
@@ -223,19 +223,6 @@ contains
     scalelam  = dble(nLambda - 1) / dlogNu 
 
 
-    if (grid%geometry.eq."wr104") then
-       totalMass = 0.
-       call findTotalMass(grid%octreeRoot, totalMass)
-       scaleFac = real(massEnvelope / totalMass)
-       if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
-       call scaleDensityAMR(grid%octreeRoot, dble(scaleFac))
-    endif
-
-    call unsetDiffusion(grid%octreeRoot)
-
-    !    call setupFreqProb(temperature, freq, dnu, nFreq, ProbDistPlanck)
-
-    call writeInfo("Computing lucy radiative equilibrium in AMR...",TRIVIAL)
 
     lCore = 0.d0
     do i = 1, nSource
@@ -245,78 +232,66 @@ contains
     write(message,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
     call writeInfo(message, TRIVIAL)
 
-    if ((.not.discWind).and.(grid%geometry == "shakara")) then
-       dustMass = 0.d0
-       call fillDustShakara(grid, grid%octreeRoot, dustMass)
-       if (dustSettling) call fillDustSettled(grid)
-!       if (nDustType > 1) call normalizeDustFractions(grid, grid%octreeRoot, dustMass, dble(dusttogas*mDisc))
-       call reportMasses(grid)
+
+    if (.not.restartLucy) then
+       if (grid%geometry.eq."wr104") then
+          totalMass = 0.
+          call findTotalMass(grid%octreeRoot, totalMass)
+          scaleFac = real(massEnvelope / totalMass)
+          if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
+          call scaleDensityAMR(grid%octreeRoot, dble(scaleFac))
+       endif
+
+       call unsetDiffusion(grid%octreeRoot)
+
+       !    call setupFreqProb(temperature, freq, dnu, nFreq, ProbDistPlanck)
+       
+       call writeInfo("Computing lucy radiative equilibrium in AMR...",TRIVIAL)
+
+
+       if ((.not.discWind).and.(grid%geometry == "shakara")) then
+          dustMass = 0.d0
+          call fillDustShakara(grid, grid%octreeRoot, dustMass)
+          if (dustSettling) call fillDustSettled(grid)
+          !       if (nDustType > 1) call normalizeDustFractions(grid, grid%octreeRoot, dustMass, dble(dusttogas*mDisc))
+          call reportMasses(grid)
+       endif
+
+
+
+       if (object == "ab_aur") then
+          call writeInfo("Filling dust with large dust in midplane", FORINFO)
+          call fillDustUniform(grid, grid%octreeRoot)
+       endif
+       
+
+       if (nDustType >= 1) then
+          do i = 1, nDustType
+             write(stringArray(i),'(a,i1.1)') "dust",i
+          enddo
+          call writeVTKfile(grid,"dust.vtk",valueTypeString=stringArray(1:nDustType))
+       endif
+
+
+       if (grid%geometry == "wr104") then
+          call fillDustUniform(grid, grid%octreeRoot)
+          call stripDustAway(grid%octreeRoot, 1.d-2, 1.d30)
+       endif
+
+       if (variableDustSublimation) then
+          call setupOrigDustFraction(grid%octreeRoot)
+          tauMax = 1.e-20
+          call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+       endif
+
+
+       nCellsInDiffusion = 0
+       if (solveDiffusionZone) then
+          call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
+          write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
+          call writeInfo(message,IMPORTANT)
+       endif
     endif
-
-!    if ((nDusttype >=2 ).and.(dustSettling)) then
-!       call fillDustSettled(grid, grid%octreeRoot)
-!       call writeVtkFile(grid, "settled.vtu", &
-!            valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-!            "dust1      ","dust2      ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", &
-!            "diff       "/))
-!       dustMass = 0.d0
-!!       call findDustMass(grid, grid%octreeRoot, dustMass)
-!!       if (writeoutput) write(*,*) "Total dust mass (solar)",dustMass/mSol
-!    endif
-
-
-
-    !    if ((grid%geometry == "shakara").or.(grid%geometry == "circumbin")) then
-    !       if ((nDustType ==2).and.(aMax(1) <  aMax(2))) then
-    !          call writeInfo("Filling dust with large dust in midplane", FORINFO)
-    !          call fillDustShakara(grid, grid%octreeRoot)
-    !       else
-    !          call writeInfo("Filling disc with uniform dust fractions", FORINFO)
-    !          call fillDustUniform(grid, grid%octreeRoot)
-    !       endif
-    !    endif
-    !
-    !    if (((grid%geometry == "ppdisk").or.(grid%geometry=="warpeddisc")).and.(nDustType > 1)) then
-    !       call fillDustUniform(grid, grid%octreeRoot)
-    !    endif
-
-
-    if (object == "ab_aur") then
-       call writeInfo("Filling dust with large dust in midplane", FORINFO)
-       call fillDustUniform(grid, grid%octreeRoot)
-    endif
-
-
-    if (nDustType >= 1) then
-       do i = 1, nDustType
-          write(stringArray(i),'(a,i1.1)') "dust",i
-       enddo
-       call writeVTKfile(grid,"dust.vtk",valueTypeString=stringArray(1:nDustType))
-    endif
-
-
-    if (grid%geometry == "wr104") then
-       call fillDustUniform(grid, grid%octreeRoot)
-       call stripDustAway(grid%octreeRoot, 1.d-2, 1.d30)
-    endif
-
-    if (variableDustSublimation) then
-       call setupOrigDustFraction(grid%octreeRoot)
-       tauMax = 1.e-2
-       call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
-!       call stripDustAway(grid%octreeRoot, 1.d-20, 1.d30)
-
-
-    endif
-
-
-    nCellsInDiffusion = 0
-    if (solveDiffusionZone) then
-       call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
-       write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
-       call writeInfo(message,IMPORTANT)
-    endif
-!    call getTauinMidPlane(grid)
 
     iIter_grand = 0
     converged = .false.
@@ -325,6 +300,13 @@ contains
     iMultiplier = 1
 
     call zeroAdot(grid%octreeRoot)
+
+    if (restartLucy) then
+       open(33, file="restart.dat", status="unknown",form="formatted")
+       read(33,'(a)') tfilename
+       read(33, *) iHydro, iiter_grand, iMultiplier
+       close(33)
+    endif
 
     do while (.not.converged)
        ! ensure we do at least three iterations
@@ -394,6 +376,7 @@ contains
           if (solveDiffusionZone) then
              call defineDiffusionOnRosseland(grid,grid%octreeRoot,tauDiff,  nDiff=nCellsInDiffusion)
           endif
+
 
 
           if (doTuning) call tune(6, "One Lucy Rad Eq Itr")  ! start a stopwatch
@@ -819,6 +802,8 @@ contains
           endif
 
 
+
+
           nCellsInDiffusion = 0
           if (solveDiffusionZone) then
              call defineDiffusionOnUndersampled(grid%octreeroot, nDiff=nCellsInDiffusion)
@@ -828,9 +813,7 @@ contains
              if (.not.variableDustSublimation) then
                 call solveArbitraryDiffusionZones(grid)
              else
-                if (iITer_grand > 9) then
-                   call solveArbitraryDiffusionZones(grid)
-                endif
+                if (iIter_grand > 6) call solveArbitraryDiffusionZones(grid)
              endif
           endif
 
@@ -839,7 +822,6 @@ contains
           if (writeoutput) write(*,*) "Checking for undersampled cells with mincrossings ",mincrossings
           call checkUndersampled(grid%octreeRoot, nUndersampled, nCellsInDiffusion)
           percent_undersampled  = 100.*real(nUndersampled)/real(nInflow-nCellsInDiffusion)
-
 
           call calculateEtaCont(grid, grid%octreeRoot, nFreq, freq, dnu, lamarray, nLambda, kAbsArray)
           dt_min = 1.d10
@@ -937,41 +919,26 @@ contains
           totFrac = 0.
           nFrac = 0
 
-
-
-          if ((mod(iIter_grand, 2) == 0).and.(iIter_grand >= 2)) then
-
-             if (iIter_grand == 2) tauMax = 0.1e0
-             if (iIter_grand == 4) tauMax = 1e0
-             if (iIter_grand == 6) tauMax = 10.d0
-             if (iIter_grand == 8) tauMax = 1.e30
-             ! Sublimate the dust and smooth at the photosphere on the last pass
-             if (iIter_Grand <= 8) &
-                  call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
-!             if ((nfrac /= 0).and.(writeoutput)) then
+             if (iIter_grand == 4) then
+                tauMax = 1.0
+                call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
              endif
-!             if (iiter_grand == 8) then
-!             
-!                call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
-!                if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
-!                gridconverged = .false.
-!                do while(.not.gridconverged)
-!                   gridconverged = .true.
-!                   nUnrefine = 0
-!                   call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, nUnrefine, gridconverged)
-!                   if (writeoutput) write(*,*) "Unrefined ",nUnrefine, " cells on this pass"
-!                end do
-!                call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
-!                if (writeoutput) then
-!                   write(*,*) "done."
-!                endif
-!             endif
 
-             if ((iiter_grand == 8).and.doSmoothGridTau) then
+             if (iIter_grand == 5) then
+                tauMax = 1.e30
+                call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+             endif
+
+             if (iIter_grand >= 6) then
+                tauMax = 1e30
+                call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+             endif
+
+             if ((iiter_grand == 6).and.doSmoothGridTau) then
                 call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
                 call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
-                do j = iSmoothLam, nLambda, 10
+                do j = iSmoothLam, iSmoothLam
                    write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
                    call writeInfo(message, TRIVIAL)
                    do
@@ -1002,28 +969,29 @@ contains
                 end do
                 call writeInfo("...grid smoothing complete", TRIVIAL)
 
-             endif
-!
 !
              if (writeoutput) write(*,*) "Global Memory has ",humanReadableMemory(globalMemoryFootprint)
              call findTotalMemory(grid, totMem)
              if (writeoutput) write(*,*) "Full check  has ", humanReadableMemory(totMem)
-             if (writeoutput) write(*,*) "Max memory available ", humanReadableMemory(maxMemoryAvailable)
+!             if (writeoutput) write(*,*) "Max memory available ", humanReadableMemory(maxMemoryAvailable)
 !
-!
-!             nCellsInDiffusion = 0
-!             if (solveDiffusionZone) then
-!                call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
-!                write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
-!                call writeInfo(message,IMPORTANT)
-!             endif
-!
-!
-!
-!          endif
-!
+
+
+             if (dustSettling) call fillDustSettled(grid)
+             call setupOrigDustFraction(grid%octreeRoot)
+             tauMax = 1e30
+             call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
           endif
 
+          if (iIter_grand > 6) then
+             nCellsInDiffusion = 0
+             if (solveDiffusionZone) then
+                call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion, reset=.true.)
+                write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
+                call writeInfo(message,IMPORTANT)
+             endif
+          endif
+       endif
 
 
        if (grid%geometry.eq."wr104") then
@@ -1046,7 +1014,7 @@ contains
           iMultiplier  = iMultiplier * 2
           if ( convergeOnUndersampled ) converged = .false.
        endif
-       if (variableDustSublimation.and.(iIter_grand == 10)) converged = .true.
+       if (variableDustSublimation.and.(iIter_grand == 8)) converged = .true.
 
 
        if ((grid%geometry == "shakara").and.variableDustSublimation) then
@@ -1085,16 +1053,23 @@ contains
        call writeVtkFile(grid, tfilename, &
             valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
             "dust       ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", "diff       ", &
+            "chiline    ", &
             "adot       "/))
        !    !
        !    ! Write grid structure to a tmp file.
        !    !
 
 
-       if (myRankIsZero.and.writelucytmpfile) call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
-
-
-
+       if (myRankIsZero.and.writelucytmpfile) then
+          write(tfilename, '(a,i3.3,a,i3.3,a,i3.3,a)') "lucy_",iHydro,"_",iIter_grand,"_",imultiplier,".dat"
+          call writeAMRgrid(tfilename, .false., grid)
+       endif
+       if (myrankIsZero) then
+          open(33, file="restart.dat", status="unknown",form="formatted")
+          write(33,'(a)') tfilename
+          write(33, *) iHydro,iiter_grand, iMultiplier
+          close(33)
+       endif
     enddo
 
 !    if (variableDustSublimation.and.thisIsFinalPass.and.doSmoothGridTau) then
@@ -1908,6 +1883,7 @@ contains
     integer :: nUndersampled
     integer, save  :: nwarning = 0
     integer, parameter :: nmaxwarning = 20
+    real, parameter :: underCorrect = 1.
 
     if(this_is_root) then !initialize some values
        dT_sum = 0.0
@@ -2005,7 +1981,7 @@ contains
 
              if (.not.thisOctal%fixedTemperature(subcell)) then
                 if (thisOctal%nCrossings(subcell) .ge. 10) then
-                   thisOctal%temperature(subcell) = max(TMinGlobal,thisOctal%temperature(subcell) + 0.5*real(deltaT))
+                   thisOctal%temperature(subcell) = max(TMinGlobal,thisOctal%temperature(subcell) + underCorrect*real(deltaT))
                 endif
  
                 if (thisOctal%inflow(subcell).and.(thisOctal%nCrossings(subcell) .lt. minCrossings)) then

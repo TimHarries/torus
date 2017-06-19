@@ -365,6 +365,7 @@
   logical :: convergeOnUndersampled
   integer :: minCrossings
   logical :: forceLucyConv
+  logical :: restartLucy
   logical :: multiLucyFiles
   logical :: polarizationImages
   logical :: writeLucyTmpFile
