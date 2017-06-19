@@ -29,7 +29,7 @@ contains
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, iHydro, finalPass)
     use inputs_mod, only : variableDustSublimation, iterlucy, rCore, solveVerticalHydro, dustSettling, restartLucy
     use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau
-    use inputs_mod, only : object, convergeOnUndersampled, maxMemoryAvailable !, mDisc, dusttogas, dustSettling
+    use inputs_mod, only : object, convergeOnUndersampled
     use inputs_mod, only : writelucyTmpfile, discWind, mincrossings, maxiterLucy, solveDiffusionZone, quickSublimate, usePAH
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie

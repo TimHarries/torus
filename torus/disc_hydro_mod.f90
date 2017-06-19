@@ -383,7 +383,6 @@ contains
     integer :: nIter, j
     real(double) totalMass, dustMass
     real(double) :: rSub, betaEstimate, heightEstimate
-    real :: temp
     real :: rGapCM
     integer :: nUnrefine
     real :: lamSmoothArray(5)

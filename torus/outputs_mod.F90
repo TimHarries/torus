@@ -75,7 +75,7 @@ contains
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 180
     integer :: i, j
-    character(len=80) :: message, thisfile
+    character(len=80) :: message
     real(double) :: lambdaArray(2000), dx
     integer :: nimage, nCubeLambda
     type(IMAGETYPE) :: imageSlice
@@ -83,6 +83,7 @@ contains
 #ifdef MPI
     real(double), pointer :: image(:,:)
     type(VECTOR) :: direction, xAxisDir, yAxisDir
+    character(len=80) :: thisFile
 #endif
     real :: lambdaImage
     real, allocatable :: tarray(:,:)

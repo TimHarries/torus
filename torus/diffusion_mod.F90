@@ -796,9 +796,9 @@ end subroutine gaussSeidelSweep
 !    call defineDiffusiononRho(grid%octreeRoot, 1.d-10)
 !       call defineDiffusionOnUndersampled(grid%octreeRoot)
 !    call resetDiffusionTemp(grid%octreeRoot, 100.)
-    call writeVtkFile(grid, "before.vtk", valueTypeString=(/"chiline    ","temperature","diff"/))
+!    call writeVtkFile(grid, "before.vtk", valueTypeString=(/"chiline    ","temperature","diff"/))
     call unsetDiffusionOnBoundary(grid, grid%octreeRoot)
-    call writeVtkFile(grid, "after.vtk", valueTypeString=(/"chiline    ","temperature","diff"/))
+!    call writeVtkFile(grid, "after.vtk", valueTypeString=(/"chiline    ","temperature","diff"/))
 
     i  = 0
     call countDiffusionCells(grid%octreeRoot, i)
@@ -1249,7 +1249,7 @@ end subroutine gaussSeidelSweep
 #endif
 
 subroutine setDiffOnTau(grid)
-    use inputs_mod, only : tauForce, cylindrical, rGapInner, rGapOuter, mincrossings
+    use inputs_mod, only : tauForce, cylindrical, rGapInner, rGapOuter
 #ifdef MPI
     use inputs_mod, only : blockHandout
     use parallel_mod, only: mpiBlockHandout, mpiGetBlock
