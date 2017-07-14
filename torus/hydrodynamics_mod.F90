@@ -17405,8 +17405,8 @@ end subroutine refineGridGeneric2
     real(double) :: fracChange2(maxthreads), fracChange(maxthreads), &
          ghostFracChange(maxthreads), tempFracChange(maxthreads), deltaT, dx,taumin
     real(double)  :: tol = 1.d-4,  tol2 = 1.d-5
-    integer :: it, ierr, minLevel, i, j
-    character(len=80) :: plotfile
+    integer :: it, ierr, minLevel, i
+!    character(len=80) :: plotfile
 
 
     if (amr2d) then
@@ -17609,11 +17609,11 @@ end subroutine refineGridGeneric2
        endif
 
 
-       do j = 1, 100
+ !      do j = 1, 100
           fracChange = 0.d0
           fracChange2 = 0.d0
           call gSweep2new(grid%octreeRoot, grid, fracChange(myRankGlobal), fracChange2(myRankGlobal), it, deltaT, doOnlyChanged)
-       enddo
+!       enddo
        it = it + 1
 
        if (cylindricalHydro) then
@@ -17632,11 +17632,11 @@ end subroutine refineGridGeneric2
 !       if (myrankWorldGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", &
 !            MAXVAL(fracChange(1:nHydroThreadsGlobal))
 
-       if (mod(it,10) == 0) then
-          write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
-          call writeVtkFile(grid, plotfile, &
-               valueTypeString=(/"phigas ", "rho    ","chiline","adot   "/))
-       endif
+!       if (mod(it,10) == 0) then
+!          write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
+!          call writeVtkFile(grid, plotfile, &
+!               valueTypeString=(/"phigas ", "rho    ","chiline","adot   "/))
+!       endif
 
        if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreadsGlobal)), &
             tol2,maxval(fracChange2(1:nHydroThreadsGlobal))

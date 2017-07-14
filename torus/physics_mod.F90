@@ -17,7 +17,7 @@ module physics_mod
 contains
 
   subroutine setupMicrophysics(grid)
-    use inputs_mod, only : biophysics, iTrans
+    use inputs_mod, only : biophysics
     use biophysics_mod
 #ifdef CMFATOM
     use inputs_mod, only : atomicPhysics, nAtom
@@ -28,8 +28,8 @@ contains
     use chemistry_mod
 #endif
 #ifdef MOLECULAR
-    use inputs_mod, only : molecularPhysics, moleculeFile, molecular
-    use molecular_mod, only: readMolecule, globalMolecule, findcriticalDensity
+!    use inputs_mod, only : molecularPhysics, moleculeFile, molecular
+!    use molecular_mod, only: readMolecule, globalMolecule , findcriticalDensity
 #endif
 
 #ifdef PHOTOION
@@ -42,27 +42,27 @@ contains
     use dust_mod
     type(GRIDTYPE) :: grid
     
-#ifdef MOLECULAR
-    integer :: i
-    real(double) :: thisTemp, ncrit
-#endif
+!#ifdef MOLECULAR
+!    integer :: i
+!    real(double) :: thisTemp, ncrit
+!#endif
 
 !    call dustComparison(grid, miePhase, 100)
     
 
-#ifdef MOLECULAR
-    if (molecularPhysics) then
-       molecular = .true.
-       call readMolecule(globalMolecule, moleculefile)
-       do i = 1, 1000
-          thisTemp = dble(i-1)/99.d0 * 500.d0
-          call findcriticalDensity(ncrit, globalMolecule,iTrans,thisTemp)
-          if (writeoutput) write(*,*) "Transition freq (GHz): ",globalMolecule%transfreq(itrans)/1.d9
-          if (writeoutput) write(*,'(a,i6,a,1p,e12.3)') "Critical density at ",nint(thisTemp), " K = ", ncrit
-               
-       enddo
-    endif
-#endif
+!#ifdef MOLECULAR
+!    if (molecularPhysics) then
+!       molecular = .true.
+!       call readMolecule(globalMolecule, moleculefile)
+!       do i = 1, 1000
+!          thisTemp = dble(i-1)/99.d0 * 500.d0
+!          call findcriticalDensity(ncrit, globalMolecule,iTrans,thisTemp)
+!          if (writeoutput) write(*,*) "Transition freq (GHz): ",globalMolecule%transfreq(itrans)/1.d9
+!          if (writeoutput) write(*,'(a,i6,a,1p,e12.3)') "Critical density at ",nint(thisTemp), " K = ", ncrit
+!               
+!       enddo
+!    endif
+!#endif
 
 
 #ifdef CMFATOM
