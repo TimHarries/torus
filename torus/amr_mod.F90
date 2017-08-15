@@ -15202,11 +15202,11 @@ end function readparameterfrom2dmap
       if (PRESENT(kappaScaGas)) then
          if (present(debug)) write(*,*) "kappasca3 ",kappasca, thisOctal%ne(subcell) * sigmaE * 1.e10, thisOctal%ne(subcell),&
               thisOctal%rho(subcell)/mHydrogen,thisOctal%nh(subcell)
-         kappaScaGas = kappaScaGas + thisOctal%ne(subcell) * sigmaE * 1.e10 *(1+tempDouble)
+         kappaScaGas = kappaScaGas + thisOctal%ne(subcell) * sigmaE * 1.e10 *tempDouble
       else if (PRESENT(kappaSca)) then
-         kappaSca = kappaSca + thisOctal%ne(subcell) * sigmaE * 1.e10 *(1+tempDouble)
+         kappaSca = kappaSca + thisOctal%ne(subcell) * sigmaE * 1.e10 *tempDouble
       else if (PRESENT(kappaScaArray)) then
-         kappaScaArray = kappaScaArray + thisOctal%ne(subcell) * sigmaE * 1.e10 *(1+tempDouble)
+         kappaScaArray = kappaScaArray + thisOctal%ne(subcell) * sigmaE * 1.e10 *tempDouble
 
       elseif (PRESENT(kappaScaGas)) then
          kappaScaGas = thisOctal%ne(subcell) * sigmaE * 1.e10
