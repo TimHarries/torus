@@ -28,8 +28,8 @@ contains
     use chemistry_mod
 #endif
 #ifdef MOLECULAR
-!    use inputs_mod, only : molecularPhysics, moleculeFile, molecular
-!    use molecular_mod, only: readMolecule, globalMolecule , findcriticalDensity
+    use inputs_mod, only : molecularPhysics, moleculeFile, molecular
+    use molecular_mod, only: readMolecule, globalMolecule !, findcriticalDensity
 #endif
 
 #ifdef PHOTOION
@@ -50,10 +50,10 @@ contains
 !    call dustComparison(grid, miePhase, 100)
     
 
-!#ifdef MOLECULAR
-!    if (molecularPhysics) then
-!       molecular = .true.
-!       call readMolecule(globalMolecule, moleculefile)
+#ifdef MOLECULAR
+    if (molecularPhysics) then
+       molecular = .true.
+       call readMolecule(globalMolecule, moleculefile)
 !       do i = 1, 1000
 !          thisTemp = dble(i-1)/99.d0 * 500.d0
 !          call findcriticalDensity(ncrit, globalMolecule,iTrans,thisTemp)
@@ -61,8 +61,8 @@ contains
 !          if (writeoutput) write(*,'(a,i6,a,1p,e12.3)') "Critical density at ",nint(thisTemp), " K = ", ncrit
 !               
 !       enddo
-!    endif
-!#endif
+    endif
+#endif
 
 
 #ifdef CMFATOM
