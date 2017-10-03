@@ -3,13 +3,13 @@
 
 dustphysics T   ! use dust microphysics 
 
-radeq F  ! perform a radiative equilibrium calculation
+radeq T  ! perform a radiative equilibrium calculation
 
 ! AMR grid parameters
 
-readgrid T   ! we aren't reading a grid, we will set one up from scratch
+readgrid F   ! Setting restart flag will read in the grid
 writegrid F  ! we don't need to write out the AMR file - we just need SEDs
-inputfile lucy_grid_tmp.dat
+restart T    ! This sets restartlucy=.true.
 amrgridsize 4.e6
 amrgridcentrex 2.e6 ! the linear size of the top-level AMR mesh in units of 10^10 cm
 amr2d T  ! this is a 2d (cylindical) model
