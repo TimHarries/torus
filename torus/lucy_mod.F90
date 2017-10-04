@@ -1063,6 +1063,7 @@ contains
        if (myRankIsZero.and.writelucytmpfile) then
           write(tfilename, '(a,i3.3,a,i3.3,a,i3.3,a)') "lucy_",iHydro,"_",iIter_grand,"_",imultiplier,".dat"
           call writeAMRgrid(tfilename, .false., grid)
+          call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
        endif
        if (myrankIsZero) then
           open(33, file="restart.dat", status="unknown",form="formatted")

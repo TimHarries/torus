@@ -12000,7 +12000,7 @@ end function readparameterfrom2dmap
     use density_mod, only: density, shakaraSunyaevDisc
     use inputs_mod, only : rOuter, betaDisc !, rInner, erInner, erOuter, alphaDisc
     use inputs_mod, only : curvedInnerEdge, nDustType, grainFrac, gridDistanceScale, rInner
-    use inputs_mod, only : height, hydrodynamics, dustPhysics, mCore, molecular, photoionization
+    use inputs_mod, only : height, hydrodynamics, dustPhysics, mCore, molecularPhysics, photoionization
     use inputs_mod, only : rSublimation, erInner, erOuter, mDotEnv, rhofloor
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
@@ -12076,7 +12076,7 @@ end function readparameterfrom2dmap
 
 !    endif
 
-    if(molecular) then
+    if(molecularPhysics) then
  !      if(modulus(rvec) .lt. 1000.) then
           thisOctal%velocity(subcell) = keplerianVelocity(rvec)
           thisOctal%iAnalyticalVelocity(subcell) = 2
@@ -12087,7 +12087,7 @@ end function readparameterfrom2dmap
        thisOctal%velocity(Subcell) = VECTOR(0.,0.,0.)
     endif
 
-    if (molecular) then
+    if (molecularPhysics) then
        thisOctal%microturb(subcell) = sqrt((2.d0*kErg*thisOctal%temperature(subcell))/(29.0 * amu))/cspeed
        thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.*mhydrogen)
     endif
@@ -17711,7 +17711,7 @@ end function readparameterfrom2dmap
 
 
   subroutine allocateOctalAttributes(grid, thisOctal)
-    use inputs_mod, only : mie,  nDustType, molecular, TminGlobal, &
+    use inputs_mod, only : mie,  nDustType, TminGlobal, &
          photoionization, hydrodynamics, timeDependentRT, nAtom, &
          lineEmission, atomicPhysics, photoionPhysics, dustPhysics, molecularPhysics, cmf
     use inputs_mod, only : grainFrac, pdrcalc, xraycalc, useionparam, biophysics
@@ -17855,7 +17855,7 @@ end function readparameterfrom2dmap
        endif
     endif
 
-    if (molecular) then
+    if (molecularPhysics) then
        call allocateAttribute(thisOctal%iAnalyticalVelocity,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%molAbundance, thisOctal%maxChildren)
        thisOctal%molAbundance(:) = 1.e-30
@@ -18027,6 +18027,10 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%probDistCont, thisOctal%maxChildren)
     endif
     if (hydrodynamics) then
+
+       call allocateAttribute(thisOctal%adot,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%chiline,thisOctal%maxchildren)
+
 
        call allocateAttribute(thisOctal%q_i,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%q_i_plus_1,thisOctal%maxchildren)
