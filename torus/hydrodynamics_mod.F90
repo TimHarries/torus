@@ -17844,7 +17844,7 @@ end subroutine refineGridGeneric2
 
  
 ! Used to bail out after multiGridVcycle      
-555 continue
+!555 continue
  
     call unsetGhosts(grid%octreeRoot)
     call setupEdges(grid%octreeRoot, grid)
