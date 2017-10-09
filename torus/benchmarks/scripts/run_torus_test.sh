@@ -425,7 +425,8 @@ for config in ${CONFIG_TO_TEST}; do
     echo "Running restart test"
     export THIS_BENCH=restart
     cd ${WORKING_DIR}/benchmarks/restart
-    ln -s ../disc/lucy_grid_tmp.dat
+    ln -s ../disc/lucy*.dat .
+    ln -s ../disc/restart.dat . 
     run_bench
     check_benchmark > check_log_${config}_${THIS_BENCH}.txt 2>&1 
     cat check_log_${config}_${THIS_BENCH}.txt
