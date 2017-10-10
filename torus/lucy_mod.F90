@@ -934,7 +934,7 @@ contains
                 call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
              endif
 
-             if ((iiter_grand == 6).and.doSmoothGridTau) then
+             if ((iiter_grand == 5).and.doSmoothGridTau) then
                 call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
                 call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)

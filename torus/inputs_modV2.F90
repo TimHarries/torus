@@ -2644,6 +2644,9 @@ contains
        call getLogical("readmiephase", readMiePhase, cLine, fLine, nLines, &
             "Read mie scattering phase file: ","(a,1l,1x,a)",.false., ok, .false.)
 
+       call getReal("subrange", subrange, 1., cLine, fLine, nLines, &
+            "Sublimation temperature e-folding temperature: ","(a,f5.3,a)",10.,ok,.false.)
+
 
           grainFracTotal = 0.
           do i = 1, nDustType

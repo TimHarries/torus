@@ -887,7 +887,7 @@ end subroutine gaussSeidelSweep
   end subroutine defineDiffusionOnRho
 
   recursive subroutine defineDiffusionOnRosseland(grid, thisOctal, taudiff, nDiff, reset)
-    use inputs_mod, only :  resetDiffusion
+    use inputs_mod, only :  resetDiffusion, minCrossings
     real :: tauDiff
     type(GRIDTYPE) :: grid
     logical, optional :: reset
@@ -917,7 +917,7 @@ end subroutine gaussSeidelSweep
              allocate(thisOCtal%diffusionApprox(1:thisOctal%maxChildren))
              thisOctal%diffusionApprox = .false.
           endif
-          if (tau > taudiff) then
+          if ((tau > taudiff).and.(thisOctal%nCrossings(subcell) < minCrossings)) then
              thisOctal%diffusionApprox(subcell) = .true.
              if (PRESENT(ndiff))  nDiff = nDiff + 1
           else

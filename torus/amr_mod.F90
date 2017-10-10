@@ -15462,6 +15462,8 @@ end function readparameterfrom2dmap
 
                 if (PRESENT(photosphereSplit)) then
                    if (photosphereSplit.and.(.not.outofmemory)) then
+
+
                       if ((thisOctal%etaLine(subcell) /= 0.d0).and.(neighbourOctal%etaLine(neighbourSubcell)/=0.d0)) then
                          if ((j==3).or.(j==4)) then
                             fac = abs(neighbourOctal%etaLine(neighbourSubcell)-thisOctal%etaLine(subcell))
@@ -15477,6 +15479,7 @@ end function readparameterfrom2dmap
                             endif
                          endif
                       endif
+
                    endif
                 endif
              endif
@@ -18030,6 +18033,7 @@ end function readparameterfrom2dmap
 
        call allocateAttribute(thisOctal%adot,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%chiline,thisOctal%maxchildren)
+       call allocateAttribute(thisOctal%rhou,thisOctal%maxchildren)
 
 
        call allocateAttribute(thisOctal%q_i,thisOctal%maxchildren)

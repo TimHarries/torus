@@ -447,6 +447,7 @@
   logical :: variableDustSublimation
   real(double) :: tSub(10) ! variable dust sublimation temperature factor
   real(double) :: tSubPower(10) ! variable dust sublimation density factor
+  real :: subrange
   logical :: dustSettling
   integer :: nDustType
   logical :: readDustFromFile, writeDustToFile

@@ -1130,7 +1130,7 @@ contains
 
   recursive subroutine sublimateDust(grid, thisOctal, totFrac, nFrac, tauMax, subTemp, minLevel)
 
-    use inputs_mod, only : grainFrac, nDustType, tThresh, tSub, decoupleGasDustTemperature, tsubpower
+    use inputs_mod, only : grainFrac, nDustType, tThresh, tSub, decoupleGasDustTemperature, tsubpower, subrange
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -1140,7 +1140,7 @@ contains
     real(double) :: smallVal
     integer :: nFrac
     real(double) :: frac, newFrac, deltaFrac, thistau
-    real ::  temperature, sublimationTemp, subrange
+    real ::  temperature, sublimationTemp
     real :: underCorrect 
     integer :: ilambda
     real(double) :: kappaSca, kappaAbs
@@ -1149,7 +1149,7 @@ contains
     underCorrect = 1.
 
     kappaSca = 0.d0; kappaAbs = 0.d0
-    subrange = 1.d0
+    subrange = 10.d0
 
     if (present(minLevel)) then
        smallVal = minLevel
