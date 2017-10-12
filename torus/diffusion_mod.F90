@@ -783,6 +783,7 @@ end subroutine gaussSeidelSweep
 
 
     call setDiffOnTau(grid)
+    call defineDiffusionOnUndersampled(grid%octreeRoot)
 
     if (present(onlyUndersampled)) then
        if (onlyUndersampled) then

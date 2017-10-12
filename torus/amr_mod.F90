@@ -15452,13 +15452,13 @@ end function readparameterfrom2dmap
                 fac = abs(thisOctal%temperature(subcell)-neighbourOctal%temperature(neighbourSubcell)) / &
                      thisOctal%temperature(subcell)
 
-                if (split.and.(thisTau > neighbourTau).and.(fac > 0.5d0).and. &
-                     (thisOctal%temperature(subcell)>100.d0).and.(thisTau > 1.d-4)) then
-                   call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
-                        inherit=inheritProps, interp=interpProps)
-                   converged = .false.
-                   return
-                endif
+!                if (split.and.(thisTau > neighbourTau).and.(fac > 0.5d0).and. &
+!                     (thisOctal%temperature(subcell)>100.d0).and.(thisTau > 1.d-4)) then
+!                   call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+!                        inherit=inheritProps, interp=interpProps)
+!                   converged = .false.
+!                   return
+!                endif
 
                 if (PRESENT(photosphereSplit)) then
                    if (photosphereSplit.and.(.not.outofmemory)) then
