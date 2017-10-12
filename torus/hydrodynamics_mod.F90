@@ -1119,11 +1119,10 @@ contains
     type(octal), pointer   :: thisoctal, parent
     type(octal), pointer  :: child , neighbourOctal
     integer :: i, ndepth, parentsubcell, subcell,ndir, neighbourSubcell, ithread
+    real(double) :: weight(8)
     type(VECTOR) :: centre, locator(8), dir(8), subcen
-    real(double) :: q, rho, rhoe, rhou, rhov, rhow, qviscosity(3,3), x, qnext, pressure
-    real(double) :: flux, phi,  correction, phigas(8)
-    integer :: nd, nc
-    real(double) :: xnext, px, py, pz, rm1, um1, pm1, tot, weight(8), corrInterp, loc(3)
+    real(double) :: phigas(8), loc(3)
+    real(double) :: corrInterp, tot
     integer :: status(MPI_STATUS_SIZE)
     integer, parameter :: tag = 50
     integer :: ierr
@@ -1264,10 +1263,7 @@ contains
     type(octal), pointer  :: child , neighbourOctal
     integer :: i, ndepth, parentsubcell, subcell,ndir, neighbourSubcell, ithread
     type(VECTOR) :: centre, locator(8), dir(8), subcen
-    real(double) :: q, rho, rhoe, rhou, rhov, rhow, qviscosity(3,3), x, qnext, pressure
-    real(double) :: flux, phi,  correction(8), phigas
-    integer :: nd, nc
-    real(double) :: xnext, px, py, pz, rm1, um1, pm1, tot, weight(8), corrInterp, loc(3)
+    real(double) :: correction(8), weight(8),  tot, loc(3), corrInterp
     integer :: status(MPI_STATUS_SIZE)
     integer, parameter :: tag = 50
     integer :: ierr
@@ -17103,7 +17099,7 @@ end subroutine refineGridGeneric2
     real(double) :: deltaT, fracChange, newPhi, newerPhi, sumd2phidx2
     integer :: nd
     real(double), parameter :: maxM = 100000.d0
-    real(double) :: x1, x2, dxArray(6), phiInterface(6), dfdrbyr,d2phid2x(6)
+    real(double) :: x1, x2, dxArray(6), phiInterface(6), dfdrbyr
     real(double) :: dx, g2(6), d2phidx2(7)
     real(double) :: xnext, oldphi, px, py, pz, rm1, um1, pm1, thisR, correction
     real(double), parameter :: SOR = 1.d0
@@ -17680,7 +17676,6 @@ end subroutine refineGridGeneric2
     real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi, phigas,qViscosity(3,3)
     integer :: subcell, i, neighbourSubcell
     type(VECTOR) :: locator, dir(6), probe(6)
-    real(double) :: h(6), residual
     integer :: n, ndir
     integer :: nDepth
     real(double) :: g(6)
