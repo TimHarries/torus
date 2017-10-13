@@ -15,7 +15,7 @@ nbodyphysics T
 
 
 mindepthamr 7
-maxdepthamr 8
+maxdepthamr 7
 cfl 0.3
 dosmoothgrid T
 
