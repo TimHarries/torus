@@ -783,7 +783,7 @@ end subroutine gaussSeidelSweep
 
 
     call setDiffOnTau(grid)
-    call defineDiffusionOnUndersampled(grid%octreeRoot)
+!    call defineDiffusionOnUndersampled(grid%octreeRoot)
 
     if (present(onlyUndersampled)) then
        if (onlyUndersampled) then
@@ -798,7 +798,7 @@ end subroutine gaussSeidelSweep
 !       call defineDiffusionOnUndersampled(grid%octreeRoot)
 !    call resetDiffusionTemp(grid%octreeRoot, 100.)
 !    call writeVtkFile(grid, "before.vtk", valueTypeString=(/"chiline    ","temperature","diff"/))
-    call unsetDiffusionOnBoundary(grid, grid%octreeRoot)
+!    call unsetDiffusionOnBoundary(grid, grid%octreeRoot)
 !    call writeVtkFile(grid, "after.vtk", valueTypeString=(/"chiline    ","temperature","diff"/))
 
     i  = 0

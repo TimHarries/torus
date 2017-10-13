@@ -3486,6 +3486,14 @@ end subroutine writeXMLVtkFileAMR
                   endif
                   rArray(1, n) = real(value)
 
+               case("under")
+                  if (thisOctal%undersampled(subcell)) then
+                     value = 1.d0
+                  else
+                     value = 0.d0
+                  endif
+                  rArray(1, n) = real(value)
+
                case("mpistore")
                   if (associated(thisOctal%mpiBoundaryStorage)) then
                      value = 1.d0

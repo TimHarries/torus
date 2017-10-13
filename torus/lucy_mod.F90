@@ -816,6 +816,12 @@ contains
                 if (iIter_grand >= 5) call solveArbitraryDiffusionZones(grid)
              endif
           endif
+       call writeVtkFile(grid, "diff.vtk", &
+            valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+            "dust       ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", "diff       ", &
+            "chiline    ", &
+            "adot       ", "under      "/))
+
 
           nCellsInDiffusion = 0
           nUndersampled = 0
@@ -1010,7 +1016,10 @@ contains
           iMultiplier  = iMultiplier * 2
           if ( convergeOnUndersampled ) converged = .false.
        endif
-       if (variableDustSublimation.and.(iIter_grand == 7)) converged = .true.
+!       if (variableDustSublimation.and.(iIter_grand == 7)) converged = .true.
+
+       if (variableDustSublimation.and.(iIter_grand > 6).and. &
+            (percent_undersampled < percent_undersampled_min)) converged = .true.
 
 
        if ((grid%geometry == "shakara").and.variableDustSublimation) then
@@ -2184,6 +2193,10 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
        sOctal => tempOctal
 
        if (tempOctal%diffusionApprox(tempsubcell)) then
+!XXXXXXXXX
+          photoninDiffusionZone = .true.
+          escaped = .true.
+          goto 666
 
           call randomWalk(grid, tempOctal, tempSubcell,  endOctal, endSubcell, diffusionZoneTemp, ok)
 
