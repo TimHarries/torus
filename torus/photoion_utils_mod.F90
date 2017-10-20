@@ -122,7 +122,9 @@ contains
           thisOctal%etaCont(subcell) = 0.
           thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
           thisOctal%ne(subcell) = thisOctal%nh(subcell)
+          if (.not.associated(thisOctal%nhi)) allocate(thisOctal%nhi(1:thisOctal%maxChildren))
           thisOctal%nhi(subcell) = 1.e-8
+          if (.not.associated(thisOctal%nhii)) allocate(thisOctal%nhii(1:thisOctal%maxChildren))
           thisOctal%nhii(subcell) = thisOctal%ne(subcell)
           thisOctal%inFlow(subcell) = .true.
 

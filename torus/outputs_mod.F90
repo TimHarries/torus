@@ -110,7 +110,7 @@ contains
 
     call writeBanner("Creating outputs","-",TRIVIAL)
 
-    if (writegrid) then
+    if (writegrid.and.(.not.loadBalancingThreadGlobal)) then
           call writeAMRgrid(gridOutputFilename,.false.,grid)
 
        if (geometry == "kengo") then

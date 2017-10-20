@@ -18195,7 +18195,7 @@ end subroutine refineGridGeneric2
              if (myrankGlobal==1)write(*,*) i, residual
              i = i + 1
              if ((iDepth > minDepth).and.(i == 5)) exit
-             if ((iDepth == minDepth).and.(residual < 1.d-5)) exit
+             if ((iDepth == minDepth).and.(residual < 1.d-6)) exit
 
           enddo
           call calculateResidualsFineCoarse(grid%octreeRoot, grid, iDepth)
@@ -18203,7 +18203,7 @@ end subroutine refineGridGeneric2
 
           if (iDepth > minDepth) then
              call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth)
-!             call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth-1)
+             call exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, iDepth-1)
              call restrictResiduals(grid%octreeRoot, grid, iDepth)
           endif
        enddo
