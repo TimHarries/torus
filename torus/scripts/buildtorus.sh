@@ -1,4 +1,4 @@
-#!/bin/ksh
+#!/bin/bash
 #
 # This script builds Torus for MPI/OpenMP/hybrid configurations
 #
