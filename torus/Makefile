@@ -215,11 +215,11 @@ ifeq ($(SYSTEM), ifort)
         F95COMP  = ifort 
     endif
     DEBUGFLAG= -g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
-    CFITSIOLIBS = -lcfitsio
+    CFITSIOLIBS = -L${HOME}/cfitsio/lib -lcfitsio
     ZLIBLIBS = -lz
     EXE = torus.ifort
     KNOWN_SYSTEM = yes
-    SPHNG_FLAGS = -mcmodel=medium -i-dynamic
+    SPHNG_FLAGS = -mcmodel=medium
 endif
 
 ###########################

@@ -124,8 +124,8 @@ else
 	echo "Found gfortran"
 	torusFortranCompiler=gfortran
 	system_openmp=gfortran
-	system_mpi=ompiosx
-	system_hybrid=ompiosx
+	system_mpi=gfortran
+	system_hybrid=gfortran
     else
 	echo "gfortran not found"
     fi
@@ -135,9 +135,9 @@ else
     if [[ $? -eq 0 ]]; then
 	echo "Found ifort"
 	torusFortranCompiler=ifort
-	system_openmp=zensingle
-	system_mpi=zen
-	system_hybrid=zen
+	system_openmp=ifort
+	system_mpi=ifort
+	system_hybrid=ifort
     else
 	echo "ifort not found"
     fi
@@ -214,7 +214,7 @@ if [[ $mpi == yes ]]; then
 	ln -s ../../torus/* . 
     fi
     make depends 
-    make getsvnver=no SYSTEM=${system_mpi} $make_args
+    make getsvnver=no SYSTEM=${system_mpi} mpi=yes openmp=no $make_args
     cp torus.${system_mpi} ../../bin/torus.mpi
     cd ../..
 fi
@@ -232,7 +232,7 @@ if [[ $hybrid == yes ]]; then
 	ln -s ../../torus/* . 
     fi
     make depends 
-    make getsvnver=no SYSTEM=${system_hybrid} openmp=yes $make_args
+    make getsvnver=no SYSTEM=${system_hybrid} mpi=yes openmp=yes $make_args
     cp torus.${system_hybrid} ../../bin/torus.hybrid
     cd ../..
 fi
