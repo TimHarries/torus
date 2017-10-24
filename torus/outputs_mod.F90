@@ -160,7 +160,11 @@ contains
           yAxisDir = VECTOR(0.d0, 1.d0, 0.d0)
           call createColumnDensityImage(grid, columnImageDirection,image)
           call findmultifilename(columnImageFilename, iModel, thisFile)
+#ifdef USECFITSIO
           if (writeoutput) call writeFitsColumnDensityImage(image, thisFile)
+#else
+          call writeWarning("Torus was build without FITS support. No image written.")
+#endif
        endif
 #endif
     endif

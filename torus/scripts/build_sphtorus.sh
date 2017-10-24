@@ -33,6 +33,7 @@ profile_flag=""
 openmp_flag=""
 openmp_lib_flag=""
 overwrite=0
+export mpi="no"
 while [ $# -gt 0 ]
 do
     case "$1" in 
@@ -56,10 +57,6 @@ do
     esac
 shift
 done
-
-case ${SYSTEM} in 
-    zen) export mpi="yes"
-esac
 
 # 1. Check source code directories can be found and set up directories for build
 

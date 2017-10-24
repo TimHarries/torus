@@ -287,7 +287,7 @@ ifeq ($(SYSTEM), isca)
     ifeq ($(chemistry), yes)
        F95COMP+=-I${HOME}/krome/build
     endif
-    SPHNG_FLAGS = -mcmodel=medium -i-dynamic
+    SPHNG_FLAGS = -mcmodel=medium
     ZLIBLIBS = -lz
     KNOWN_SYSTEM=yes
 endif
