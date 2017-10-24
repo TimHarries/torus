@@ -46,8 +46,7 @@ do
 	-p) profile_flag="profile=yes"
 	    export PROFILE=yes;;
 	-mpi) echo "INFO: compiling sphtorus using MPI"
-	      export SYSTEM="ompi"
-	      export mpi="yes";;   # for sphNG 
+	      export mpi="yes";;
         -itac) echo "INFO: Using ITAC profiling"
 	       export trace=yes
 	       itac_flag="trace=yes";;
@@ -136,7 +135,7 @@ if [[ ${make_links} -eq 1 ]]; then
 fi
 
 echo "INFO: Building sphtorus, SYSTEM=${SYSTEM}"
-make ${debug_flag} ${openmp_flag} sphtorus
+make ${debug_flag} ${openmp_flag} torus
 if [[ -e sphtorus ]]; then
     echo "INFO: moving executable sphtorus to ${sphtorus_dir}/bin"
     mv sphtorus ${sphtorus_dir}/bin

@@ -52,6 +52,9 @@ MPIFLAG =
 # need to be set in the relevant SYSTEM section of this file
 OPENMPFLAG = -qopenmp
 
+# When linking with SPH-NG ifort requires extra flags.
+SPHNG_FLAGS =
+
 #
 # Set system-dependent variables
 #
@@ -216,6 +219,7 @@ ifeq ($(SYSTEM), ifort)
     ZLIBLIBS = -lz
     EXE = torus.ifort
     KNOWN_SYSTEM = yes
+    SPHNG_FLAGS = -mcmodel=medium -i-dynamic
 endif
 
 ###########################
@@ -254,6 +258,7 @@ ifeq ($(SYSTEM), complexity)
        F95COMP+=-I${HOME}/krome/build
     endif
 
+    SPHNG_FLAGS = -mcmodel=medium -i-dynamic
     ZLIBLIBS = -lz
     KNOWN_SYSTEM=yes
 endif
@@ -282,6 +287,7 @@ ifeq ($(SYSTEM), isca)
     ifeq ($(chemistry), yes)
        F95COMP+=-I${HOME}/krome/build
     endif
+    SPHNG_FLAGS = -mcmodel=medium -i-dynamic
     ZLIBLIBS = -lz
     KNOWN_SYSTEM=yes
 endif
@@ -349,6 +355,7 @@ ifeq ($(SYSTEM), zen)
     ifeq ($(chemistry), yes)
        F95COMP+=-I${HOME}/krome/build
     endif
+    SPHNG_FLAGS = -mcmodel=medium -i-dynamic
     KNOWN_SYSTEM=yes
 endif
 
@@ -377,6 +384,7 @@ ifeq ($(SYSTEM), zensingle)
     ifeq ($(chemistry), yes)
        F95COMP+=-I${HOME}/krome/build
     endif
+    SPHNG_FLAGS = -mcmodel=medium -i-dynamic
     KNOWN_SYSTEM=yes
 endif
 
@@ -420,6 +428,7 @@ ifeq ($(SYSTEM), ceres)
     ZLIBLIBS = -lz
     MPIFLAG = -DMPI
     EXE = torus.ceres
+    SPHNG_FLAGS = -mcmodel=medium -i-dynamic
     KNOWN_SYSTEM = yes
 endif
 
@@ -530,7 +539,7 @@ endif
 
 # Add flags required for sphNG compatibility
 ifeq ($(withsphng), yes)
-  ETCFLAG +=  -mcmodel=medium -i-dynamic
+  ETCFLAG +=  $(SPHNG_FLAGS)
   ETCFLAG +=  -DWITHSPHNG
 endif
 
@@ -617,7 +626,9 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90 image_uti
             cmfgen_class.f90 modelatom_mod.f90  magField.f90 \
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
             magnetic_mod.f90 units_mod.f90 interferometry_mod.f90 \
-            qShep3D_mod.f90 qShep2D_mod.f90 turbulence_mod.f90 eos_mod.f90 citations_mod.f90 $(VERSIONSOURCE)
+            qShep3D_mod.f90 qShep2D_mod.f90 turbulence_mod.f90 eos_mod.f90 citations_mod.f90 \
+            detector_mod.f90 interface_hierarchy_mod.f90 triangle_mesh_mod.f90 object_media_mod.f90 obj_io_mod.f90 \
+            $(VERSIONSOURCE)
             
 
 
@@ -628,8 +639,7 @@ CAPF90SOURCE =	 amr_mod.F90  octal_mod.F90 mpi_global_mod.F90 random_mod.F90 uni
                  phaseloop_mod.F90 gridio_mod.F90 angularImage_mod.F90  timedep_mod.F90 zlib_mod.F90 dust_mod.F90 mieDistPhaseMatrix.F90  \
 	         setupamr_mod.F90 physics_mod.F90 outputs_mod.F90 memory_mod.F90 viscosity_mod.F90 xray_mod.F90 loadbalance_mod.F90 \
                  healpix_modules.F90 healpix.F90 nrayshealpix.F90 pdr_mod.F90 pdr_utils_mod.F90 setuppdr_mod.F90 pah_mod.F90 \
-		biophysics_mod.F90 interface_hierarchy_mod.f90 triangle_mesh_mod.f90 object_media_mod.f90 obj_io_mod.f90 detector_mod.f90 \
-		chemistry_mod.F90 gridanalysis_mod.F90 fixing_mod.F90 $(TORUSMAINSOURCE)
+		 biophysics_mod.F90 chemistry_mod.F90 gridanalysis_mod.F90 fixing_mod.F90 $(TORUSMAINSOURCE)
 
 
 CAPF90SOURCELIB = mpi_global_mod.F90 random_mod.F90 unix_mod.F90  memory_mod.F90 setupamr_mod.F90 physics_mod.F90 outputs_mod.F90 \
@@ -641,7 +651,7 @@ CAPF90SOURCELIB = mpi_global_mod.F90 random_mod.F90 unix_mod.F90  memory_mod.F90
         pdr_mod.F90 pdr_utils_mod.F90 setuppdr_mod.F90 octal_mod.F90 amr_mod.F90 grid_mod.F90 dust_mod.F90 \
         photoion_utils_mod.F90 ion_mod.F90 angularImage_utils.F90 loadbalance_mod.F90 nbody_mod.F90 viscosity_mod.F90 \
         mieDistPhaseMatrix.F90 gas_opacity_mod.F90 TTauri_mod.F90 gridFromFlash.F90 fits_utils_mod.F90 sph_data_class.F90 \
-	biophysics_mod.F90 chemistry_mod.F90 fixing_mod.F90
+	biophysics_mod.F90 chemistry_mod.F90 gridanalysis_mod.F90 fixing_mod.F90 pah_mod.F90 
 
 
 ifeq ($(pdr),yes)
