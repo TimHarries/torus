@@ -403,7 +403,7 @@ contains
     real(double) :: udist, umass, utime,  time, uvel, utemp
     real(double) :: xn, yn, zn, vx, vy, vz, gaspartmass, rhon, u, h, h2ratio, gmw
     integer :: itype ! splash particle type, different convention to SPHNG 
-    integer :: ipart, icount, iptmass, igas, idead, i
+    integer :: ipart, icount, iptmass, igas, istar, idead, i
     integer :: nptmass, nstar, nother, nlines
     integer :: irequired, irejected ! Record number of gas particles required and not required
     integer, parameter :: maxNumVals=50 ! Maximum number of values per line (first dim of junkArray)
@@ -475,8 +475,9 @@ contains
 ! Get the number of each type of particle. The names depend on which code the dump came from (see the read_data_*.f90 files
 ! in the splash source code). However there are only three cases we care about here:
 ! 1. Gas particles
-! 2. Particles which will be treated as sources (sink/stars)
-! 3. Everything else (ghost, dead/unknown). These will be discarded
+! 2. Sinks which will be treated as sources
+! 3. Stars which are discarded by default but this could be changed if required
+! 4. Everything else (ghost, dead/unknown). These will be discarded
     
     ! itype: 1 - gas particles
     ipType = indexWord("gas",pType,npType)
@@ -503,7 +504,7 @@ contains
        end if
     endif
 
-    ! itype: 4 - stars, treat as sources
+    ! itype: 4 - stars
     ipType = indexWord("star",pType,npType)
     if (ipType/=0) then
        nstar = pNumArray(ipType)
@@ -639,6 +640,7 @@ contains
     iptmass = 0
     icount = 12 ! There are 12 header lines
     igas = 0
+    istar = 0
     idead = 0
     status=0
 
@@ -867,12 +869,12 @@ part_loop: do ipart=1, nlines
              sphdata%totalMolmass = sphdata%totalMolmass + COfrac*gaspartmass
           endif
           
-! 3=sink, 4=star
-       else if(itype .eq. 3 .or. itype .eq. 4) then
+! 3=sink
+       else if(itype .eq. 3) then
 
-          if (discardSinks) cycle part_loop
-
+! Update counter before cycling loop so that we count the sinks correctly even if we don't use them
           iptmass = iptmass + 1
+          if (discardSinks) cycle part_loop
 
           sphdata%x(iptmass) = xn
           sphdata%y(iptmass) = yn
@@ -892,6 +894,11 @@ part_loop: do ipart=1, nlines
           call writeinfo(message, TRIVIAL)
           write(98,*) iptmass, xn*udist*1e-10, yn*udist*1e-10, zn*udist*1e-10, gaspartmass
 
+! 4=stars
+       else if(itype .eq. 4) then
+
+          istar = istar + 1
+
 ! 2=ghost, 5=dead/unknown
        else
 
@@ -901,20 +908,31 @@ part_loop: do ipart=1, nlines
 
     enddo part_loop
 
- write(message,*)  iptmass," are sink particles and ",igas," are gas particles and ", idead, " are unknown/dead"
+ call writeInfo("Summary of SPH particles read: ", TRIVIAL)
+ write(message,*) igas," are gas particles"
+ call writeinfo(message, TRIVIAL)
+ write(message,*)  iptmass," are sink particles"
+ call writeinfo(message, TRIVIAL)
+  write(message,*) istar," are star particles"
+ call writeinfo(message, TRIVIAL)
+ write(message,*) idead, " are unknown/dead"
+ call writeinfo(message, TRIVIAL)
+ write(message,*) "Total Mass in gas particles: ", sphdata%totalgasmass * umass/mSol, " Msol"
  call writeinfo(message, TRIVIAL)
 
- write(message,*) "Total Mass in all particles, ", sphdata%totalgasmass * umass/mSol, " Msol"
- call writeinfo(message, TRIVIAL)
- 
-! Warn if we didn't find the expected number of gas particles or point masses
+! Warn if we didn't find the expected number of particles or point masses
  if (igas /= npart ) then
     write(message,*) "Expected ", npart, " gas particles but found ", igas
     call writeWarning(message)
  endif
  
- if (iptmass /= nptmass+nstar) then
-    write(message,*) "Expected ", nptmass+nstar, " sinks+stars but found ", iptmass
+ if (iptmass /= nptmass) then
+    write(message,*) "Expected ", nptmass+nstar, " sinks but found ", iptmass
+    call writeWarning(message)
+ endif
+
+ if (istar /= nstar) then
+    write(message,*) "Expected ", nstar, " stars but found ", istar
     call writeWarning(message)
  endif
 
