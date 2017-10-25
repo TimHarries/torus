@@ -939,7 +939,6 @@
   real, protected    :: hmaxPercentile
   real, protected    :: sph_norm_limit
   integer, protected :: kerneltype
-  logical, protected :: useHull
   logical, protected :: dragon
   logical, protected :: refineCentre  ! switch on extra grid refinement for SPH-Torus discs 
   logical, protected :: SphOnePerCell ! Split to one particle per cell for galactic plane survey

@@ -37,6 +37,9 @@ module amr_mod
   integer :: mass_split, mass_split2, density_split, velocity_split, both_split, maxdensity_split
   integer :: scaleheighta_count, scaleheightb_count, scaleheightc_count
   TYPE(octal), POINTER :: recentOctal
+#ifdef SPH2GRID_PARALLEL
+!$OMP threadprivate(recentOctal)
+#endif
 
 CONTAINS
   SUBROUTINE fill_Velocity_Corners(this,thisOctal, debug)
@@ -11709,16 +11712,17 @@ end function readparameterfrom2dmap
   end function ggtauVelocity
 
 #ifdef SPH
- TYPE(vector) FUNCTION ClusterVelocity(point)
+ TYPE(vector) FUNCTION ClusterVelocity(point, density)
 
    use sph_data_class, only : clusterparameter
 
     type(VECTOR), intent(in) :: point
+    real(double), intent(out) :: density
     integer :: subcell
 
     call findSubcellLocal(point, recentOctal,subcell)
+    clustervelocity = Clusterparameter(point, recentoctal, subcell, rho_out=density) 
 
-    clustervelocity = Clusterparameter(point, recentoctal, subcell, theparam = 1) ! use switch for storing velocity
   end FUNCTION ClusterVelocity
 
   real(double) FUNCTION ClusterDensity(point)
@@ -11730,9 +11734,8 @@ end function readparameterfrom2dmap
     integer :: subcell
 
     call findSubcellLocal(point, recentOctal,subcell)
+    out = Clusterparameter(point, recentoctal, subcell, rho_out=clusterdensity) 
 
-    out = Clusterparameter(point, recentoctal, subcell, theparam = 2) ! use switch for storing velocity
-    clusterdensity = out%x
   end FUNCTION ClusterDensity
 #endif
 
@@ -19101,6 +19104,9 @@ end function readparameterfrom2dmap
     real(oct)      :: x1, x2, x3
     real(oct)      :: y1, y2, y3
     real(oct)      :: z1, z2, z3
+    real(double)   :: thisDensity
+    TYPE(VECTOR)   :: cornerVec(27)
+    integer        :: i
 
     INTERFACE
       real(double) FUNCTION densityFunc(point)
@@ -19110,11 +19116,13 @@ end function readparameterfrom2dmap
       END FUNCTION densityFunc
     END INTERFACE
 
+! Velocity function returns velocity AND density so we only make one call to clusterParameter
     INTERFACE
-      type(VECTOR) FUNCTION velocityFunc(point)
+      type(VECTOR) FUNCTION velocityFunc(point, density)
         USE vector_mod
         USE gridtype_mod
         TYPE(vector), INTENT(IN) :: point
+        real(double), intent(out) :: density
       END FUNCTION velocityFunc
     END INTERFACE
 
@@ -19132,8 +19140,8 @@ end function readparameterfrom2dmap
 
     if (thisOctal%threed) then
        if (.not.thisOctal%cylindrical) then ! 3d cartesian case
-          ! we first store the values we use to assemble the position vectors
 
+          ! we first store the values we use to assemble the position vectors
           x1 = thisOctal%centre%x - thisOctal%subcellSize
           x2 = thisOctal%centre%x
           x3 = thisOctal%centre%x + thisOctal%subcellSize
@@ -19146,69 +19154,49 @@ end function readparameterfrom2dmap
           z2 = thisOctal%centre%z
           z3 = thisOctal%centre%z + thisOctal%subcellSize
 
+          ! Next we assemble the position vectors
+          cornerVec(1)  = vector(x1,y1,z1)
+          cornerVec(2)  = vector(x2,y1,z1)
+          cornerVec(3)  = vector(x3,y1,z1)
+          cornerVec(4)  = vector(x1,y2,z1)
+          cornerVec(5)  = vector(x2,y2,z1)
+          cornerVec(6)  = vector(x3,y2,z1)
+          cornerVec(7)  = vector(x1,y3,z1)
+          cornerVec(8)  = vector(x2,y3,z1)
+          cornerVec(9)  = vector(x3,y3,z1)
 
-          ! now store the 'base level' values
+          cornerVec(10) = vector(x1,y1,z2)
+          cornerVec(11) = vector(x2,y1,z2)
+          cornerVec(12) = vector(x3,y1,z2)
+          cornerVec(13) = vector(x1,y2,z2)
+          cornerVec(14) = vector(x2,y2,z2)
+          cornerVec(15) = vector(x3,y2,z2)
+          cornerVec(16) = vector(x1,y3,z2)
+          cornerVec(17) = vector(x2,y3,z2)
+          cornerVec(18) = vector(x3,y3,z2)
 
-          thisOctal%cornerrho(1)      =  densityFunc(vector(x1,y1,z1))
-          thisOctal%cornerVelocity(1) = velocityFunc(vector(x1,y1,z1))
-          thisOctal%cornerrho(2)      =  densityFunc(vector(x2,y1,z1))
-          thisOctal%cornerVelocity(2) = velocityFunc(vector(x2,y1,z1))
-          thisOctal%cornerrho(3)      =  densityFunc(vector(x3,y1,z1))
-          thisOctal%cornerVelocity(3) = velocityFunc(vector(x3,y1,z1))
-          thisOctal%cornerrho(4)      =  densityFunc(vector(x1,y2,z1))
-          thisOctal%cornerVelocity(4) = velocityFunc(vector(x1,y2,z1))
-          thisOctal%cornerrho(5)      =  densityFunc(vector(x2,y2,z1))
-          thisOctal%cornerVelocity(5) = velocityFunc(vector(x2,y2,z1))
-          thisOctal%cornerrho(6)      =  densityFunc(vector(x3,y2,z1))
-          thisOctal%cornerVelocity(6) = velocityFunc(vector(x3,y2,z1))
-          thisOctal%cornerrho(7)      =  densityFunc(vector(x1,y3,z1))
-          thisOctal%cornerVelocity(7) = velocityFunc(vector(x1,y3,z1))
-          thisOctal%cornerrho(8)      =  densityFunc(vector(x2,y3,z1))
-          thisOctal%cornerVelocity(8) = velocityFunc(vector(x2,y3,z1))
-          thisOctal%cornerrho(9)      =  densityFunc(vector(x3,y3,z1))
-          thisOctal%cornerVelocity(9) = velocityFunc(vector(x3,y3,z1))
+          cornerVec(19) = vector(x1,y1,z3)
+          cornerVec(20) = vector(x2,y1,z3)
+          cornerVec(21) = vector(x3,y1,z3)
+          cornerVec(22) = vector(x1,y2,z3)
+          cornerVec(23) = vector(x2,y2,z3)
+          cornerVec(24) = vector(x3,y2,z3)
+          cornerVec(25) = vector(x1,y3,z3)
+          cornerVec(26) = vector(x2,y3,z3)
+          cornerVec(27) = vector(x3,y3,z3)
 
-          ! middle level
-
-          thisOctal%cornerrho(10)      =  densityFunc(vector(x1,y1,z2))
-          thisOctal%cornerVelocity(10) = velocityFunc(vector(x1,y1,z2))
-          thisOctal%cornerrho(11)      =  densityFunc(vector(x2,y1,z2))
-          thisOctal%cornerVelocity(11) = velocityFunc(vector(x2,y1,z2))
-          thisOctal%cornerrho(12)      =  densityFunc(vector(x3,y1,z2))
-          thisOctal%cornerVelocity(12) = velocityFunc(vector(x3,y1,z2))
-          thisOctal%cornerrho(13)      =  densityFunc(vector(x1,y2,z2))
-          thisOctal%cornerVelocity(13) = velocityFunc(vector(x1,y2,z2))
-          thisOctal%cornerrho(14)      =  densityFunc(vector(x2,y2,z2))
-          thisOctal%cornerVelocity(14) = velocityFunc(vector(x2,y2,z2))
-
-          thisOctal%cornerrho(15)      =  densityFunc(vector(x3,y2,z2))
-          thisOctal%cornerVelocity(15) = velocityFunc(vector(x3,y2,z2))
-          thisOctal%cornerrho(16)      =  densityFunc(vector(x1,y3,z2))
-          thisOctal%cornerVelocity(16) = velocityFunc(vector(x1,y3,z2))
-          thisOctal%cornerrho(17)      =  densityFunc(vector(x2,y3,z2))
-          thisOctal%cornerVelocity(17) = velocityFunc(vector(x2,y3,z2))
-          thisOctal%cornerrho(18)      =  densityFunc(vector(x3,y3,z2))
-          thisOctal%cornerVelocity(18) = velocityFunc(vector(x3,y3,z2))
-          ! top level
-
-          thisOctal%cornerrho(19)      =  densityFunc(vector(x1,y1,z3))
-          thisOctal%cornerVelocity(19) = velocityFunc(vector(x1,y1,z3))
-          thisOctal%cornerrho(20)      =  densityFunc(vector(x2,y1,z3))
-          thisOctal%cornerVelocity(20) = velocityFunc(vector(x2,y1,z3))
-          thisOctal%cornerrho(21)      =  densityFunc(vector(x3,y1,z3))
-          thisOctal%cornerVelocity(21) = velocityFunc(vector(x3,y1,z3))
-          thisOctal%cornerrho(22)      =  densityFunc(vector(x1,y2,z3))
-          thisOctal%cornerVelocity(22) = velocityFunc(vector(x1,y2,z3))
-          thisOctal%cornerrho(23)      =  densityFunc(vector(x2,y2,z3))
-          thisOctal%cornerVelocity(23) = velocityFunc(vector(x2,y2,z3))
-          thisOctal%cornerrho(24)      =  densityFunc(vector(x3,y2,z3))
-          thisOctal%cornerVelocity(24) = velocityFunc(vector(x3,y2,z3))
-          thisOctal%cornerrho(25)      =  densityFunc(vector(x1,y3,z3))
-          thisOctal%cornerVelocity(25) = velocityFunc(vector(x1,y3,z3))
-          thisOctal%cornerrho(26)      =  densityFunc(vector(x2,y3,z3))
-          thisOctal%cornerVelocity(26) = velocityFunc(vector(x2,y3,z3))
-          thisOctal%cornerrho(27)      =  densityFunc(vector(x3,y3,z3))
-          thisOctal%cornerVelocity(27) = velocityFunc(vector(x3,y3,z3))
+          ! Now loop over all the corners filling in the velocity and density values.
+          ! This can be run in parallel but causes problems with the Intel compiler so is off by default. 
+#ifdef SPH2GRID_PARALLEL
+          !$OMP PARALLEL DO default(none) private(i, thisDensity) shared (thisOctal, cornerVec) copyin(recentOctal)
+#endif
+          do i=1,27
+             thisOctal%cornerVelocity(i) = velocityFunc(cornerVec(i), thisDensity)
+             thisOctal%cornerrho(i)      = thisDensity
+          end do
+#ifdef SPH2GRID_PARALLEL
+          !$OMP END PARALLEL DO
+#endif
 
        else ! cylindrical
           if (thisOctal%splitAzimuthally) then

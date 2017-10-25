@@ -1458,9 +1458,6 @@ contains
           call getInteger("kerneltype", kerneltype, cLine, fLine, nLines, &
                "Kernel type (0 is exponential/1 is spline): ","(a,i1,a)",0, ok, .false.)
 
-          call getLogical("useHull", useHull, cLine, fLine, nLines, &
-            "Use hull particle method: ","(a,1l,a)", .false., ok, .false.)
-
           call getLogical("adddisc", adddisc, cLine, fLine, nLines, &
             "Add inner and outer disc to model: ","(a,1l,a)", .false., ok, .false.)
 

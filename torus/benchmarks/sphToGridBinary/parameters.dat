@@ -49,5 +49,5 @@ inputFileFormat binary
 
 sphNormLimit 0.5
 kerneltype 0
-useHull F
+
 

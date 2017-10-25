@@ -31,6 +31,7 @@ v2      = yes
 coverage = no
 codecov  = no
 withsphng = no
+sph2grid_parallel = no
 pdr = no
 hydro = yes
 molecular = yes
@@ -541,6 +542,10 @@ endif
 ifeq ($(withsphng), yes)
   ETCFLAG +=  $(SPHNG_FLAGS)
   ETCFLAG +=  -DWITHSPHNG
+endif
+
+ifeq ($(sph2grid_parallel), yes)
+  ETCFLAG += -DSPH2GRID_PARALLEL
 endif
 
 ifeq ($(hydro), yes)

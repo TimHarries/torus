@@ -431,7 +431,9 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
 
         call writeInfo("Calling routines to finalize the grid variables...",TRIVIAL)
         call fixParentPointers(grid%octreeRoot)
+        if (doTuning) call tune(6, "Finish grid")
         call finishGrid(grid%octreeRoot, grid, romData=romData)
+        if (doTuning) call tune(6, "Finish grid")
         call writeInfo("...final adaptive grid configuration complete",TRIVIAL)
 
 doGridshuffle: if(gridShuffle) then
