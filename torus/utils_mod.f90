@@ -3725,11 +3725,11 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
 
   end subroutine ccubsolv
 
-  complex function Ylm(l, m, theta, phi) 
+  complex(double) function Ylm(l, m, theta, phi) 
     real(double) :: theta, phi
     integer :: l, m
     ylm = sqrt( (dble((2*l + 1)*factorial(l-m))/(fourPi * dble(factorial(l+m))) )) * &
-         plgndr(l,m,cos(theta))*cmplx(cos(dble(m)*phi), sin(dble(m)*phi))
+         plgndr(l,m,cos(theta))*cmplx(cos(dble(m)*phi), sin(dble(m)*phi),kind=double)
   end function Ylm
   integer function factorial(n)
     integer :: i, n

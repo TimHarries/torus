@@ -20,7 +20,7 @@ contains
     use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark, calcMovie, calcColumnImage
     use inputs_mod, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
     use inputs_mod, only : mie, gridDistance, nLambda, ncubes
-    use inputs_mod, only : postsublimate, lineEmission, monteCarloRT, nv
+    use inputs_mod, only : postsublimate, lineEmission, nv
     use inputs_mod, only : dowriteradialfile, radialfilename
     use inputs_mod, only : sourcelimbaB, sourcelimbbB ,sourcelimbaV, sourcelimbbV
     use sed_mod, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam

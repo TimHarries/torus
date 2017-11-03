@@ -541,7 +541,7 @@ doGridshuffle: if(gridShuffle) then
 
 
           case("etacar")
-             grid%rstar1 = sourceRadius(1)
+             grid%rstar1 = real(sourceRadius(1))
 
 #ifdef SPH
           case("cluster", "dale")

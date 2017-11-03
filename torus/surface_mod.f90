@@ -788,9 +788,9 @@ end subroutine readSurface
       totFrac = 0.d0
       do j = 1, nModes
          Y = Ylm(lMode(j), mMode(j), surface%element(i)%theta, surface%element(i)%phi)
-         totFrac = totFrac + Y * cmplx(cos(twoPi*time/period(j)), sin(twoPi*time/period(j)),kind=double) * frac(j)
+         totFrac = totFrac + dble(Y * cmplx(cos(twoPi*time/period(j)), sin(twoPi*time/period(j)),kind=double) * frac(j))
       enddo
-      surface%element(i)%temperature = teff  * (1.+totFrac)
+      surface%element(i)%temperature = real(teff  * (1.d0+totFrac))
    enddo
  end subroutine sphericalHarmonicSurface
 

@@ -9544,7 +9544,7 @@ endif
    rHat = rVec / r
 
    thisOctal%rho(subcell) = 1.d-30
-   thisOctal%temperature(subcell) = 1.d-30 
+   thisOctal%temperature(subcell) = 1.e-30 
    thisOctal%kappaAbs(subcell,1) =  1.d-30
    thisOctal%kappaSca(subcell,1) = 1.d-30
    thisOctal%etaLine(subcell) = 1.d-30
@@ -9574,7 +9574,7 @@ endif
 
 
       thisOctal%rho(subcell) = esec_etacar(i) + t*(esec_etacar(i+1)-esec_etacar(i))
-      thisOctal%temperature(subcell) = t_etacar(i) + t * (t_etacar(i+1)-t_etacar(i))
+      thisOctal%temperature(subcell) = real(t_etacar(i) + t * (t_etacar(i+1)-t_etacar(i)))
       thisOctal%kappaAbs(subcell,1) = chi_th_etacar(i) + t * (chi_th_etacar(i+1) - chi_th_etacar(i))
       thisOctal%kappaSca(subcell,1) = esec_etacar(i) + t*(esec_etacar(i+1)-esec_etacar(i))
       thisOctal%etaLine(subcell) = etal_etacar(i) + t * (etal_etacar(i+1) - etal_etacar(i))
@@ -9599,7 +9599,7 @@ endif
       if ((r > r_ostar(1)).and.(r < r_ostar(nd_ostar))) then
          call locate(r_ostar, nd_ostar, r, i)
          thisOctal%rho(subcell) = esec_ostar(i)
-         thisOctal%temperature(subcell) = t_ostar(i)
+         thisOctal%temperature(subcell) = real(t_ostar(i))
          thisOctal%kappaAbs(subcell,1) = chi_th_ostar(i)
          thisOctal%kappaSca(subcell,1) = esec_ostar(i)
          thisOctal%etaLine(subcell) = etal_ostar(i) 

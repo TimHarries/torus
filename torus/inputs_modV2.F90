@@ -4544,9 +4544,6 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
        write(imageFilename,'(a,i4.4,a)') "movie",i,".fits"
 
        thisTime = 0.d0
-       if (pulsatingStar) then
-          thisTime = dble(i-1) * period / dble(nImage)
-       endif
        ang = twoPi * dble(i-1)/dble(nImage)
        viewVec = VECTOR(sin(thisInc),0.d0, cos(thisInc))
        viewVec = rotateZ(viewVec, dble(ang))
