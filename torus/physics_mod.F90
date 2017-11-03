@@ -122,8 +122,8 @@ contains
     integer :: nSource, iSource
     type(SOURCETYPE) :: source(:)
     logical :: ok
-    real(double) :: distToEdge, fac, sumSurfaceLuminosity
-    character(len=120) :: message
+    real(double) :: distToEdge, fac, sumSurfaceLuminosity, thisTime
+    character(len=120) :: message, thisFile
     integer :: i
     i = 0
 
@@ -309,8 +309,20 @@ contains
                 !       lamEnd = 1000.d4
                 !       nlambda = 1000
                 call buildSphere(source(isource)%position, dble(source(isource)%radius), &
-                     source(isource)%surface, 100, source(isource)%teff, & 
+                     source(isource)%surface, nSphereSurface, source(isource)%teff, & 
                      source(isource)%spectrum)
+
+                 if (pulsatingStar) then
+                    call writeWarning("Makeing pulsating stellar surface...")
+                    thisTime = periodMode(1) * dble(iModel-1)/dble(nModelEnd)
+
+                    call sphericalHarmonicSurface(globalSourceArray(1)%surface, globalSourceArray(1)%teff, &
+                         nModes, lMode, mMode, fracMode, periodMode, thisTime)
+
+                    call createProbsSphericalHarmonics(globalSourceArray(1)%surface)
+                 endif
+
+
                 call sumSurface(source(isource)%surface, sumSurfaceluminosity)
                 fac = fourPi * stefanBoltz * (source(1)%radius*1.d10)**2 * (source(1)%teff)**4
                 !       if (abs(fac-source(1)%luminosity)/source(1)%luminosity > 0.01d0) then
@@ -332,7 +344,7 @@ contains
                 call writeInfo(message, TRIVIAL)
                 source(iSource)%luminosity = sumSurfaceLuminosity
              endif
-             else
+          else
 
                 source(isource)%stellar = .false.
                 source(isource)%diffuse = .true.
@@ -345,7 +357,7 @@ contains
                 case DEFAULT
                    call writeFatal("Diffuse source type not recognized")
                 end select
-          endif
+             endif
        end do
        if (.not.donBodyOnly) then
           if (Writeoutput) call testRandomSource(source, nsource)
@@ -353,7 +365,8 @@ contains
        endif
 
     endif
-    call writeVtkFile(nsource, source, "sources_at_setup.vtk")
+    call findMultiFilename("sources_at_setup_****.vtk", iModel, thisFile)
+    call writeVtkFile(nsource, source, thisFile)
 
   end subroutine setupSources
 
@@ -675,14 +688,14 @@ contains
 
    end subroutine doPhysics
 
-   subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam, dustRadeq, photoion, atomicDataCube)
+   subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam, dustRadeq, photoion, atomicDataCube, phaseloop)
      use inputs_mod, only : lamFile, lamFilename, lamLine, vMinSpec, vMaxSpec, nv, resolveSilicateFeature, writepolar, &
           polarWavelength
 #ifdef PHOTOION
      use photoion_utils_mod, only : refineLambdaArray
 #endif
 
-     logical, optional :: dustRadeq, photoion, atomicDataCube
+     logical, optional :: dustRadeq, photoion, atomicDataCube, phaseloop
      type(GRIDTYPE) :: grid
      real, pointer :: xArray(:)
      integer :: nLambda
@@ -760,6 +773,20 @@ contains
         if (atomicDataCube) then
            nLambda = nv
            allocate(xArray(1:nLambda))
+           lamStart = lamLine*(1.d0 + (vMinSpec*1.d5)/cSpeed)
+           lamend =  lamLine*(1.d0 + (vMaxSpec*1.d5)/cSpeed)
+           do i = 1, nLambda
+              xArray(i) = real(lamStart+(lamEnd-lamStart)*dble(i-1)/dble(nLambda-1))
+           enddo
+        endif
+     endif
+
+     if (PRESENT(phaseloop)) then
+        if (phaseloop) then
+           nLambda = 200
+           allocate(xArray(1:nLambda))
+           vminspec = -1500.
+           vmaxspec = 1500.
            lamStart = lamLine*(1.d0 + (vMinSpec*1.d5)/cSpeed)
            lamend =  lamLine*(1.d0 + (vMaxSpec*1.d5)/cSpeed)
            do i = 1, nLambda
@@ -870,7 +897,8 @@ contains
      use inputs_mod, only : inputNsource, mstarburst, lxoverlbol, readsources, &
           hosokawaTracks, nbodyPhysics, nSphereSurface, discardSinks, hotSpot, starburst, &
           burstType, burstAge, burstTime, sourceMass, sourceTeff, sourceRadius, accretionradius, &
-          sourceProb, smallestCellsize, sourcemdot, pointsourcearray,inputcontfluxfile
+          sourceProb, smallestCellsize, sourcemdot, pointsourcearray,inputcontfluxfile, imodel, periodMode, pulsatingStar, &
+          fracmode, lmode, mmode, nmodes, nModelEnd
 #ifdef MPI
      use mpi
 #endif
@@ -881,6 +909,7 @@ contains
      integer :: i
      type(GRIDTYPE) :: grid
      real(double) :: coreContinuumFlux, lAccretion, xRayFlux
+     real(double) :: thisTime
      real(double) :: sumSurfaceLuminosity, fac
      real :: fAccretion
      character(len=120) :: message
@@ -976,8 +1005,18 @@ contains
                  !       lamEnd = 1000.d4
                  !       nlambda = 1000
                  call buildSphere(globalsourceArray(i)%position, globalSourceArray(i)%radius, &
-                      globalsourceArray(i)%surface, 100, globalsourceArray(i)%teff, & 
+                      globalsourceArray(i)%surface, nSphereSurface, globalsourceArray(i)%teff, & 
                       globalsourceArray(i)%spectrum)
+
+                 if (pulsatingStar) then
+                    call writeWarning("Makeing pulsating stellar surface...")
+                    thisTime = periodMode(1) * dble(iModel-1)/dble(nModelEnd)
+                    call sphericalHarmonicSurface(globalSourceArray(1)%surface, globalSourceArray(1)%teff, &
+                         nModes, lMode, mMode, fracMode, periodMode, thisTime)
+                    call createProbsSphericalHarmonics(globalSourceArray(1)%surface)
+                 endif
+
+
                  call sumSurface(globalSourceArray(i)%surface, sumSurfaceluminosity)
                  fac = fourPi * stefanBoltz * (globalsourceArray(i)%radius*1.d10)**2 * (globalsourceArray(i)%teff)**4
                  write(message,*) "Lum from spectrum / lum from teff ",sumSurfaceLuminosity/fac

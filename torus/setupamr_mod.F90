@@ -35,7 +35,8 @@ contains
     use inputs_mod, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, mDisc
     use inputs_mod, only : rCore, rInner, rOuter, gridDistance, massEnvelope, readTurb, virialAlpha, restartLucy
-    use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, logspacegrid, nmag, dospiral, sphereMass,sphereRadius
+    use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, logspacegrid, nmag, dospiral, sphereMass, &
+         sphereRadius, sourceRadius
     use disc_class, only:  new
 #ifdef ATOMIC
     use cmf_mod, only : checkVelocityInterp
@@ -536,6 +537,11 @@ doGridshuffle: if(gridShuffle) then
              grid%rInner = rInner
              grid%rOuter = rOuter
              grid%rCore = rCore
+
+
+
+          case("etacar")
+             grid%rstar1 = sourceRadius(1)
 
 #ifdef SPH
           case("cluster", "dale")

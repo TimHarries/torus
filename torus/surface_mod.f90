@@ -35,6 +35,8 @@ module surface_mod
      type(VECTOR) :: position
      real(double), dimension(:), pointer :: hotFlux => null()
      real :: temperature
+     real(double) :: theta
+     real(double) :: phi
      real :: dTheta
      real :: dphi
      real :: prob
@@ -257,7 +259,7 @@ end subroutine readSurface
           dTheta = pi / real(nTheta)
           dPhi = twoPi / real(nPhi)
           area = radius * dTheta * radius * sin(theta) * dPhi
-          call addElement(surface, radius, rVec, dtheta, dphi, area, real(teff))
+          call addElement(surface, radius, rVec, theta, phi, dtheta, dphi, area, real(teff))
           surface%angleArray(i,j) = n
        enddo
     enddo
@@ -331,7 +333,7 @@ end subroutine readSurface
           dTheta = pi / real(nTheta)
           dPhi = twoPi / real(nPhi)
           area = radius * dTheta * radius * sin(theta) * dPhi
-          call addElement(surface, radius, rVec, dtheta, dphi, area, 0.)
+          call addElement(surface, radius, rVec, theta, phi, dtheta, dphi, area, 0.)
           allocate(surface%element(surface%nElements)%hotFlux(1:1))
           surface%angleArray(i,j) = n
        enddo
@@ -393,17 +395,19 @@ end subroutine readSurface
     
   end subroutine emptySurface
     
-  subroutine addElement(surface, radius, rVec, dtheta, dphi, area, teff)
+  subroutine addElement(surface, radius, rVec, theta, phi, dtheta, dphi, area, teff)
     real(double),intent(in) :: radius, area
     type(SURFACETYPE),intent(inout) :: surface
     type(VECTOR),intent(in) :: rVec
     real :: teff
-    real(double) :: dTheta, dPhi
+    real(double) :: dTheta, dPhi, theta, phi
 
     surface%nElements = surface%nElements + 1
     surface%element(surface%nElements)%norm = rVec
     surface%element(surface%nElements)%position = radius * rVec
     surface%element(surface%nElements)%area = real(area)
+    surface%element(surface%nElements)%theta = real(theta)
+    surface%element(surface%nElements)%phi = real(phi)
     surface%element(surface%nElements)%dTheta = real(dTheta)
     surface%element(surface%nElements)%dPhi = real(dphi)
     surface%element(surface%nElements)%temperature = real(teff)
@@ -769,7 +773,26 @@ end subroutine readSurface
 
 
 
+ subroutine sphericalHarmonicSurface(surface, teff, nModes, lMode, mMode, frac, period, time)
+   type(SURFACETYPE), intent(inout) :: surface
+   integer :: nModes
+   real(double) :: period(:), time, teff,frac(:), totFrac
+   integer :: lmode(:), mmode(:)
+   complex(double) :: y
+   integer :: i, j
+   integer, parameter :: ell = 1, m = 0
 
+
+   do i = 1, size(surface%element)
+      surface%element(i)%hot = .false.
+      totFrac = 0.d0
+      do j = 1, nModes
+         Y = Ylm(lMode(j), mMode(j), surface%element(i)%theta, surface%element(i)%phi)
+         totFrac = totFrac + Y * cmplx(cos(twoPi*time/period(j)), sin(twoPi*time/period(j)),kind=double) * frac(j)
+      enddo
+      surface%element(i)%temperature = teff  * (1.+totFrac)
+   enddo
+ end subroutine sphericalHarmonicSurface
 
   subroutine sumSurface(surface, luminosity)
 
@@ -855,18 +878,43 @@ end subroutine readSurface
        surface%element(:)%prob = surface%element(:)%prob / surface%element(SIZE(surface%element))%prob
     endif
   end subroutine createProbs
+
+  subroutine createProbsSphericalHarmonics(surface)
+    type(SURFACETYPE),intent(inout) :: surface
+    integer :: i 
+    do i = 1, SIZE(surface%element)
+        surface%element(i)%prob = real(surface%element(i)%temperature**4 * surface%element(i)%area)
+    end do
     
-  subroutine getPhotoVec(surface, position, direction)
+    do i = 2, SIZE(surface%element)
+       surface%element(i)%prob = surface%element(i)%prob + surface%element(i-1)%prob
+    enddo
+    surface%element(:)%prob = surface%element(:)%prob - surface%element(1)%prob
+    if (surface%element(SIZE(surface%element))%prob /= 0.d0) then
+       surface%element(:)%prob = surface%element(:)%prob / surface%element(SIZE(surface%element))%prob
+    endif
+  end subroutine createProbsSphericalHarmonics
+    
+  subroutine getPhotoVec(surface, position, direction, rhat)
     type(SURFACETYPE),intent(in) :: surface
     type(VECTOR),intent(out) :: position
     type(VECTOR),intent(out) :: direction
-    real :: r
+    type(VECTOR),intent(out) :: rHat
+    real(double) :: r, thisTheta, thisPhi
     integer :: j
 
-    call randomNumberGenerator(getReal=r)
-    call locate(surface%element(:)%prob, SIZE(surface%element), r, j)
+    call randomNumberGenerator(getDouble=r)
+    call locate(surface%element(:)%prob, SIZE(surface%element), real(r), j)
     position = surface%centre + 1.0001d0*surface%element(j)%position
+    call randomNumberGenerator(getDouble=r)
+    thisTheta = surface%element(j)%theta + (2.*r-1.)*surface%element(j)%dtheta 
+    call randomNumberGenerator(getDouble=r)
+    thisPhi = surface%element(j)%phi + (2.*r-1.)*surface%element(j)%dphi 
+    r = modulus(surface%element(j)%position)
+    position = surface%centre + 1.0001d0*VECTOR(r * sin(thisTheta)*cos(thisPhi), &
+         r * sin(thisTheta) * sin(thisPhi), r * cos(thisTheta))
     direction = fromPhotosphereVector(surface%element(j)%norm)
+    rHat = surface%element(j)%norm
   end subroutine getPhotoVec
   
   pure function photoFluxIntegral(position, surface, nFreqs) result(photoFlux)

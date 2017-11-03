@@ -391,6 +391,11 @@
   logical :: moveSources
   logical :: evolveSources 
   logical :: hotspot
+  logical :: pulsatingStar
+  integer :: nModes
+  real(double), allocatable :: periodMode(:)
+  integer, allocatable :: lMode(:), mMode(:)
+  real(double), allocatable :: fracMode(:)
   character(len=80) :: sourceFilename
   logical :: sourceHistory
   character(len=80) :: sourceHistoryFilename

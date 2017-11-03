@@ -135,7 +135,7 @@ ifeq ($(SYSTEM), gfortran)
     FASTFLAG = -O3
     OPENMPFLAG = -fopenmp
 # -static-libgcc fixes linking problems under Mac OS
-    STARLIBS += -static-libgcc
+    STARLIBS += -static-libgcc -static-libgfortran
 #    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
     EXE = torus.gfortran
     KNOWN_SYSTEM = yes
