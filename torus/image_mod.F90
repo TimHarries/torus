@@ -258,6 +258,8 @@ module image_mod
         thisStokes%v = thisPhoton%stokes%v
 
         call pixelLocate(thisImageSet(i), xDist, yDist, xPix, yPix)
+
+
         if ((xPix >= 1) .and. &
              (yPix >= 1) .and. &
              (xPix <= thisImageSet(i)%nx) .and. &
@@ -819,10 +821,11 @@ module image_mod
        endif
 
        ! Add keywords for bitpix=16 and bitpix=8 
+
+       write(*,*) "minimum/maximum value in image ",minval(array), maxval(array)
        call addScalingKeywords(maxval(array), minval(array), unit, bitpix)
 
        call ftppre(unit,group,fpixel,nelements,array,status)
-
        !
        !  Write another optional keyword to the header.
        !

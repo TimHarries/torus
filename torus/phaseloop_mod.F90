@@ -1562,7 +1562,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 !    varianceArray(i)%v = varianceArray(i)%v + (errorArray(j,i)%v - yArray(i)%v/dble(nOuterLoop))**2
 ! enddo
 !enddo
- write(*,*) "calcspectrum ",calcspectrum
+
  if (myRankIsZero) then
  if (calcSpectrum) then
     if (nLambda > 1) then
@@ -1628,9 +1628,9 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      endif
   endif
 
-     write(*,*) "stokesimage ",stokesimage, " present ",present(returnimage)
+!     write(*,*) "stokesimage ",stokesimage, " present ",present(returnimage)
 
-     if (stokesimage) then
+     if (stokesimage.and.myrankIsZero) then
         do i1 = 1, nImageLocal
            name_filter = get_filter_name(filters, i1)
            bandwidth = 0.5*FWHM_filters(filters, i1)  ! 1/2 of FWHM  [A]
@@ -1653,7 +1653,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 #ifdef USECFITSIO
 
            if (.not.PRESENT(returnImage)) then
-              write(*,*) "writing ",trim(specfile), " flux units ",trim(getFluxUnits(imNum))
               call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "intensity",  &
                    getFluxUnits(imNum), getAxisUnits(imNum), real(lambda_eff))
               if (polarizationImages) then

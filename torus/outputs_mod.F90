@@ -412,7 +412,7 @@ if (.false.) then
 
              call setupDust(grid, xArray, nLambda, miePhase, nMumie)
              polarWavelength = lambdaimage
-             write(polarFilename,'(a,f4.2,a)') "polar",polarwavelength/1d4,".dat"
+             write(polarFilename,'(a,i6.6,a)') "polar",nint(polarwavelength/1d4),".dat"
              call dumpPolarizability(miePhase, nMuMie, xarray, nLambda)
              if (gasOpacityPhysics) then
                 allocate(xArrayDouble(1:nLambda))
