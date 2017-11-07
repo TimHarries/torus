@@ -4,9 +4,9 @@ module torus_version_mod
     
     subroutine setVersion(v)
       use constants_mod, only : torusVersion
-      include "svn_version.h"
+      include "git_version.h"
       character(len=*) :: v
-      torusVersion = trim(v)//trim(svnversion)
+      torusVersion = trim(v)//trim(gitversion)
     end subroutine setVersion
 
 end module torus_version_mod

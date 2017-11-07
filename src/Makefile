@@ -44,7 +44,7 @@ chemistry = no
 stateq = no
 datacube = no
 # Run script to get subversion version number
-getsvnver = yes
+getgitver = yes
 
 KNOWN_SYSTEM = no
 MPIFLAG = 
@@ -691,7 +691,6 @@ GCC = gcc -fopenmp -O0 -Wall $(SUNDIALSINC)
 
 
 all: depends $(ALLOBJ)
-#	svnversion
     ifeq ($(KNOWN_SYSTEM), yes)
 	    @echo ""
 	    @echo "Linking object files and libraries..."
@@ -749,14 +748,14 @@ ctags:
 	@ctags --langmap='fortran:+(*.F90)' \
 	       *.f90 *.f *.F90
 
-svnver:
-    ifeq ($(getsvnver), yes)
-	    @echo "calling createsvnversion"
-	    @./createsvnversion 
+gitver:
+    ifeq ($(getgitver), yes)
+	    @echo "calling creategitversion"
+	    @./creategitversion 
 	    @echo "...done"
     endif
 
-torus_version_mod.o: svnver $(VERSIONSOURCE)
+torus_version_mod.o: gitver $(VERSIONSOURCE)
 
 link: depends $(ALLOBJ)
     ifeq ($(KNOWN_SYSTEM), yes)

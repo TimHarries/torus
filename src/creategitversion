@@ -1,15 +1,16 @@
 #!/bin/bash
 
-# Converted to bash (from csh) as some systems don't have c shell (e.g. post-zen)
-# D. Acreman 18 Jul 2014
+# Converted to bash (from csh) as some systems don't have c shell (e.g. post-zen): D. Acreman 18 Jul 2014
+# Convert from subversion to git: D. Acreman, 7 November 2017
 
-# Check whether subversion is available
-which svnversion > /dev/null
+# Check whether git is available
+which git > /dev/null
 
 # Set the version number using svnversion if available or set to unknown otherwise
-if [ $? -eq 0 ]; then 
-    thisVersion=`svnversion | cut -c-19`
-    echo 'character(len=20), parameter :: svnversion = "-'${thisVersion}'"' > svn_version.h
+if [ $? -eq 0 ]; then
+# A seven character abbreviation of the commit object name matches the name used on bitbucket
+    thisVersion=`git show -s --pretty=oneline --abbrev-commit  --abbrev=7 | awk '{print $1}'`
+    echo 'character(len=8), parameter :: gitversion = "-'${thisVersion}'"' > git_version.h
 else
-    echo 'character(len=20), parameter :: svnversion = "-'unknown'"' > svn_version.h
+    echo 'character(len=8), parameter :: gitversion = "-'unknown'"' > git_version.h
 fi
