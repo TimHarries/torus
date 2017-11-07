@@ -56,21 +56,21 @@ done
 # Pre-build checks. #
 #####################
 
-# Is the Torus directory present? 
-if [[ -d torus ]]; then
-    echo "Found a torus directory"
+# Is the Torus source directory present? 
+if [[ -d src ]]; then
+    echo "Found src directory"
 else
-    echo "Did not find a torus directory"
+    echo "Did not find src directory"
     echo -n "Working directory is "
     pwd
     exit 1
 fi
 
 # Do we have a make file? 
-if [[ -e torus/Makefile ]]; then
-    echo "Found a Makefile in the torus directory"
+if [[ -e src/Makefile ]]; then
+    echo "Found a Makefile in the src directory"
 else
-    echo "Did not find torus/Makefile"
+    echo "Did not find src/Makefile"
     exit 1
 fi
 
@@ -85,8 +85,8 @@ fi
 #
 # Create svn version header
 #
-cd torus
-./createsvnversion
+cd src
+./creategitversion
 cd ..
 
 ####################################
@@ -175,10 +175,10 @@ if [[ $openmp == yes ]]; then
     else
 	mkdir -p $builddir
 	cd $builddir
-	ln -s ../../torus/* . 
+	ln -s ../../src/* . 
     fi
     make depends 
-    make getsvnver=no SYSTEM=${system_openmp} openmp=yes mpi=no $make_args
+    make getgitver=no SYSTEM=${system_openmp} openmp=yes mpi=no $make_args
     cp torus.${system_openmp} ../../bin/torus.openmp
     cd ../.. 
 fi
@@ -193,10 +193,10 @@ if [[ $single == yes ]]; then
     else
 	mkdir -p $builddir
 	cd $builddir
-	ln -s ../../torus/* . 
+	ln -s ../../src/* . 
     fi
     make depends 
-    make getsvnver=no SYSTEM=${system_openmp} openmp=no mpi=no $make_args
+    make getgitver=no SYSTEM=${system_openmp} openmp=no mpi=no $make_args
     cp torus.${system_openmp} ../../bin/torus.single
     cd ../.. 
 fi
@@ -211,10 +211,10 @@ if [[ $mpi == yes ]]; then
     else
 	mkdir -p $builddir
 	cd $builddir
-	ln -s ../../torus/* . 
+	ln -s ../../src/* . 
     fi
     make depends 
-    make getsvnver=no SYSTEM=${system_mpi} mpi=yes openmp=no $make_args
+    make getgitver=no SYSTEM=${system_mpi} mpi=yes openmp=no $make_args
     cp torus.${system_mpi} ../../bin/torus.mpi
     cd ../..
 fi
@@ -229,10 +229,10 @@ if [[ $hybrid == yes ]]; then
     else
 	mkdir -p $builddir
 	cd $builddir
-	ln -s ../../torus/* . 
+	ln -s ../../src/* . 
     fi
     make depends 
-    make getsvnver=no SYSTEM=${system_hybrid} mpi=yes openmp=yes $make_args
+    make getgitver=no SYSTEM=${system_hybrid} mpi=yes openmp=yes $make_args
     cp torus.${system_hybrid} ../../bin/torus.hybrid
     cd ../..
 fi
