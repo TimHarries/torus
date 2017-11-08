@@ -7,11 +7,10 @@ cd    build
 
 echo "Building Torus for ${THISCONFIG} configuration"
 log_file=compile_log_${THISCONFIG}.txt
-rsync --exclude=data -a ${TEST_DIR}/torus/* .
-rsync -a ${TEST_DIR}/torus/.svn .
+rsync -ax ${TEST_DIR}/torus/src/* .
 
 /usr/bin/make depends > ${log_file} 2>&1 
-/usr/bin/make debug=${USEDEBUGFLAGS} mpi=${USEMPI} openmp=${USEOPENMP} coverage=${USEGCOV} >> ${log_file} 2>&1
+/usr/bin/make debug=${USEDEBUGFLAGS} mpi=${USEMPI} openmp=${USEOPENMP} coverage=${USEGCOV} getgitver=no >> ${log_file} 2>&1
 
 if [[ $? -eq 0 ]]; then
 # Count number of warnings. Subtract 2 because there are always warnings
@@ -213,9 +212,11 @@ if [[ ${TORUS_WORKING_COPY} == none ]]; then
     mkdir -p ${TEST_DIR}
     cd ${TEST_DIR}
     touch ${LOCKFILE}
-    echo Checking out torus from SVN archive using: ${TORUS_SVN_REVISION} ${TORUS_SVN_PATH}
-    /usr/bin/svn checkout ${TORUS_SVN_REVISION} ${TORUS_SVN_PATH} torus > svn_log.txt 2>&1 
-    grep "Checked out revision" svn_log.txt
+    echo Checking out Torus from ${TORUS_GIT_PATH}
+    /usr/bin/git clone ${TORUS_GIT_PATH}     >  git_log.txt 2>&1 
+    /usr/bin/git clone ${TORUSDATA_GIT_PATH} >> git_log.txt 2>&1
+# Create the version header file
+    cd torus/src; ./creategitversion; cd ../..
 else
     if [[ -e ${TORUS_WORKING_COPY}/torus/torusMainV2.F90 ]]; then
 	echo "Taking source code from working copy in ${TORUS_WORKING_COPY}"
@@ -742,8 +743,6 @@ echo ""
 echo "This script runs the torus test suite."
 echo ""
 echo "Use -w followed by full path to a working copy of the code to test a working copy"
-echo "Use -r followed by a revision number to test the specified svn version e.g. -r 4300"
-echo "Use -p followed by a svn path to check out a branch or tag e.g. -p https://repository.astro.ex.ac.uk/torus/tags/torus3.0.1"
 echo "Use the -d option to run the daily tests (default)."
 echo "Use the -s option to run the stable version tests."
 echo "Use the -b option to run build tests only"
@@ -755,12 +754,12 @@ echo ""
 # Default mode is daily test
 export MODE=daily
 export RETURN_CODE=0 
-export TORUS_SVN_PATH=https://repository.astro.ex.ac.uk/torus/trunk/torus/
-export TORUS_SVN_REVISION=
+export TORUS_GIT_PATH=git@bitbucket.org:tjharries/torus.git
+export TORUSDATA_GIT_PATH=git@bitbucket.org:tjharries/torusdata.git
 export TORUS_WORKING_COPY=none
 export SYSTEM=testsuite
 export TORUS_RUNNING_LOG=${HOME}/testsuite.log
-export TORUS_DAILY_TEST_LOG=/home/torustest/torus_daily_test_log
+export TORUS_DAILY_TEST_LOG=${HOME}/torus_daily_test_log
 
 # Parse command line arguments
 while [ $# -gt 0 ]
@@ -769,10 +768,6 @@ do
 	-s) export MODE=stable;;
 	-d) export MODE=daily;;
 	-b) export MODE=build;;
-	-r) shift
-	    export TORUS_SVN_REVISION="-r $1";;
-	-p) shift
-	    export TORUS_SVN_PATH=$1;;
 	-w) shift 
 	    export TORUS_WORKING_COPY=$1
 	    export MODE=workingcopy;;
@@ -859,7 +854,7 @@ for opt in ${DEBUG_OPTS}; do
 	             exit 1;;
     esac
 
-    export TORUS_DATA=${TEST_DIR}/torus/data
+    export TORUS_DATA=${TEST_DIR}/torusdata
 
 # Set up working directory and check out source code
     prepare_run
