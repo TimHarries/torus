@@ -104,16 +104,23 @@ fi
 
 # 2. Build torus as a library
 
+# 2.1 Get torus version information 
+echo "INFO: Creating Torus version header"
+cd ${torus_git}
+./creategitversion
+
 # 2.1 Make symbolic links to torus source code in build directories
 cd ${sphtorus_dir}/build/torus
 if [[ ${make_links} -eq 1 ]]; then
     ln -s ${torus_git}/* .
 fi
+# Always update the version information as this may change in an incremental build
+mv ${torus_git}/git_version.h .
 
-# 2.2 Build torus
+# 2.3 Build torus
 echo "INFO: Building torus, SYSTEM=${SYSTEM}"
 make depends
-make ${debug_flag} ${profile_flag} ${itac_flag} ${openmp_flag} cfitsio=no withsphng=yes zlib=no lib
+make ${debug_flag} ${profile_flag} ${itac_flag} ${openmp_flag} cfitsio=no withsphng=yes zlib=no getgitver=no lib
 if [[ -e libtorus.a ]]; then
   echo "INFO: Moving libtorus.a to ${sphtorus_dir}/lib"
 else
