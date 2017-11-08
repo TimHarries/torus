@@ -8,9 +8,15 @@ which git > /dev/null
 
 # Set the version number using svnversion if available or set to unknown otherwise
 if [ $? -eq 0 ]; then
+
 # A seven character abbreviation of the commit object name matches the name used on bitbucket
     thisVersion=`git show -s --pretty=oneline --abbrev-commit  --abbrev=7 | awk '{print $1}'`
-    echo 'character(len=8), parameter :: gitversion = "-'${thisVersion}'"' > git_version.h
+
+# Check whether this is a clean working copy
+    state='clean'; test -z "$(git diff-index --name-only HEAD --)" || state='dirty'
+
+    echo 'character(len=14), parameter :: gitversion = "-'${thisVersion}-${state}'"' > git_version.h
+
 else
     echo 'character(len=8), parameter :: gitversion = "-'unknown'"' > git_version.h
 fi
