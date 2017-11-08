@@ -1644,13 +1644,11 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
            write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_image",iPhase,".fits"
            if (torusVersion(2:2) /= "1") specfile = originaloutfile
 
-
+#ifdef USECFITSIO
            if (nPhase > 1) then
               header = specfile(1:index(specfile,".fits")-1)
               write(specFile,'(a,a,i3.3,a)') trim(header),"_",iPhase,".fits"
            endif
-
-#ifdef USECFITSIO
 
            if (.not.PRESENT(returnImage)) then
               call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "intensity",  &

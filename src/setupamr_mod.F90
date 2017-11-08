@@ -48,7 +48,7 @@ contains
 #endif
 #ifdef SPH
     use cluster_class
-    use sph_data_class, only: read_sph_data_wrapper, deallocate_sph
+    use sph_data_class, only: read_sph_data_wrapper
 #endif
 #ifdef MPI 
     use mpi_amr_mod

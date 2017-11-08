@@ -21,8 +21,8 @@ echo "-openmp Compile with OpenMP"
 # Set up the build information here -----------------------------------------------------------------
 BASE_DIR=${PWD}
 
-sph_cvs=${BASE_DIR}/sphNG            # This is the directory where the sphNG source code can be found
-torus_cvs=${BASE_DIR}/torus          # This is the directory where the torus source code can be found
+sph_git=${BASE_DIR}/sphNG            # This is the directory where the sphNG source code can be found
+torus_git=${BASE_DIR}/torus/src      # This is the directory where the torus source code can be found
 sphtorus_dir=${BASE_DIR}/sphtorus    # Build will be carried out in this directory
 
 #----------------------------------------------------------------------------------------------------
@@ -61,18 +61,18 @@ done
 # 1. Check source code directories can be found and set up directories for build
 
 # 1.1 Check that the directory containing the sphNG code is present
-if [[ -e ${sph_cvs} ]]; then
-    echo "INFO: ${sph_cvs} exists. Will look for the sphNG code in this directory"
+if [[ -e ${sph_git} ]]; then
+    echo "INFO: ${sph_git} exists. Will look for the sphNG code in this directory"
 else
-    echo "ERROR: ${sph_cvs} does not exist. This script will abort as it can't find the sphNG code"
+    echo "ERROR: ${sph_git} does not exist. This script will abort as it can't find the sphNG code"
     exit 1
 fi
 
 # 1.2 Check that the directory containing the torus code is present
-if [[ -e ${torus_cvs} ]]; then
-    echo "INFO: ${torus_cvs} exists. Will look for the torus code in this directory"
+if [[ -e ${torus_git} ]]; then
+    echo "INFO: ${torus_git} exists. Will look for the torus code in this directory"
 else
-    echo "ERROR: ${torus_cvs} does not exist. This script will abort as it can't find the torus code"
+    echo "ERROR: ${torus_git} does not exist. This script will abort as it can't find the torus code"
     exit 1
 fi
 
@@ -107,7 +107,7 @@ fi
 # 2.1 Make symbolic links to torus source code in build directories
 cd ${sphtorus_dir}/build/torus
 if [[ ${make_links} -eq 1 ]]; then
-    ln -s ${torus_cvs}/* .
+    ln -s ${torus_git}/* .
 fi
 
 # 2.2 Build torus
@@ -127,7 +127,7 @@ mv libtorus.a ${sphtorus_dir}/lib
 # 3.1 Make symbolic links to source code in build directory
 cd  ${sphtorus_dir}/build/sphNG
 if [[ ${make_links} -eq 1 ]]; then
-    ln -s ${sph_cvs}/* .
+    ln -s ${sph_git}/* .
     ln -s ../torus/*.mod .
 fi
 
