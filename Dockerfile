@@ -1,4 +1,4 @@
-FROM gcc:7.2
+FROM dockermpi
 WORKDIR /app
 COPY . /app
-RUN /app/buildtorus single cfitsio=no debug=yes
+RUN /app/buildtorus mpi=yes cfitsio=no debug=yes 
