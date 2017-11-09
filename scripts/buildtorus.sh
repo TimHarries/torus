@@ -6,6 +6,9 @@
 # Updated: October 2012
 # Updated: Added Isca November 2016
 
+# Error codes: 1 - problem with toolchain
+#              2 - build failure
+
 print_help(){
     echo 
     echo "This script builds Torus for MPI/OpenMP/hybrid configurations."
@@ -52,6 +55,12 @@ do
 shift
 done
 
+# If no build options have been specified then build with OpenMP only
+if [[ $mpi == no && $openmp == no && $hybrid == no && $single == no ]]; then 
+    echo "Building with OpenMP (this is the default option)"
+    openmp=yes
+fi
+
 #####################
 # Pre-build checks. #
 #####################
@@ -83,7 +92,7 @@ else
 fi
 
 #
-# Create svn version header
+# Create version header
 #
 cd src
 ./creategitversion
@@ -179,7 +188,12 @@ if [[ $openmp == yes ]]; then
     fi
     make depends 
     make getgitver=no SYSTEM=${system_openmp} openmp=yes mpi=no $make_args
-    cp torus.${system_openmp} ../../bin/torus.openmp
+    if [[ -e torus.${system_openmp} ]]; then
+	cp torus.${system_openmp} ../../bin/torus.openmp
+    else
+	echo "Build failed. Aborting ..."
+	exit 2
+    fi
     cd ../.. 
 fi
 
@@ -197,7 +211,12 @@ if [[ $single == yes ]]; then
     fi
     make depends 
     make getgitver=no SYSTEM=${system_openmp} openmp=no mpi=no $make_args
-    cp torus.${system_openmp} ../../bin/torus.single
+    if [[ -e torus.${system_openmp} ]]; then
+	cp torus.${system_openmp} ../../bin/torus.single
+    else
+	echo "Build failed. Aborting ..."
+	exit 2
+    fi
     cd ../.. 
 fi
 
@@ -215,7 +234,12 @@ if [[ $mpi == yes ]]; then
     fi
     make depends 
     make getgitver=no SYSTEM=${system_mpi} mpi=yes openmp=no $make_args
-    cp torus.${system_mpi} ../../bin/torus.mpi
+    if [[ -e torus.${system_mpi} ]]; then
+	cp torus.${system_mpi} ../../bin/torus.mpi
+    else
+	echo "Build failed. Aborting ..."
+	exit 2
+    fi
     cd ../..
 fi
 
@@ -233,14 +257,13 @@ if [[ $hybrid == yes ]]; then
     fi
     make depends 
     make getgitver=no SYSTEM=${system_hybrid} mpi=yes openmp=yes $make_args
-    cp torus.${system_hybrid} ../../bin/torus.hybrid
+    if [[ -e torus.${system_hybrid} ]]; then
+	cp torus.${system_hybrid} ../../bin/torus.hybrid
+    else
+	echo "Build failed. Aborting ..."
+	exit 2
+    fi
     cd ../..
-fi
-
-# Print the help message if nothing was done.
-if [[ $mpi == no && $openmp == no && $hybrid == no && $single == no ]]; then 
-    print_help
-    exit 1
 fi
 
 exit 0
