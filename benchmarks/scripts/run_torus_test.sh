@@ -214,7 +214,10 @@ if [[ ${TORUS_WORKING_COPY} == none ]]; then
     touch ${LOCKFILE}
     echo Checking out Torus from ${TORUS_GIT_PATH}
     /usr/bin/git clone ${TORUS_GIT_PATH}     >  git_log.txt 2>&1 
-    /usr/bin/git clone ${TORUSDATA_GIT_PATH} >> git_log.txt 2>&1
+# Only download the data repo if required as this is slow
+    if [[ ${MODE} != build ]]; then
+	/usr/bin/git clone ${TORUSDATA_GIT_PATH} >> git_log.txt 2>&1
+    fi
 # Create the version header file
     cd torus/src; ./creategitversion; cd ../..
 else
@@ -790,10 +793,10 @@ esac
 if [[ -e ${LOCKFILE} ]]; then
     if [[ ${MODE} == daily ]]; then
 	echo `date` "Found lock file. Aborting" >> ${TORUS_RUNNING_LOG}
-	exit 1
     else
 	echo "Found lock file ${LOCKFILE}. Aborting"
     fi
+    exit 1
 fi
 
 
@@ -883,9 +886,14 @@ if [[ ${MODE} == daily || ${MODE} == workingcopy ]]; then
     check_results
 fi
 
+# Clean up ready for next run
 rm ${LOCKFILE}
-rm ${TORUS_DAILY_TEST_LOG}
 
-echo `date` "Test suite finished" >> ${TORUS_RUNNING_LOG}
+if [[ ${MODE} == daily ]]; then
+    rm ${TORUS_DAILY_TEST_LOG}
+    echo `date` "Test suite finished" >> ${TORUS_RUNNING_LOG}
+else
+    echo `date` "Test suite finished"
+fi
 
 exit ${RETURN_CODE}

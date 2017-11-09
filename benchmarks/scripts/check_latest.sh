@@ -1,8 +1,12 @@
-#!/bin/ksh
+#!/bin/bash
 
 rundir=/data/torustest/torus_latest
-
-cd ${rundir}
+if [[ -d ${rundir} ]]; then
+    cd ${rundir}
+else
+    mkdir ${rundir}
+    cd ${rundir}
+fi
 
 # A lock file prevents multiple tests running at once
 if [[ -e lock ]];then
@@ -11,14 +15,16 @@ if [[ -e lock ]];then
 fi
 touch lock
 
-rm -f svn_log 
+rm -f git_log 
 
-# Make sure there is a local working copy
+# Make sure there is an up to date local working copy
 if [[ -d torus ]]; then
     echo "Found local working copy"
+    echo "Updating working copy"
+    cd torus; git pull origin master; cd ..
 else
     echo "No working copy found. Checking out ... "
-    /usr/bin/svn co https://repository.astro.ex.ac.uk/torus/trunk/torus torus > svn_log
+    /usr/bin/git clone git@bitbucket.org:tjharries/torus.git
 fi
 
 # Check previous revison number if available. 
@@ -31,12 +37,12 @@ else
 fi
 
 # Get the current revision number
-/usr/bin/svn --show-updates status torus >> svn_log
-thisRev=`grep "Status against revision" svn_log | awk '{print $4}'`
+cd torus; /usr/bin/git show >> ../git_log; cd ..
+thisRev=`head -1 git_log | awk '{print $2}'`
 echo "This revision is $thisRev"
 
 # Test stuff here
-if [[ ${thisRev} -eq ${prevRev} ]];then
+if [[ ${thisRev} == ${prevRev} ]];then
     echo "No commits since last check"
 else
     echo "New commit, Checking..."
@@ -45,12 +51,10 @@ else
 	echo "Build successful"
     else
 	echo "Build failed"
-	/usr/bin/svn update torus
-	culprit=`/usr/bin/svn info torus | grep 'Last Changed Author' | awk '{print $4}'`
-	echo "Last change was by ${culprit}"
-	cd ${HOME}/torus_build_tests
-	echo ${culprit}@astro.ex.ac.uk > ${rundir}/ready
-	/usr/bin/mail -s "Torus build failed" ${culprit}@astro.ex.ac.uk < /data/torustest/torus_latest/build_log
+	culprit=`/bin/grep Author: git_log | awk '{print $2}'`
+	culprit_email=`/bin/grep Author: git_log | awk '{print $3}'`
+	echo "Last change was by ${culprit} ${culprit_email}"
+	/usr/bin/mail -s "Torus build failed" "${culprit_email}" < /data/torustest/torus_latest/build_log
 	cd ${rundir}
     fi
 fi
@@ -60,3 +64,4 @@ rm -f prevRev
 echo ${thisRev} > prevRev
 rm lock
 
+# End of file ####################################################################################################
