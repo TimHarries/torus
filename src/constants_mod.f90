@@ -4,9 +4,6 @@
 
 module constants_mod
 
-introduced a bug deliberately here
-
-  
   use kind_mod
 
   public
