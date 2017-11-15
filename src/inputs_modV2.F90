@@ -637,6 +637,35 @@ contains
     call getLogical("analysis", doAnalysis, cLine, fLine, nLines, &
          "Perform a grid analysis: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("clusteranalysis", doClusterAnalysis, cLine, fLine, nLines, &
+         "Perform a grid analysis for cluster models: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    if (doClusterAnalysis) then
+       call getLogical("decouplegasdust", decoupleGasDustTemperature, cLine, fLine, nLines, &
+            "Decouple gas and dust temperature: ","(a,1l,1x,a)", .false., ok, .false.)
+
+       call getDouble("edgeradius", edgeRadius, pctocm/1.d10, cLine, fLine, nLines, &
+            "Cloud edge radius (pc): ","(a,f5.2,a)", 0.d0, ok, .false.)
+!
+!       call getString("columnfile", columnImageFilename, cLine, fLine, nLines, &
+!            "Output column image filename: ","(a,a,1x,a)","none", ok, .false.)
+       call getVector("columndir", columnImageDirection, 1.d0, cLine, fLine, nLines, &
+            "Direction for column image: ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 1.d0), ok, .false.)
+       call getString("columnaxisunits", columnAxisUnits, cLine, fLine, nLines,&
+         "Axis units for column image:", "(a,a,1x,a)", "pc", ok, .false.)
+       call getString("columndataunits", columnDataUnits, cLine, fLine, nLines,&
+            "Data units for column image:", "(a,a,1x,a)", "g/cm2", ok, .false.)
+
+      call readFitsParameters(cLine, fLine, nLines)
+      
+      call getLogical("plotavgtemp", plotAvgTemp, cLine, fLine, nLines, &
+            "Plot average temperature pixel-by-pixel: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("globalavgtemp", calculateGlobalAvgTemp, cLine, fLine, nLines, &
+            "Calculate global average temperature: ","(a,1l,1x,a)", plotAvgTemp, ok, .false.)
+      call getLogical("writelums", writeLums, cLine, fLine, nLines, &
+            "Write total luminositys to log: ","(a,1l,1x,a)", .false., ok, .false.)
+    endif
+
 
     call getLogical("spectrum", calcSpectrum, cLine, fLine, nLines, &
          "Calculate a spectrum: ","(a,1l,1x,a)", .false., ok, .false.)

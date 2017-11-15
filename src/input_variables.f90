@@ -84,6 +84,11 @@
   logical :: calcBenchmark
   logical :: doAnalysis
 
+  ! cluster analysis 
+  logical :: doClusterAnalysis
+  logical :: plotAvgTemp, calculateGlobalAvgTemp, writeLums
+  real(double) :: edgeRadius
+
   logical :: dowriteRadialFile
   character(len=200) :: radialFilename
   character(len=80) :: columnImageFilename
