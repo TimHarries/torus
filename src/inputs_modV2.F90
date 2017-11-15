@@ -498,6 +498,9 @@ contains
     call getLogical("radforcemonte", RadForceMonte, cLine, fLine, nLines, &
          "use a path length based estimation for the rad pressure: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getDouble("radforcethresh", RadForceThresh, 1.d0, cLine, fLine, nLines, &
+         "use a path length based estimation for the rad pressure: ","(a,f7.1,1x,a)", 1.0d-15, ok, .false.)
+
     call getLogical("accretionfeedback", AccretionFeedback, cLine, fLine, nLines, &
          "re-inject some of the accreted material into the domain: ","(a,1l,1x,a)", .false., ok, .false.)
 

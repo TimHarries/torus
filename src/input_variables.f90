@@ -194,6 +194,7 @@
   logical :: radiationPressure        ! use radiation pressure terms
   logical :: CAKlineOpacity           !use Abbot82 temp invarient form of line driving
   logical :: RadForceMonte            !use a path length based estimation for the radation pressure rather than momentum tracking
+  real(double):: RadForceThresh       !Threshold density above which stop using path length rad P and use momentum tracking
   logical :: MChistories              ! update Monte Carlo estimator histories
   real(double) :: radiationTimescale  !ratio of radation to hydro timescales
   integer :: shotNoiseWeight          !The number of crossings above which current MC rad estimate is weighted more than the history estimate
