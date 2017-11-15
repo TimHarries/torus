@@ -93,6 +93,8 @@
   character(len=200) :: radialFilename
   character(len=80) :: columnImageFilename
   type(VECTOR) :: columnImageDirection
+  character(len=10) :: columnAxisUnits
+  character(len=10) :: columnDataUnits 
 
 !-----------------------------------
 ! Write/read a grid for a warm start
