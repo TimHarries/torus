@@ -744,13 +744,11 @@ contains
              end if
           endif
 
-
-          if (useTensorViscosity) then
+          if (cylindricalHydro) then
+             call viscousTimescaleCylindrical(grid%octreeRoot, grid, viscDt)
+          else if (useTensorViscosity) then
              call viscousTimescale(grid%octreeRoot, grid, viscDt)
           endif
-!          if (cylindricalHydro) then
-!             call viscousTimescaleCylindrical(grid%octreeRoot, grid, viscDt)
-!          endif
 
 
        endif
