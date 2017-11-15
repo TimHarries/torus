@@ -1315,8 +1315,8 @@ contains
                             abs(max(abs(vel%y),1.0d4)/&
                                    (fvisc%y/rho/r)/10.0)) !limit change in angular speed to 0.1km/s or rotation speed per step
              thisTime = min(thisTime, &
-                            max(1.0d5, sqrt(vel%x**2+vel%z**2)/&
-                                       sqrt(fvisc%x**2+fvisc%z**2)/rho)) !limit change in velocity max(1km/s,currentVel)  per step
+                            max(1.0d5, sqrt(vel%x**2+vel%z**2))/&
+                                       (sqrt(fvisc%x**2+fvisc%z**2)/rho)) !limit change in velocity max(1km/s,currentVel)  per step
              dt = min(thisTime, dt)
           endif
        endif
