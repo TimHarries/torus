@@ -362,7 +362,6 @@ contains
   real(double) function dbNubydT(nu,T)
     
     real(double) :: fac1, fac2, fac3, nu, T
-
     fac1 = (2.d0*(hcgs*nu**2)**2)/(cSpeed**2 * kErg  * T**2)
     fac3 =  (hCgs*nu)/ (kErg * T) 
     if (fac3 > 100.d0) then

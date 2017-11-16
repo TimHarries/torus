@@ -3,7 +3,7 @@ module citations_mod
   use messages_mod
   implicit none
 
-  character(len=100) :: bibcodeArray(100)
+  character(len=100) :: bibcodeArray(101)
   character(len=100) :: bibcodeComment(100)
   integer :: nBibcodeArray
   
