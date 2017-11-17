@@ -61,7 +61,7 @@ program torus
 
   implicit none
 
-  character(len=80) :: message
+  character(len=80) :: message, dataDirectory
 !  character(len=10) :: stringArray(10)
 !  integer :: i
 !  type(PAHtabletype) :: PAHtable
@@ -104,6 +104,11 @@ program torus
 
   call writeTorusBanner()
 
+  call unixGetEnv("TORUS_DATA", dataDirectory)
+  if (len(trim(dataDirectory)) == 0) then
+    call writeFatal("You need to set the environment variable TORUS_DATA")
+    stop
+  endif
 
   call initBibCode()
   call setVersion("V3.0.1")
