@@ -83,12 +83,10 @@
   Logical :: calcSpectrum
   logical :: calcBenchmark
   logical :: doAnalysis
-
-  ! cluster analysis 
   logical :: doClusterAnalysis
-  logical :: plotAvgTemp, calculateGlobalAvgTemp, writeLums
-  real(double) :: edgeRadius
+  logical :: plotAvgTemp, calculateGlobalAvgTemp, writeLums ! cluster analysis tools
 
+  real(double) :: edgeRadius
   logical :: dowriteRadialFile
   character(len=200) :: radialFilename
   character(len=80) :: columnImageFilename
@@ -105,6 +103,7 @@
   logical :: multimodels          ! perform calculation on multiple models
   integer :: nModelStart, nModelEnd ! start and end numbers for multiple models
   integer :: iModel               ! current model number
+  integer :: modelStep
   logical :: justDump             !Dump a vtk file for the read in grid and exit
   logical :: rhofromtable
   character(len=80) :: rhofile
@@ -201,7 +200,7 @@
   logical :: radiationPressure        ! use radiation pressure terms
   logical :: CAKlineOpacity           !use Abbot82 temp invarient form of line driving
   logical :: RadForceMonte            !use a path length based estimation for the radation pressure rather than momentum tracking
-  real(double):: RadForceThresh       !Threshold density above which stop using path length rad P and use momentum tracking
+  logical :: habingFlux               !calculate flux between 912 and 2400 A for sources
   logical :: MChistories              ! update Monte Carlo estimator histories
   real(double) :: radiationTimescale  !ratio of radation to hydro timescales
   integer :: shotNoiseWeight          !The number of crossings above which current MC rad estimate is weighted more than the history estimate
@@ -399,11 +398,6 @@
   logical :: moveSources
   logical :: evolveSources 
   logical :: hotspot
-  logical :: pulsatingStar
-  integer :: nModes
-  real(double), allocatable :: periodMode(:)
-  integer, allocatable :: lMode(:), mMode(:)
-  real(double), allocatable :: fracMode(:)
   character(len=80) :: sourceFilename
   logical :: sourceHistory
   character(len=80) :: sourceHistoryFilename
@@ -460,7 +454,6 @@
   logical :: variableDustSublimation
   real(double) :: tSub(10) ! variable dust sublimation temperature factor
   real(double) :: tSubPower(10) ! variable dust sublimation density factor
-  real :: subrange
   logical :: dustSettling
   integer :: nDustType
   logical :: readDustFromFile, writeDustToFile
@@ -952,6 +945,7 @@
   real, protected    :: hmaxPercentile
   real, protected    :: sph_norm_limit
   integer, protected :: kerneltype
+  logical, protected :: useHull
   logical, protected :: dragon
   logical, protected :: refineCentre  ! switch on extra grid refinement for SPH-Torus discs 
   logical, protected :: SphOnePerCell ! Split to one particle per cell for galactic plane survey

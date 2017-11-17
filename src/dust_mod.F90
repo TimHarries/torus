@@ -1130,7 +1130,7 @@ contains
 
   recursive subroutine sublimateDust(grid, thisOctal, totFrac, nFrac, tauMax, subTemp, minLevel)
 
-    use inputs_mod, only : grainFrac, nDustType, tThresh, tSub, decoupleGasDustTemperature, tsubpower, subrange
+    use inputs_mod, only : grainFrac, nDustType, tThresh, tSub, decoupleGasDustTemperature, tsubpower
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -1140,7 +1140,7 @@ contains
     real(double) :: smallVal
     integer :: nFrac
     real(double) :: frac, newFrac, deltaFrac, thistau
-    real ::  temperature, sublimationTemp
+    real ::  temperature, sublimationTemp, subrange
     real :: underCorrect 
     integer :: ilambda
     real(double) :: kappaSca, kappaAbs
@@ -1149,7 +1149,7 @@ contains
     underCorrect = 1.
 
     kappaSca = 0.d0; kappaAbs = 0.d0
-    subrange = 10.d0
+    subrange = 1.d0
 
     if (present(minLevel)) then
        smallVal = minLevel
@@ -2261,17 +2261,11 @@ end function getMedianSize
 !             if (writeoutput) write(*,*) "expected height ",height*(rVec%x/(100.d0*autocm/1.d10))**betadisc, " fit ", fitheight
 
              do k = 1, nDustType
-
-                if (abs(fracDustHeight(k)-1.d0)<1.d-3) then
-                   thisOctal%dustTypeFraction(subcell,k) = 1.d0
-                else
-                   thisOctal%dustTypeFraction(subcell,k) = 1.d-30
-                   if (thisOctal%rho(subcell) > 1d-30) then
-                      thisOctal%dustTypeFraction(subcell, k) =  &
-                           exp(-0.5d0 * (rVec%z**2)/((fracdustheight(k) * fitheight)**2))*rho(1)/thisOctal%rho(subcell)
-                   endif
+                thisOctal%dustTypeFraction(subcell,k) = 1.d-30
+                if (thisOctal%rho(subcell) > 1d-30) then
+                   thisOctal%dustTypeFraction(subcell, k) =  &
+                        exp(-0.5d0 * (rVec%z**2)/((fracdustheight(k) * fitheight)**2))*rho(1)/thisOctal%rho(subcell)
                 endif
-
              enddo
              if (rVec%x < rSublimation) thisOctal%dustTypeFraction(subcell,:) = 1.d-30
 
@@ -2400,12 +2394,14 @@ end function getMedianSize
 
           scaleFac(1:nDustType) = GrainFrac(1:nDustType) / (dustMass(1:nDustType) / gasMass)
 
-          thisOctal%dustTypeFraction(subcell,1:nDustType) = & 
-               thisOctal%dustTypeFraction(subcell,1:nDustType) * scaleFac(1:nDustType)
+          if (thisOctal%rho(subcell) > 1d-30) then
+             thisOctal%dustTypeFraction(subcell,1:nDustType) = & 
+                  thisOctal%dustTypeFraction(subcell,1:nDustType) * scaleFac(1:nDustType)
 
-          if (.not.associated(thisOctal%origDustTypeFraction)) &
-               allocate(thisOctal%origDustTypeFraction(1:thisOctal%maxChildren, 1:nDustType))
-          thisOctal%origDustTypeFraction(subcell,1:nDustType) = thisOctal%dustTypeFraction(subcell,1:nDustType)
+             if (.not.associated(thisOctal%origDustTypeFraction)) &
+                  allocate(thisOctal%origDustTypeFraction(1:thisOctal%maxChildren, 1:nDustType))
+             thisOctal%origDustTypeFraction(subcell,1:nDustType) = thisOctal%dustTypeFraction(subcell,1:nDustType)
+          endif
        end if
     end do
 

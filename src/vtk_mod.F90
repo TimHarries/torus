@@ -940,6 +940,9 @@ contains
                case("scattered")
                   write(lunit, *) real(thisOctal%scatteredIntensity(subcell,5,3))
 
+               case("habing")
+                  write(lunit, *) real(thisOctal%habingFlux(subcell))
+
                case("hydrovelocity")
                   if (thisOctal%threeD) then
                      write(lunit, *) real(thisOctal%rhou(subcell)/thisOctal%rho(subcell)), &
@@ -1276,7 +1279,6 @@ contains
     type(VECTOR) :: cVec, aVec, v1, v2, v3, v4, zAxis
     real(double) :: dphi, dtheta
     integer :: nCount
-    real(double) :: smallFac = 1.01d0
     
     if(noVtkGrid) return
 
@@ -1306,23 +1308,23 @@ contains
           aVec = cVec.cross.zAxis
           call normalize(aVec)
 
-          v1 = arbitraryRotate(cVec, -smallFac*dtheta/2.d0, aVec)
-          v1 = rotateZ(v1, smallFac*dphi/2.d0)
+          v1 = arbitraryRotate(cVec, -dtheta/2.d0, aVec)
+          v1 = rotateZ(v1, dphi/2.d0)
 
           v1 = v1 + source(isource)%position
 
-          v2 = arbitraryRotate(cVec, -smallFac*dtheta/2.d0, aVec)
-          v2 = rotateZ(v2, -smallFac*dphi/2.d0)
+          v2 = arbitraryRotate(cVec, -dtheta/2.d0, aVec)
+          v2 = rotateZ(v2, -dphi/2.d0)
 
           v2 = v2 + source(isource)%position
 
-          v3 = arbitraryRotate(cVec, smallFac*dtheta/2.d0, aVec)
-          v3 = rotateZ(v3, smallFac*dphi/2.d0)
+          v3 = arbitraryRotate(cVec, dtheta/2.d0, aVec)
+          v3 = rotateZ(v3, dphi/2.d0)
 
           v3 = v3 + source(isource)%position
 
-          v4 = arbitraryRotate(cVec, smallFac*dtheta/2.d0, aVec)
-          v4 = rotateZ(v4, -smallFac*dphi/2.d0)
+          v4 = arbitraryRotate(cVec, dtheta/2.d0, aVec)
+          v4 = rotateZ(v4, -dphi/2.d0)
 
           v4 = v4 + source(isource)%position
 
@@ -3233,6 +3235,9 @@ end subroutine writeXMLVtkFileAMR
                      rArray(2, n) = real(thisOctal%surfaceNormal(subcell)%y)
                      rArray(3, n) = real(thisOctal%surfaceNormal(subcell)%z)
 
+               case("habing")
+                  rArray(1, n) = real(thisOctal%habingFlux(subcell))
+
                case("radforce")
                      v = cellVolume(thisOctal, subcell)*1.d30
                      if (thisOctal%threed) then
@@ -3481,14 +3486,6 @@ end subroutine writeXMLVtkFileAMR
 
                case("diff")
                   if (thisOctal%diffusionApprox(subcell)) then
-                     value = 1.d0
-                  else
-                     value = 0.d0
-                  endif
-                  rArray(1, n) = real(value)
-
-               case("under")
-                  if (thisOctal%undersampled(subcell)) then
                      value = 1.d0
                   else
                      value = 0.d0

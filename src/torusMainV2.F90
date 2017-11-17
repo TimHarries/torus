@@ -132,7 +132,7 @@ program torus
 
   smallestCellSize = amrGridSize / dble(2**maxDepthAMR)
 
-  do iModel = nModelStart, nModelEnd
+  do iModel = nModelStart, nModelEnd, modelStep
      if (multimodels) then
         write(message,'(a,i6.6)') "Performing calculation for model number ", iModel
         call writeBanner(message,"-",TRIVIAL)
@@ -170,15 +170,15 @@ program torus
        if (.not.readGrid) then
           call writeVtkFile(grid, "rho.vtk")
 !          call writeVtkFile(grid, "rho2.vtk",valuetypestring=(/"velcall"/))
-       endif
 
-       if (dustPhysics) then
-          if (nDustType >= 1) then
-!             do i = 1, nDustType
-!                write(stringArray(i),'(a,i1.1)') "dust",i
-!             enddo
-!             call writeVTKfile(grid,"dust.vtk",valueTypeString=stringArray(1:nDustType))
-             call writeVTKfile(grid, "dust.vtk",valueTypestring=(/"dust"/))
+          if (dustPhysics) then
+             if (nDustType >= 1) then
+!                do i = 1, nDustType
+!                   write(stringArray(i),'(a,i1.1)') "dust",i
+!                enddo
+!                call writeVTKfile(grid,"dust.vtk",valueTypeString=stringArray(1:nDustType))
+                call writeVTKfile(grid, "dust.vtk",valueTypestring=(/"dust"/))
+             endif
           endif
        endif
 

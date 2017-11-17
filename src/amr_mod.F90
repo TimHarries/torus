@@ -37,9 +37,6 @@ module amr_mod
   integer :: mass_split, mass_split2, density_split, velocity_split, both_split, maxdensity_split
   integer :: scaleheighta_count, scaleheightb_count, scaleheightc_count
   TYPE(octal), POINTER :: recentOctal
-#ifdef SPH2GRID_PARALLEL
-!$OMP threadprivate(recentOctal)
-#endif
 
 CONTAINS
   SUBROUTINE fill_Velocity_Corners(this,thisOctal, debug)
@@ -997,9 +994,6 @@ CONTAINS
 
     CASE("unisphere")
        call calcUniformsphere(thisOctal, subcell)
-
-    CASE("etacar")
-       call calcEtaCar(thisOctal, subcell)
 
     CASE("unimed")
        call calcUniMed(thisOctal, subcell)
@@ -4634,11 +4628,6 @@ CONTAINS
           if (thisOctal%nDepth < minDepthAMR) split = .true.
           if (thisOctal%nDepth < halfRefined(minDepthAMR, maxDepthAMR)) split = .true.
           if (thisOctal%nDepth == maxDepthAMR) split = .false.
-
-       case("etacar")
-          rVec = subcellCentre(thisOctal,subcell)
-          split = splitEtaCar(rVec,thisOctal%subcellSize)
-
        case("interptest")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
@@ -9427,486 +9416,6 @@ endif
    call writeInfo(message, TRIVIAL)
  end subroutine bonnorEbertRun
 
- subroutine calcEtaCar(thisOctal, subcell)
-   use inputs_mod,only : lamLine
-   TYPE(octal), INTENT(INOUT) :: thisOctal
-   INTEGER, INTENT(IN) :: subcell
-
-   character(len=80) :: junk
-   integer, save :: nd_ostar, nd_etacar
-   integer :: i, j
-
-   real(double), save, allocatable :: r_ostar(:), t_ostar(:), sigma_ostar(:), eta_ostar(:), chi_th_ostar(:), esec_ostar(:), &
-        etal_ostar(:), chil_ostar(:), v_ostar(:)
-   real(double), save, allocatable :: r_etacar(:), t_etacar(:), sigma_etacar(:), eta_etacar(:), chi_th_etacar(:), &
-        esec_etacar(:), etal_etacar(:), chil_etacar(:), v_etacar(:)
-   real(double) :: r, tau
-   type(VECTOR) :: rHat, rVec, oStarPosition
-   logical, save :: firstTime = .true.
-   real(double) :: momRatio
-   real(double) :: nu0, escProb, tausob, velGrad, t, v
-
-   momRatio = 10.
-
-   oStarPosition = VECTOR(0.d0, 0.d0, -33033.168d0)
-
-   if (firstTime) then
-      firstTime = .false.
-      open(21, file="Ostar_linedata.txt", status="old", form="formatted")
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21,*) nd_ostar
-      write(*,*) "nd ",nd_ostar
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-
-      allocate(r_ostar(1:nd_ostar))
-      allocate(t_ostar(1:nd_ostar))
-      allocate(v_ostar(1:nd_ostar))
-      allocate(sigma_ostar(1:nd_ostar))
-      allocate(eta_ostar(1:nd_ostar))
-      allocate(chi_th_ostar(1:nd_ostar))
-      allocate(esec_ostar(1:nd_ostar))
-      allocate(etal_ostar(1:nd_ostar))
-      allocate(chil_ostar(1:nd_ostar))
-
-
-      do i = 1, nd_ostar
-         read(21, *)              &
-              r_ostar(nd_ostar+1-i),       &
-              t_ostar(nd_ostar+1-i),       &
-              sigma_ostar(nd_ostar+1-i),   &
-              v_ostar(nd_ostar+1-i),       &
-              eta_ostar(nd_ostar+1-i),     &
-              chi_th_ostar(nd_ostar+1-i),  &
-              esec_ostar(nd_ostar+1-i),    &
-              etal_ostar(nd_ostar+1-i),    &
-              chil_ostar(nd_ostar+1-i)
-      end do
-      close(21)
-      t_ostar = t_ostar * 1.d4
-
-      open(21, file="etaCar_linedata.txt", status="old", form="formatted")
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21,*) nd_etacar
-      nd_etacar = 45
-      write(*,*) "nd ",nd_etacar
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-
-      allocate(r_etacar(1:nd_etacar))
-      allocate(t_etacar(1:nd_etacar))
-      allocate(v_etacar(1:nd_etacar))
-      allocate(sigma_etacar(1:nd_etacar))
-      allocate(eta_etacar(1:nd_etacar))
-      allocate(chi_th_etacar(1:nd_etacar))
-      allocate(esec_etacar(1:nd_etacar))
-      allocate(etal_etacar(1:nd_etacar))
-      allocate(chil_etacar(1:nd_etacar))
-
-      do i = 1, nd_etacar
-         read(21, *)              &
-              r_etacar(nd_etacar+1-i),       &
-              t_etacar(nd_etacar+1-i),       &
-              sigma_etacar(nd_etacar+1-i),   &
-              v_etacar(nd_etacar+1-i),       &
-              eta_etacar(nd_etacar+1-i),     &
-              chi_th_etacar(nd_etacar+1-i),  &
-              esec_etacar(nd_etacar+1-i),    &
-              etal_etacar(nd_etacar+1-i),    &
-              chil_etacar(nd_etacar+1-i)
-      end do
-      close(21)
-      tau = 0.d0
-      do i = 1, nd_etacar-1
-         tau = tau + (r_etacar(i+1)-r_etacar(i))*(chi_th_etacar(i)+esec_etacar(i))
-      enddo
-      write(*,*) "Total tau in input file: ",tau
-
-      t_etacar = t_etacar * 1.d4
-   endif
-
-   rVec  = subcellCentre(thisOctal, subcell)
-   r = modulus(rVec)
-   rHat = rVec / r
-
-   thisOctal%rho(subcell) = 1.d-30
-   thisOctal%temperature(subcell) = 1.e-30 
-   thisOctal%kappaAbs(subcell,1) =  1.d-30
-   thisOctal%kappaSca(subcell,1) = 1.d-30
-   thisOctal%etaLine(subcell) = 1.d-30
-   thisOctal%chiLine(subcell) = 1.d-30
-   thisOctal%etaCont(subcell) = 1.d-30
-   thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
-   if ((r > r_etacar(1)).and.(r < r_etacar(nd_etacar))) then
-      call locate(r_etacar, nd_etacar, r, i)
-
-      t = (r - r_etacar(i))/(r_etacar(i+1) - r_etacar(i))
-      nu0  = cSpeed_dbl / dble(lamline*angstromtocm)
-      ! in a radial direction
-      velGrad = (v_etacar(i+1)-v_etacar(i))*1.d5 / ((r_etaCar(i+1)-r_etaCar(i)))
-      tauSob = chil_etacar(i)  / nu0
-      tauSob = tauSob / velGrad
-      
-      if (tauSob < 0.01) then
-         escProb = 1.0d0-tauSob*0.5d0*(1.0d0 -   &
-              tauSob/3.0d0*(1. - tauSob*0.25d0*(1.0d0 - 0.20d0*tauSob)))
-      else if (tauSob < 15.) then
-         escProb = (1.0d0-exp(-tauSob))/tauSob
-      else
-         escProb = 1.d0/tauSob
-      end if
-      escProb = max(escProb, 1.d-10)
-             
-
-
-      thisOctal%rho(subcell) = esec_etacar(i) + t*(esec_etacar(i+1)-esec_etacar(i))
-      thisOctal%temperature(subcell) = real(t_etacar(i) + t * (t_etacar(i+1)-t_etacar(i)))
-      thisOctal%kappaAbs(subcell,1) = chi_th_etacar(i) + t * (chi_th_etacar(i+1) - chi_th_etacar(i))
-      thisOctal%kappaSca(subcell,1) = esec_etacar(i) + t*(esec_etacar(i+1)-esec_etacar(i))
-      thisOctal%etaLine(subcell) = etal_etacar(i) + t * (etal_etacar(i+1) - etal_etacar(i))
-      thisOctal%chiLine(subcell) = chil_etacar(i) + t * (chil_etacar(i+1) - chil_etacar(i))
-      thisOctal%etaCont(subcell) = eta_etacar(i) + t * (eta_etacar(i+1) - eta_etacar(i))
-      v = v_etacar(i) + t * (v_etacar(i+1) - v_etacar(i))
-      thisOctal%velocity(subcell) = (v*1.d5/cSpeed)*rHat
-      tau = 0.d0
-      do j = nd_etacar-1,i,-1
-         tau = tau + (r_etacar(j+1)-r_etacar(j))*chi_th_etacar(j)
-      enddo
-      thisOctal%biasCont3d(subcell) = 1.!exp(-tau)
-      thisOctal%biasLine3d(subcell) = 1.!max(1.d-8,exp(-tau)*escProb)
-      thisOctal%inflow(subcell) = .true.
-   endif
-
-   rVec  = subcellCentre(thisOctal, subcell)-oStarPosition
-   r = modulus(rVec)
-   rHat = rVec / r
-
-   if (insideCone(subcellCentre(thisOctal, subcell), modulus(ostarPosition), momRatio)) then
-      if ((r > r_ostar(1)).and.(r < r_ostar(nd_ostar))) then
-         call locate(r_ostar, nd_ostar, r, i)
-         thisOctal%rho(subcell) = esec_ostar(i)
-         thisOctal%temperature(subcell) = real(t_ostar(i))
-         thisOctal%kappaAbs(subcell,1) = chi_th_ostar(i)
-         thisOctal%kappaSca(subcell,1) = esec_ostar(i)
-         thisOctal%etaLine(subcell) = etal_ostar(i) 
-         thisOctal%chiLine(subcell) = chil_ostar(i)
-         thisOctal%etaCont(subcell) = eta_ostar(i)
-         thisOctal%velocity(subcell) = (v_ostar(i)*1.d5/cSpeed)*rHat
-         tau = (r_ostar(i+1)-r_ostar(i))*(chi_th_ostar(i)+esec_ostar(i))
-         thisOctal%biasCont3d(subcell) = max(1.d-6,exp(-tau))
-         thisOctal%biasLine3d(subcell) = max(1.d-6,exp(-tau))
-         thisOctal%inflow(subcell) = .true.
-      endif
-   endif
-
-
-   CALL fillVelocityCorners(thisOctal,etacarVelocity)
-
- end subroutine calcEtaCar
-
-  TYPE(vector)  function etaCarVelocity(point)
-   type(VECTOR), intent(in) :: point
-   character(len=80) :: junk
-   integer, save :: nd_ostar, nd_etacar
-   integer :: i
-
-   real(double), save, allocatable :: r_ostar(:), t_ostar(:), sigma_ostar(:), eta_ostar(:), chi_th_ostar(:), esec_ostar(:), &
-        etal_ostar(:), chil_ostar(:), v_ostar(:)
-   real(double), save, allocatable :: r_etacar(:), t_etacar(:), sigma_etacar(:), eta_etacar(:), chi_th_etacar(:), &
-        esec_etacar(:), etal_etacar(:), chil_etacar(:), v_etacar(:)
-   real(double) :: r, momRatio
-   type(VECTOR) :: rHat, rVec, ostarPosition
-   logical, save :: firstTime = .true.
-
-   oStarPosition = VECTOR(0.d0, 0.d0, -33033.168d0)
-   momRatio = 10.
-   if (firstTime) then
-      firstTime = .false.
-      open(21, file="Ostar_linedata.txt", status="old", form="formatted")
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21,*) nd_ostar
-      write(*,*) "nd ",nd_ostar
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-
-      allocate(r_ostar(1:nd_ostar))
-      allocate(t_ostar(1:nd_ostar))
-      allocate(v_ostar(1:nd_ostar))
-      allocate(sigma_ostar(1:nd_ostar))
-      allocate(eta_ostar(1:nd_ostar))
-      allocate(chi_th_ostar(1:nd_ostar))
-      allocate(esec_ostar(1:nd_ostar))
-      allocate(etal_ostar(1:nd_ostar))
-      allocate(chil_ostar(1:nd_ostar))
-
-
-      do i = 1, nd_ostar
-         read(21, *)              &
-              r_ostar(nd_ostar+1-i),       &
-              t_ostar(nd_ostar+1-i),       &
-              sigma_ostar(nd_ostar+1-i),   &
-              v_ostar(nd_ostar+1-i),       &
-              eta_ostar(nd_ostar+1-i),     &
-              chi_th_ostar(nd_ostar+1-i),  &
-              esec_ostar(nd_ostar+1-i),    &
-              etal_ostar(nd_ostar+1-i),    &
-              chil_ostar(nd_ostar+1-i)
-      end do
-      close(21)
-      t_ostar = t_ostar * 1.d4
-
-      open(21, file="etaCar_linedata.txt", status="old", form="formatted")
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21,*) nd_etacar
-      write(*,*) "nd ",nd_etacar
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-
-      allocate(r_etacar(1:nd_etacar))
-      allocate(t_etacar(1:nd_etacar))
-      allocate(v_etacar(1:nd_etacar))
-      allocate(sigma_etacar(1:nd_etacar))
-      allocate(eta_etacar(1:nd_etacar))
-      allocate(chi_th_etacar(1:nd_etacar))
-      allocate(esec_etacar(1:nd_etacar))
-      allocate(etal_etacar(1:nd_etacar))
-      allocate(chil_etacar(1:nd_etacar))
-
-      do i = 1, nd_etacar
-         read(21, *)              &
-              r_etacar(nd_etacar+1-i),       &
-              t_etacar(nd_etacar+1-i),       &
-              sigma_etacar(nd_etacar+1-i),   &
-              v_etacar(nd_etacar+1-i),       &
-              eta_etacar(nd_etacar+1-i),     &
-              chi_th_etacar(nd_etacar+1-i),  &
-              esec_etacar(nd_etacar+1-i),    &
-              etal_etacar(nd_etacar+1-i),    &
-              chil_etacar(nd_etacar+1-i)
-      end do
-      close(21)
-      t_etacar = t_etacar * 1.d4
-   endif
-
-
-   if (insideCone(point, modulus(ostarPosition), momRatio)) then
-      rVec  = point - ostarPosition
-      r = modulus(rVec)
-      if (r > 0.d0) then
-         rHat = rVec / r
-      else
-         rHat = VECTOR(0.d0, 0.d0, 0.d0)
-      endif
-      
-      if ((r > r_ostar(1)).and.(r < r_ostar(nd_ostar))) then
-         call locate(r_ostar, nd_ostar, r, i)
-         etaCarVelocity = (v_ostar(i) * 1.d5/cSpeed)*rHat
-      endif
-   else
-      rVec  = point
-      r = modulus(rVec)
-      if (r > 0.d0) then
-         rHat = rVec / r
-      else
-         rHat = VECTOR(0.d0, 0.d0, 0.d0)
-      endif
-
-      if ((r > r_etacar(1)).and.(r < r_etacar(nd_etacar))) then
-         call locate(r_etacar, nd_etacar, r, i)
-         etaCarVelocity = (v_etacar(i) * 1.d5/cSpeed)*rHat
-      endif
-   endif
- end function etaCarVelocity
-
-  logical  function splitEtaCar(point, size)
-   type(VECTOR), intent(in) :: point
-   character(len=80) :: junk
-   real(double) :: size
-   integer, save :: nd_ostar, nd_etacar
-   integer :: i
-
-   real(double), save, allocatable :: r_ostar(:), t_ostar(:), sigma_ostar(:), eta_ostar(:), chi_th_ostar(:), esec_ostar(:), &
-        etal_ostar(:), chil_ostar(:), v_ostar(:)
-   real(double), save, allocatable :: r_etacar(:), t_etacar(:), sigma_etacar(:), eta_etacar(:), chi_th_etacar(:), &
-        esec_etacar(:), etal_etacar(:), chil_etacar(:), v_etacar(:)
-   real(double) :: r
-   type(VECTOR) :: rHat, rVec, ostarPosition
-   logical, save :: firstTime = .true.
-
-   oStarPosition = VECTOR(0.d0, 0.d0, -33033.168d0)
-
-   splitEtaCar = .false.
-
-   if (firstTime) then
-      firstTime = .false.
-      open(21, file="Ostar_linedata.txt", status="old", form="formatted")
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21,*) nd_ostar
-      write(*,*) "nd ",nd_ostar
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-
-      allocate(r_ostar(1:nd_ostar))
-      allocate(t_ostar(1:nd_ostar))
-      allocate(v_ostar(1:nd_ostar))
-      allocate(sigma_ostar(1:nd_ostar))
-      allocate(eta_ostar(1:nd_ostar))
-      allocate(chi_th_ostar(1:nd_ostar))
-      allocate(esec_ostar(1:nd_ostar))
-      allocate(etal_ostar(1:nd_ostar))
-      allocate(chil_ostar(1:nd_ostar))
-
-
-      do i = 1, nd_ostar
-         read(21, *)              &
-              r_ostar(nd_ostar+1-i),       &
-              t_ostar(nd_ostar+1-i),       &
-              sigma_ostar(nd_ostar+1-i),   &
-              v_ostar(nd_ostar+1-i),       &
-              eta_ostar(nd_ostar+1-i),     &
-              chi_th_ostar(nd_ostar+1-i),  &
-              esec_ostar(nd_ostar+1-i),    &
-              etal_ostar(nd_ostar+1-i),    &
-              chil_ostar(nd_ostar+1-i)
-      end do
-      close(21)
-      t_ostar = t_ostar * 1.d4
-
-      open(21, file="etaCar_linedata.txt", status="old", form="formatted")
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-      read(21,*) nd_etacar
-      write(*,*) "nd ",nd_etacar
-      read(21, '(a)') junk
-      read(21, '(a)') junk
-
-      allocate(r_etacar(1:nd_etacar))
-      allocate(t_etacar(1:nd_etacar))
-      allocate(v_etacar(1:nd_etacar))
-      allocate(sigma_etacar(1:nd_etacar))
-      allocate(eta_etacar(1:nd_etacar))
-      allocate(chi_th_etacar(1:nd_etacar))
-      allocate(esec_etacar(1:nd_etacar))
-      allocate(etal_etacar(1:nd_etacar))
-      allocate(chil_etacar(1:nd_etacar))
-
-      do i = 1, nd_etacar
-         read(21, *)              &
-              r_etacar(nd_etacar+1-i),       &
-              t_etacar(nd_etacar+1-i),       &
-              sigma_etacar(nd_etacar+1-i),   &
-              v_etacar(nd_etacar+1-i),       &
-              eta_etacar(nd_etacar+1-i),     &
-              chi_th_etacar(nd_etacar+1-i),  &
-              esec_etacar(nd_etacar+1-i),    &
-              etal_etacar(nd_etacar+1-i),    &
-              chil_etacar(nd_etacar+1-i)
-      end do
-      close(21)
-      t_etacar = t_etacar * 1.d4
-
-
-   endif
-
-   rVec  = point
-   r = modulus(rVec)
-   if (r > 0.d0) then
-      rHat = rVec / r
-   else
-      rHat = VECTOR(0.d0, 0.d0, 0.d0)
-   endif
-
-   if (abs(r-r_etacar(1)) < 2.*size) then
-      if (size > (r_etacar(2)-r_etacar(1))) splitEtaCar = .true.
-   endif
-
-   if ((r > r_etacar(1)).and.(r < r_etacar(nd_etacar))) then
-      call locate(r_etacar, nd_etacar, r, i)
-
-
-      if (abs(r-r_etacar(i)) < 2.*size) then
-         if (size > (r_etacar(i+1)-r_etacar(i))) splitEtaCar = .true.
-      endif
-   endif
-
-   rVec  = point - ostarPosition
-   r = modulus(rVec)
-   if (r > 0.d0) then
-      rHat = rVec / r
-   else
-      rHat = VECTOR(0.d0, 0.d0, 0.d0)
-   endif
-
-!   if (abs(r-r_ostar(1)) < size) splitEtaCar = .true.
-
-!   if ((r > r_ostar(1)).and.(r < r_ostar(nd_ostar))) then
-!      call locate(r_ostar, nd_ostar, r, i)
-!      if ((r_ostar(i+1)-r_ostar(i))<size) splitEtaCar = .true.
-!   endif
-
- end function splitEtaCar
-
-
-logical function insideCone(position, binarySep, momRatio)
-  type(VECTOR) :: position, stagPoint, v1,v2
-  real(double) :: binarySep, momRatio, openingAngle
-
-  ! two relationships from Eichler & Usov, 1993, ApJ, 402, 271
-  
-  insideCone = .false.
-  goto 666
-  stagPoint = VECTOR(0.d0, 0.d0, -binarySep * sqrt(momRatio) / (1. + sqrt(momRatio)))
-
-  openingAngle = 2.1*(1 - (momRatio**(2./5.))/4.)*momRatio**(1./3.)
-  v1 = position - stagPoint
-  v2 = VECTOR(0.d0, 0.d0, -1.d0)
-  call normalize(v1)
-  call normalize(v2)
-  if (acos(v1.dot.v2) < openingAngle/2.d0) insideCone = .true.
-666 continue
-  end function insideCone
-
   subroutine calcUniformSphere(thisOctal,subcell)
 
     use inputs_mod, only : sphereRadius, sphereMass, spherePosition, sphereVelocity, hydrodynamics
@@ -12200,17 +11709,16 @@ end function readparameterfrom2dmap
   end function ggtauVelocity
 
 #ifdef SPH
- TYPE(vector) FUNCTION ClusterVelocity(point, density)
+ TYPE(vector) FUNCTION ClusterVelocity(point)
 
    use sph_data_class, only : clusterparameter
 
     type(VECTOR), intent(in) :: point
-    real(double), intent(out) :: density
     integer :: subcell
 
     call findSubcellLocal(point, recentOctal,subcell)
-    clustervelocity = Clusterparameter(point, recentoctal, subcell, rho_out=density) 
 
+    clustervelocity = Clusterparameter(point, recentoctal, subcell, theparam = 1) ! use switch for storing velocity
   end FUNCTION ClusterVelocity
 
   real(double) FUNCTION ClusterDensity(point)
@@ -12222,8 +11730,9 @@ end function readparameterfrom2dmap
     integer :: subcell
 
     call findSubcellLocal(point, recentOctal,subcell)
-    out = Clusterparameter(point, recentoctal, subcell, rho_out=clusterdensity) 
 
+    out = Clusterparameter(point, recentoctal, subcell, theparam = 2) ! use switch for storing velocity
+    clusterdensity = out%x
   end FUNCTION ClusterDensity
 #endif
 
@@ -12491,7 +12000,7 @@ end function readparameterfrom2dmap
     use density_mod, only: density, shakaraSunyaevDisc
     use inputs_mod, only : rOuter, betaDisc !, rInner, erInner, erOuter, alphaDisc
     use inputs_mod, only : curvedInnerEdge, nDustType, grainFrac, gridDistanceScale, rInner
-    use inputs_mod, only : height, hydrodynamics, dustPhysics, mCore, molecularPhysics, photoionization
+    use inputs_mod, only : height, hydrodynamics, dustPhysics, mCore, molecular, photoionization
     use inputs_mod, only : rSublimation, erInner, erOuter, mDotEnv, rhofloor
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
@@ -12567,7 +12076,7 @@ end function readparameterfrom2dmap
 
 !    endif
 
-    if(molecularPhysics) then
+    if(molecular) then
  !      if(modulus(rvec) .lt. 1000.) then
           thisOctal%velocity(subcell) = keplerianVelocity(rvec)
           thisOctal%iAnalyticalVelocity(subcell) = 2
@@ -12578,7 +12087,7 @@ end function readparameterfrom2dmap
        thisOctal%velocity(Subcell) = VECTOR(0.,0.,0.)
     endif
 
-    if (molecularPhysics) then
+    if (molecular) then
        thisOctal%microturb(subcell) = sqrt((2.d0*kErg*thisOctal%temperature(subcell))/(29.0 * amu))/cspeed
        thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.*mhydrogen)
     endif
@@ -14522,6 +14031,7 @@ end function readparameterfrom2dmap
 
     call copyAttribute(dest%kappaTimesFlux, source%kappaTimesFlux)
     call copyAttribute(dest%kappaTimesFluxHistory, source%kappaTimesFluxHistory)
+    call copyAttribute(dest%habingFlux, source%habingFlux)
     call copyAttribute(dest%UVvector, source%UVvector)
     call copyAttribute(dest%UVvectorplus, source%UVvectorplus)
     call copyAttribute(dest%UVvectorminus, source%UVvectorminus)
@@ -15282,7 +14792,7 @@ end function readparameterfrom2dmap
 
   subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, allSca, &
        rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, debug, reset_kappa, dir)
-    use inputs_mod, only: nDustType, mie, includeGasOpacity, lineEmission, dustPhysics, dustonly
+    use inputs_mod, only: nDustType, mie, includeGasOpacity, lineEmission, dustPhysics, dustonly, decoupleGasDustTemperature
     use atom_mod, only: bnu
     use gas_opacity_mod, only: returnGasKappaValue
 #ifdef PHOTOION
@@ -15319,7 +14829,7 @@ end function readparameterfrom2dmap
 
     logical,save :: firsttime = .true.
     integer(double),save :: nlambda
-    real(double) :: tgas
+    real(double) :: tgas, tdust
 
 #ifdef PHOTOION
     real(double) :: kappaH, kappaHe
@@ -15492,24 +15002,15 @@ end function readparameterfrom2dmap
           endif
           kappaSca = kappaSca * frac
           if (present(debug)) write(*,*) "kappasca xxx ", kappasca
-       else
-          ! This is a temporarily solution
-          if (lineEmission) then
-             kappaSca = thisOctal%kappaSca(subcell,1)
-          else
-             kappaSca = thisOctal%kappaSca(subcell,iLambda)
-          endif
        endif
-
     endif
-    
     if (PRESENT(kappaScaDust)) kappaScaDust = kappaSca
 
     if (PRESENT(kappaAbs)) then
        kappaAbs = 0.
 
        IF (.NOT.PRESENT(lambda)) THEN
-          if (grid%oneKappa.and.DustPhysics) then
+          if (grid%oneKappa) then
              kappaAbs = 0.
              if(ndustType .eq. 1) then
                 kappaAbs = oneKappaAbsT(iLambda,1)*thisOctal%rho(subcell) * thisOctal%dustTypeFraction(subcell, 1)
@@ -15637,9 +15138,15 @@ end function readparameterfrom2dmap
 
    if (PRESENT(kappap)) then
       temperature = thisOctal%temperature(subcell)
+      if (decoupleGasDustTemperature) then
+         tdust = thisOctal%tdust(subcell)
+      else
+         tdust = temperature
+      endif
 
       if (PRESENT(atthistemperature)) then
          temperature = atthistemperature
+         tdust = atthistemperature
       endif
       kappaP = 0.d0
       norm = 0.d0
@@ -15653,14 +15160,14 @@ end function readparameterfrom2dmap
          do j = 1, nDustType
             kappaP = kappaP + thisOctal%dustTypeFraction(subcell, j) * dble(grid%oneKappaAbs(j,i)) * &
                  thisOctal%rho(subcell) *&
-                 bnu(freq,tempdouble)  * dfreq
+                 bnu(freq,tdust)  * dfreq
 
             if (includeGasOpacity) then
-               kappaP = kappaP + tarray(i)*thisOctal%rho(subcell) * dble(bnu(freq,tempDouble))  * dfreq
+               kappaP = kappaP + tarray(i)*thisOctal%rho(subcell) * dble(bnu(freq,tdust))  * dfreq
             endif
 
          enddo
-         norm = norm + bnu(freq,tempDouble)  * dfreq
+         norm = norm + bnu(freq,tdust)  * dfreq
       enddo
       if (norm /= 0.d0) then
          kappaP = ((kappaP / norm) /1.d10)
@@ -15952,18 +15459,16 @@ end function readparameterfrom2dmap
                 fac = abs(thisOctal%temperature(subcell)-neighbourOctal%temperature(neighbourSubcell)) / &
                      thisOctal%temperature(subcell)
 
-!                if (split.and.(thisTau > neighbourTau).and.(fac > 0.5d0).and. &
-!                     (thisOctal%temperature(subcell)>100.d0).and.(thisTau > 1.d-4)) then
-!                   call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
-!                        inherit=inheritProps, interp=interpProps)
-!                   converged = .false.
-!                   return
-!                endif
+                if (split.and.(thisTau > neighbourTau).and.(fac > 0.5d0).and. &
+                     (thisOctal%temperature(subcell)>100.d0).and.(thisTau > 1.d-4)) then
+                   call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                        inherit=inheritProps, interp=interpProps)
+                   converged = .false.
+                   return
+                endif
 
                 if (PRESENT(photosphereSplit)) then
                    if (photosphereSplit.and.(.not.outofmemory)) then
-
-
                       if ((thisOctal%etaLine(subcell) /= 0.d0).and.(neighbourOctal%etaLine(neighbourSubcell)/=0.d0)) then
                          if ((j==3).or.(j==4)) then
                             fac = abs(neighbourOctal%etaLine(neighbourSubcell)-thisOctal%etaLine(subcell))
@@ -15979,7 +15484,6 @@ end function readparameterfrom2dmap
                             endif
                          endif
                       endif
-
                    endif
                 endif
              endif
@@ -16005,7 +15509,7 @@ end function readparameterfrom2dmap
        call writewarning ("Splitting factor in myScaleSmooth is <= 0")
        return
     end if
-    call zeroadotLocal(grid%octreeRoot)
+    call zeroChiLineLocal(grid%octreeRoot)
     nTagged = 0
     call tagScaleSmooth(nTagged, factor, grid%octreeRoot, grid,  converged, &
          inheritProps, interpProps)
@@ -16019,7 +15523,7 @@ end function readparameterfrom2dmap
 
 
 
-  recursive subroutine zeroadotLocal(thisOctal)
+  recursive subroutine zeroChiLineLocal(thisOctal)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child
   integer :: subcell, i
@@ -16030,18 +15534,18 @@ end function readparameterfrom2dmap
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call zeroadotLocal(child)
+                call zeroChiLineLocal(child)
                 exit
              end if
           end do
        else
 
-          call allocateAttribute(thisOctal%adot,thisOctal%maxChildren)
-          thisOctal%adot = 0.d0
+          call allocateAttribute(thisOctal%chiLine,thisOctal%maxChildren)
+          thisOctal%chiLine = 0.d0
 
        endif
     enddo
-  end subroutine zeroadotlocal
+  end subroutine zeroChiLineLocal
 
   recursive subroutine zeroDensity(thisOctal)
   type(octal), pointer   :: thisOctal
@@ -16442,8 +15946,8 @@ end function readparameterfrom2dmap
                 firstTimeMem = .false.
              endif
           endif
-          if ((thisOctal%adot(subcell) > 0.d0).and.(.not.outOfMemory)) then
-             thisOctal%adot(subcell) = 0.d0
+          if ((thisOctal%chiline(subcell) > 0.d0).and.(.not.outOfMemory)) then
+             thisOctal%chiLine(subcell) = 0.d0
              call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                   inherit=inheritProps, interp=interpProps)
              return
@@ -16521,13 +16025,13 @@ end function readparameterfrom2dmap
                      foundOctal=neighbourOctal, foundsubcell=neighbourSubcell)
 
                 if ((thisOctal%subcellSize/neighbourOctal%subcellSize) > factor) then
-                   thisOctal%adot(subcell) = 1.d0
+                   thisOctal%chiLine(subcell) = 1.d0
                    converged = .false.
                    nTagged = nTagged + 1
                 endif
 
                 if ((neighbourOctal%subcellSize/thisOctal%subcellSize) > factor) then
-                   neighbourOctal%adot(neighboursubcell) = 1.d0
+                   neighbourOctal%chiLine(neighboursubcell) = 1.d0
                    converged = .false.
                    nTagged = nTagged + 1
                 endif
@@ -18214,7 +17718,7 @@ end function readparameterfrom2dmap
 
 
   subroutine allocateOctalAttributes(grid, thisOctal)
-    use inputs_mod, only : mie,  nDustType, TminGlobal, &
+    use inputs_mod, only : mie,  nDustType, molecular, TminGlobal, &
          photoionization, hydrodynamics, timeDependentRT, nAtom, &
          lineEmission, atomicPhysics, photoionPhysics, dustPhysics, molecularPhysics, cmf
     use inputs_mod, only : grainFrac, pdrcalc, xraycalc, useionparam, biophysics
@@ -18358,7 +17862,7 @@ end function readparameterfrom2dmap
        endif
     endif
 
-    if (molecularPhysics) then
+    if (molecular) then
        call allocateAttribute(thisOctal%iAnalyticalVelocity,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%molAbundance, thisOctal%maxChildren)
        thisOctal%molAbundance(:) = 1.e-30
@@ -18430,6 +17934,7 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%radiationMomentum,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%kappaTimesFlux, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%kappaTimesFluxHistory, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%habingFlux, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%UVvector, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%UVvectorPlus, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%UVvectorminus, thisOctal%maxChildren)
@@ -18530,11 +18035,6 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%probDistCont, thisOctal%maxChildren)
     endif
     if (hydrodynamics) then
-
-       call allocateAttribute(thisOctal%adot,thisOctal%maxchildren)
-       call allocateAttribute(thisOctal%chiline,thisOctal%maxchildren)
-       call allocateAttribute(thisOctal%rhou,thisOctal%maxchildren)
-
 
        call allocateAttribute(thisOctal%q_i,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%q_i_plus_1,thisOctal%maxchildren)
@@ -18852,6 +18352,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%kappaTimesFlux)
     call deallocateAttribute(thisOctal%kappaTimesFluxHistory)
 
+    call deallocateAttribute(thisOctal%habingFlux)
     call deallocateAttribute(thisOctal%UVvector)
     call deallocateAttribute(thisOctal%UVvectorPlus)
     call deallocateAttribute(thisOctal%UVvectorMinus)
@@ -19601,9 +19102,6 @@ end function readparameterfrom2dmap
     real(oct)      :: x1, x2, x3
     real(oct)      :: y1, y2, y3
     real(oct)      :: z1, z2, z3
-    real(double)   :: thisDensity
-    TYPE(VECTOR)   :: cornerVec(27)
-    integer        :: i
 
     INTERFACE
       real(double) FUNCTION densityFunc(point)
@@ -19613,13 +19111,11 @@ end function readparameterfrom2dmap
       END FUNCTION densityFunc
     END INTERFACE
 
-! Velocity function returns velocity AND density so we only make one call to clusterParameter
     INTERFACE
-      type(VECTOR) FUNCTION velocityFunc(point, density)
+      type(VECTOR) FUNCTION velocityFunc(point)
         USE vector_mod
         USE gridtype_mod
         TYPE(vector), INTENT(IN) :: point
-        real(double), intent(out) :: density
       END FUNCTION velocityFunc
     END INTERFACE
 
@@ -19637,8 +19133,8 @@ end function readparameterfrom2dmap
 
     if (thisOctal%threed) then
        if (.not.thisOctal%cylindrical) then ! 3d cartesian case
-
           ! we first store the values we use to assemble the position vectors
+
           x1 = thisOctal%centre%x - thisOctal%subcellSize
           x2 = thisOctal%centre%x
           x3 = thisOctal%centre%x + thisOctal%subcellSize
@@ -19651,49 +19147,69 @@ end function readparameterfrom2dmap
           z2 = thisOctal%centre%z
           z3 = thisOctal%centre%z + thisOctal%subcellSize
 
-          ! Next we assemble the position vectors
-          cornerVec(1)  = vector(x1,y1,z1)
-          cornerVec(2)  = vector(x2,y1,z1)
-          cornerVec(3)  = vector(x3,y1,z1)
-          cornerVec(4)  = vector(x1,y2,z1)
-          cornerVec(5)  = vector(x2,y2,z1)
-          cornerVec(6)  = vector(x3,y2,z1)
-          cornerVec(7)  = vector(x1,y3,z1)
-          cornerVec(8)  = vector(x2,y3,z1)
-          cornerVec(9)  = vector(x3,y3,z1)
 
-          cornerVec(10) = vector(x1,y1,z2)
-          cornerVec(11) = vector(x2,y1,z2)
-          cornerVec(12) = vector(x3,y1,z2)
-          cornerVec(13) = vector(x1,y2,z2)
-          cornerVec(14) = vector(x2,y2,z2)
-          cornerVec(15) = vector(x3,y2,z2)
-          cornerVec(16) = vector(x1,y3,z2)
-          cornerVec(17) = vector(x2,y3,z2)
-          cornerVec(18) = vector(x3,y3,z2)
+          ! now store the 'base level' values
 
-          cornerVec(19) = vector(x1,y1,z3)
-          cornerVec(20) = vector(x2,y1,z3)
-          cornerVec(21) = vector(x3,y1,z3)
-          cornerVec(22) = vector(x1,y2,z3)
-          cornerVec(23) = vector(x2,y2,z3)
-          cornerVec(24) = vector(x3,y2,z3)
-          cornerVec(25) = vector(x1,y3,z3)
-          cornerVec(26) = vector(x2,y3,z3)
-          cornerVec(27) = vector(x3,y3,z3)
+          thisOctal%cornerrho(1)      =  densityFunc(vector(x1,y1,z1))
+          thisOctal%cornerVelocity(1) = velocityFunc(vector(x1,y1,z1))
+          thisOctal%cornerrho(2)      =  densityFunc(vector(x2,y1,z1))
+          thisOctal%cornerVelocity(2) = velocityFunc(vector(x2,y1,z1))
+          thisOctal%cornerrho(3)      =  densityFunc(vector(x3,y1,z1))
+          thisOctal%cornerVelocity(3) = velocityFunc(vector(x3,y1,z1))
+          thisOctal%cornerrho(4)      =  densityFunc(vector(x1,y2,z1))
+          thisOctal%cornerVelocity(4) = velocityFunc(vector(x1,y2,z1))
+          thisOctal%cornerrho(5)      =  densityFunc(vector(x2,y2,z1))
+          thisOctal%cornerVelocity(5) = velocityFunc(vector(x2,y2,z1))
+          thisOctal%cornerrho(6)      =  densityFunc(vector(x3,y2,z1))
+          thisOctal%cornerVelocity(6) = velocityFunc(vector(x3,y2,z1))
+          thisOctal%cornerrho(7)      =  densityFunc(vector(x1,y3,z1))
+          thisOctal%cornerVelocity(7) = velocityFunc(vector(x1,y3,z1))
+          thisOctal%cornerrho(8)      =  densityFunc(vector(x2,y3,z1))
+          thisOctal%cornerVelocity(8) = velocityFunc(vector(x2,y3,z1))
+          thisOctal%cornerrho(9)      =  densityFunc(vector(x3,y3,z1))
+          thisOctal%cornerVelocity(9) = velocityFunc(vector(x3,y3,z1))
 
-          ! Now loop over all the corners filling in the velocity and density values.
-          ! This can be run in parallel but causes problems with the Intel compiler so is off by default. 
-#ifdef SPH2GRID_PARALLEL
-          !$OMP PARALLEL DO default(none) private(i, thisDensity) shared (thisOctal, cornerVec) copyin(recentOctal)
-#endif
-          do i=1,27
-             thisOctal%cornerVelocity(i) = velocityFunc(cornerVec(i), thisDensity)
-             thisOctal%cornerrho(i)      = thisDensity
-          end do
-#ifdef SPH2GRID_PARALLEL
-          !$OMP END PARALLEL DO
-#endif
+          ! middle level
+
+          thisOctal%cornerrho(10)      =  densityFunc(vector(x1,y1,z2))
+          thisOctal%cornerVelocity(10) = velocityFunc(vector(x1,y1,z2))
+          thisOctal%cornerrho(11)      =  densityFunc(vector(x2,y1,z2))
+          thisOctal%cornerVelocity(11) = velocityFunc(vector(x2,y1,z2))
+          thisOctal%cornerrho(12)      =  densityFunc(vector(x3,y1,z2))
+          thisOctal%cornerVelocity(12) = velocityFunc(vector(x3,y1,z2))
+          thisOctal%cornerrho(13)      =  densityFunc(vector(x1,y2,z2))
+          thisOctal%cornerVelocity(13) = velocityFunc(vector(x1,y2,z2))
+          thisOctal%cornerrho(14)      =  densityFunc(vector(x2,y2,z2))
+          thisOctal%cornerVelocity(14) = velocityFunc(vector(x2,y2,z2))
+
+          thisOctal%cornerrho(15)      =  densityFunc(vector(x3,y2,z2))
+          thisOctal%cornerVelocity(15) = velocityFunc(vector(x3,y2,z2))
+          thisOctal%cornerrho(16)      =  densityFunc(vector(x1,y3,z2))
+          thisOctal%cornerVelocity(16) = velocityFunc(vector(x1,y3,z2))
+          thisOctal%cornerrho(17)      =  densityFunc(vector(x2,y3,z2))
+          thisOctal%cornerVelocity(17) = velocityFunc(vector(x2,y3,z2))
+          thisOctal%cornerrho(18)      =  densityFunc(vector(x3,y3,z2))
+          thisOctal%cornerVelocity(18) = velocityFunc(vector(x3,y3,z2))
+          ! top level
+
+          thisOctal%cornerrho(19)      =  densityFunc(vector(x1,y1,z3))
+          thisOctal%cornerVelocity(19) = velocityFunc(vector(x1,y1,z3))
+          thisOctal%cornerrho(20)      =  densityFunc(vector(x2,y1,z3))
+          thisOctal%cornerVelocity(20) = velocityFunc(vector(x2,y1,z3))
+          thisOctal%cornerrho(21)      =  densityFunc(vector(x3,y1,z3))
+          thisOctal%cornerVelocity(21) = velocityFunc(vector(x3,y1,z3))
+          thisOctal%cornerrho(22)      =  densityFunc(vector(x1,y2,z3))
+          thisOctal%cornerVelocity(22) = velocityFunc(vector(x1,y2,z3))
+          thisOctal%cornerrho(23)      =  densityFunc(vector(x2,y2,z3))
+          thisOctal%cornerVelocity(23) = velocityFunc(vector(x2,y2,z3))
+          thisOctal%cornerrho(24)      =  densityFunc(vector(x3,y2,z3))
+          thisOctal%cornerVelocity(24) = velocityFunc(vector(x3,y2,z3))
+          thisOctal%cornerrho(25)      =  densityFunc(vector(x1,y3,z3))
+          thisOctal%cornerVelocity(25) = velocityFunc(vector(x1,y3,z3))
+          thisOctal%cornerrho(26)      =  densityFunc(vector(x2,y3,z3))
+          thisOctal%cornerVelocity(26) = velocityFunc(vector(x2,y3,z3))
+          thisOctal%cornerrho(27)      =  densityFunc(vector(x3,y3,z3))
+          thisOctal%cornerVelocity(27) = velocityFunc(vector(x3,y3,z3))
 
        else ! cylindrical
           if (thisOctal%splitAzimuthally) then

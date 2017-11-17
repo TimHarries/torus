@@ -1281,12 +1281,13 @@ end subroutine addRecombinationEmissionLine
 !"Foundations of radiation hydrodynamics", Mihalas and Mihalas 1999
     use inputs_mod, only : guessNe
     use stateq_mod, only : alpkk
+    use atom_mod, only : blambda
     type(octal), pointer  :: thisOctal
     real, intent(in)      :: lambda
     type(octal), pointer  :: child 
     integer               :: subcell
     integer               :: i
-    real(double) :: eta, freq, X
+    real(double) :: eta, freq, X, temperature
     
     do subcell = 1, thisOctal%maxChildren, 1
 
@@ -1300,21 +1301,41 @@ end subroutine addRecombinationEmissionLine
              end if
           end do            
        else
-          freq = cspeed / (lambda*angstromToCm)
+          freq = cspeed / (lambda*angstromToCm) ! Hz
           if(guessNe) then
              X = (thisOCtal%temperature(subcell) - 10.d0)/(1.d4-10.d0)
              if(X > 1.d0) X = 1.d0
              thisOctal%ne(subcell) = (thisOctal%rho(subcell)/mhydrogen)*X
              thisOctal%temperature(subcell) = min(1.e4, thisOctal%temperature(subcell))
           endif
-          eta =  thisOctal%Ne(subcell)**2 * &
-               alpkk(freq,real(thisOctal%temperature(subcell),kind=db))* &
-               exp(-(hcgs*freq)/(kerg*thisOctal%temperature(subcell)))
+
+          ! eta_lambda (per A) (blambda is per cm)
+          temperature = dble(thisOctal%temperature(subcell))
+          eta = fourPi * alpkk(freq, temperature) * thisOctal%ne(subcell)**2 * & 
+                 (1.d0 - exp(-hcgs*freq/(kerg*temperature))) * blambda(dble(lambda),temperature) * 1.d-8
           
-          eta=eta*real((2.0*dble(hcgs)*dble(freq)**3)/(dble(cspeed)**2))
              
-          thisOctal%etaCont(subcell) = eta !* 1.d10
+          thisOctal%etaCont(subcell) = eta 
           thisOctal%biasCont3d(subcell) = 1.d0
+
+!          if (thisOctal%temperature(subcell) > 8.d3 .and. myrankglobal == 1 .and.firsttime) then
+!             open(50, file="radioEmissivity.dat", status="unknown", form="formatted")
+!             write(50, '(6(a12,1x))') "# nu(GHz)","eta","kappaff","eta/kff", "ne", "T"
+!             do wav = 1, 200
+!                freq = cspeed / dble(wav)
+!                eta =  thisOctal%Ne(subcell)**2 * &
+!                     alpkk(freq,real(thisOctal%temperature(subcell),kind=db))* &
+!                     exp(-(hcgs*freq)/(kerg*thisOctal%temperature(subcell)))
+!                eta=eta*real((2.0*dble(hcgs)*dble(freq)**3)/(dble(cspeed)**2))
+!                kappaff = thisOctal%ne(subcell)**2 * alpkk(freq, dble(thisOctal%temperature(subcell))) * &
+!                     (1.d0 - exp(-hcgs*freq/(kerg*dble(thisOctal%temperature(subcell))))) 
+!                write(50, '(6(es12.5, 1x))') freq/1.d9, eta, kappaff, eta/kappaff, thisOctal%ne(subcell),&
+!                thisOctal%temperature(subcell)
+!             enddo
+!             close(50)
+!             firsttime = .false.
+!          endif
+
        end if
 
     end do
@@ -1326,11 +1347,12 @@ end subroutine addRecombinationEmissionLine
 !"Foundations of radiation hydrodynamics", Mihalas and Mihalas 1999
 
     use stateq_mod, only : alpkk
+    use atom_mod, only : blambda
     type(octal), pointer  :: thisOctal
     type(octal), pointer  :: child 
     integer               :: subcell
     integer               :: i
-    real(double) :: eta, freq
+    real(double) :: eta, freq, temperature
     real :: lambda
     logical, intent(in) :: stack
     
@@ -1347,11 +1369,11 @@ end subroutine addRecombinationEmissionLine
           end do            
        else
           freq = cspeed / (lambda*angstromToCm)
-          eta =  thisOctal%Ne(subcell)**2 * &
-               alpkk(freq,real(thisOctal%temperature(subcell),kind=db))* &
-               exp(-(hcgs*freq)/(kerg*thisOctal%temperature(subcell)))
-          
-          eta=eta*real((2.0*dble(hcgs)*dble(freq)**3)/(dble(cspeed)**2))
+
+          ! eta_lambda (per A) (blambda is per cm)
+          temperature = dble(thisOctal%temperature(subcell))
+          eta = fourPi * alpkk(freq, temperature) * thisOctal%ne(subcell)**2 * & 
+                 (1.d0 - exp(-hcgs*freq/(kerg*temperature))) * blambda(dble(lambda),temperature) * 1.d-8
 
 
           !This only works with the stuff in phaseloop_mod. 
@@ -1395,7 +1417,7 @@ subroutine setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, 
 
      write(message,*) "Adding radio emissivity with lambda= ", lambdaImage*angstromToCm, " cm"
      call writeInfo(message, FORINFO)
-     ilambdaPhoton = grid%nLambda
+     call locate(grid%lamArray, grid%nlambda, real(lambdaImage), ilambdaPhoton)
      call  addRadioContinuumEmissivity(grid%octreeRoot,lambdaImage)
      lcore = tiny(lcore)
 
@@ -1441,7 +1463,7 @@ subroutine setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, 
      print *, "IMAGETYPE NOT RECOGNISED, ASSUMING FREEFREE"
      write(message,*) "Adding radio emissivity with lambda= ", lambdaImage*angstromToCm, " cm"
      call writeInfo(message, FORINFO)
-     ilambdaPhoton = grid%nLambda
+     call locate(grid%lamArray, grid%nlambda, real(lambdaImage), ilambdaPhoton)
      call  addRadioContinuumEmissivity(grid%octreeRoot,lambdaImage)
      lcore = tiny(lcore)
      

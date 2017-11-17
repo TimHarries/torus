@@ -783,7 +783,6 @@ end subroutine gaussSeidelSweep
 
 
     call setDiffOnTau(grid)
-!    call defineDiffusionOnUndersampled(grid%octreeRoot)
 
     if (present(onlyUndersampled)) then
        if (onlyUndersampled) then
@@ -798,7 +797,7 @@ end subroutine gaussSeidelSweep
 !       call defineDiffusionOnUndersampled(grid%octreeRoot)
 !    call resetDiffusionTemp(grid%octreeRoot, 100.)
 !    call writeVtkFile(grid, "before.vtk", valueTypeString=(/"chiline    ","temperature","diff"/))
-!    call unsetDiffusionOnBoundary(grid, grid%octreeRoot)
+    call unsetDiffusionOnBoundary(grid, grid%octreeRoot)
 !    call writeVtkFile(grid, "after.vtk", valueTypeString=(/"chiline    ","temperature","diff"/))
 
     i  = 0
@@ -888,7 +887,7 @@ end subroutine gaussSeidelSweep
   end subroutine defineDiffusionOnRho
 
   recursive subroutine defineDiffusionOnRosseland(grid, thisOctal, taudiff, nDiff, reset)
-    use inputs_mod, only :  resetDiffusion, minCrossings
+    use inputs_mod, only :  resetDiffusion
     real :: tauDiff
     type(GRIDTYPE) :: grid
     logical, optional :: reset
@@ -918,7 +917,7 @@ end subroutine gaussSeidelSweep
              allocate(thisOCtal%diffusionApprox(1:thisOctal%maxChildren))
              thisOctal%diffusionApprox = .false.
           endif
-          if ((tau > taudiff).and.(thisOctal%nCrossings(subcell) < minCrossings)) then
+          if (tau > taudiff) then
              thisOctal%diffusionApprox(subcell) = .true.
              if (PRESENT(ndiff))  nDiff = nDiff + 1
           else

@@ -168,13 +168,17 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
     enddo
   end function fluxThroughSphericalSurface
 
-  recursive subroutine findMassWithBounds(thisOctal, totalMass, minRho, maxRho, minRadius, maxRadius)
+  recursive subroutine findMassWithBounds(thisOctal, totalMass, minRho, maxRho, minRadius, maxRadius, highestRho, totalVolume, &
+            ionizedMass, ionizedVolume, totalKE, totalTE)
+    use ion_mod
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    type(VECTOR) :: rVec
+    type(VECTOR) :: rVec, velocity
     real(double) :: totalMass
+    real(double),optional :: ionizedMass, ionizedVolume, totalKE, totalTE, totalVolume
     real(double),optional :: minRho, maxRho, minRadius, maxRadius
-    real(double) :: dv,r
+    real(double),optional :: highestRho
+    real(double) :: dv,r, mu
     integer :: subcell, i
     logical :: includeThisCell
 
@@ -184,7 +188,8 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call findMassWithBounds(child, totalMass, minRho, maxRho, minRadius, maxRadius)
+                call findMassWithBounds(child, totalMass, minRho, maxRho, minRadius, maxRadius, highestRho, totalVolume, &
+                  ionizedMass, ionizedVolume, totalKE, totalTE)
                 exit
              end if
           end do
@@ -213,7 +218,27 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
              endif
 
              
-             if (includethiscell) totalMass = totalMass + thisOctal%rho(subcell) * dv
+             if (includethiscell) then
+                totalMass = totalMass + thisOctal%rho(subcell) * dv
+                if (present(highestRho)) highestRho = max(highestRho, thisOctal%rho(subcell))
+                if (present(totalVolume)) totalVolume = totalVolume + dv
+                if (present(ionizedMass)) then
+                   if (thisOctal%ionfrac(subcell, 1) < 0.1d0 .and. .not.thisOctal%undersampled(subcell)) then
+                      ionizedMass = ionizedMass + thisOctal%rho(subcell) * dv
+                      ionizedVolume = ionizedVolume + dv
+                   endif
+                endif
+                if (present(totalKE)) then
+                   mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
+                   totalTE = totalTE + (1.5d0 * thisOctal%temperature(subcell)*kerg/(mu*mHydrogen))
+                   velocity = VECTOR(thisOctal%rhou(subcell) / thisOctal%rho(subcell), &
+                        thisOctal%rhov(subcell) / thisOctal%rho(subcell), &
+                        thisOctal%rhow(subcell) / thisOctal%rho(subcell))
+                   totalKE = totalKE + 0.5d0 * (thisOctal%rho(subcell) * dv) * (modulus(velocity))**2
+
+                endif
+             endif
+
           endif
        endif
     enddo
@@ -342,5 +367,392 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
 
     close(66)
   end subroutine writeKeplerianButterfly
+  
+  subroutine clusterAnalysis(grid, source, nSource)
+    use inputs_mod, only : imodel, edgeRadius, splitOverMPI, burstTime, amrgridsize
+    use inputs_mod, only : columnImageDirection, columnImageFilename
+    use utils_mod, only : findMultifilename
+#ifdef MPI
+    use mpi
+    use photoionAMR_mod, only : createTemperatureColumnImage, writeLuminosities, calculateAverageTemperature
+    use mpi_amr_mod, only : createIonizationImage, createColumnDensityImage, createhiimage
+#endif
+    use image_mod, only : writeFitsColumnDensityImage 
+    use inputs_mod, only : smallestCellSize, writeLums, plotAvgTemp, calculateGlobalAvgTemp
+    type(GRIDTYPE) :: grid
+    type(SOURCETYPE) :: source(:)
+    integer :: nSource, i
+    type(VECTOR) :: startPoint, endPoint, firststartpoint, thisDir
+    real(double) :: maxRho, totalMass 
+    character(len=80) :: thisFile, rootfilename, fm, thisFileGrid, thisFileRadius
+    real(double), pointer :: image(:,:)
+    logical, save :: firstTime=.true.
+    real(double), save :: radius 
+    real(double) :: mass, highestRho, volume, ionizedMass, ionizedVolume, totalKE, totalTE, massflux
+    character(len=20) :: weighting
+    integer :: ierr
+    real(double) :: weightedFluxInRadius, massInRadius, meang0
+    real(double) :: n0, t0, t2, sigma, sigmane, total, tempDouble
+
+!    write(rootfilename, '(a)') "habingRadial****.dat"
+!    call findMultiFilename(rootfilename, iModel, thisFile)
+!    startPoint = source(1)%position 
+!    endPoint = VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.d0) 
+!    call dumpValuesAlongLine(grid, thisFile, startPoint, endPoint, 1000)
+
+
+
+!    if (firsttime) then
+!       firstStartPoint = source(1)%position
+!    endif
+!    ! values in the cell containing the most massive star
+!    write(thisFile, '(a)') "firststartpoint.dat"
+!    ! write header
+!    if (firstTime) then
+!       if (writeoutput) then
+!          open(69, file=thisFile, status="replace", form="formatted")
+!!             write(69, '(a6,a20, 3(1x,a12), 2(1x,a9))') "# dump", "t (s)", "rho (g/cc)", "UV (G0)", "tval (TU)", & 
+!             write(69, '(a6,a20, 3(1x,a12), 2(1x,a9))') "# dump", "t (s)", "rho (g/cc)", "UV (G0)", "rtostar(TU)", & 
+!                   "Tgas (K)", "Tdust (K)" 
+!          close(69)
+!       endif
+!    endif
+    ! write data
+!    open(69, file=thisFile, status="old", position="append", form="formatted")
+!       call writeCellValuesForSource(69, grid, source(1), firstStartPoint)
+!    close(69)
+
+!    ! get total mass and max rho
+!    call findMassOverAllThreads(grid, totalMass, maxRho=maxRho)
+!    if (writeoutput) then
+!       write(thisFile, '(a)') "gridvalues.dat"
+!       ! write header
+!       if (firstTime) then
+!          open(69, file=thisFile, status="replace", form="formatted")
+!             write(69, '(a6,a20, 2(1x,a12))') "# dump", "t (s)", "maxrho(g/cc)", "tot M(msol)"
+!          close(69)
+!       endif
+!       ! write data
+!       open(69, file=thisFile, status="old", position="append", form="formatted")
+!           write(69, '(i6.4,f20.2, 2(1x,es12.5)') grid%idump, time, maxrho, totalMass/msol 
+!       close(69)
+!    endif
+
+!   temperature weighted-average along los 
+    if (plotAvgTemp .or. calculateGlobalAvgTemp) then
+       do i=1,6
+          if (i==1) then
+             write(weighting, '(a)') "emissivity" 
+          elseif (i==2) then
+             write(weighting, '(a)') "oiiidensity" 
+          elseif (i==3) then
+             write(weighting, '(a)') "mass" 
+          elseif (i==4) then
+             write(weighting, '(a)') "hiidensity" 
+          elseif (i==5) then
+             write(weighting, '(a)') "ne2" 
+          elseif (i==6) then
+             write(weighting, '(a)') "none" 
+          endif
+          if (plotAvgTemp) then
+             ! pixel-by-pixel average
+             if (writeoutput) write(*,*) "Making temperature image with weighting ", weighting
+             call createTemperatureColumnImage(grid, columnImageDirection, image, trim(weighting))
+             write(thisFile, '(i4.4,a,a,a)') grid%idump, "_avgtemp_", trim(weighting), ".fits"
+             if (writeoutput) call writeFitsColumnDensityImage(image, thisFile)
+          endif
+
+          if (calculateGlobalAvgTemp) then
+             ! global average
+             if (writeoutput) write(*,*) "Calculating avg temperature with weighting ", weighting
+             sigma = 0.d0
+             total = 0.d0
+             sigmaNe = 0.d0
+             call calculateAverageTemperature(grid%octreeRoot, grid,sigma, total, trim(weighting), .false., 0.d0, sigmaNe)
+             call MPI_ALLREDUCE(sigma, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
+             sigma = tempDouble
+             call MPI_ALLREDUCE(total, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
+             total = tempDouble
+             call MPI_ALLREDUCE(sigmaNe, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
+             sigmaNe = tempDouble
+             t0 = sigma/total
+             n0 = sigmaNe/total
+
+             ! 2nd order correction
+             sigma = 0.d0
+             total = 0.d0
+             sigmaNe = 0.d0
+             call calculateAverageTemperature(grid%octreeRoot, grid, sigma, total, trim(weighting), .true., t0, sigmaNe)
+             call MPI_ALLREDUCE(sigma, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
+             sigma = tempDouble
+             call MPI_ALLREDUCE(total, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
+             total = tempDouble
+             t2 = sigma/total
+             if (myrankglobal == 1) then
+                write(thisFile, '(a)') "avgtempGlobal.dat"
+                open(55, file=thisFile, status="unknown", position="append")
+                if (firstTime) then
+                   write(55,'(a5,a20,a13,3(a12,1x))') "#dump", "t(s)", "weight", "T0(K)", "T2(K^2)", "ne_0(cm-3)" 
+                endif
+                write(55,'(i5.4,f20.1, a13, 3(es12.5,1x))') grid%idump, grid%currenttime, trim(weighting), t0, t2, n0
+                close(55)
+             endif
+          endif
+       enddo
+    endif
+
+!! luminosities
+    if (writeLums) then
+       call writeLuminosities(grid)
+    endif
+
+
+! assumes 1 thread only
+!   mass flux through spherical surface
+!    if (.not. splitOverMPI) then
+!       write(thisFileGrid, '(a)') "valuesOnGrid.dat"
+!       write(thisFileRadius, '(a)') "valuesWithinRadius.dat"
+!
+!       if (edgeRadius > 1.d0) then
+!          ! use input variable
+!          radius = edgeRadius
+!       else
+!          ! calculate the radius from the bursttime dump and save for future dumps
+!          if (firstTime) then
+!             if (grid%currentTime*secsToYears < burstTime*1.1d0) then
+!                call findCloudEdge(grid%octreeRoot, radius)
+!                ! replace file with header 
+!                ! entire grid
+!                open(69, file=thisFileGrid, status="replace")
+!                   fm = '(a6,1x,a9,1x,a20,1x,a20,1x,7(a16,1x))'
+!                   write(69, fm) "# dump", "[1]L(pc)", "[2]t(s)", "[3]Mtot(msol)", "[4]flux(msol/yr)", & 
+!                     "[5]vol(pc3)", "[6]ionMass(msol)", "[7]ionVol(pc3)", "[8]rhomax(g/cc)", "[9]KE(erg)", &
+!                     "[10]Eth(erg)"
+!                close(69)
+!                ! within radius
+!                open(69, file=thisFileRadius, status="replace")
+!                   fm = '(a6,1x,a9,1x,a20,1x,a20,1x,7(a16,1x))'
+!                   write(69, fm) "# dump", "[1]R(pc)", "[2]t(s)", "[3]Mtot(msol)", "[4]flux(msol/yr)", & 
+!                     "[5]vol(pc3)", "[6]ionMass(msol)", "[7]ionVol(pc3)", "[8]rhomax(g/cc)", "[9]KE(erg)", &
+!                     "[10]Eth(erg)"
+!                close(69)
+!             else
+!                write(*,*) "Input variable edgeradius not defined, and first dump isn't near burstTime so haven't calculated edgeradius"
+!                stop
+!             endif
+!          endif
+!       endif
+!       write(*,*) "radius ", radius, " 1e10 cm / ", radius*1.d10/pcToCm, " pc"
+!
+!       ! entire grid
+!       mass = 0.d0
+!       highestRho = 1.d-30
+!       volume  = 0.d0
+!       ionizedMass = 0.d0
+!       ionizedVolume = 0.d0
+!       totalKE = 0.d0
+!       totalTE = 0.d0
+!       call findMassWithBounds(grid%octreeRoot, mass, highestRho=highestRho, totalVolume=volume,&
+!                ionizedMass=ionizedMass, ionizedVolume=ionizedVolume, totalKE=totalKE, totalTE=totalTE)
+!
+!       massflux = fluxThroughSphericalSurface(grid, amrgridsize/2.d0)
+!       massflux = massflux / msol * 365.25d0*24.d0*3600.d0 ! Msol/yr
+!       ! write data
+!       open(69, file=thisFileGrid, status="old", position="append")
+!          fm = '(i6.4,1x,f9.5,1x,f20.1,1x,f20.8,1x,7(es16.8,1x))'
+!          write(69, fm) grid%idump, amrgridsize/2.d0*1.d10/pcToCm, grid%currenttime, mass/msol, massflux, &
+!               volume/(pctocm**3), ionizedMass/msol, ionizedVolume/(pctocm**3), highestRho, totalKE, totalTE 
+!       close(69)
+!
+!       ! within radius 
+!       mass = 0.d0
+!       highestRho = 1.d-30
+!       volume  = 0.d0
+!       ionizedMass = 0.d0
+!       ionizedVolume = 0.d0
+!       totalKE = 0.d0
+!       totalTE = 0.d0
+!       call findMassWithBounds(grid%octreeRoot, mass, highestRho=highestRho, totalVolume=volume,&
+!                ionizedMass=ionizedMass, ionizedVolume=ionizedVolume, totalKE=totalKE, totalTE=totalTE,&
+!                maxRadius=radius)
+!
+!       massflux = fluxThroughSphericalSurface(grid, radius)
+!       massflux = massflux / msol * 365.25d0*24.d0*3600.d0 ! Msol/yr
+!
+!       ! write data
+!       open(69, file=thisFileRadius, status="old", position="append")
+!          fm = '(i6.4,1x,f9.5,1x,f20.1,1x,f20.8,1x,7(es16.8,1x))'
+!          write(69, fm) grid%idump, radius*1.d10/pcToCm, grid%currenttime, mass/msol, massflux, &
+!               volume/(pctocm**3), ionizedMass/msol, ionizedVolume/(pctocm**3), highestRho, totalKE, totalTE 
+!       close(69)
+!    else
+!       if (writeoutput) write(*,*) "clusterAnalysis requires not splitting over mpi"
+!       stop
+!    endif
+!
+!! average habing flux over accretionRadius of first source
+!    if (.not. splitOverMPI) then
+!       weightedFluxInRadius = 0.d0
+!       massInRadius = 0.d0
+!       if (firstTime) then
+!          write(*,*) "smallestCellSize ", smallestCellSize
+!       endif
+!       call calculateAverageHabingFlux(grid%octreeRoot, globalSourceArray(1), 2.5d0*smallestCellSize, &
+!               weightedFluxInRadius, massInRadius)
+!       meanG0 = weightedFluxInRadius/massInRadius
+!
+!       write(thisFile, '(a)') "averageHabingFlux.dat"
+!       ! write header
+!       if (firstTime) then
+!          open(69, file=thisFile, status="replace", form="formatted")
+!             write(69, '(a6,a20, 1(1x,a12))') "#dump", "t(s)", "mAvgG0"
+!          close(69)
+!       endif
+!       ! write data
+!       open(69, file=thisFile, status="old", position="append", form="formatted")
+!           write(69, '(i6.4,f20.2, 1(1x,es12.5))') grid%idump, grid%currentTime, meanG0 
+!       close(69)
+!    endif
+
+    
+    
+!    ! column along x, ionfrac along x and y 
+!    ! x dir
+!    thisDir = VECTOR(1.d0, 0.d0, 0.d0)
+!!    write(thisFile, '(a,i4.4,a)') "columnx_", grid%idump, ".fits"
+!!    call createColumnDensityImage(grid, thisDir, image)
+!!    if (writeoutput) call writeFitsColumnDensityImage(image, thisFile)
+!    write(thisFile, '(a,i4.4,a)') "ionx_", grid%idump, ".fits"
+!    call createIonizationImage(grid, thisDir, image)
+!    if (writeoutput) call writeFitsColumnDensityImage(image, thisFile)
+!    write(thisFile, '(a,i4.4,a)') "hix_", grid%idump, ".fits"
+!    call createHiImage(grid, thisDir, image)
+!    if (writeoutput) call writeFitsColumnDensityImage(image, thisFile)
+!
+!    ! z dir
+!    thisDir = VECTOR(0.d0, 0.d0, 1.d0)
+!!    write(thisFile, '(a,i4.4,a)') "columnz_", grid%idump, ".fits"
+!!    call createColumnDensityImage(grid, thisDir, image)
+!!    if (writeoutput) call writeFitsColumnDensityImage(image, thisFile)
+!    write(thisFile, '(a,i4.4,a)') "ionz_", grid%idump, ".fits"
+!    call createIonizationImage(grid, thisDir, image)
+!    if (writeoutput) call writeFitsColumnDensityImage(image, thisFile)
+!    write(thisFile, '(a,i4.4,a)') "hiz_", grid%idump, ".fits"
+!    call createHiImage(grid, thisDir, image)
+!    if (writeoutput) call writeFitsColumnDensityImage(image, thisFile)
+
+    firstTime = .false.
+  end subroutine clusterAnalysis
+  
+  recursive subroutine findCloudEdge(thisOctal, radius)
+    use inputs_mod, only : surfacedensity, sphereRadius, beta
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: i, subcell
+    real(double) :: radius, r, rhoOutside, rhoCore
+    type(VECTOR) :: rVec
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call findCloudEdge(child, radius) 
+                exit
+             end if
+          end do
+       else
+          if(.not. thisoctal%ghostcell(subcell)) then
+
+             ! from geometry krumholz
+             rhoCore = 6.d0 * surfaceDensity / ((2.d0**2.5d0 - 1.d0) * sphereRadius*1.d10)
+             rhoOutside = 1.d-2 * 2.d0**beta * rhoCore
+             if (thisOctal%rho(subcell) > 1.1d0*rhoOutside) then
+                rVec = subcellCentre(thisOctal, subcell) 
+                r = modulus(rVec)
+                radius = max(radius, r)
+             endif 
+
+          endif
+       endif
+    enddo
+  
+  end subroutine findCloudEdge
+
+  subroutine writeCellValuesForSource(lunit, grid, thisSource, position) 
+     use inputs_mod, only : iModel
+     use amr_mod, only : octalOnThread
+     type(GRIDTYPE) :: grid
+     type(OCTAL), pointer :: thisOctal
+     type(SOURCETYPE) :: thisSource
+     type(VECTOR) :: position
+     integer :: lunit
+     integer :: subcell
+     real(double) :: time, rho, habingFlux, tgas, tdust, tval, rMod 
+     type(VECTOR) :: vHat
+    character(len=80) :: thisFile
+
+     if (myrankGlobal /= 0 .and..not. loadBalancingThreadGlobal) then
+        thisOctal => grid%octreeRoot
+        call findSubcellTD(position, grid%octreeRoot, thisOctal, subcell) 
+        if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+
+           time = grid%currentTime
+           rho = thisOctal%rho(subcell)
+           habingFlux = thisOctal%habingFlux(subcell)
+           tgas = thisOctal%temperature(subcell)
+           tdust = thisOctal%tdust(subcell)
+
+!           vHat = VECTOR(thisSource%velocity%x, thisSource%velocity%y, thisSource%velocity%z)  
+!           call normalize(vHat)
+!           call distanceToCellBoundary(grid, thisSource%position, vHat, tval, thisOctal, subcell)
+           rMod = modulus(thisSource%position - position)
+
+!           write(lunit, '(i6.4, f20.2, 3(1x,es12.5), 2(1x,f9.2))') iModel, time, rho, habingFlux*1.d10, tval, tgas, tdust 
+           write(thisFile, '(a)') "firststartpoint.dat"
+           open(69, file=thisFile, status="old", position="append", form="formatted")
+           write(69, '(i6.4, f20.2, 3(1x,es12.5), 2(1x,f9.2))') iModel, time, rho, habingFlux*1.d10, rmod, tgas, tdust 
+           close(69)
+
+        endif
+     endif
+     
+  end subroutine writeCellValuesForSource 
+  recursive subroutine calculateAverageHabingFlux(thisOctal, source, radius, totalFlux, totalMass)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    type(vector) :: rcell
+    real(double) :: totalFlux, totalMass, thisMass, radius
+     type(SOURCETYPE) :: source
+
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calculateAverageHabingFlux(child, source, radius, totalFlux, totalMass)
+                exit
+             end if
+          end do
+       else
+          if(.not. thisoctal%ghostcell(subcell)) then
+
+             rcell = subcellCentre(thisOctal, subcell)
+             if (modulus(rcell - source%position) < radius) then
+                thisMass = thisOctal%rho(subcell) * cellVolume(thisOctal, subcell)*1.d30
+                totalFlux = totalFlux + thisMass*thisOctal%habingFlux(subcell)*1.d10 ! habingFlux is in 1e10 G0
+                totalMass = totalMass + thisMass
+             endif
+
+
+          endif
+       endif
+    enddo
+    
+  end subroutine calculateAverageHabingFlux
 
 end module gridanalysis_mod

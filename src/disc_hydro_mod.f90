@@ -509,17 +509,18 @@ contains
 
        
 
-       if (writeoutput) write(*,*) "Unrefining back to current gridding..."
-       gridconverged = .false.
-       do while(.not.gridconverged)
-          gridconverged = .true.
-          nUnrefine = 0
-          call unrefineBack(grid%octreeRoot, grid, betaEstimate, heightEstimate, rSub, nUnrefine, gridconverged)
-          if (writeoutput) write(*,*) "Unrefined ",nUnrefine, " cells on this pass"
-       end do
-       if (writeoutput) then
-          write(*,*) "done."
-       endif
+!       if (writeoutput) write(*,*) "Unrefining back to current gridding..."
+!       gridconverged = .false.
+!       do while(.not.gridconverged)
+!          gridconverged = .true.
+!          nUnrefine = 0
+!          call unrefineBack(grid%octreeRoot, grid, betaEstimate, heightEstimate, rSub, nUnrefine, gridconverged)
+!          if (writeoutput) write(*,*) "Unrefined ",nUnrefine, " cells on this pass"
+!       end do
+
+!       if (writeoutput) then
+!          write(*,*) "done."
+!       endif
 
        if ((.not.variableDustSublimation).and.grid%octreeRoot%twoD) then
           call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)

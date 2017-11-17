@@ -17,7 +17,7 @@ module physics_mod
 contains
 
   subroutine setupMicrophysics(grid)
-    use inputs_mod, only : biophysics
+    use inputs_mod, only : biophysics, iTrans
     use biophysics_mod
 #ifdef CMFATOM
     use inputs_mod, only : atomicPhysics, nAtom
@@ -29,7 +29,7 @@ contains
 #endif
 #ifdef MOLECULAR
     use inputs_mod, only : molecularPhysics, moleculeFile, molecular
-    use molecular_mod, only: readMolecule, globalMolecule !, findcriticalDensity
+    use molecular_mod, only: readMolecule, globalMolecule, findcriticalDensity
 #endif
 
 #ifdef PHOTOION
@@ -42,10 +42,10 @@ contains
     use dust_mod
     type(GRIDTYPE) :: grid
     
-!#ifdef MOLECULAR
-!    integer :: i
-!    real(double) :: thisTemp, ncrit
-!#endif
+#ifdef MOLECULAR
+    integer :: i
+    real(double) :: thisTemp, ncrit
+#endif
 
 !    call dustComparison(grid, miePhase, 100)
     
@@ -54,13 +54,13 @@ contains
     if (molecularPhysics) then
        molecular = .true.
        call readMolecule(globalMolecule, moleculefile)
-!       do i = 1, 1000
-!          thisTemp = dble(i-1)/99.d0 * 500.d0
-!          call findcriticalDensity(ncrit, globalMolecule,iTrans,thisTemp)
-!          if (writeoutput) write(*,*) "Transition freq (GHz): ",globalMolecule%transfreq(itrans)/1.d9
-!          if (writeoutput) write(*,'(a,i6,a,1p,e12.3)') "Critical density at ",nint(thisTemp), " K = ", ncrit
-!               
-!       enddo
+       do i = 1, 1000
+          thisTemp = dble(i-1)/99.d0 * 500.d0
+          call findcriticalDensity(ncrit, globalMolecule,iTrans,thisTemp)
+          if (writeoutput) write(*,*) "Transition freq (GHz): ",globalMolecule%transfreq(itrans)/1.d9
+          if (writeoutput) write(*,'(a,i6,a,1p,e12.3)') "Critical density at ",nint(thisTemp), " K = ", ncrit
+               
+       enddo
     endif
 #endif
 
@@ -122,8 +122,8 @@ contains
     integer :: nSource, iSource
     type(SOURCETYPE) :: source(:)
     logical :: ok
-    real(double) :: distToEdge, fac, sumSurfaceLuminosity, thisTime
-    character(len=120) :: message, thisFile
+    real(double) :: distToEdge, fac, sumSurfaceLuminosity
+    character(len=120) :: message
     integer :: i
     i = 0
 
@@ -309,20 +309,8 @@ contains
                 !       lamEnd = 1000.d4
                 !       nlambda = 1000
                 call buildSphere(source(isource)%position, dble(source(isource)%radius), &
-                     source(isource)%surface, nSphereSurface, source(isource)%teff, & 
+                     source(isource)%surface, 100, source(isource)%teff, & 
                      source(isource)%spectrum)
-
-                 if (pulsatingStar) then
-                    call writeWarning("Makeing pulsating stellar surface...")
-                    thisTime = periodMode(1) * dble(iModel-1)/dble(nModelEnd)
-
-                    call sphericalHarmonicSurface(globalSourceArray(1)%surface, globalSourceArray(1)%teff, &
-                         nModes, lMode, mMode, fracMode, periodMode, thisTime)
-
-                    call createProbsSphericalHarmonics(globalSourceArray(1)%surface)
-                 endif
-
-
                 call sumSurface(source(isource)%surface, sumSurfaceluminosity)
                 fac = fourPi * stefanBoltz * (source(1)%radius*1.d10)**2 * (source(1)%teff)**4
                 !       if (abs(fac-source(1)%luminosity)/source(1)%luminosity > 0.01d0) then
@@ -344,7 +332,7 @@ contains
                 call writeInfo(message, TRIVIAL)
                 source(iSource)%luminosity = sumSurfaceLuminosity
              endif
-          else
+             else
 
                 source(isource)%stellar = .false.
                 source(isource)%diffuse = .true.
@@ -357,7 +345,7 @@ contains
                 case DEFAULT
                    call writeFatal("Diffuse source type not recognized")
                 end select
-             endif
+          endif
        end do
        if (.not.donBodyOnly) then
           if (Writeoutput) call testRandomSource(source, nsource)
@@ -365,8 +353,7 @@ contains
        endif
 
     endif
-    call findMultiFilename("sources_at_setup_****.vtk", iModel, thisFile)
-    call writeVtkFile(nsource, source, thisFile)
+    call writeVtkFile(nsource, source, "sources_at_setup.vtk")
 
   end subroutine setupSources
 
@@ -688,14 +675,14 @@ contains
 
    end subroutine doPhysics
 
-   subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam, dustRadeq, photoion, atomicDataCube, phaseloop)
+   subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam, dustRadeq, photoion, atomicDataCube)
      use inputs_mod, only : lamFile, lamFilename, lamLine, vMinSpec, vMaxSpec, nv, resolveSilicateFeature, writepolar, &
           polarWavelength
 #ifdef PHOTOION
      use photoion_utils_mod, only : refineLambdaArray
 #endif
 
-     logical, optional :: dustRadeq, photoion, atomicDataCube, phaseloop
+     logical, optional :: dustRadeq, photoion, atomicDataCube
      type(GRIDTYPE) :: grid
      real, pointer :: xArray(:)
      integer :: nLambda
@@ -773,20 +760,6 @@ contains
         if (atomicDataCube) then
            nLambda = nv
            allocate(xArray(1:nLambda))
-           lamStart = lamLine*(1.d0 + (vMinSpec*1.d5)/cSpeed)
-           lamend =  lamLine*(1.d0 + (vMaxSpec*1.d5)/cSpeed)
-           do i = 1, nLambda
-              xArray(i) = real(lamStart+(lamEnd-lamStart)*dble(i-1)/dble(nLambda-1))
-           enddo
-        endif
-     endif
-
-     if (PRESENT(phaseloop)) then
-        if (phaseloop) then
-           nLambda = 200
-           allocate(xArray(1:nLambda))
-           vminspec = -1500.
-           vmaxspec = 1500.
            lamStart = lamLine*(1.d0 + (vMinSpec*1.d5)/cSpeed)
            lamend =  lamLine*(1.d0 + (vMaxSpec*1.d5)/cSpeed)
            do i = 1, nLambda
@@ -897,8 +870,7 @@ contains
      use inputs_mod, only : inputNsource, mstarburst, lxoverlbol, readsources, &
           hosokawaTracks, nbodyPhysics, nSphereSurface, discardSinks, hotSpot, starburst, &
           burstType, burstAge, burstTime, sourceMass, sourceTeff, sourceRadius, accretionradius, &
-          sourceProb, smallestCellsize, sourcemdot, pointsourcearray,inputcontfluxfile, imodel, periodMode, pulsatingStar, &
-          fracmode, lmode, mmode, nmodes, nModelEnd
+          sourceProb, smallestCellsize, sourcemdot, pointsourcearray,inputcontfluxfile
 #ifdef MPI
      use mpi
 #endif
@@ -909,7 +881,6 @@ contains
      integer :: i
      type(GRIDTYPE) :: grid
      real(double) :: coreContinuumFlux, lAccretion, xRayFlux
-     real(double) :: thisTime
      real(double) :: sumSurfaceLuminosity, fac
      real :: fAccretion
      character(len=120) :: message
@@ -1005,18 +976,8 @@ contains
                  !       lamEnd = 1000.d4
                  !       nlambda = 1000
                  call buildSphere(globalsourceArray(i)%position, globalSourceArray(i)%radius, &
-                      globalsourceArray(i)%surface, nSphereSurface, globalsourceArray(i)%teff, & 
+                      globalsourceArray(i)%surface, 100, globalsourceArray(i)%teff, & 
                       globalsourceArray(i)%spectrum)
-
-                 if (pulsatingStar) then
-                    call writeWarning("Makeing pulsating stellar surface...")
-                    thisTime = periodMode(1) * dble(iModel-1)/dble(nModelEnd)
-                    call sphericalHarmonicSurface(globalSourceArray(1)%surface, globalSourceArray(1)%teff, &
-                         nModes, lMode, mMode, fracMode, periodMode, thisTime)
-                    call createProbsSphericalHarmonics(globalSourceArray(1)%surface)
-                 endif
-
-
                  call sumSurface(globalSourceArray(i)%surface, sumSurfaceluminosity)
                  fac = fourPi * stefanBoltz * (globalsourceArray(i)%radius*1.d10)**2 * (globalsourceArray(i)%teff)**4
                  write(message,*) "Lum from spectrum / lum from teff ",sumSurfaceLuminosity/fac

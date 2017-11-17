@@ -41,6 +41,7 @@
      type(VECTOR) :: angMomentum
      real(double) :: accretionRadius
      real(double) :: time
+     real(double) :: habingFlux ! units of Habing 
   end type SOURCETYPE
 
   type(SOURCETYPE), pointer :: globalSourceArray(:) => null()
@@ -744,7 +745,7 @@
 
     subroutine getPhotonPositionDirection(source, position, direction, rHat, grid, weight)
       use inputs_mod, only : biasPhiDirection, biasPhiProb, biasPhiInterval
-      use inputs_mod, only : amrgridcentrey, amrgridcentrex, hotSpot, amrGridSize, pulsatingStar
+      use inputs_mod, only : amrgridcentrey, amrgridcentrex, hotSpot, amrGridSize
       type(GRIDTYPE) :: grid
       real(double) :: r, t, u, v, w, ang, planetBiasWeight, rand
       real(double), optional :: weight
@@ -839,8 +840,8 @@
                   ! for general case here.....
                   direction = fromPhotoSphereVector(rHat)
                endif
-               if (hotSpot.or.pulsatingStar) then
-                  call getPhotoVec(source%surface, position, direction, rHat)
+               if (hotSpot) then
+                  call getPhotoVec(source%surface, position, direction)
                endif
                
             endif
@@ -930,8 +931,8 @@
                ! A limb darkening law should be applied here for 
                ! for general case here.....
                direction = fromPhotoSphereVector(rHat)
-               if (hotSpot.or.pulsatingStar) then
-                  call getPhotoVec(source%surface, position, direction, rhat)
+               if (hotSpot) then
+                  call getPhotoVec(source%surface, position, direction)
                endif
                call biasTowardsPlanet(position, rHat, VECTOR(0.d0, 0.d0, 0.d0), dble(amrGridSize), &
                     planetBiasweight, direction)

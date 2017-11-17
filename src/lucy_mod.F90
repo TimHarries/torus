@@ -813,15 +813,9 @@ contains
              if (.not.variableDustSublimation) then
                 call solveArbitraryDiffusionZones(grid)
              else
-                if (iIter_grand >= 5) call solveArbitraryDiffusionZones(grid)
+                if (iIter_grand > 6) call solveArbitraryDiffusionZones(grid)
              endif
           endif
-       call writeVtkFile(grid, "diff.vtk", &
-            valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-            "dust       ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", "diff       ", &
-            "chiline    ", &
-            "adot       ", "under      "/))
-
 
           nCellsInDiffusion = 0
           nUndersampled = 0
@@ -935,7 +929,12 @@ contains
                 call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
              endif
 
-             if ((iiter_grand == 5).and.doSmoothGridTau) then
+             if (iIter_grand >= 6) then
+                tauMax = 1e30
+                call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+             endif
+
+             if ((iiter_grand == 6).and.doSmoothGridTau) then
                 call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
                 call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
@@ -984,11 +983,10 @@ contains
              call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
           endif
 
-          if (iIter_grand >= 5) then
+          if (iIter_grand > 6) then
              nCellsInDiffusion = 0
              if (solveDiffusionZone) then
-                call defineDiffusionOnUndersampled(grid%octreeroot, nDiff=nCellsInDiffusion, reset=.true.)
-                call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
+                call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion, reset=.true.)
                 write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
                 call writeInfo(message,IMPORTANT)
              endif
@@ -1016,10 +1014,7 @@ contains
           iMultiplier  = iMultiplier * 2
           if ( convergeOnUndersampled ) converged = .false.
        endif
-!       if (variableDustSublimation.and.(iIter_grand == 7)) converged = .true.
-
-       if (variableDustSublimation.and.(iIter_grand > 6).and. &
-            (percent_undersampled < percent_undersampled_min)) converged = .true.
+       if (variableDustSublimation.and.(iIter_grand == 8)) converged = .true.
 
 
        if ((grid%geometry == "shakara").and.variableDustSublimation) then
@@ -1049,7 +1044,7 @@ contains
        end if
 
        if (multiLucyFiles) then
-          write(tfilename, '(a,i3.3,i3.3,i3.3,a)') "lucy_",iHydro,iIter_grand,imultiplier,".vtk"
+          write(tfilename, '(a,i2.2,a)') "lucy",iIter_grand,".vtk"
        else
           tfilename = "lucy.vtk"
        endif
@@ -1068,7 +1063,6 @@ contains
        if (myRankIsZero.and.writelucytmpfile) then
           write(tfilename, '(a,i3.3,a,i3.3,a,i3.3,a)') "lucy_",iHydro,"_",iIter_grand,"_",imultiplier,".dat"
           call writeAMRgrid(tfilename, .false., grid)
-!          call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
        endif
        if (myrankIsZero) then
           open(33, file="restart.dat", status="unknown",form="formatted")
@@ -1986,11 +1980,10 @@ contains
 
 
              if (.not.thisOctal%fixedTemperature(subcell)) then
-                if (thisOctal%nCrossings(subcell) > 0) then
+                if (thisOctal%nCrossings(subcell) .ge. 10) then
                    thisOctal%temperature(subcell) = max(TMinGlobal,thisOctal%temperature(subcell) + underCorrect*real(deltaT))
-                else
-                   thisOctal%temperature(subcell) = TminGlobal
                 endif
+ 
                 if (thisOctal%inflow(subcell).and.(thisOctal%nCrossings(subcell) .lt. minCrossings)) then
                    nUnderSampled = nUndersampled + 1
                    thisOctal%undersampled(subcell) = .true.
@@ -2193,10 +2186,6 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
        sOctal => tempOctal
 
        if (tempOctal%diffusionApprox(tempsubcell)) then
-!XXXXXXXXX
-          photoninDiffusionZone = .true.
-          escaped = .true.
-          goto 666
 
           call randomWalk(grid, tempOctal, tempSubcell,  endOctal, endSubcell, diffusionZoneTemp, ok)
 

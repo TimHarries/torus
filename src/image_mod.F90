@@ -259,7 +259,6 @@ module image_mod
 
         call pixelLocate(thisImageSet(i), xDist, yDist, xPix, yPix)
 
-
         if ((xPix >= 1) .and. &
              (yPix >= 1) .and. &
              (xPix <= thisImageSet(i)%nx) .and. &
@@ -821,11 +820,10 @@ module image_mod
        endif
 
        ! Add keywords for bitpix=16 and bitpix=8 
-
-       write(*,*) "minimum/maximum value in image ",minval(array), maxval(array)
        call addScalingKeywords(maxval(array), minval(array), unit, bitpix)
 
        call ftppre(unit,group,fpixel,nelements,array,status)
+
        !
        !  Write another optional keyword to the header.
        !
@@ -969,7 +967,7 @@ module image_mod
 
        use fits_utils_mod
        use image_utils_mod
-       use inputs_mod, only : amrgridsize
+       use inputs_mod, only : amrgridsize, columnAxisUnits, columnDataUnits
 
 ! Arguments
        real(double), pointer ,intent(in) :: image(:,:)
@@ -988,7 +986,7 @@ module image_mod
        allocate(array(1:npix, 1:npix))
        call writeInfo("Writing column density image to: "//trim(filename),TRIVIAL)
 
-       call checkBitpix(FitsBitpix)
+!       call checkBitpix(FitsBitpix)
 
        status=0
        !
@@ -1013,7 +1011,13 @@ module image_mod
        !  Initialize parameters about the FITS image (300 x 200 16-bit integers).
        !
        simple=.true.
-       bitpix=fitsbitpix
+       if ( fitsbitpix ==   8   .or. fitsbitpix ==  16 .or. fitsbitpix ==  32 &
+           .or. fitsbitpix == -32   .or. fitsbitpix == -64 ) then 
+          bitpix=fitsbitpix
+       else
+          bitpix=-32
+       endif
+       call checkBitpix(bitpix)
        naxis=2
        naxes(1)=npix
        naxes(2)=npix
@@ -1034,11 +1038,6 @@ module image_mod
        array = real(image * scale)
 
 
-       dx = amrgridsize/dble(npix)
-       dy = amrgridsize/dble(npix)
-       refvalx = -amrgridSize/2.d0 + (amrgridsize/dble(npix))/2.d0
-       refvaly = -amrgridSize/2.d0 + (amrgridsize/dble(npix))/2.d0
-
        ! Add keywords for bitpix=16 and bitpix=8 
        call addScalingKeywords(maxval(array), minval(array), unit, bitpix)
 
@@ -1048,20 +1047,57 @@ module image_mod
        !  Write another optional keyword to the header.
        !
 
-       call ftpkys(unit,'BUNIT', "g cm^-2", "units of image values", status)
+       select case (columnDataUnits)
+       case ("gcm-2", "g/cm2")
+          call ftpkys(unit,'BUNIT', "g cm^-2", "units of image values", status)
+       case ("K", "k", "kelvin")
+          call ftpkys(unit,'BUNIT', "K", "units of image values", status)
+       case DEFAULT 
+          call ftpkys(unit,'BUNIT', "g cm^-2", "units of image values", status)
+       end select
+
+       dx = amrgridsize/dble(npix)
+       dy = amrgridsize/dble(npix)
+       refvalx = -amrgridSize/2.d0 + (amrgridsize/dble(npix))/2.d0
+       refvaly = -amrgridSize/2.d0 + (amrgridsize/dble(npix))/2.d0
+       select case (columnAxisUnits)
+       case ("au", "AU")
+          dx = (dx * 1.d10)/autocm
+          dy = (dy * 1.d10)/autocm
+          refValX = refvalx * 1.d10 / autocm
+          refValY = refvaly * 1.d10 / autocm
+          call ftpkys(unit,'CUNIT1', "AU", "x axis unit", status)
+          call ftpkys(unit,'CUNIT2', "AU", "y axis unit", status)
+       case ("pc","PC")
+          dx = (dx * 1.d10)/pctocm
+          dy = (dy * 1.d10)/pctocm
+          refValX = refvalx * 1.d10 / pctocm
+          refValY = refvaly * 1.d10 / pctocm
+          call ftpkys(unit,'CUNIT1', "PC", "x axis unit", status)
+          call ftpkys(unit,'CUNIT2', "PC", "y axis unit", status)
+       case ("cm")
+          dx = dx * 1.d10
+          dy = dy * 1.d10
+          refValX = refvalx * 1.d10
+          refValY = refvaly * 1.d10
+          call ftpkys(unit,'CUNIT1', "cm", "x axis unit", status)
+          call ftpkys(unit,'CUNIT2', "cm", "y axis unit", status)
+       case default
+          ! leave in code units
+          call ftpkys(unit,'CUNIT1', "10^10 cm", "x axis unit", status)
+          call ftpkys(unit,'CUNIT2', "10^10 cm", "y axis unit", status)
+       end select
 
 
-       call ftpkys(unit,'CUNIT1', "PC", "x axis unit", status)
-       call ftpkys(unit,'CUNIT2', "PC", "y axis unit", status)
           call ftpkys(unit,'CTYPE1'," X","x axis", status)
           call ftpkyd(unit,'CRPIX1',0.5_db,-3,'reference pixel',status)
-          call ftpkyd(unit,'CDELT1',dx,10,' ',status)
+          call ftpkyd(unit,'CDELT1',dx,10,'dx',status)
           call ftpkyd(unit,'CRVAL1',refValX,-3,'coordinate value at reference point',status)
 
           ! write y-axis keywords
           call ftpkys(unit,'CTYPE2'," Y","y axis", status)
           call ftpkyd(unit,'CRPIX2',0.5_db,-3,'reference pixel',status)
-          call ftpkyd(unit,'CDELT2',dy,10 ,' ',status)
+          call ftpkyd(unit,'CDELT2',dy,10 ,'dy',status)
           call ftpkyd(unit,'CRVAL2',refValY,-3,'coordinate value at reference point',status)
 
        call ftclos(unit, status)
@@ -1072,6 +1108,7 @@ module image_mod
        end if
 
      End subroutine writeFitsColumnDensityImage
+
 #endif
 
      subroutine pixelLocate(image, xDist, yDist, ix, iy)
@@ -1079,7 +1116,6 @@ module image_mod
        type(IMAGETYPE) :: image
        real :: xDist, yDist
        integer :: ix, iy
-
 
        ix = 0
        iy = 0

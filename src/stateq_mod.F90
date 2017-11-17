@@ -2612,7 +2612,7 @@ contains
       
      wav=1.e8_db*cSpeed/freq
      gauntf=giii(1.e0_db,t,wav)
-     alpkk=gauntf*real(3.6d8/((dble(freq)**3)*sqrt(dble(t))))
+     alpkk=gauntf*real(3.7d8/((dble(freq)**3)*sqrt(dble(t))))
      
   end function alpkk
 

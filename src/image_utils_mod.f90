@@ -27,7 +27,6 @@ module image_utils_mod
      real    :: inclination
      real    :: positionAngle
      real    :: offsetX, offsetY
-     real :: time
      type(VECTOR) :: viewVec
   END TYPE imageParameters
 
@@ -61,7 +60,7 @@ contains
 ! values it has been given. 
 !
   subroutine setImageParams(i, lambda, type, filename, nPixels, axisUnits, fluxUnits, &
-       imageSize, aspectRatio, inclination, positionAngle, offsetX, offsetY, gridDistance, viewVec, imagetime)
+       imageSize, aspectRatio, inclination, positionAngle, offsetX, offsetY, gridDistance, viewVec)
     use messages_mod
     use constants_mod, only: autocm, pctocm, pi
     implicit none 
@@ -80,7 +79,6 @@ contains
     real, intent(in) :: offsetX, offsetY
     real, intent(in) :: gridDistance
     type(VECTOR), optional :: viewVec
-    real, intent(in), optional :: imageTime
 
 ! Local variables
     character(len=80) :: message
@@ -168,9 +166,6 @@ contains
 ! Set the position of the image centre
     myImages(i)%offsetX = offsetX
     myImages(i)%offsetY = offsetY
-
-    myImages(i)%time = 0.d0
-    if (PRESENT(imageTime)) myImages(i)%time = imageTime
 
   end subroutine setImageParams
 
