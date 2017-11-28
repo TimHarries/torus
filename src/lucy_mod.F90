@@ -2,7 +2,7 @@ module lucy_mod
 
   use constants_mod
   use messages_mod
-  use pah_mod
+  use pah_mod, only: getPAHfreqFromAdot, getKappaAbsPAH, getKappaScaPAH, PAHemissivityFromAdot
   use vector_mod
   use amr_mod, only: addNewChild, inOctal, distanceToCellBoundary, returnKappa, amrGridValues, &
        countvoxels, findsubcelllocal, findsubcelltd
