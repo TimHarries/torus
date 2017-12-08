@@ -948,10 +948,10 @@
   logical, protected :: dragon
   logical, protected :: refineCentre  ! switch on extra grid refinement for SPH-Torus discs 
   logical, protected :: SphOnePerCell ! Split to one particle per cell for galactic plane survey
-  logical :: doVelocitySplit ! Should grid be split based on velocity values of SPH particles? 
+  logical            :: doVelocitySplit ! Should grid be split based on velocity values of SPH particles? 
   logical, protected :: convertRhoToHI ! Convert density to HI
-  integer, protected :: ih2frac        ! column of SPH file which contains H2 fraction
-  integer, protected :: iCO            ! column of SPH file which contains CO fraction
+  integer, protected :: sphh2col       ! column of SPH file which contains H2 fraction
+  integer, protected :: sphmolcol      ! column of SPH file from which molecular abundances will be read
   logical, protected :: sphwithchem    ! SPH has chemistry data which needs to be read
   logical, protected :: discardSinks   ! Don't store sink particles
   logical :: guessNe                   !guess the electron number density based on temperature

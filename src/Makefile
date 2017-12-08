@@ -129,7 +129,7 @@ ifeq ($(SYSTEM), gfortran)
         F95COMP = gfortran
     endif
      ZLIBLIBS = -lz
-    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Wno-surprising -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
+    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Wno-surprising -Wno-conversion -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
 #    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-surprising -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
 #    DEBUGFLAG= -ggdb -fbacktrace -Wunderflow -Wall -Werror -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
     FASTFLAG = -O3

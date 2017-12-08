@@ -4,7 +4,7 @@
 
 use strict;
 
-print "Checking mass values \n\n";
+print "Checking mass values \n";
 
 my $tolerance=0.12;
 my $TRAPtolerance=0.30; 
@@ -32,7 +32,7 @@ while(<SPHINFO>){
 close SPHINFO;
 
 print "Mass required is $massRequired \n";
-print "CO mass required is $COmassRequired \n\n";;
+print "CO mass required is $COmassRequired \n";;
 
 # Parse log file to determine mass values from the AMR grid
 
@@ -52,7 +52,7 @@ while(<RUNLOG>){
     $fracDiff= ($mass - $massRequired) / $massRequired;
     print "Fractional difference = $fracDiff \n";
     if ( abs($fracDiff) < $tolerance ){
-      print "HI mass agrees within tolerance of $tolerance\n\n"
+      print "HI mass agrees within tolerance of $tolerance\n"
     } else
       {
 	print "TORUS: test failed (HI mass)\n";
@@ -68,7 +68,7 @@ while(<RUNLOG>){
     $fracDiff= ($mass - $massRequired) / $massRequired;
     print "Fractional difference = $fracDiff \n";
     if ( abs($fracDiff) < $TRAPtolerance ){
-      print "HI mass (TRAP) agrees within tolerance of $TRAPtolerance\n\n"
+      print "HI mass (TRAP) agrees within tolerance of $TRAPtolerance\n"
     } else
       {
 	print "TORUS: test failed (HI mass TRAP)\n";
@@ -87,7 +87,7 @@ while(<RUNLOG>){
     $fracDiff= ($mass - $COmassRequired) / $COmassRequired;
     print "Fractional difference = $fracDiff \n";
     if ( abs($fracDiff) < $COtolerance ){
-	print "CO mass agrees within tolerance of $tolerance\n\n";
+	print "CO mass agrees within tolerance of $tolerance\n";
 	print "TORUS: Test successful\n";
     } else
       {
