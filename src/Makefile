@@ -12,6 +12,7 @@
 #   10. make codecov=yes : Generate coverage statistics with ifort
 #   11. make zlib=yes:   : Use z-lib compression libary to produce vtu files
 #   12. make sundials=yes: Use sundials chemistry ODE tool
+#   13. make f2008=yes   : Use Fortran 2008 features
 #-------------------------------------------------------------------------
 
 USEMKL  = no
@@ -20,6 +21,7 @@ minusg = no
 netcdf = no
 sundials = no
 hdf = no
+f2008=no
 memcheck = yes
 zlib = yes
 debug   = no
@@ -449,6 +451,10 @@ endif
 
 ifeq ($(netcdf), yes)
    ETCFLAG += -DNETCDF
+endif
+
+ifeq ($(f2008), yes)
+   ETCFLAG += -DF2008
 endif
 
 #SUNFLAG = -sundials

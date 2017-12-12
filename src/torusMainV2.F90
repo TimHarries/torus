@@ -131,6 +131,7 @@ program torus
 
 ! Report build options 
   call report_parallel_type
+  call write_job_info_file
 
   ! set up a random seed
   call run_random_test_suite
