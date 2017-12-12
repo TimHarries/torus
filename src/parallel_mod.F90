@@ -359,6 +359,89 @@ contains
 
   end subroutine torus_abort
 
+!
+! Report information about how Torus was built and the parallelism in use
+!
+  subroutine report_parallel_type
+
+    use messages_mod
+#ifdef _OPENMP
+    use omp_lib
+#endif
+    implicit none
+    
+    character(len=80) :: message
+    integer :: num_openmp_threads
+
+! Find out the number of OpenMP threads in use. This needs to be done from within a 
+! parallel region. If OpenMP is not in use then set variable to junk value to indicate
+! a problem if it is inadvertently used
+#ifdef _OPENMP
+!$OMP PARALLEL
+    num_openmp_threads=omp_get_num_threads()
+!$OMP END PARALLEL
+#else
+    num_openmp_threads=-1
+#endif
+
+    call writeBanner("Build options and parallelism","%",TRIVIAL)
+
+! Report type of parallelism and the number of MPI processes and OpenMP threads if 
+! appropriate. nThreadsGlobal has already been set up by mpi_amr_mod::setupAMRCOMMUNICATOR
+    if (TorusHybrid) then 
+       call  writeInfo('Using hybrid MPI/OpenMP', TRIVIAL)
+       write(message,'(a,1x,i5)') 'Total number of MPI processes:', nThreadsGlobal
+       call  writeInfo(message, TRIVIAL)
+       write(message,'(a,1x,i5)') 'Number of OpenMP threads:', num_openmp_threads
+       call  writeInfo(message, TRIVIAL)
+    elseif (TorusMpi) then 
+       call  writeInfo('Using MPI', TRIVIAL)
+       write(message,'(a,1x,i5)') 'Total number of MPI processes:', nThreadsGlobal
+       call  writeInfo(message, TRIVIAL)
+    elseif (TorusOpenmp) then 
+       call  writeInfo('Using OpenMP', TRIVIAL)
+       write(message,'(a,1x,i5)') 'Number of OpenMP threads:', num_openmp_threads
+       call  writeInfo(message, TRIVIAL)
+    elseif (TorusSerial) then
+       call  writeInfo('No parallelism is in use', TRIVIAL)
+    end if
+
+    call  writeInfo('', TRIVIAL)
+    call writeInfo("Options used to build Torus were:", TRIVIAL)
+#ifdef HYDRO
+     call writeInfo("hydro=yes", TRIVIAL)
+#else
+     call writeInfo("hydro=no", TRIVIAL)
+#endif
+#ifdef PHOTOION
+     call writeInfo("photoion=yes", TRIVIAL)
+#else
+     call writeInfo("photoion=no", TRIVIAL)
+#endif
+#ifdef MOLECULAR
+     call writeInfo("molecular=yes", TRIVIAL)
+#else
+     call writeInfo("molecular=no", TRIVIAL)
+#endif
+#ifdef CMFATOM
+     call writeInfo("atomic=yes", TRIVIAL)
+#else
+     call writeInfo("atomic=no", TRIVIAL)
+#endif
+#ifdef SPH
+     call writeInfo("sph=yes", TRIVIAL)
+#else
+     call writeInfo("sph=no", TRIVIAL)
+#endif
+#ifdef USECFITSIO
+     call writeInfo("cfitsio=yes", TRIVIAL)
+#else
+     call writeInfo("cfitsio=no", TRIVIAL)
+#endif
+    call  writeInfo('', TRIVIAL)
+
+  end subroutine report_parallel_type
+
 end module parallel_mod
 
 
