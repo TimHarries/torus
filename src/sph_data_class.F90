@@ -104,6 +104,10 @@ module sph_data_class
 ! This assumes a 10:1 H:He ratio by number
     real(double), parameter, private :: gmw = 14.0/11.0 
 
+! The following variables will be set by molecular_mod
+    character(len=10), public, save :: sph_molecule = "NOT SET   "
+    real(double), public, save      :: sph_molecularWeight = -1.0e30
+    
   real(double), allocatable :: PositionArray(:,:), OneOverHsquared(:), &
                                RhoArray(:), TemArray(:), VelocityArray(:,:), &
                                RhoH2Array(:), rhoCOarray(:), dustfrac(:)
@@ -386,7 +390,7 @@ contains
 
 ! Read SPH data from a splash ASCII dump.
   subroutine new_read_sph_data(rootfilename)
-    use inputs_mod, only: convertRhoToHI, ih2frac, iCO, sphwithchem, iModel, discardSinks
+    use inputs_mod, only: convertRhoToHI, sphh2col, sphmolcol, sphwithchem, iModel, discardSinks
     use inputs_mod, only: dragon, sphdensitycut
     use angularImage_utils, only:  internalView, galaxyPositionAngle, galaxyInclination
     use utils_mod, only : findMultiFilename
@@ -724,7 +728,7 @@ contains
 ! Decide how to convert between internal energy and temperature. If there is information about
 ! the H2 fraction then use this to calculate the molecular weight later on.
     if (convertRhoToHI) then
-       write (message,'(a,i2)') "Will convert total density to HI density using H2 fraction from column ", ih2frac
+       write (message,'(a,i2)') "Will convert total density to HI density using H2 fraction from column ", sphh2col
        call writeInfo(message,FORINFO)
        write (message,'(a)') "Will calculate molecular weight based on H2 fraction"
        call writeInfo(message,FORINFO)
@@ -748,9 +752,9 @@ contains
     end if
 
     if (sphWithChem) then
-       write (message,'(a,i2)') "Reading CO fraction from column ", iCO
+       write (message,'(a,i2)') "Reading molecular abundance from column ", sphmolcol
        call writeInfo(message,FORINFO)
-       if (iCO > nWord) then 
+       if (sphmolcol > nWord) then 
           write(message,*) "SPH file only has", nWord, " columns"
           call writeFatal(message)
        endif
@@ -758,7 +762,7 @@ contains
     end if
 
     if (convertRhoToHI.or.sphwithChem) then 
-       write (message,'(a,i2)') "Will store particle H2 density. H2 fraction is from column ", ih2frac
+       write (message,'(a,i2)') "Will store particle H2 density. H2 fraction is from column ", sphh2col
        call writeInfo(message,FORINFO)
        allocate(sphdata%rhoH2(npart))
     end if
@@ -824,7 +828,7 @@ part_loop: do ipart=1, nlines
 
 ! For SPH simulations with chemistry we need to set up H2
           if ( convertRhoToHI.or.sphwithChem ) then
-             h2ratio = junkArray(ih2frac,ipart)
+             h2ratio = junkArray(sphh2col,ipart)
           endif
 
 ! Set up temperature or internal energy
@@ -852,7 +856,7 @@ part_loop: do ipart=1, nlines
           endif
 
           if (sphwithChem) then 
-             COfrac = junkArray(iCO,ipart)
+             COfrac = junkArray(sphmolcol,ipart)
              sphdata%rhoCO(igas) = COfrac * rhon
           endif
 

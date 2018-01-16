@@ -295,6 +295,7 @@ module molecular_mod
   subroutine readMolecule(thisMolecule, molFilename)
      use unix_mod, only: unixGetenv
      use inputs_mod, only : molAbundance
+     use sph_data_class, only: sph_molecule, sph_molecularWeight
      type(MOLECULETYPE) :: thisMolecule
      character(len=*) :: molFilename
      character(len=80) :: junk
@@ -454,6 +455,13 @@ module molecular_mod
      enddo
      call setKromeLabel(thisMolecule)
      call addMolecularDataReferences(thisMolecule%kromeLabel)
+
+#ifdef SPH
+! Set molecular properties in SPH module. These will be used when contructing the grid.      
+     sph_molecule        = thisMolecule%molecule
+     sph_molecularWeight = real(thisMolecule%molecularWeight,db)
+#endif
+     
      call writeInfo("Done.", IMPORTANT)
 666 continue
    end subroutine readMolecule

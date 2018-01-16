@@ -498,6 +498,9 @@ contains
     call getLogical("radforcemonte", RadForceMonte, cLine, fLine, nLines, &
          "use a path length based estimation for the rad pressure: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getDouble("radforcethresh", RadForceThresh, 1.d0, cLine, fLine, nLines, &
+         "use a path length based estimation for the rad pressure: ","(a,f7.1,1x,a)", 1.0d-15, ok, .false.)
+
     call getLogical("accretionfeedback", AccretionFeedback, cLine, fLine, nLines, &
          "re-inject some of the accreted material into the domain: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -1446,8 +1449,11 @@ contains
           call getReal("router", rOuter, 1., cLine, fLine, nLines, &
                "Outer Radius (10^10cm): ","(a,1pe8.2,a)", 1e6, ok, .true.)
 
-! Geometries which set up a grid from SPH particles
+! -------- Geometries which set up a grid from SPH particles -----------------------
        case("sphfile","molcluster", "theGalaxy", "cluster", "wr104")
+
+          call writeBanner("SPH parameters","#",TRIVIAL)
+          
           call getString("sphdatafilename", sphdatafilename, cLine, fLine, nLines, &
                "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
 
@@ -1485,13 +1491,29 @@ contains
 ! and grid needs to be loaded with HI density
           call getLogical("convertrhotohi", convertRhoToHI, cLine, fLine, nLines, &
                "Convert density to HI:", "(a,1l,1x,a)", .false., ok, .false.)
-          call getInteger("ih2frac", ih2frac, cLine, fLine, nLines, &
-               "Column containing H2 fraction ","(a,i2,a)", 11, ok, .false.)
-          call getInteger("iCOfrac", iCO, cLine, fLine, nLines, &
-               "Column containing CO fraction ","(a,i2,a)", 15, ok, .false.)
           call getLogical("sphwithchem", sphwithchem, cLine, fLine, nLines, &
                "SPH has chemistry information:", "(a,1l,1x,a)", .false., ok, .false.)
 
+! If the dump format is ASCII then we can specify which columns to read H2 and molecular abundance from
+          if (inputFileFormat=="ascii" .or. inputFileFormat=="ascii-gadget") then
+             ! Keep ih2frac for backwards compatibility
+             if (checkPresent("sphh2col", cline, nlines)) then
+                call getInteger("sphh2col", sphh2col, cLine, fLine, nLines, &
+                     "Column containing H2 fraction: ","(a,1x,i2,a)", 11, ok, .false.)
+             else
+                call getInteger("ih2frac", sphh2col, cLine, fLine, nLines, &
+                     "Column containing H2 fraction: ","(a,1x,i2,a)", 11, ok, .false.)
+             endif
+             ! Keep iCOfrac for backwards compatibility
+             if (checkPresent("sphmolcol", cline, nlines)) then
+                call getInteger("sphmolcol", sphmolcol, cLine, fLine, nLines, &
+                     "Molecular abundances will be read from column: ","(a,1x,i2,a)", 15, ok, .false.)
+             else
+                call getInteger("iCOfrac", sphmolcol, cLine, fLine, nLines, &
+                     "Column containing CO fraction: ","(a,1x,i2,a)", 15, ok, .false.)
+             end if
+          end if
+          
 ! These parameters allow SPH particles within a box to be selected. Particles 
 ! outside the box are discarded
     call getLogical("sphboxcut", sphboxcut, cLine, fLine, nLines, &

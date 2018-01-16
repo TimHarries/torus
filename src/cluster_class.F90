@@ -299,10 +299,10 @@ contains
   !
   subroutine assign_grid_values(thisOctal,subcell)
 
-    use sph_data_class, only: Clusterparameter, sphData
+    use sph_data_class, only: Clusterparameter, sphData, sph_molecule, sph_molecularWeight
     use constants_mod, only: mhydrogen
     use inputs_mod, only: tMinGlobal,doCOchemistry, x_D
-
+    
     IMPLICIT NONE
 
     TYPE(octal), pointer :: thisOctal
@@ -310,7 +310,8 @@ contains
     type(vector) :: point, clusterparam
     logical, save :: firstTime=.true.
     real(double) :: rho, rhoH2, rhoCO, temp, dustfrac
-
+    character(len=80) :: message
+    
 ! Critical density if we are not using SPH temperature
 !    real(double), parameter :: density_crit = 1d13
 
@@ -351,9 +352,14 @@ contains
     if( associated(thisOctal%etaCont)) thisOctal%etaCont(subcell) = 1.e-30
 
 ! If sphData%rhoCO is in use then assume we want to use CO from SPH particles for abundance
-    if ( associated (sphData%rhoCO) ) then 
-       if (firstTime) call writeInfo("Setting CO abundance from particle abundance values")
-       thisOctal%molabundance(subcell) = real(max( ( rhoCO / ( 28.0_db * mhydrogen ) ) / thisOctal%nh2(subcell), 1d-37))
+    if ( associated (sphData%rhoCO) ) then
+       if (firstTime) then
+          write(message,*) "Setting abundance of "//trim(sph_molecule)//" from particle abundance values"
+          call writeInfo(message)
+          write(message,'(a,f5.2)') "Molecular weight for this molecule is ", sph_molecularWeight
+          call writeInfo(message)
+       end if
+       thisOctal%molabundance(subcell) = real(max( ( rhoCO / ( sph_molecularWeight * mhydrogen ) ) / thisOctal%nh2(subcell), 1d-37))
        write(115,*) thisOctal%molabundance(subcell), rhoCO, thisOctal%nh2(subcell)
     end if
 

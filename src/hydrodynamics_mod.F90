@@ -4960,7 +4960,7 @@ contains
 !Calculate the modification to cell velocity and energy due to the pressure gradient
   recursive subroutine pressureforce(thisoctal, dt, grid, direction)
     use mpi
-    use inputs_mod, only  : radiationpressure, RadForceMonte
+    use inputs_mod, only  : radiationpressure, RadForceMonte, RadForceThresh
     type(octal), pointer   :: thisoctal
     type(gridtype) :: grid
     type(VECTOR) :: direction
@@ -5047,7 +5047,7 @@ contains
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
 
                 if (radiationPressure) then
-                   if (RadForceMonte) then
+                   if (RadForceMonte .and. thisOctal%rho(subcell)< radForceThresh) then 
                       thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
                            dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
                    else
@@ -5069,7 +5069,7 @@ contains
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
 
                 if (radiationPressure) then
-                   if (RadForceMonte) then
+                   if (RadForceMonte .and. thisOctal%rho(subcell)< radForceThresh) then 
                       thisOctal%rhov(subcell) = thisOctal%rhov(subcell) + &
                            dt * thisOctal%kappaTimesFlux(subcell)%y/cspeed
                    else
@@ -5090,7 +5090,7 @@ contains
                      thisOctal%rho(subcell) * (phi_i_plus_half - phi_i_minus_half) / dx
 
                 if (radiationPressure) then
-                   if (RadForceMonte) then
+                   if (RadForceMonte .and. thisOctal%rho(subcell)< radForceThresh) then 
                       thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
                            dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed
                    else
@@ -5138,7 +5138,7 @@ contains
 !Calculate the modification to cell velocity and energy due to the pressure gradient
   recursive subroutine pressureforceCylindrical(thisoctal, dt, grid, direction)
     use mpi
-    use inputs_mod, only : includePressureTerms, radiationpressure, RadForceMonte
+    use inputs_mod, only : includePressureTerms, radiationpressure, RadForceMonte, radForceThresh
     type(octal), pointer   :: thisoctal
     type(gridtype) :: grid
     type(VECTOR) :: direction, fVisc, rVec, gravForceFromSinks, cellCentre
@@ -5386,7 +5386,7 @@ contains
 
 
                 if (radiationPressure) then
-                   if (RadForceMonte) then
+                   if (RadForceMonte .and. thisOctal%rho(subcell)< radForceThresh) then 
                       thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
                            dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
                    else
@@ -5487,7 +5487,7 @@ contains
 !                   endif
 
                 if (radiationPressure) then
-                   if (RadForceMonte) then
+                   if (RadForceMonte .and. thisOctal%rho(subcell)< radForceThresh) then 
                       thisOctal%rhow(subcell) = thisOctal%rhow(subcell) + &
                            dt * thisOctal%kappaTimesFlux(subcell)%z/cspeed
                    else
@@ -5543,7 +5543,7 @@ contains
 !Calculate the modification to cell velocity and energy due to the pressure gradient
   recursive subroutine pressureforceSpherical(thisoctal, dt, grid, direction)
     use mpi
-    use inputs_mod, only : includePressureTerms, radiationpressure, RadForceMonte
+    use inputs_mod, only : includePressureTerms, radiationpressure, RadForceMonte, radForceThresh
     type(octal), pointer   :: thisoctal
     type(gridtype) :: grid
     type(VECTOR) :: direction, fVisc, rVec, gravForceFromSinks
@@ -5725,7 +5725,7 @@ contains
 
 
                 if (radiationPressure) then
-                   if (RadForceMonte) then
+                   if (RadForceMonte .and. thisOctal%rho(subcell)< radForceThresh) then 
                       thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
                            dt * thisOctal%kappaTimesFlux(subcell)%x/cspeed
                    else
