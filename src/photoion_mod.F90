@@ -1028,7 +1028,7 @@ end subroutine photoIonizationloop
        else
           if (thisOctal%centre%x < 0.d0) then
              thisOctal%rho(subcell) = 1.d-30
-             thisOctal%temperature(subcell) = 1.d-30
+             thisOctal%temperature(subcell) = 1.e-10
 
           endif
        endif
