@@ -528,6 +528,7 @@
   logical :: addDisc
   type(VECTOR) :: sphereVelocity, spherePosition                  ! unisphere geometry
   real(double) :: sphereMass, sphereRadius, sphereSurroundingsFac ! unisphere geometry
+  real(double) :: shellMass, shellAlpha
   real(double) :: plumberMass, plumberRadius, plumberExponent     ! Plumber filament geometry
   real(double) :: omega
   integer :: nSphereSurface ! number of points on spherical surface
