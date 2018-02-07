@@ -1004,6 +1004,10 @@ CONTAINS
     CASE("unimed")
        call calcUniMed(thisOctal, subcell)
 
+       
+    CASE("shell")
+       call calcShell(thisOctal, subcell)
+
 
     CASE("sphere")
        call calcSphere(thisOctal, subcell)
@@ -4599,6 +4603,12 @@ CONTAINS
           if (sqrt(rvec%x**2+(0.25*rvec%z)**2) <= (smallestCellSize * 2.5**(1+maxDepthAMR-thisOctal%nDepth))) then
               split=.true.
           endif
+       case("shell")
+          r = modulus(subcellCentre(thisOctal,subcell))*1.d10
+          split = .false.
+          if ( (r+thisOCtal%subcellsize*1.d10 >rInner).and.(  r-thisOCtal%subcellsize*1.d10 < rOuter)) split = .true.
+          
+
        case("spiral")
           call splitSpiral(thisOctal, split, splitInAzimuth)
           if (thisOctal%nDepth < minDepthAMR) split = .true.
@@ -10039,6 +10049,26 @@ logical function insideCone(position, binarySep, momRatio)
     endif
 
   end subroutine calcSphere
+
+  subroutine calcShell(thisOctal,subcell)
+
+    use inputs_mod, only : rInner, rOuter, shellalpha, shellMass
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: r, rho0
+
+    rVec = subcellCentre(thisOctal, subcell)
+    r = modulus(rVec)*1.d10
+
+    rho0 = shellmass  * (3.d0 - shellalpha) / (fourPi * rInner**shellalpha * (rOuter**(3.d0-shellalpha) - rInner**(3.d0-shellalpha)))
+
+    if ((r > rInner).and.(r < rOuter)) then
+       thisOctal%rho(subcell) = rho0 * (rInner/r)**(shellalpha)
+    endif
+
+
+  end subroutine calcShell
 
   subroutine calcPlumber(thisOctal,subcell)
 
