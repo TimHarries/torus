@@ -3318,7 +3318,7 @@ end subroutine rdintpro
     yMedian = yArray
 
 
-    if (sedlambdainmicrons) then
+    if (sedlambdainmicrons.or.sedInJansky) then
        tmpXarray(1:nLambda) = xArray(1:nLambda) / 1.e4
     endif
 
@@ -3381,8 +3381,8 @@ end subroutine rdintpro
        if (SedInJansky) then
           do i = 1, nLambda
              stokes_i(i) = convertToJanskies(dble(stokes_i(i)), dble(xArray(i)))
-             stokes_q(i) = convertToJanskies(dble(stokes_i(i)), dble(xArray(i)))
-             stokes_u(i) = convertToJanskies(dble(stokes_i(i)), dble(xArray(i)))
+             stokes_q(i) = convertToJanskies(dble(stokes_q(i)), dble(xArray(i)))
+             stokes_u(i) = convertToJanskies(dble(stokes_u(i)), dble(xArray(i)))
              stokes_qv(i) = convertToJanskies(sqrt(dble(stokes_qv(i))), dble(xArray(i)))
              stokes_uv(i) = convertToJanskies(sqrt(dble(stokes_uv(i))), dble(xArray(i)))
           enddo

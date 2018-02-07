@@ -886,6 +886,16 @@ contains
        call getDouble("arthurscaleheight", arthurScaleHeight, pctocm/1.d10, cLine, fLine, nLines, &
             "Scale height (in pc): ","(a,e12.3,1x,a)", 0.05d0 , ok, .false.)
 
+     case("shell")
+          call getReal("rinner", rInner, real(rSol), cLine, fLine, nLines, &
+               "Inner Radius (solar radii): ","(a,f7.3,a)", 12., ok, .true.)
+          call getReal("router", rOuter, real(rsol), cLine, fLine, nLines, &
+               "Outer Radius (solar radii): ","(a,f5.1,a)", 20., ok, .true.)
+          call getDouble("alpha", shellalpha, 1.d0, cLine, fLine, nLines, &
+               "Shell density power law index: ","(a,f7.3,a)", 12.d0, ok, .true.)
+          call getDouble("shellmass", shellMass, 1.d0, cLine, fLine, nLines, &
+               "Shell mass (g): ","(a,f5.1,a)", 20.d0, ok, .true.)
+
      case("unisphere","gravtest")
        oneKappa = .true.
 
