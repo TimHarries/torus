@@ -1010,6 +1010,31 @@ end subroutine photoIonizationloop
     enddo
   end subroutine zeroDistanceGrid
 
+  recursive subroutine setGhostCellsToZero(thisOctal)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call setGhostCellsToZero(child)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%centre%x < 0.d0) then
+             thisOctal%rho(subcell) = 1.d-30
+             thisOctal%temperature(subcell) = 1.e-10
+
+          endif
+       endif
+    enddo
+  end subroutine setGhostCellsToZero
+
   recursive subroutine setTemperature(thisOctal, t)
   type(octal), pointer   :: thisOctal
   real :: t
@@ -3048,7 +3073,7 @@ end subroutine readHeIIrecombination
 #endif
 
   subroutine createImagePhotoion(grid, nSource, source,imageNum)
-    use inputs_mod, only : nPhotImage
+    use inputs_mod, only : nPhotImage, amr2d, cylindrical
     use image_mod, only: initImage, freeImage, IMAGETYPE, addPhotonToPhotoionImage
     use image_utils_mod
 #ifdef USECFITSIO
@@ -3118,6 +3143,8 @@ end subroutine readHeIIrecombination
 
     thisImage = initImage(imageNum)
 
+    if (amr2d.and.cylindrical) call setGhostCellsToZero(grid%octreeRoot)
+
     call setupGridForImage(grid, outputimageType, lambdaLine, iLambdaPhoton, nsource, source, lcore)
     if (writeoutput) write(*,*) "Grid set up."
     if (nSource > 1) &
@@ -3158,6 +3185,11 @@ end subroutine readHeIIrecombination
     powerPerPhoton = ( (lCore + totalEmission) / dble(nPhotImage) ) / 1.0d20
     write(message,*) "power per photon ",powerperphoton
     call writeInfo (message, FORINFO)
+
+    call writeVtkFile(grid, "dust_initial.vtk", &
+         valueTypeString=(/"rho        ", "temperature", "tdust      ", "dust1      ","velocity   ", &
+                           "etacont    "/))
+
 
 #ifdef MPI
     i = nPhotImage/nThreadsGlobal

@@ -2,7 +2,7 @@ module lucy_mod
 
   use constants_mod
   use messages_mod
-  use pah_mod
+  use pah_mod, only: getPAHfreqFromAdot, getKappaAbsPAH, getKappaScaPAH, PAHemissivityFromAdot
   use vector_mod
   use amr_mod, only: addNewChild, inOctal, distanceToCellBoundary, returnKappa, amrGridValues, &
        countvoxels, findsubcelllocal, findsubcelltd
@@ -452,6 +452,8 @@ contains
 
                  if (.not. TorusSerial) call test_random_hybrid()
 
+                 if (doTuning) call tune(6, "Photon loop")
+
                 !$OMP PARALLEL DEFAULT(NONE) &
                 !$OMP PRIVATE(iMonte, iSource, rVec, uHat, rHat) &
                 !$OMP PRIVATE(escaped, wavelength, thisFreq, thisLam, iLam, octVec) &
@@ -706,7 +708,7 @@ contains
 
           !$OMP END PARALLEL
 
-
+                if (doTuning) call tune(6, "Photon loop")
 
 #ifdef MPI
           ! Summing the value in octal computed by each processors.

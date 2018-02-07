@@ -61,7 +61,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   use vtk_mod, only: writeVtkFile
   use physics_mod, only : setupdust
   use fillGridTio_mod
-  use surface_mod
   use fillGridRayleigh_mod
   use fillGridThomson_mod
 #ifdef PHOTOION

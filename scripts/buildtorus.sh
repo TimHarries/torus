@@ -104,13 +104,7 @@ cd ..
 
 thisHost=`hostname -f`
 
-if [[ $thisHost == service*.ice.astro.ex.ac.uk ]]; then
-    echo "This looks like Zen"
-    system_mpi=zen
-    system_hybrid=zen
-    system_openmp=zensingle
-
-elif [[ $thisHost == dirac*.rcs.cluster ]]; then
+if [[ $thisHost == dirac*.rcs.cluster ]]; then
     echo "This looks like Complexity"
     system_mpi=complexity
     system_hybrid=complexity
@@ -124,13 +118,14 @@ elif [[ $thisHost == login*.cluster.local ]]; then
     
 else
 
-# Look for compiler for OpenMP build 
+# Look for compiler for OpenMP/serial builds
     torusFortranCompiler=none
 
     echo "Looking for gfortran"
-    which gfortran > /dev/null
+    which gfortran > /dev/null 2>&1 
     if [[ $? -eq 0 ]]; then
-	echo "Found gfortran"
+	gfortranVersion=`gfortran -v 2>&1 | grep 'gcc version' | awk '{print $3}'`
+	echo "Found gfortran version ${gfortranVersion}"
 	torusFortranCompiler=gfortran
 	system_openmp=gfortran
 	system_mpi=gfortran
@@ -140,13 +135,19 @@ else
     fi
 
     echo "Looking for ifort"
-    which ifort > /dev/null
+    which ifort > /dev/null 2>&1
     if [[ $? -eq 0 ]]; then
-	echo "Found ifort"
+	ifortVersion=`ifort --version 2>&1 | head -1 | awk '{print $3}'`
+	echo "Found ifort version ${ifortVersion}"
 	torusFortranCompiler=ifort
 	system_openmp=ifort
 	system_mpi=ifort
 	system_hybrid=ifort
+	ifortMajorVersion=`echo ${ifortVersion} | awk 'BEGIN {FS="."}; {print $1}'`
+	if [[ ${ifortMajorVersion} -lt 15 ]]; then
+	    echo "Intel Fortran is older than v15. Using -openmp for OpenMP builds"
+	    make_args="${make_args} OPENMPFLAG=-openmp"
+	fi
     else
 	echo "ifort not found"
     fi
@@ -186,7 +187,7 @@ if [[ $openmp == yes ]]; then
 	cd $builddir
 	ln -s ../../src/* . 
     fi
-    make depends 
+    make depends SYSTEM=${system_openmp} 
     make getgitver=no SYSTEM=${system_openmp} openmp=yes mpi=no $make_args
     if [[ -e torus.${system_openmp} ]]; then
 	cp torus.${system_openmp} ../../bin/torus.openmp
@@ -209,7 +210,7 @@ if [[ $single == yes ]]; then
 	cd $builddir
 	ln -s ../../src/* . 
     fi
-    make depends 
+    make depends SYSTEM=${system_openmp}
     make getgitver=no SYSTEM=${system_openmp} openmp=no mpi=no $make_args
     if [[ -e torus.${system_openmp} ]]; then
 	cp torus.${system_openmp} ../../bin/torus.single
@@ -232,7 +233,7 @@ if [[ $mpi == yes ]]; then
 	cd $builddir
 	ln -s ../../src/* . 
     fi
-    make depends 
+    make depends SYSTEM=${system_mpi}
     make getgitver=no SYSTEM=${system_mpi} mpi=yes openmp=no $make_args
     if [[ -e torus.${system_mpi} ]]; then
 	cp torus.${system_mpi} ../../bin/torus.mpi
@@ -255,7 +256,7 @@ if [[ $hybrid == yes ]]; then
 	cd $builddir
 	ln -s ../../src/* . 
     fi
-    make depends 
+    make depends SYSTEM=${system_hybrid}
     make getgitver=no SYSTEM=${system_hybrid} mpi=yes openmp=yes $make_args
     if [[ -e torus.${system_hybrid} ]]; then
 	cp torus.${system_hybrid} ../../bin/torus.hybrid
