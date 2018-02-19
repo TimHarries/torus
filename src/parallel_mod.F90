@@ -361,6 +361,8 @@ contains
 
   end subroutine torus_abort
 
+!-------------------------------------------------------------------------------
+
 !
 ! Report information about how Torus was built and the parallelism in use
 !
@@ -450,9 +452,16 @@ contains
     use iso_fortran_env
 #endif
 
+#ifdef MPI
+    use mpi
+    integer :: i, size, nameLength
+    character(len=MPI_MAX_PROCESSOR_NAME), allocatable :: jobHosts(:)
+#endif
+
     integer, parameter :: LUN=69
 
 #ifdef MPI
+    call get_mpi_placement()
     if (myRankGlobal /= 0 ) return
 #endif
 
@@ -478,9 +487,47 @@ contains
     write(LUN,'(a,1x,a)') 'Compiler options: ', COMPILER_OPTIONS()
     write(LUN,'(a,1x,a)') 'Compiler version: ', COMPILER_VERSION()
 #endif
+#ifdef MPI
+    write(LUN,'(a)') ' '
+    do i=1,size
+       write(LUN,'(a,i5,a,a)') "Process ", i-1, ": Host ", jobHosts(i)(1:nameLength)
+    end do
+    write(LUN,'(a)') ' '
+#endif
     write(LUN,'(a)') '############################################################'
 
+#ifdef MPI
+    deallocate(jobHosts)
+#endif
+
     close(LUN)
+
+#ifdef MPI
+  contains
+
+    subroutine get_mpi_placement()
+
+      implicit none
+      
+      character(len=MPI_MAX_PROCESSOR_NAME) :: thisHost
+      integer :: rank, ierr
+      integer ::  hostnameString
+
+      call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
+      call MPI_Comm_size(MPI_COMM_WORLD, size, ierr)
+      
+      call MPI_Get_processor_name(thisHost, nameLength, ierr)
+      
+      ! Create a user defined type for communicating the hostname strings
+      call MPI_Type_contiguous(MPI_MAX_PROCESSOR_NAME, MPI_CHARACTER, hostnameString, ierr)
+      call MPI_Type_commit(hostnameString, ierr)
+
+      allocate(jobHosts(size))
+      call MPI_gather(thisHost,1,hostnameString,jobHosts,1,hostnameString,0,MPI_COMM_WORLD,ierr)
+      call MPI_Type_free(hostnameString,ierr)
+      
+    end subroutine get_mpi_placement
+#endif 
 
   end subroutine write_job_info_file
 
