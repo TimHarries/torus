@@ -8688,11 +8688,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
              if (thisPhoton%observerPhoton) then
                 newThread = -1
-                if (.not.freeFreeImage) then
-                   call propagateObserverPhoton(grid, thisPhoton, addToImage, newThread)
-                else
-                   addtoImage = .true.
-                endif
+                call propagateObserverPhoton(grid, thisPhoton, addToImage, newThread, freeFreeImage, lambdaImage)
                 if (addToImage) then
                    call addPhotonToPhotoionImage(observerDirection, thisImage, thisPhoton, totalFluxArray(myRankGlobal))
                    goto 777
@@ -8720,7 +8716,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
                    observerPhoton%tau = 0.d0
                    observerPhoton%direction = observerDirection
                    newThread = -2
-                   call propagateObserverPhoton(grid, observerPhoton, addToImage, newThread)
+                   call propagateObserverPhoton(grid, observerPhoton, addToImage, newThread, freeFreeImage, lambdaImage)
                    if (addToImage) then
                       call addPhotonToPhotoionImage(observerDirection, thisImage, observerPhoton, totalFluxArray(myRankGlobal))
                    else
@@ -8885,7 +8881,8 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
   end subroutine scatterPhotonLocal
 
-  subroutine propagateObserverPhoton(grid, thisPhoton, addToImage, newThread)
+  subroutine propagateObserverPhoton(grid, thisPhoton, addToImage, newThread, freefreeImage, lambdaImage)
+    use stateq_mod, only : alpkk
     type(GRIDTYPE) :: grid
     type(PHOTON) :: thisPhoton
     logical,intent(out) :: addToImage
@@ -8895,6 +8892,9 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     integer :: subcell
     real(double) :: tVal
     real(double) :: kappaAbsDust, kappaScaDust, kappaExt
+    logical :: freeFreeImage
+    real :: lambdaImage
+    real(double) :: temperature, freq
 
     thisOctal => grid%octreeRoot
     call findSubcellTD(thisPhoton%position, grid%octreeRoot, thisOctal, subcell)
@@ -8910,9 +8910,16 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
           write(*,*) myrankGlobal, " bug in propagate observer ", thisphoton%position
        endif
        call distanceToCellBoundary(grid, thisPhoton%position, thisPhoton%direction, tval, thisOctal, subcell)
-       call returnKappa(grid, thisOctal, subcell, ilambda=thisPhoton%ilam, &
-            kappaAbs=kappaAbsDust, kappaSca=kappaScaDust, dir=thisPhoton%direction)
-       kappaExt = kappaAbsDust + kappaScaDust
+       if (freeFreeImage) then
+          temperature = dble(thisOctal%temperature(subcell))
+          freq = cspeed / (lambdaImage*angstromToCm) ! Hz
+          kappaExt = alpkk(freq, temperature) * thisOctal%ne(subcell)**2 * & 
+                 (1.d0 - exp(-hcgs*freq/(kerg*temperature))) / 1.d-10  ! 1e-10 cm-1 
+       else
+          call returnKappa(grid, thisOctal, subcell, ilambda=thisPhoton%ilam, &
+               kappaAbs=kappaAbsDust, kappaSca=kappaScaDust, dir=thisPhoton%direction)
+          kappaExt = kappaAbsDust + kappaScaDust
+       endif
 
 !       if(grid%geometry == "imgTest") then
 !          write(*,*) "kappaExt",kappaExt
