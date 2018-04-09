@@ -368,31 +368,60 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
     close(66)
   end subroutine writeKeplerianButterfly
   
-  subroutine clusterAnalysis(grid, source, nSource)
+  subroutine clusterAnalysis(grid, source, nSource, nLambda, lamArray, miePhase, nMuMie)
     use inputs_mod, only : imodel, edgeRadius, splitOverMPI, burstTime, amrgridsize
-    use inputs_mod, only : columnImageDirection, columnImageFilename
+    use inputs_mod, only : columnImageDirection, columnImageFilename, findNUndersampled, nClusterIonLoops, findHabing
     use utils_mod, only : findMultifilename
+    use phasematrix_mod
 #ifdef MPI
     use mpi
-    use photoionAMR_mod, only : createTemperatureColumnImage, writeLuminosities, calculateAverageTemperature
-    use mpi_amr_mod, only : createIonizationImage, createColumnDensityImage, createhiimage
+#ifdef PHOTOION
+    use photoionAMR_mod, only : createTemperatureColumnImage, writeLuminosities, calculateAverageTemperature, photoionizationLoopAMR
+    use photoionAMR_mod, only : createTdustColumnImage, calculateAverageTdust, createEmissionMeasureImage
+    use mpi_amr_mod, only : createIonizationImage, createColumnDensityImage, createhiimage, findNumberUndersampled
+#endif
+    use hydrodynamics_mod, only : setupevenuparray
 #endif
     use image_mod, only : writeFitsColumnDensityImage 
-    use inputs_mod, only : smallestCellSize, writeLums, plotAvgTemp, calculateGlobalAvgTemp
+    use inputs_mod, only : calculateEmissionMeasure, calculateLymanFlux
+    use inputs_mod, only : smallestCellSize, writeLums, plotAvgTemp, calculateGlobalAvgTemp, plotAvgTdust, calculateGlobalAvgTdust
+    integer :: nMuMie
+    type(PHASEMATRIX) :: miePhase(:,:,:)
+    integer :: nLambda
+    real :: lamArray(:)
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
     integer :: nSource, i
     type(VECTOR) :: startPoint, endPoint, firststartpoint, thisDir
     real(double) :: maxRho, totalMass 
     character(len=80) :: thisFile, rootfilename, fm, thisFileGrid, thisFileRadius
-    real(double), pointer :: image(:,:)
+    real(double), pointer :: image(:,:), rmsImage(:,:)
     logical, save :: firstTime=.true.
     real(double), save :: radius 
     real(double) :: mass, highestRho, volume, ionizedMass, ionizedVolume, totalKE, totalTE, massflux
     character(len=20) :: weighting
     integer :: ierr
-    real(double) :: weightedFluxInRadius, massInRadius, meang0
-    real(double) :: n0, t0, t2, sigma, sigmane, total, tempDouble
+    real(double) :: weightedFluxInRadius, massInRadius, meang0, g0inCell, distance
+    real(double) :: n0, t0, trms, nrms, sigma, sigmane, total, tempDouble
+    integer :: nSampled, nUndersampled, nCells, nPhotoIter
+    real(double) :: loopLimitTime
+    real :: iterTime(3)
+    integer :: evenUpArray(nHydroThreadsGlobal), iterStack(3), optID, iSource
+    real(double) :: nlyA, nlyB, nlyR
+
+#ifdef PHOTOION
+#ifdef MPI
+    if (nClusterIonLoops > 0) then
+       nPhotoIter = 1
+       loopLimitTime = 1.d40 
+       iterTime = 1.e30
+       call setupevenuparray(grid, evenuparray)
+       call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, &
+            lamArray, nPhotoIter, loopLimitTime, looplimittime, .false.,iterTime,.true., &
+            evenuparray, optID, iterStack, miePhase, nMuMie) 
+    endif
+#endif
+#endif
 
 !    write(rootfilename, '(a)') "habingRadial****.dat"
 !    call findMultiFilename(rootfilename, iModel, thisFile)
@@ -439,8 +468,9 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
 !    endif
 
 !   temperature weighted-average along los 
+#IFDEF MPI
     if (plotAvgTemp .or. calculateGlobalAvgTemp) then
-       do i=1,6
+       do i=3,7
           if (i==1) then
              write(weighting, '(a)') "emissivity" 
           elseif (i==2) then
@@ -453,6 +483,8 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
              write(weighting, '(a)') "ne2" 
           elseif (i==6) then
              write(weighting, '(a)') "none" 
+          elseif (i==7) then
+             write(weighting, '(a)') "ionNone" 
           endif
           if (plotAvgTemp) then
              ! pixel-by-pixel average
@@ -468,43 +500,128 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
              sigma = 0.d0
              total = 0.d0
              sigmaNe = 0.d0
-             call calculateAverageTemperature(grid%octreeRoot, grid,sigma, total, trim(weighting), .false., 0.d0, sigmaNe)
+             call calculateAverageTemperature(grid%octreeRoot, grid,sigma, total, trim(weighting), .false., 0.d0, sigmaNe, 0.d0)
              call MPI_ALLREDUCE(sigma, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
-             sigma = tempDouble
+             sigma = tempDouble ! sum(T w dV)
              call MPI_ALLREDUCE(total, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
-             total = tempDouble
+             total = tempDouble ! sum(w dV)
              call MPI_ALLREDUCE(sigmaNe, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
-             sigmaNe = tempDouble
-             t0 = sigma/total
-             n0 = sigmaNe/total
+             sigmaNe = tempDouble ! sum(ne w dV)
+             t0 = sigma/total ! mean temperature
+             n0 = sigmaNe/total ! mean electron density
 
-             ! 2nd order correction
+             ! rms 
              sigma = 0.d0
              total = 0.d0
              sigmaNe = 0.d0
-             call calculateAverageTemperature(grid%octreeRoot, grid, sigma, total, trim(weighting), .true., t0, sigmaNe)
+             call calculateAverageTemperature(grid%octreeRoot, grid, sigma, total, trim(weighting), .true., t0, sigmaNe, n0)
              call MPI_ALLREDUCE(sigma, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
-             sigma = tempDouble
+             sigma = tempDouble ! sum( (T-T0)^2 w dV)
              call MPI_ALLREDUCE(total, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
-             total = tempDouble
-             t2 = sigma/total
+             total = tempDouble ! sum( w dV)
+             call MPI_ALLREDUCE(sigmaNe, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
+             sigmaNe = tempDouble ! sum( (ne-n0)^2 w dV)
+             ! rms = sqrt(<(T-T0)^2>)
+             trms = sqrt(sigma/total)
+             nrms = sqrt(sigmaNe/total)
              if (myrankglobal == 1) then
-                write(thisFile, '(a)') "avgtempGlobal.dat"
+                write(thisFile, '(a)') "avgtempGlobalRms.dat"
                 open(55, file=thisFile, status="unknown", position="append")
                 if (firstTime) then
-                   write(55,'(a5,a20,a13,3(a12,1x))') "#dump", "t(s)", "weight", "T0(K)", "T2(K^2)", "ne_0(cm-3)" 
+                   write(55,'(a5,a20,a13,4(a12,1x))') "#dump", "t(s)", "weight", "T0(K)", "Trms(K)", "ne_0(cm-3)", "neRms(cm-3)"
                 endif
-                write(55,'(i5.4,f20.1, a13, 3(es12.5,1x))') grid%idump, grid%currenttime, trim(weighting), t0, t2, n0
+                write(55,'(i5.4,f20.1, a13, 4(es12.5,1x))') grid%idump, grid%currenttime, trim(weighting), t0, trms, n0, nrms
                 close(55)
              endif
           endif
        enddo
     endif
 
+    if (plotAvgTdust .or. calculateGlobalAvgTdust) then
+       do i=1,2
+          if (i==1) then
+             write(weighting, '(a)') "dustmass"
+          elseif (i==2) then
+             write(weighting, '(a)') "none" 
+          endif
+          if (plotAvgTdust) then
+             ! pixel-by-pixel average
+             if (writeoutput) write(*,*) "Making tdust image with weighting ", weighting
+             ! calculate mean, save to image
+             call createTdustColumnImage(grid, columnImageDirection, image, trim(weighting))
+             write(thisFile, '(i4.4,a,a,a)') grid%idump, "_avgtdust_", trim(weighting), ".fits"
+             if (writeoutput) call writeFitsColumnDensityImage(image, thisFile)
+             ! calculate normalised rms
+             call createTdustColumnImage(grid, columnImageDirection, rmsImage, trim(weighting), image)
+             rmsImage = rmsImage / image**2 ! <(T-Tavg)^2> / Tavg^2
+             write(thisFile, '(i4.4,a,a,a)') grid%idump, "_normvarianceTdust_", trim(weighting), ".fits"
+             if (writeoutput) call writeFitsColumnDensityImage(rmsImage, thisFile)
+          endif
+
+          if (calculateGlobalAvgTdust) then
+             ! global average
+             if (writeoutput) write(*,*) "Calculating avg tdust with weighting ", weighting
+             sigma = 0.d0
+             total = 0.d0
+             sigmaNe = 0.d0
+             call calculateAverageTdust(grid%octreeRoot, grid,sigma, total, trim(weighting), .false., 0.d0, sigmaNe)
+             call MPI_ALLREDUCE(sigma, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
+             sigma = tempDouble
+             call MPI_ALLREDUCE(total, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
+             total = tempDouble
+             t0 = sigma/total ! mean
+
+             ! rms 
+             sigma = 0.d0
+             total = 0.d0
+             sigmaNe = 0.d0
+             call calculateAverageTdust(grid%octreeRoot, grid, sigma, total, trim(weighting), .true., t0, sigmaNe)
+             call MPI_ALLREDUCE(sigma, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
+             sigma = tempDouble
+             call MPI_ALLREDUCE(total, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
+             total = tempDouble
+             ! trms  = sqrt(<(T-Tavg)^2>)
+             trms = sqrt(sigma/total)
+             if (myrankglobal == 1) then
+                write(thisFile, '(a)') "avgtdustGlobalRms.dat"
+                open(55, file=thisFile, status="unknown", position="append")
+                if (firstTime) then
+                   write(55,'(a5,a20,a13,2(a12,1x))') "#dump", "t(s)", "weight", "Td0(K)", "TdRms(K)"
+                endif
+                write(55,'(i5.4,f20.1, a13, 2(es12.5,1x))') grid%idump, grid%currenttime, trim(weighting), t0, trms
+                close(55)
+             endif
+          endif
+       enddo
+    endif
+
+! emission measure image
+    if (calculateEmissionMeasure) then
+!       call resetNe(grid%octreeRoot)
+       call createEmissionMeasureImage(grid, columnImageDirection, image)
+       write(thisFile, '(a,i4.4,a)') "emissionMeasure_", grid%idump, ".fits"
+       if (writeoutput) call writeFitsColumnDensityImage(image, thisFile)
+   endif
+
+
 !! luminosities
     if (writeLums) then
        call writeLuminosities(grid)
     endif
+
+    if (findNUndersampled) then
+       call findNumberUndersampled(grid, nSampled, nUndersampled, nCells)
+          if (myrankglobal == 1) then
+             write(thisFile, '(a)') "nsampled.dat"
+             open(56, file=thisFile, status="unknown", position="append")
+             if (firstTime) then
+                write(56,'(a5,a20,3(1x,a10))') "#dump", "t(s)", "nSampled", "nUnderSamp", "nCells"
+             endif
+             write(56,'(i5.4,f20.1,3(1x,i10))') grid%idump, grid%currenttime, nSampled, nUndersampled, nCells 
+             close(56)
+          endif
+    endif
+#ENDIF
 
 
 ! assumes 1 thread only
@@ -589,30 +706,38 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
 !       if (writeoutput) write(*,*) "clusterAnalysis requires not splitting over mpi"
 !       stop
 !    endif
-!
-!! average habing flux over accretionRadius of first source
-!    if (.not. splitOverMPI) then
-!       weightedFluxInRadius = 0.d0
-!       massInRadius = 0.d0
-!       if (firstTime) then
-!          write(*,*) "smallestCellSize ", smallestCellSize
-!       endif
-!       call calculateAverageHabingFlux(grid%octreeRoot, globalSourceArray(1), 2.5d0*smallestCellSize, &
-!               weightedFluxInRadius, massInRadius)
-!       meanG0 = weightedFluxInRadius/massInRadius
-!
-!       write(thisFile, '(a)') "averageHabingFlux.dat"
-!       ! write header
-!       if (firstTime) then
-!          open(69, file=thisFile, status="replace", form="formatted")
-!             write(69, '(a6,a20, 1(1x,a12))') "#dump", "t(s)", "mAvgG0"
-!          close(69)
-!       endif
-!       ! write data
-!       open(69, file=thisFile, status="old", position="append", form="formatted")
-!           write(69, '(i6.4,f20.2, 1(1x,es12.5))') grid%idump, grid%currentTime, meanG0 
-!       close(69)
-!    endif
+
+! average habing flux over accretionRadius of first source
+    if (findHabing) then
+       if (.not. splitOverMPI) then
+          write(thisFile, '(a)') "averageHabingFlux_allStars.dat"
+          ! write header
+          if (firstTime) then
+             open(69, file=thisFile, status="unknown", form="formatted", position="append")
+                write(69, '(a6,a20,a5,a9,3(1x,a12))') "#dump", "t(s)", "i*", "M*(Msol)", "dToM*1(pc)", "G0inCell(H)", "avgG0(H)"
+             close(69)
+          endif
+          open(69, file=thisFile, status="old", position="append", form="formatted")
+          do iSource = 1, globalnSource
+             weightedFluxInRadius = 0.d0
+             massInRadius = 0.d0
+             call calculateAverageHabingFlux(grid%octreeRoot, globalSourceArray(iSource), 2.5d0*smallestCellSize, &
+                     weightedFluxInRadius, massInRadius, g0inCell)
+             meanG0 = weightedFluxInRadius/massInRadius
+             ! distance to most massive star
+             if (iSource > 1) then
+                distance = modulus(globalSourceArray(iSource)%position - globalSourceArray(1)%position)*1.d10/pctocm
+             else
+                distance = 0.d0
+             endif
+
+             ! write data
+              write(69, '(i6.4,f20.2, i5.3, f9.4, 3(1x,es12.5))') grid%idump, grid%currentTime-burstTime, iSource, & 
+                        globalSourceArray(iSource)%mass/msol, distance, g0InCell, meanG0 
+          enddo
+          close(69)
+       endif
+    endif
 
     
     
@@ -640,6 +765,27 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
 !    write(thisFile, '(a,i4.4,a)') "hiz_", grid%idump, ".fits"
 !    call createHiImage(grid, thisDir, image)
 !    if (writeoutput) call writeFitsColumnDensityImage(image, thisFile)
+
+    if (calculateLymanFlux) then
+       if (.not. splitOverMPI) then
+          nlyA = 0.d0 
+          nlyB = 0.d0 
+          nlyR = 0.d0
+          call estimateLymanFlux(grid%octreeRoot, grid, nlyA, nlyB, nlyR) 
+
+          write(thisFile, '(a)') "estimatedLymanFlux.dat"
+          ! write header
+          if (firstTime) then
+             open(69, file=thisFile, status="replace", form="formatted")
+                write(69, '(a6,a20, 3(1x,a12))') "#dump", "t(s)", "nly(s-1)(A)", "nly(s-1)(B)", "nly(s-1)(R)"
+             close(69)
+          endif
+          ! write data
+          open(69, file=thisFile, status="old", position="append", form="formatted")
+              write(69, '(i6.4,f20.2, 3(1x,es12.5))') grid%idump, grid%currentTime, nlyA, nlyB, nlyR 
+          close(69)
+       endif
+    endif
 
     firstTime = .false.
   end subroutine clusterAnalysis
@@ -719,12 +865,12 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
      endif
      
   end subroutine writeCellValuesForSource 
-  recursive subroutine calculateAverageHabingFlux(thisOctal, source, radius, totalFlux, totalMass)
+  recursive subroutine calculateAverageHabingFlux(thisOctal, source, radius, totalFlux, totalMass,cellFlux)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
     type(vector) :: rcell
-    real(double) :: totalFlux, totalMass, thisMass, radius
+    real(double) :: totalFlux, totalMass, thisMass, radius, cellFlux
      type(SOURCETYPE) :: source
 
 
@@ -734,7 +880,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call calculateAverageHabingFlux(child, source, radius, totalFlux, totalMass)
+                call calculateAverageHabingFlux(child, source, radius, totalFlux, totalMass, cellFlux)
                 exit
              end if
           end do
@@ -747,12 +893,67 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
                 totalFlux = totalFlux + thisMass*thisOctal%habingFlux(subcell)*1.d10 ! habingFlux is in 1e10 G0
                 totalMass = totalMass + thisMass
              endif
+             if (inSubcell(thisOctal, subcell, source%position)) then
+                cellFlux = thisOctal%habingFlux(subcell)*1.d10
+             endif 
+
+          endif
+       endif
+    enddo
+
+
+  end subroutine calculateAverageHabingFlux
+
+  recursive subroutine estimateLymanFlux(thisOctal, grid, nlyA, nlyB, nlyR) 
+    use photoion_utils_mod, only : recombRate
+    use inputs_mod, only : honly
+    type(octal), pointer   :: thisOctal
+    type(GRIDTYPE) :: grid
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: nlyA, nlyB, ne, nhii, nheii, alphaAHi, alphaAHei, alphaB, dV, alphaR, nlyR
+
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call estimateLymanFlux(child, grid, nlyA, nlyB, nlyR)
+                exit
+             end if
+          end do
+       else
+          if(.not. thisoctal%ghostcell(subcell)) then
+             dv = cellVolume(thisOctal, subcell)*1.d30
+
+             ne = thisOctal%ne(subcell)
+             nHii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * grid%ion(2)%abundance
+             if(.not. hOnly) then
+                nHeii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,4) * grid%ion(4)%abundance
+             else
+                nHeii = 0.d0
+             end if
+
+             ! case A recombination
+             alphaAHi = recombrate(grid%ion(1), thisOctal%temperature(subcell))
+             alphaAHei = recombrate(grid%ion(3), thisOctal%temperature(subcell))
+             ! case B recombination
+             alphaB = 2.7d-13
+             ! rubin's
+             alphaR = 4.1d-10 * thisOctal%temperature(subcell)**-0.8
+             
+             nlyA = nlyA + ne*(nHii*alphaAHi + nHeii*alphaAHei)*dV
+             nlyB = nlyB + ne*(nHii + nHeii)*alphaB*dV
+             nlyR = nlyR + ne*(nHii + nHeii)*alphaR*dV
+
 
 
           endif
        endif
     enddo
     
-  end subroutine calculateAverageHabingFlux
+  end subroutine estimateLymanFlux 
 
 end module gridanalysis_mod

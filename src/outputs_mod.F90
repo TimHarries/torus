@@ -163,7 +163,13 @@ contains
     endif
 
     if (doClusterAnalysis) then
-       call clusterAnalysis(grid, globalSourceArray, globalnSource)
+#ifdef PHOTOION
+       if (photoionPhysics) then
+          call setupXarray(grid, xArray, nLambda, photoion=.true.)
+          if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+       endif
+#endif
+       call clusterAnalysis(grid, globalSourceArray, globalnSource, nLambda, xArray, miePhase, nMuMie)
     endif
 
 !    if (calcColumnImage) then

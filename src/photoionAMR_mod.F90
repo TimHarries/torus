@@ -38,7 +38,8 @@ private
 public :: photoIonizationloopAMR, createImagesplitgrid, ionizeGrid, &
      neutralGrid, resizePhotoionCoeff, resetNH, hasPhotoionAllocations, allocatePhotoionAttributes, &
      computeProbDistAMRMpi, putStarsInGridAccordingToDensity, testBranchCopying, createtemperaturecolumnimage,&
-     writeLuminosities, calculateAverageTemperature
+     writeLuminosities, calculateAverageTemperature, createtdustColumnImage, calculateAverageTdust, &
+     createEmissionMeasureImage
 
 
 #ifdef HYDRO
@@ -8737,7 +8738,11 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     ! Probability that a photon comes from a source rather than the envelope
     chanceSource = lCore / (lCore + totalEmission)
     ! Fraction of photons actually used to sample the sources
-    probSource   = 0.1d0
+    if(chanceSource == 0.d0) then
+       probSource = 0.01d0
+    else
+       probSource   = 0.1d0
+    endif
     ! Weight the source and envelope photons accordingly
     weightSource = chanceSource / probSource
     weightEnv    = (1.d0 - chanceSource) / (1.d0 - probSource) 
@@ -10326,6 +10331,12 @@ end subroutine putStarsInGridAccordingToDensity
              else
                 weight = 0.d0
              endif
+          elseif (weighting=='ionNone') then
+             if (thisOctal%ionfrac(subcell, 1) < 0.1d0) then
+                weight = 1.d0 
+             else
+                weight = 0.d0
+             endif
           elseif (weighting=='none') then
              weight = 1.d0
           endif
@@ -10338,7 +10349,7 @@ end subroutine putStarsInGridAccordingToDensity
 
     end do
   end subroutine temperatureColumnAlongPathAMR
-  recursive subroutine calculateAverageTemperature(thisOctal, grid, sigma, total, weighting, correction, t0, sigmaNe)
+  recursive subroutine calculateAverageTemperature(thisOctal, grid, sigma, total, weighting, correction, t0, sigmaNe, n0)
     use inputs_mod, only : hOnly
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
@@ -10347,7 +10358,7 @@ end subroutine putStarsInGridAccordingToDensity
     real(double) :: sigma, total, sigmaNe
     character(len=*) :: weighting
     logical :: correction
-    real(double) :: t0
+    real(double) :: t0, n0
     real(double) :: weight, j1, j2, j3, intensity, dv, nhii, nheii
 
 
@@ -10357,7 +10368,7 @@ end subroutine putStarsInGridAccordingToDensity
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call calculateAverageTemperature(child, grid, sigma, total, weighting, correction, t0, sigmaNe)
+                call calculateAverageTemperature(child, grid, sigma, total, weighting, correction, t0, sigmaNe, n0)
                 exit
              end if
           end do
@@ -10397,13 +10408,20 @@ end subroutine putStarsInGridAccordingToDensity
                    else
                       weight = 0.d0
                    endif
+                elseif (weighting=='ionNone') then
+                   if (thisOctal%ionfrac(subcell, 1) < 0.1d0) then
+                      weight = 1.d0 
+                   else
+                      weight = 0.d0
+                   endif
                 elseif (weighting=='none') then
                    weight = 1.d0
                 endif
                 if (correction) then
-                   ! 2nd order correction
+                   ! rms^2 deviation 
                    sigma = sigma + (thisOctal%temperature(subcell)-t0)**2 *weight*dv 
-                   total = total + t0**2 *weight*dv
+                   total = total + weight*dv
+                   sigmaNe = sigmaNe + (thisOctal%ne(subcell)-n0)**2 *weight*dv 
                 else
                    sigma = sigma + thisOctal%temperature(subcell)*weight*dv
                    total = total + weight*dv
@@ -10418,6 +10436,259 @@ end subroutine putStarsInGridAccordingToDensity
     enddo
     
   end subroutine calculateAverageTemperature
+
+  subroutine createTdustColumnImage(grid, direction, image, weighting, meanImage)
+    use mpi
+    use inputs_mod, only : maxDepthAMR, amrGridSize
+    real(double), pointer :: image(:,:)
+    real(double), pointer, optional :: meanImage(:,:)
+    real(double) :: halfGridSize, cellSize, xVal, yVal, sigma, total, tempDouble
+    type(VECTOR) :: direction, pos, centre, xAxisDir, yAxisDir
+    type(GRIDTYPE) :: grid
+    integer :: npix, i, j, ierr
+    character(len=*) :: weighting
+
+    if (abs(direction%x) > 0.d0) then
+       xAxisDir = VECTOR(0.d0, 1.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 0.d0, 1.d0)
+    else if (abs(direction%y) > 0.d0) then
+       xAxisDir = VECTOR(1.d0, 0.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 0.d0, 1.d0)
+    else
+       xAxisDir = VECTOR(1.d0, 0.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 1.d0, 0.d0)
+    endif
+    npix = 2**maxDepthAmr
+    centre = grid%octreeRoot%centre
+    halfGridSize = grid%octreeRoot%subcellSize
+    cellSize = amrGridSize/dble(npix)
+    allocate(image(1:npix, 1:npix))
+    image = 0.d0
+    do i = 1, nPix
+       do j = 1, nPix
+          pos = centre - (halfGridSize*direction) + (1.d-4*cellSize)*direction
+          xVal = -halfGridSize + ((dble(i-1)/dble(npix))) * amrGridSize + cellSize/2.d0
+          yVal = -halfGridSize + ((dble(j-1)/dble(npix))) * amrGridSize + cellSize/2.d0
+          pos = pos + (xVal * xAxisDir) + (yVal * yAxisDir)
+          sigma = 0.d0
+          total = 0.d0
+          tempDouble = 0.d0
+          if (myrankGlobal /= 0) then
+             if (present(meanImage)) then
+                ! mean has already been calculated in meanImage
+                ! now calculate the rms (deviation from meanImage)
+                ! image is rms^2 = sum( (T-Tavg)**2 *weight*dV)/sum(weight*dV) (along column) 
+                call TdustColumnAlongPathAMR(grid, pos, direction, sigma, total, weighting, meanImage(i,j))
+             else
+                ! calculate the mean tdust along column
+                ! image is <T> = sum(T*weight*dV)/sum(weight*dV) (along column) 
+                call TdustColumnAlongPathAMR(grid, pos, direction, sigma, total, weighting)
+             endif
+          endif
+          call MPI_ALLREDUCE(sigma, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
+          sigma = tempDouble
+          call MPI_ALLREDUCE(total, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
+          total = max(1.d-50, tempDouble)
+          image(i,j) = max(1.d-50, sigma/total)
+       enddo
+    enddo
+  end subroutine createTdustColumnImage
+  subroutine TdustColumnAlongPathAMR(grid, rVec, direction, sigma, total, weighting, mean)
+    use mpi
+    use inputs_mod, only : hOnly
+    type(GRIDTYPE) :: grid
+    type(VECTOR) :: rVec, direction, currentPosition
+    real(double) :: sigma, distToNextCell, total
+    type(OCTAL), pointer :: thisOctal, sOctal
+    real(double) :: fudgeFac = 1.d-3
+    real(double) :: weight, j1, j2, j3, intensity, dv, nhii, nheii
+    integer :: subcell, iIon
+    character(len=*) :: weighting
+    real(double), optional :: mean
+
+    sigma = 0.d0
+    total = 0.d0
+    currentPosition = rVec
+
+    CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
+
+    if (.not.inOctal(grid%octreeRoot, currentPosition)) write(*,*) "pos not in grid"
+
+    do while (inOctal(grid%octreeRoot, currentPosition))
+
+       call findSubcellLocal(currentPosition,thisOctal,subcell)
+
+       sOctal => thisOctal
+       call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
+  
+       currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
+       if (myrankGlobal == thisOctal%mpiThread(subcell)) then
+          dv = cellVolume(thisOctal, subcell) * 1.d30
+          if (weighting=='dustmass') then
+             weight = 0.01d0 * thisOctal%rho(subcell) * dv
+          elseif (weighting=='ionmass') then
+             ! ionized mass
+             if (thisOctal%ionfrac(subcell, 1) < 0.1d0) then
+                weight = thisOctal%rho(subcell) * dv 
+             else
+                weight = 0.d0
+             endif
+          elseif (weighting=='gastemp') then
+             weight = thisOctal%temperature(subcell)
+          elseif (weighting=='none') then
+             weight = 1.d0
+          endif
+
+          if (present(mean)) then
+             ! calculate rms^2 
+             sigma = sigma + (thisoctal%tdust(subcell)-mean)**2 *weight*dv 
+             total = total + weight*dv
+          else
+             sigma = sigma + thisOctal%Tdust(subcell)*weight*dv
+             total = total + weight*dv
+          endif
+
+
+
+       endif
+
+    end do
+  end subroutine TdustColumnAlongPathAMR
+  recursive subroutine calculateAverageTdust(thisOctal, grid, sigma, total, weighting, correction, t0, sigmaNe)
+    use inputs_mod, only : hOnly
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, iIon
+    real(double) :: sigma, total, sigmaNe
+    character(len=*) :: weighting
+    logical :: correction
+    real(double) :: t0
+    real(double) :: weight, j1, j2, j3, intensity, dv, nhii, nheii
+
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calculateAverageTdust(child, grid, sigma, total, weighting, correction, t0, sigmaNe)
+                exit
+             end if
+          end do
+       else
+          if(.not. thisoctal%ghostcell(subcell)) then
+             if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+
+                dv = cellVolume(thisOctal, subcell) * 1.d30
+                weight = 0.d0
+                if (weighting=='dustmass') then
+                   weight = 0.01d0 * thisOctal%rho(subcell) * dv
+                elseif (weighting=='ionmass') then
+                   ! ionized mass
+                   if (thisOctal%ionfrac(subcell, 1) < 0.1d0) then
+                      weight = thisOctal%rho(subcell) * dv 
+                   else
+                      weight = 0.d0
+                   endif
+                elseif (weighting=='gastemp') then
+                   weight = thisOctal%temperature(subcell)
+                elseif (weighting=='none') then
+                   weight = 1.d0
+                endif
+                if (correction) then
+                   ! rms deviation 
+                   sigma = sigma + (thisOctal%Tdust(subcell)-t0)**2 *weight*dv 
+                   total = total + weight*dv
+                else
+                   sigma = sigma + thisOctal%Tdust(subcell)*weight*dv
+                   total = total + weight*dv
+                   sigmaNe = sigmaNe + thisOctal%ne(subcell)*weight*dv
+                endif
+
+
+
+             endif
+          endif
+       endif
+    enddo
+    
+  end subroutine calculateAverageTdust
+  subroutine createEmissionMeasureImage(grid, direction, image)
+    use mpi
+    use inputs_mod, only : maxDepthAMR, amrGridSize
+    real(double), pointer :: image(:,:)
+    real(double) :: halfGridSize, cellSize, xVal, yVal, sigma, tempDouble
+    type(VECTOR) :: direction, pos, centre, xAxisDir, yAxisDir
+    type(GRIDTYPE) :: grid
+    integer :: npix, i, j, ierr
+
+    if (abs(direction%x) > 0.d0) then
+       xAxisDir = VECTOR(0.d0, 1.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 0.d0, 1.d0)
+    else if (abs(direction%y) > 0.d0) then
+       xAxisDir = VECTOR(1.d0, 0.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 0.d0, 1.d0)
+    else
+       xAxisDir = VECTOR(1.d0, 0.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 1.d0, 0.d0)
+    endif
+    npix = 2**maxDepthAmr
+    centre = grid%octreeRoot%centre
+    halfGridSize = grid%octreeRoot%subcellSize
+    cellSize = amrGridSize/dble(npix)
+    allocate(image(1:npix, 1:npix))
+    image = 0.d0
+    do i = 1, nPix
+       do j = 1, nPix
+          pos = centre - (halfGridSize*direction) + (1.d-4*cellSize)*direction
+          xVal = -halfGridSize + ((dble(i-1)/dble(npix))) * amrGridSize + cellSize/2.d0
+          yVal = -halfGridSize + ((dble(j-1)/dble(npix))) * amrGridSize + cellSize/2.d0
+          pos = pos + (xVal * xAxisDir) + (yVal * yAxisDir)
+          sigma = 0.d0
+          tempDouble = 0.d0
+          if (myrankGlobal /= 0) then
+             call emissionMeasureAlongPathAMR(grid, pos, direction, sigma)
+          endif
+          ! image is <T> = sum(T*weight*dV)/sum(weight*dV) (along column) 
+          call MPI_ALLREDUCE(sigma, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
+          image(i,j) = tempDouble
+       enddo
+    enddo
+  end subroutine createEmissionMeasureImage
+  subroutine emissionMeasureAlongPathAMR(grid, rVec, direction, sigma)
+    use mpi
+    use inputs_mod, only : hOnly
+    type(GRIDTYPE) :: grid
+    type(VECTOR) :: rVec, direction, currentPosition
+    real(double) :: sigma, distToNextCell
+    type(OCTAL), pointer :: thisOctal, sOctal
+    real(double) :: fudgeFac = 1.d-3
+    integer :: subcell
+
+    sigma = 0.d0
+    currentPosition = rVec
+
+    CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
+
+    if (.not.inOctal(grid%octreeRoot, currentPosition)) write(*,*) "pos not in grid"
+
+    do while (inOctal(grid%octreeRoot, currentPosition))
+
+       call findSubcellLocal(currentPosition,thisOctal,subcell)
+
+       sOctal => thisOctal
+       call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
+  
+       currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
+       if (myrankGlobal == thisOctal%mpiThread(subcell)) then
+          sigma = sigma + (distToNextCell*1.d10/pctocm) * thisOctal%ne(subcell)**2
+       endif
+
+    end do
+  end subroutine emissionMeasureAlongPathAMR
+
   
   subroutine writeLuminosities(grid) 
     use mpi

@@ -83,8 +83,11 @@
   Logical :: calcSpectrum
   logical :: calcBenchmark
   logical :: doAnalysis
+  ! cluster analysis tools
   logical :: doClusterAnalysis
-  logical :: plotAvgTemp, calculateGlobalAvgTemp, writeLums ! cluster analysis tools
+  logical :: plotAvgTemp, calculateGlobalAvgTemp, writeLums, findNUndersampled, plotAvgTdust, calculateGlobalAvgTdust
+  logical :: calculateEmissionMeasure, calculateLymanFlux, findHabing
+  integer :: nClusterIonLoops
 
   real(double) :: edgeRadius
   logical :: dowriteRadialFile

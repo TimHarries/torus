@@ -664,8 +664,22 @@ contains
             "Plot average temperature pixel-by-pixel: ","(a,1l,1x,a)", .false., ok, .false.)
       call getLogical("globalavgtemp", calculateGlobalAvgTemp, cLine, fLine, nLines, &
             "Calculate global average temperature: ","(a,1l,1x,a)", plotAvgTemp, ok, .false.)
+      call getLogical("plotavgtdust", plotAvgTdust, cLine, fLine, nLines, &
+            "Plot average tdust pixel-by-pixel: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("globalavgtdust", calculateGlobalAvgTdust, cLine, fLine, nLines, &
+            "Calculate global average tdust: ","(a,1l,1x,a)", plotAvgTdust, ok, .false.)
+      call getLogical("emissionmeasure", calculateEmissionMeasure, cLine, fLine, nLines, &
+            "Plot emission measure: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("nlyman", calculateLymanFlux, cLine, fLine, nLines, &
+            "Estimate Lyman flux: ","(a,1l,1x,a)", .false., ok, .false.)
       call getLogical("writelums", writeLums, cLine, fLine, nLines, &
             "Write total luminositys to log: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("nundersampled", findNUndersampled, cLine, fLine, nLines, &
+            "Find number of undersampled cells: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("calchabing", findHabing, cLine, fLine, nLines, &
+            "Write Habing flux to file: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getInteger("nionloops", nClusterIonLoops, cLine, fLine, nLines, &
+            "Number of photoionization loops: ","(a,i8,a)", 0, ok, .false.)
     endif
 
     call getLogical("spectrum", calcSpectrum, cLine, fLine, nLines, &

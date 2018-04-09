@@ -313,6 +313,77 @@ contains
     end if
 
   end subroutine freeAMRCOMMUNICATOR
+  subroutine findNumberUndersampled(grid, nSampled, nUndersampled, nCells)
+    use mpi
+    type(GRIDTYPE) :: grid
+    integer, intent(out) :: nSampled, nUndersampled, nCells
+    integer, allocatable :: nSampledOnThreads(:), temp(:), nUndersampledOnThreads(:), nCellsOnThreads(:)
+    integer :: ierr
+!    real(double) :: totalVolume
+
+    if (loadBalancingThreadGlobal) goto 666
+
+    allocate(nSampledOnThreads(1:nThreadsGlobal), temp(1:nThreadsGlobal))
+    allocate(nUndersampledOnThreads(1:nThreadsGlobal))
+    allocate(nCellsOnThreads(1:nThreadsGlobal))
+    nSampledOnThreads = 0
+    nUndersampledOnThreads = 0
+    nCellsOnThreads = 0
+    temp = 0
+    if (.not.grid%splitOverMpi) then
+       call writeWarning("findNumberUndersampled: grid not split over MPI")
+       nSampled = 0
+       nUndersampled = 0
+       nCells = 0
+       goto 666
+    endif
+
+    if (myRankGlobal /= 0) then
+       call findNumberUndersampledMPI(grid%octreeRoot, nSampledOnThreads(myRankGlobal), nUndersampledOnThreads(myRankGlobal), &
+               nCellsOnThreads(myRankGlobal)) 
+
+       call MPI_ALLREDUCE(nSampledOnThreads, temp, nThreadsGlobal, MPI_INTEGER, MPI_SUM,amrCOMMUNICATOR, ierr)
+       nSampled = SUM(temp(1:nThreadsGlobal))
+       call MPI_ALLREDUCE(nUndersampledOnThreads, temp, nThreadsGlobal, MPI_INTEGER, MPI_SUM,amrCOMMUNICATOR, ierr)
+       nUndersampled = SUM(temp(1:nThreadsGlobal))
+       call MPI_ALLREDUCE(nCellsOnThreads, temp, nThreadsGlobal, MPI_INTEGER, MPI_SUM,amrCOMMUNICATOR, ierr)
+       nCells = SUM(temp(1:nThreadsGlobal))
+    end if
+666 continue
+  end subroutine findNumberUndersampled 
+
+    
+  recursive subroutine findNumberUndersampledMPI(thisOctal, nSampled, nUndersampled, nCells) 
+    use inputs_mod, only : hydrodynamics, cylindricalHydro, spherical
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: nSampled, nUndersampled, nCells 
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call findNumberUndersampledMPI(child, nSampled, nUndersampled, nCells) 
+                exit
+             end if
+          end do
+       else
+          if(.not. thisoctal%ghostcell(subcell)) then
+             if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+                if (thisOctal%undersampled(subcell)) then
+                   nUndersampled = nUndersampled + 1
+                else
+                   nSampled = nSampled + 1
+                endif
+                nCells = nCells + 1
+             endif
+          endif
+       end if
+    enddo
+  end subroutine findNumberUndersampledMPI 
 
   subroutine findMassOverAllThreads(grid, mass, maxRho)
     use mpi
