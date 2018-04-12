@@ -8492,7 +8492,8 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
                (thisOctal%kappaTimesFlux(subcell)%x .ne. 0.0d0 .or.&
                 thisOctal%kappaTimesFlux(subcell)%y .ne. 0.0d0 .or.&
                 thisOctal%kappaTimesFlux(subcell)%z .ne. 0.0d0)) then
-             thisOctal%kappaTimesFluxHistory(subcell)=thisOctal%kappaTimesFlux(subcell)*(1.0/decayFactor-1.d0)/thisOctal%rho(subcell)
+             thisOctal%kappaTimesFluxHistory(subcell) = thisOctal%kappaTimesFlux(subcell) * &
+               (1.0/decayFactor-1.d0)/thisOctal%rho(subcell)
           endif !assume if the history isnt set then the current monte carlo estimate is a better guess than nothing
           
           tmpVector=thisOctal%kappaTimesFlux(subcell)
