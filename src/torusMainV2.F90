@@ -138,7 +138,7 @@ program torus
 
   smallestCellSize = amrGridSize / dble(2**maxDepthAMR)
 
-  do iModel = nModelStart, nModelEnd
+  do iModel = nModelStart, nModelEnd, modelStep
      if (multimodels) then
         write(message,'(a,i6.6)') "Performing calculation for model number ", iModel
         call writeBanner(message,"-",TRIVIAL)

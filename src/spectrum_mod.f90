@@ -755,10 +755,12 @@ module spectrum_mod
          call createKuruczFilename(teffArray(i1), loggArray(j), thisFile1, label1)
          call createKuruczFilename(teffArray(i2), loggArray(j), thisFile2, label2)
          
-         write(message, '(a,a)') "Interpolating Kurucz atmospheres between: ",trim(label1)
-         call writeInfo(message, TRIVIAL)
-         write(message, '(a,a)') "                                        : ",trim(label2)
-         call writeInfo(message, TRIVIAL)
+         if (firstTime) then
+            write(message, '(a,a)') "Interpolating Kurucz atmospheres between: ",trim(label1)
+            call writeInfo(message, TRIVIAL)
+            write(message, '(a,a)') "                                        : ",trim(label2)
+            call writeInfo(message, TRIVIAL)
+         endif
          
          call readKuruczSpectrum(spec1, label1, klabel, kspectrum, nKurucz, ok1)
          if (.not.ok1) then
@@ -864,10 +866,12 @@ module spectrum_mod
          call createTlustyFilename(teffArray(i1), loggArray(j), thisFile1, label1)
          call createTlustyFilename(teffArray(i2), loggArray(j), thisFile2, label2)
          
-         write(message, '(a,a)') "Interpolating TLUSTY atmospheres between: ",trim(label1)
-         call writeInfo(message, TRIVIAL)
-         write(message, '(a,a)') "                                        : ",trim(label2)
-         call writeInfo(message, TRIVIAL)
+         if (firstTime) then
+            write(message, '(a,a)') "Interpolating TLUSTY atmospheres between: ",trim(label1)
+            call writeInfo(message, TRIVIAL)
+            write(message, '(a,a)') "                                        : ",trim(label2)
+            call writeInfo(message, TRIVIAL)
+         endif
          
          call readTlustySpectrum(spec1, label1, klabel, kspectrum, nKurucz, ok1)
          if (.not.ok1) then

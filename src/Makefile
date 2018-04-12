@@ -266,6 +266,34 @@ ifeq ($(SYSTEM), complexity)
     ZLIBLIBS = -lz
     KNOWN_SYSTEM=yes
 endif
+#
+# The Dirac cosma6 system at Durham 
+# Default is an MPI build, use mpi=no for openmp/serial
+# Use 'module load cfitsio' to make FITS library available
+ifeq ($(SYSTEM), cosma)
+    ifeq ($(mpi), no)
+       F95COMP= ifort
+       MPIFLAG=
+    else
+       F95COMP= mpif90
+       MPIFLAG= -DMPI
+    endif
+    FASTFLAG= -O3 
+# For debugging with optimisations enabled use
+#    DEBUGFLAG= -O3 -g -debug extended
+    DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
+    STATICFLAG=
+    MATHTRAP=
+    EXE=torus.cosma
+    CFITSIOLIBS = -lcfitsio
+    STATICLIBS= -Bstatic
+    KROMELIBS = -L${HOME}/krome/build -lkrome
+    ifeq ($(chemistry), yes)
+       F95COMP+=-I${HOME}/krome/build
+    endif
+    ZLIBLIBS = -lz
+    KNOWN_SYSTEM=yes
+endif
 
 # Isca configuration: to pick up the FITS libraries load the CFITSIO module
 # there's no need to add the path to the FITS libraries in this Makefile. 

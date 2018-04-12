@@ -395,16 +395,19 @@ contains
       ! set source mass, age, luminosity, Teff, radius, mass-loss rate, spectrum
       call updateSourceProperties(source)
 
-      source%position = randomUnitVector()
-      call randomNumberGenerator(getDouble=r)
-      r = r**2
-      source%position = source%position * (clusterRadius / 1.d10) * r
-      sigmaVel = sqrt(bigG * ((Mstarburst+1000.d0)*mSol)/(2.d0*clusterRadius))
-!      if (writeoutput) write(*,*) "Sigma velocity ",sigmaVel/1.e5
-      vVec = randomUnitVector()
-      r = gasdev()
-      source%velocity = r * sigmaVel * vVec
-!      source%accretionRadius = 2.5d0*smallestCellsize*1.d10
+      source%position = VECTOR(0.d0, 0.d0, 0.d0)
+      source%velocity = VECTOR(0.d0, 0.d0, 0.d0)
+      if (clusterRadius > 0.d0) then
+         source%position = randomUnitVector()
+         call randomNumberGenerator(getDouble=r)
+         r = r**2
+         source%position = source%position * (clusterRadius / 1.d10) * r
+         sigmaVel = sqrt(bigG * ((Mstarburst+1000.d0)*mSol)/(2.d0*clusterRadius))
+   !      if (writeoutput) write(*,*) "Sigma velocity ",sigmaVel/1.e5
+         vVec = randomUnitVector()
+         r = gasdev()
+         source%velocity = r * sigmaVel * vVec
+      endif
       source%accretionRadius = accretionRadius*smallestCellsize*1.d10
 
       select case(burstType)
