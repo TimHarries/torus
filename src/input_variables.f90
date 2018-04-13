@@ -88,8 +88,8 @@
   logical :: plotAvgTemp, calculateGlobalAvgTemp, writeLums, findNUndersampled, plotAvgTdust, calculateGlobalAvgTdust
   logical :: calculateEmissionMeasure, calculateLymanFlux, findHabing
   integer :: nClusterIonLoops
-
   real(double) :: edgeRadius
+  
   logical :: dowriteRadialFile
   character(len=200) :: radialFilename
   character(len=80) :: columnImageFilename
@@ -203,6 +203,7 @@
   logical :: radiationPressure        ! use radiation pressure terms
   logical :: CAKlineOpacity           !use Abbot82 temp invarient form of line driving
   logical :: RadForceMonte            !use a path length based estimation for the radation pressure rather than momentum tracking
+  real(double):: RadForceThresh       !Threshold density above which stop using path length rad P and use momentum tracking
   logical :: habingFlux               !calculate flux between 912 and 2400 A for sources
   logical :: MChistories              ! update Monte Carlo estimator histories
   real(double) :: radiationTimescale  !ratio of radation to hydro timescales
@@ -401,6 +402,11 @@
   logical :: moveSources
   logical :: evolveSources 
   logical :: hotspot
+  logical :: pulsatingStar
+  integer :: nModes
+  real(double), allocatable :: periodMode(:)
+  integer, allocatable :: lMode(:), mMode(:)
+  real(double), allocatable :: fracMode(:)
   character(len=80) :: sourceFilename
   logical :: sourceHistory
   character(len=80) :: sourceHistoryFilename
@@ -457,6 +463,7 @@
   logical :: variableDustSublimation
   real(double) :: tSub(10) ! variable dust sublimation temperature factor
   real(double) :: tSubPower(10) ! variable dust sublimation density factor
+  real :: subrange
   logical :: dustSettling
   integer :: nDustType
   logical :: readDustFromFile, writeDustToFile
@@ -948,14 +955,13 @@
   real, protected    :: hmaxPercentile
   real, protected    :: sph_norm_limit
   integer, protected :: kerneltype
-  logical, protected :: useHull
   logical, protected :: dragon
   logical, protected :: refineCentre  ! switch on extra grid refinement for SPH-Torus discs 
   logical, protected :: SphOnePerCell ! Split to one particle per cell for galactic plane survey
-  logical :: doVelocitySplit ! Should grid be split based on velocity values of SPH particles? 
+  logical            :: doVelocitySplit ! Should grid be split based on velocity values of SPH particles? 
   logical, protected :: convertRhoToHI ! Convert density to HI
-  integer, protected :: ih2frac        ! column of SPH file which contains H2 fraction
-  integer, protected :: iCO            ! column of SPH file which contains CO fraction
+  integer, protected :: sphh2col       ! column of SPH file which contains H2 fraction
+  integer, protected :: sphmolcol      ! column of SPH file from which molecular abundances will be read
   logical, protected :: sphwithchem    ! SPH has chemistry data which needs to be read
   logical, protected :: discardSinks   ! Don't store sink particles
   logical :: guessNe                   !guess the electron number density based on temperature

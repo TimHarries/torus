@@ -1533,7 +1533,7 @@ contains
 
 #ifdef HYDRO
   subroutine writeAMRgridMPI(filename,fileFormatted,grid,mpiFlag)
-    use inputs_mod, only : molecular, cmf, hydrodynamics
+    use inputs_mod, only : molecularPhysics, cmf, hydrodynamics
     ! writes out the 'grid' for an adaptive mesh geometry  
 
     implicit none
@@ -1768,7 +1768,7 @@ contains
              call writeDouble2D(thisOctal%ionFrac,fileFormatted)
              call writeDouble2D(thisOctal%photoIonCoeff,fileFormatted)
           endif
-          if (molecular) then
+          if (molecularPhysics) then
              call writeDouble2D(thisOctal%molecularLevel,fileFormatted)
              if (fileformatted) then
                 write(unit=20,iostat=error,fmt=*) thisOctal%microturb, thisOctal%nh2
@@ -1828,7 +1828,7 @@ contains
     ! reads in a previously saved 'grid' for an adaptive mesh geometry  
 
     use unix_mod, only: unixGetenv
-    use inputs_mod, only: geometry,dipoleOffset,amr2dOnly,statEq2d, molecular, cmf, hydrodynamics
+    use inputs_mod, only: geometry,dipoleOffset,amr2dOnly,statEq2d, molecularPhysics, cmf, hydrodynamics
     implicit none
 
     character(len=*)            :: filename
@@ -2026,7 +2026,7 @@ contains
           call readDouble2D(thisOctal%ionFrac,fileFormatted)
           call readDouble2D(thisOctal%photoIonCoeff,fileFormatted)
        endif
-       if (molecular) then
+       if (molecularPhysics) then
           call readDouble2D(thisOctal%molecularLevel,fileFormatted)
           if (fileformatted) then
              read(unit=20,iostat=error,fmt=*) thisOctal%microturb, thisOctal%nh2

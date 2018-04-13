@@ -108,7 +108,9 @@ contains
     integer, parameter :: tagsne = 123
     real :: lamArray(:)
     character(len=80) :: mpiFilename, datFilename, mpifilenameB
+#ifdef CFITSIO
     real(double), pointer :: columnDensityImage(:,:)
+#endif
     real(double) :: dt, cfl, gamma, mu
     integer :: iUnrefine
     integer :: ierr
@@ -748,13 +750,11 @@ contains
              end if
           endif
 
-
-          if (useTensorViscosity) then
+          if (cylindricalHydro) then
+             call viscousTimescaleCylindrical(grid%octreeRoot, grid, viscDt)
+          else if (useTensorViscosity) then
              call viscousTimescale(grid%octreeRoot, grid, viscDt)
           endif
-!          if (cylindricalHydro) then
-!             call viscousTimescaleCylindrical(grid%octreeRoot, grid, viscDt)
-!          endif
 
 
        endif
@@ -1437,6 +1437,7 @@ contains
                "scatters     ","ioncross     ","tempconv     ","habing       ",&
                "fvisc1       ","fvisc2       ","fvisc3       ","crossings    ","mpithread    "/))
 
+#ifdef CFITSIO
           if (grid%octreeRoot%threeD) then
              write(mpiFilename,'(a, i4.4, a)') "columnz_", grid%iDump,".fits"
              call createColumnDensityImage(grid, VECTOR(0.d0, 0.d0, 1.d0), columnDensityImage)
@@ -1450,6 +1451,9 @@ contains
              call createColumnDensityImage(grid, VECTOR(1.d0, 0.d0, 0.d0), columnDensityImage)
              if (writeoutput) call writeFitsColumnDensityImage(columnDensityImage, trim(mpiFilename))
           endif
+#else
+          call writeInfo("FITS not enabled, not writing",FORINFO)
+#endif
 
           if(densitySpectrum) then
              !           print *, "DUMPING DENSITY SPECTRUM"
@@ -7492,9 +7496,7 @@ recursive subroutine sumLineLuminosity(thisOctal, luminosity, iIon, iTrans, grid
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   integer :: subcell, i, iIon, iTrans
-  real(double) :: luminosity, v, rate
-  real :: pops(10)
-  type(VECTOR) :: rvec
+  real(double) :: luminosity
   
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -8494,7 +8496,8 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
                (thisOctal%kappaTimesFlux(subcell)%x .ne. 0.0d0 .or.&
                 thisOctal%kappaTimesFlux(subcell)%y .ne. 0.0d0 .or.&
                 thisOctal%kappaTimesFlux(subcell)%z .ne. 0.0d0)) then
-             thisOctal%kappaTimesFluxHistory(subcell)=thisOctal%kappaTimesFlux(subcell)*(1.0/decayFactor-1.d0)/thisOctal%rho(subcell)
+             thisOctal%kappaTimesFluxHistory(subcell) = thisOctal%kappaTimesFlux(subcell) * &
+               (1.0/decayFactor-1.d0)/thisOctal%rho(subcell)
           endif !assume if the history isnt set then the current monte carlo estimate is a better guess than nothing
           
           tmpVector=thisOctal%kappaTimesFlux(subcell)
@@ -10279,7 +10282,7 @@ end subroutine putStarsInGridAccordingToDensity
     real(double) :: sigma, distToNextCell, total
     type(OCTAL), pointer :: thisOctal, sOctal
     real(double) :: fudgeFac = 1.d-3
-    real(double) :: weight, j1, j2, j3, intensity, dv, nhii, nheii
+    real(double) :: weight, j1, j2, j3, dv, nhii, nheii
     integer :: subcell, iIon
     character(len=*) :: weighting
 
@@ -10359,7 +10362,7 @@ end subroutine putStarsInGridAccordingToDensity
     character(len=*) :: weighting
     logical :: correction
     real(double) :: t0, n0
-    real(double) :: weight, j1, j2, j3, intensity, dv, nhii, nheii
+    real(double) :: weight, j1, j2, j3, dv, nhii, nheii
 
 
     do subcell = 1, thisOctal%maxChildren
@@ -10501,8 +10504,8 @@ end subroutine putStarsInGridAccordingToDensity
     real(double) :: sigma, distToNextCell, total
     type(OCTAL), pointer :: thisOctal, sOctal
     real(double) :: fudgeFac = 1.d-3
-    real(double) :: weight, j1, j2, j3, intensity, dv, nhii, nheii
-    integer :: subcell, iIon
+    real(double) :: weight, dv
+    integer :: subcell
     character(len=*) :: weighting
     real(double), optional :: mean
 
@@ -10555,16 +10558,15 @@ end subroutine putStarsInGridAccordingToDensity
     end do
   end subroutine TdustColumnAlongPathAMR
   recursive subroutine calculateAverageTdust(thisOctal, grid, sigma, total, weighting, correction, t0, sigmaNe)
-    use inputs_mod, only : hOnly
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, iIon
+    integer :: subcell, i
     real(double) :: sigma, total, sigmaNe
     character(len=*) :: weighting
     logical :: correction
     real(double) :: t0
-    real(double) :: weight, j1, j2, j3, intensity, dv, nhii, nheii
+    real(double) :: weight, dv
 
 
     do subcell = 1, thisOctal%maxChildren

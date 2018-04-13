@@ -1245,9 +1245,6 @@ contains
   end subroutine setupCylindricalViscosity
   
   
-  !"
-  
-  
   recursive subroutine viscousTimescale(thisoctal, grid, dt)
     use inputs_mod, only : etaViscosity, smallestCellsize, gridDistanceScale
     real(double) :: lengthScale
@@ -1284,7 +1281,7 @@ contains
     type(gridtype) :: grid
     type(octal), pointer   :: thisoctal
     type(octal), pointer  :: child 
-    real(double) :: dt, thisTime, acc, r
+    real(double) :: dt, thisTime, acc, r, rho
     type(VECTOR) :: fVisc, vel, cen
     integer :: subcell, i
     
@@ -1302,23 +1299,24 @@ contains
           if (.not.octalonthread(thisoctal, subcell, myrankglobal)) cycle
           if (.not.thisOctal%ghostCell(subcell)) then
              cen = subcellCentre(thisOctal,subcell)
+             rho=thisOctal%rho(subcell)
              r=sqrt(cen%x**2+cen%y**2)*GridDistanceScale
              fVisc =  newdivQ(thisOctal, subcell,  grid)
-             acc = sqrt(fVisc%x**2  + fvisc%z**2)/thisOctal%rho(subcell)
+             acc = sqrt(fVisc%x**2  + fvisc%z**2)/rho
              acc = max(acc, 1.d-60)
              vel=vector(thisOctal%rhou(subcell),&
                         thisOctal%rhov(subcell)/r,&
-                        thisOctal%rhow(subcell))/thisOctal%rho(subcell)
+                        thisOctal%rhow(subcell))/rho
 !             write(*,*) "vel ", vel
              if (acc .ne. 0) then
                 thisTime = sqrt(thisOctal%subcellSize*gridDistanceScale/acc)*0.5!*cflnumber
              endif
-             if (fvisc%y .ne. 0) then
-                thisTime = min(thisTime, abs(min(abs(vel%y),1.0d5)/(fvisc%y/thisOctal%rho(subcell)))) !limit change in angular speed to 1km/s or rotation speed per step
-             endif
-             if (sqrt(fvisc%x**2+fvisc%z**2) .ne. 0) then
-                thisTime = min(thisTime, max(1.0d4, sqrt(vel%x**2+vel%z**2)/sqrt(fvisc%x**2+fvisc%z**2))) !limit change in velocity max(0.1km/s,currentVel)  per step
-             endif
+             thisTime = min(thisTime, &
+                            abs(max(abs(vel%y),1.0d4)/&
+                                   (fvisc%y/rho/r)/10.0)) !limit change in angular speed to 0.1km/s or rotation speed per step
+             thisTime = min(thisTime, &
+                            max(1.0d5, sqrt(vel%x**2+vel%z**2))/&
+                                       (sqrt(fvisc%x**2+fvisc%z**2)/rho)) !limit change in velocity max(1km/s,currentVel)  per step
              dt = min(thisTime, dt)
           endif
        endif

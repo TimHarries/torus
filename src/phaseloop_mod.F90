@@ -357,7 +357,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   call findMultiFilename(outfile, iModel, tempFilename)
   outfile = tempFilename
 
-  if ( grid%geometry == "cmfgen" ) then 
+  if ( grid%geometry == "cmfgen" .or. grid%geometry=="etacar") then 
      probContPhoton = 0.2
   else
      probContPhoton = 1.0
@@ -428,11 +428,13 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
   phaseLoop: do iPhase = nStartPhase, nEndPhase
      
-     grid%timeNow = phaseTime * real(iPhase-1)
+     grid%timeNow = period * real(iPhase-1)/real(nPhase)
 
      viewVec = originalViewVec
      outVec = (-1.d0)*viewVec
      thisVec = viewVec
+
+
 
 
      ! we rotate the view by an appropriate amount
@@ -797,6 +799,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
            if (.not.grid%resonanceLine) then
               call computeProbDist(grid, totLineEmission, &
                    totWindContinuumEmission,lamline, useBias)
+              write(*,*) "prob dist totwindcontinuumemission ",totWindContinuumEmission
               ! convert from per steradian              
               totLineEmission = totLineEmission * fourPi
               totWindContinuumEmission = totwindContinuumEmission * fourPi
@@ -1558,7 +1561,9 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 !    varianceArray(i)%v = varianceArray(i)%v + (errorArray(j,i)%v - yArray(i)%v/dble(nOuterLoop))**2
 ! enddo
 !enddo
- if (myRankIsZero) then 
+
+ if (myRankIsZero) then
+ if (calcSpectrum) then
     if (nLambda > 1) then
        if (nPhase == 1) then
           
@@ -1607,6 +1612,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
                 .true., objectDistance, velocitySpace, lamLine)
         endif
      endif
+  endif
         
         if (doRaman) then
            write(tempChar,'(i3.3)') iPhase
@@ -1619,10 +1625,11 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
            close(20)
         endif
      endif
+  endif
 
-     write(*,*) "stokesimage ",stokesimage, " present ",present(returnimage)
+!     write(*,*) "stokesimage ",stokesimage, " present ",present(returnimage)
 
-     if (stokesimage) then
+     if (stokesimage.and.myrankIsZero) then
         do i1 = 1, nImageLocal
            name_filter = get_filter_name(filters, i1)
            bandwidth = 0.5*FWHM_filters(filters, i1)  ! 1/2 of FWHM  [A]
@@ -1636,11 +1643,13 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
            write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_image",iPhase,".fits"
            if (torusVersion(2:2) /= "1") specfile = originaloutfile
 
-
 #ifdef USECFITSIO
+           if (nPhase > 1) then
+              header = specfile(1:index(specfile,".fits")-1)
+              write(specFile,'(a,a,i3.3,a)') trim(header),"_",iPhase,".fits"
+           endif
 
            if (.not.PRESENT(returnImage)) then
-              write(*,*) "writing ",trim(specfile), " flux units ",trim(getFluxUnits(imNum))
               call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "intensity",  &
                    getFluxUnits(imNum), getAxisUnits(imNum), real(lambda_eff))
               if (polarizationImages) then
@@ -1694,8 +1703,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
      endif
 
-  end if ! (myRankIsZero)
-
      if (stokesImage) then
         do i = 1, nImageLocal
            call freeImage(obsImageSet(i))
@@ -1707,7 +1714,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      if (associated(starSurface%element)) then
        call emptySurface(starSurface)
      end if
-
 #ifdef MPI
 ! No need to free the grid if there is only one trip on phaseloop
 ! if (myRankGlobal /= 0 .and. .not.noPhaseUpdate .and. nStartPhase /= nEndPhase ) call freeGrid(grid)
@@ -1861,7 +1867,7 @@ CONTAINS
 !$OMP DO SCHEDULE(DYNAMIC,100)
         innerPhotonLoop: do i = iInner_beg, iInner_end
 
-
+!           write(*,*) "photon ",i
 
 !           write(*,*) omp_get_thread_num(), i
 #ifdef MPI
@@ -1919,7 +1925,8 @@ CONTAINS
                       source, nSource, rHatinStar, energyPerPhoton, filters, mie,&
                       starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,VoigtProf, &
                       photonfromEnvelope, dopShift=dopShift, sourceOctal=sourceOctal, sourcesubcell = sourceSubcell)
-!                 write(*,*) "r, weight, i ", modulus(thisPhoton%position)/1500.,thisPhoton%weight, weightContPhoton, &
+!                 write(*,*) "pos ",thisPhoton%position
+!                 write(*,*) "r, weight, i ", modulus(thisPhoton%position),thisPhoton%weight, weightContPhoton, &
 !                      Thisphoton%stokes%i
 !                 if (.not.inOctal(sourceOctal, thisPhoton%position)) then
 !                    write(*,*) "bug initializing photon"
@@ -2599,7 +2606,6 @@ CONTAINS
 
 !                 write(*,*) myrankGlobal," scattered towards observer ",tauExt(ntau),ntau
 !                 write(*,*) "direction ",obsPhoton%direction
-
 
 
                  if (intPathError == -10) then 

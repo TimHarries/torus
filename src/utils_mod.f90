@@ -3725,5 +3725,49 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
 
   end subroutine ccubsolv
 
+  complex(double) function Ylm(l, m, theta, phi) 
+    real(double) :: theta, phi
+    integer :: l, m
+    ylm = sqrt( (dble((2*l + 1)*factorial(l-m))/(fourPi * dble(factorial(l+m))) )) * &
+         plgndr(l,m,cos(theta))*cmplx(cos(dble(m)*phi), sin(dble(m)*phi),kind=double)
+  end function Ylm
+  integer function factorial(n)
+    integer :: i, n
+    factorial = 1
+    do i = 1, n
+       factorial = factorial * i
+    enddo
+  end function factorial
+
+  real(double) FUNCTION PLGNDR(L,M,X)
+    integer :: l, m,i, ll
+    real(double) :: x, pmm, fact, somx2, pmmp1,  pll
+    IF (M.LT.0.OR.M.GT.L.OR.ABS(X).GT.1.) call writeFatal('bad arguments')
+    PMM=1.
+    IF(M.GT.0) THEN
+       SOMX2=SQRT((1.-X)*(1.+X))
+       FACT=1.
+       DO I=1,M
+          PMM=-PMM*FACT*SOMX2
+          FACT=FACT+2.
+       enddo
+    ENDIF
+    IF(L.EQ.M) THEN
+       PLGNDR=PMM
+    ELSE
+       PMMP1=X*(2*M+1)*PMM
+       IF(L.EQ.M+1) THEN
+          PLGNDR=PMMP1
+       ELSE
+          DO LL=M+2,L
+            PLL=(X*(2*LL-1)*PMMP1-(LL+M-1)*PMM)/(LL-M)
+            PMM=PMMP1
+            PMMP1=PLL
+         enddo
+         PLGNDR=PLL
+      ENDIF
+   ENDIF
+ END FUNCTION PLGNDR
+      
 end module utils_mod
 

@@ -149,7 +149,7 @@ contains
 !***********************************************************************
 !*** Safety checks
 
-      IF(NANG.GT.MXNANG)STOP'***Error: NANG > MXNANG in bhmie'
+      IF(NANG.GT.MXNANG) STOP '***Error: NANG > MXNANG in bhmie'
       IF(NANG.LT.2)NANG=2
 !*** Obtain pi:
 

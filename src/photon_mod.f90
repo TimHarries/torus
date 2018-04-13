@@ -952,7 +952,7 @@ contains
                       grid%geometry(1:8) == "romanova"          ) then
                     ! need to check the position is not inside the star
                     if ((modulus(thisPhoton%position-grid%starPos1)) > grid%rStar1) exit
-                  else if (.not. inOctal(grid%octreeRoot, thisPhoton%position)) then
+                  else if (inOctal(grid%octreeRoot, thisPhoton%position)) then
                     exit
                   end if
 
@@ -1099,7 +1099,7 @@ contains
 !                   endif
 
 
-                   call getPhotoVec(starSurface, thisPhoton%position, thisPhoton%direction)
+                   call getPhotoVec(starSurface, thisPhoton%position, thisPhoton%direction, rHat)
 
 
                 case("jets")
@@ -1511,6 +1511,7 @@ contains
              if (grid%geometry(1:7) == "ttauri"      .or.  &
                   grid%geometry(1:9) == "luc_cir3d"  .or.  &
                   grid%geometry(1:6) == "cmfgen"     .or.  &
+                  grid%geometry(1:8) == "etacar"     .or.  &
                   grid%geometry(1:8) == "romanova"          ) then
                 ! need to check the position is not inside the star
                 if ((modulus(thisPhoton%position-(grid%starPos1))) > grid%rStar1) exit

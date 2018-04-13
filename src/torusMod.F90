@@ -43,7 +43,6 @@ subroutine torus(b_idim,  b_npart,       b_nptmass,  b_num_gas,   &
   use amr_mod, only: returnKappa
   use dimensionality_mod, only: initializeCodeUnits
   type(GRIDTYPE) :: grid
-  type(VECTOR) :: dummy
 
 ! Variables used when linking to sph code
   integer, intent(in)   :: b_idim, b_npart, b_nptmass
@@ -125,8 +124,7 @@ subroutine torus(b_idim,  b_npart,       b_nptmass,  b_num_gas,   &
   call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
   call freeGrid(grid)
   call freeGlobalSourceArray()
-  dummy = clusterparameter(VECTOR(0.d0,0.d0,0.d0),grid%octreeroot, subcell = 1, isdone = .true.)
-  call kill() ! Free SPH data type
+  call deallocate_sph()         ! Deallocate storage in sph_data_class
 !  call resetNewDirectionMie()
   call returnKappa(grid, grid%octreeRoot, 1, reset_Kappa=.true.)
 #ifdef MPI

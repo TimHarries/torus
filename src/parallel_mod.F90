@@ -8,6 +8,8 @@ module parallel_mod
   use utils_mod
   implicit none
 
+  integer, private, save :: num_openmp_threads
+
 contains  
 
 #ifdef MPI
@@ -358,6 +360,176 @@ contains
 #endif
 
   end subroutine torus_abort
+
+!-------------------------------------------------------------------------------
+
+!
+! Report information about how Torus was built and the parallelism in use
+!
+  subroutine report_parallel_type
+
+    use messages_mod
+#ifdef _OPENMP
+    use omp_lib
+#endif
+    implicit none
+    
+    character(len=80) :: message
+
+! Find out the number of OpenMP threads in use. This needs to be done from within a 
+! parallel region. If OpenMP is not in use then set variable to junk value to indicate
+! a problem if it is inadvertently used
+#ifdef _OPENMP
+!$OMP PARALLEL
+    num_openmp_threads=omp_get_num_threads()
+!$OMP END PARALLEL
+#else
+    num_openmp_threads=-1
+#endif
+
+    call writeBanner("Build options and parallelism","%",TRIVIAL)
+
+! Report type of parallelism and the number of MPI processes and OpenMP threads if 
+! appropriate. nThreadsGlobal has already been set up by mpi_amr_mod::setupAMRCOMMUNICATOR
+    if (TorusHybrid) then 
+       call  writeInfo('Using hybrid MPI/OpenMP', TRIVIAL)
+       write(message,'(a,1x,i5)') 'Total number of MPI processes:', nThreadsGlobal
+       call  writeInfo(message, TRIVIAL)
+       write(message,'(a,1x,i5)') 'Number of OpenMP threads:', num_openmp_threads
+       call  writeInfo(message, TRIVIAL)
+    elseif (TorusMpi) then 
+       call  writeInfo('Using MPI', TRIVIAL)
+       write(message,'(a,1x,i5)') 'Total number of MPI processes:', nThreadsGlobal
+       call  writeInfo(message, TRIVIAL)
+    elseif (TorusOpenmp) then 
+       call  writeInfo('Using OpenMP', TRIVIAL)
+       write(message,'(a,1x,i5)') 'Number of OpenMP threads:', num_openmp_threads
+       call  writeInfo(message, TRIVIAL)
+    elseif (TorusSerial) then
+       call  writeInfo('No parallelism is in use', TRIVIAL)
+    end if
+
+    call  writeInfo('', TRIVIAL)
+    call writeInfo("Options used to build Torus were:", TRIVIAL)
+#ifdef HYDRO
+     call writeInfo("hydro=yes", TRIVIAL)
+#else
+     call writeInfo("hydro=no", TRIVIAL)
+#endif
+#ifdef PHOTOION
+     call writeInfo("photoion=yes", TRIVIAL)
+#else
+     call writeInfo("photoion=no", TRIVIAL)
+#endif
+#ifdef MOLECULAR
+     call writeInfo("molecular=yes", TRIVIAL)
+#else
+     call writeInfo("molecular=no", TRIVIAL)
+#endif
+#ifdef CMFATOM
+     call writeInfo("atomic=yes", TRIVIAL)
+#else
+     call writeInfo("atomic=no", TRIVIAL)
+#endif
+#ifdef SPH
+     call writeInfo("sph=yes", TRIVIAL)
+#else
+     call writeInfo("sph=no", TRIVIAL)
+#endif
+#ifdef USECFITSIO
+     call writeInfo("cfitsio=yes", TRIVIAL)
+#else
+     call writeInfo("cfitsio=no", TRIVIAL)
+#endif
+    call  writeInfo('', TRIVIAL)
+
+  end subroutine report_parallel_type
+
+! Record information about how the job was run to a file
+  subroutine write_job_info_file
+
+#ifdef F2008
+    use iso_fortran_env
+#endif
+
+#ifdef MPI
+    use mpi
+    integer :: i, size, nameLength
+    character(len=MPI_MAX_PROCESSOR_NAME), allocatable :: jobHosts(:)
+#endif
+
+    integer, parameter :: LUN=69
+
+#ifdef MPI
+    call get_mpi_placement()
+    if (myRankGlobal /= 0 ) return
+#endif
+
+    open(file="info_job.dat", unit=LUN, status="replace", form="formatted")
+
+    write(LUN,'(a)') ' '
+    write(LUN,'(a)') '################################################################'
+    write(LUN,'(a)') 'Job info :'
+    write(LUN,'(a)') ' '
+    if (TorusHybrid) then 
+        write(LUN,'(a,1x,i5)') 'Parallelism: hybrid'
+     else if (TorusMPI) then
+        write(LUN,'(a,1x,i5)') 'Parallelism: MPI'
+     else if (TorusOpenMP) then
+        write(LUN,'(a,1x,i5)') 'Parallelism: OpenMP'
+     else
+        write(LUN,'(a,1x,i5)') 'Parallelism: none'
+     endif
+    if (TorusMPI)    write(LUN,'(a,1x,i5)') 'No. of MPI processes: ', nThreadsGlobal
+    if (TorusOpenMP) write(LUN,'(a,1x,i5)') 'No. of OpenMP threads:', num_openmp_threads
+    write(LUN,'(a)') ' '
+#ifdef F2008
+    write(LUN,'(a,1x,a)') 'Compiler options: ', COMPILER_OPTIONS()
+    write(LUN,'(a,1x,a)') 'Compiler version: ', COMPILER_VERSION()
+#endif
+#ifdef MPI
+    write(LUN,'(a)') ' '
+    do i=1,size
+       write(LUN,'(a,i5,a,a)') "Process ", i-1, ": Host ", jobHosts(i)(1:nameLength)
+    end do
+    write(LUN,'(a)') ' '
+#endif
+    write(LUN,'(a)') '############################################################'
+
+#ifdef MPI
+    deallocate(jobHosts)
+#endif
+
+    close(LUN)
+
+#ifdef MPI
+  contains
+
+    subroutine get_mpi_placement()
+
+      implicit none
+      
+      character(len=MPI_MAX_PROCESSOR_NAME) :: thisHost
+      integer :: rank, ierr
+      integer ::  hostnameString
+
+      call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
+      call MPI_Comm_size(MPI_COMM_WORLD, size, ierr)
+      
+      call MPI_Get_processor_name(thisHost, nameLength, ierr)
+      
+      ! Create a user defined type for communicating the hostname strings
+      call MPI_Type_contiguous(MPI_MAX_PROCESSOR_NAME, MPI_CHARACTER, hostnameString, ierr)
+      call MPI_Type_commit(hostnameString, ierr)
+
+      allocate(jobHosts(size))
+      call MPI_gather(thisHost,1,hostnameString,jobHosts,1,hostnameString,0,MPI_COMM_WORLD,ierr)
+      call MPI_Type_free(hostnameString,ierr)
+      
+    end subroutine get_mpi_placement
+#endif 
+
+  end subroutine write_job_info_file
 
 end module parallel_mod
 

@@ -8599,7 +8599,7 @@ end subroutine writeRadialFile
 
           !we should now have an array of values to send
           !first send the number of cells worth of data to expect
-          call MPI_SEND(nvals, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr) 
+          call MPI_SEND(nvals, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)  
           do counter = 1, nvals             
              call MPI_SEND(storageArray(counter,:), nStorage, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)             
           end do

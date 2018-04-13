@@ -258,7 +258,6 @@ module image_mod
         thisStokes%v = thisPhoton%stokes%v
 
         call pixelLocate(thisImageSet(i), xDist, yDist, xPix, yPix)
-
         if ((xPix >= 1) .and. &
              (yPix >= 1) .and. &
              (xPix <= thisImageSet(i)%nx) .and. &
@@ -1116,6 +1115,7 @@ module image_mod
        type(IMAGETYPE) :: image
        real :: xDist, yDist
        integer :: ix, iy
+
 
        ix = 0
        iy = 0

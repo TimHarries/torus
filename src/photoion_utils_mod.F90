@@ -1318,24 +1318,6 @@ end subroutine addRecombinationEmissionLine
           thisOctal%etaCont(subcell) = eta 
           thisOctal%biasCont3d(subcell) = 1.d0
 
-!          if (thisOctal%temperature(subcell) > 8.d3 .and. myrankglobal == 1 .and.firsttime) then
-!             open(50, file="radioEmissivity.dat", status="unknown", form="formatted")
-!             write(50, '(6(a12,1x))') "# nu(GHz)","eta","kappaff","eta/kff", "ne", "T"
-!             do wav = 1, 200
-!                freq = cspeed / dble(wav)
-!                eta =  thisOctal%Ne(subcell)**2 * &
-!                     alpkk(freq,real(thisOctal%temperature(subcell),kind=db))* &
-!                     exp(-(hcgs*freq)/(kerg*thisOctal%temperature(subcell)))
-!                eta=eta*real((2.0*dble(hcgs)*dble(freq)**3)/(dble(cspeed)**2))
-!                kappaff = thisOctal%ne(subcell)**2 * alpkk(freq, dble(thisOctal%temperature(subcell))) * &
-!                     (1.d0 - exp(-hcgs*freq/(kerg*dble(thisOctal%temperature(subcell))))) 
-!                write(50, '(6(es12.5, 1x))') freq/1.d9, eta, kappaff, eta/kappaff, thisOctal%ne(subcell),&
-!                thisOctal%temperature(subcell)
-!             enddo
-!             close(50)
-!             firsttime = .false.
-!          endif
-
        end if
 
     end do

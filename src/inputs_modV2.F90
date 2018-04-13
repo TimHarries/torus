@@ -504,6 +504,9 @@ contains
     call getLogical("habingflux", habingFlux, cLine, fLine, nLines, &
          "Calculate flux between 912 and 2400 A for sources: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getDouble("radforcethresh", RadForceThresh, 1.d0, cLine, fLine, nLines, &
+         "use a path length based estimation for the rad pressure: ","(a,f7.1,1x,a)", 1.0d-15, ok, .false.)
+
     call getLogical("accretionfeedback", AccretionFeedback, cLine, fLine, nLines, &
          "re-inject some of the accreted material into the domain: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -817,6 +820,14 @@ contains
           call getReal("rho0", rho0, real(mhydrogen),cLine, fLine, nLines, &
                "Initial number density: ","(a,f6.1,1x,a)", 100., ok, .true.)
 
+
+       case("etacar")
+          oneKappa = .true.
+          fastIntegrate = .false.
+          lineEmission = .true.
+          monteCarloRT = .true.
+          call getReal("lamline", lamLine, 1.,cLine, fLine, nLines, &
+               "Line emission wavelength: ","(a,f6.1,1x,a)", 850., ok, .true.)
 
        case("cmfgen")
           oneKappa = .true.
@@ -1485,8 +1496,11 @@ contains
           call getReal("router", rOuter, 1., cLine, fLine, nLines, &
                "Outer Radius (10^10cm): ","(a,1pe8.2,a)", 1e6, ok, .true.)
 
-! Geometries which set up a grid from SPH particles
+! -------- Geometries which set up a grid from SPH particles -----------------------
        case("sphfile","molcluster", "theGalaxy", "cluster", "wr104")
+
+          call writeBanner("SPH parameters","#",TRIVIAL)
+          
           call getString("sphdatafilename", sphdatafilename, cLine, fLine, nLines, &
                "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
 
@@ -1504,9 +1518,6 @@ contains
 
           call getInteger("kerneltype", kerneltype, cLine, fLine, nLines, &
                "Kernel type (0 is exponential/1 is spline): ","(a,i1,a)",0, ok, .false.)
-
-          call getLogical("useHull", useHull, cLine, fLine, nLines, &
-            "Use hull particle method: ","(a,1l,a)", .false., ok, .false.)
 
           call getLogical("adddisc", adddisc, cLine, fLine, nLines, &
             "Add inner and outer disc to model: ","(a,1l,a)", .false., ok, .false.)
@@ -1527,13 +1538,29 @@ contains
 ! and grid needs to be loaded with HI density
           call getLogical("convertrhotohi", convertRhoToHI, cLine, fLine, nLines, &
                "Convert density to HI:", "(a,1l,1x,a)", .false., ok, .false.)
-          call getInteger("ih2frac", ih2frac, cLine, fLine, nLines, &
-               "Column containing H2 fraction ","(a,i2,a)", 11, ok, .false.)
-          call getInteger("iCOfrac", iCO, cLine, fLine, nLines, &
-               "Column containing CO fraction ","(a,i2,a)", 15, ok, .false.)
           call getLogical("sphwithchem", sphwithchem, cLine, fLine, nLines, &
                "SPH has chemistry information:", "(a,1l,1x,a)", .false., ok, .false.)
 
+! If the dump format is ASCII then we can specify which columns to read H2 and molecular abundance from
+          if (inputFileFormat=="ascii" .or. inputFileFormat=="ascii-gadget") then
+             ! Keep ih2frac for backwards compatibility
+             if (checkPresent("sphh2col", cline, nlines)) then
+                call getInteger("sphh2col", sphh2col, cLine, fLine, nLines, &
+                     "Column containing H2 fraction: ","(a,1x,i2,a)", 11, ok, .false.)
+             else
+                call getInteger("ih2frac", sphh2col, cLine, fLine, nLines, &
+                     "Column containing H2 fraction: ","(a,1x,i2,a)", 11, ok, .false.)
+             endif
+             ! Keep iCOfrac for backwards compatibility
+             if (checkPresent("sphmolcol", cline, nlines)) then
+                call getInteger("sphmolcol", sphmolcol, cLine, fLine, nLines, &
+                     "Molecular abundances will be read from column: ","(a,1x,i2,a)", 15, ok, .false.)
+             else
+                call getInteger("iCOfrac", sphmolcol, cLine, fLine, nLines, &
+                     "Column containing CO fraction: ","(a,1x,i2,a)", 15, ok, .false.)
+             end if
+          end if
+          
 ! These parameters allow SPH particles within a box to be selected. Particles 
 ! outside the box are discarded
     call getLogical("sphboxcut", sphboxcut, cLine, fLine, nLines, &
@@ -2691,6 +2718,9 @@ contains
        call getLogical("readmiephase", readMiePhase, cLine, fLine, nLines, &
             "Read mie scattering phase file: ","(a,1l,1x,a)",.false., ok, .false.)
 
+       call getReal("subrange", subrange, 1., cLine, fLine, nLines, &
+            "Sublimation temperature e-folding temperature: ","(a,f5.3,a)",10.,ok,.false.)
+
 
           grainFracTotal = 0.
           do i = 1, nDustType
@@ -2888,7 +2918,7 @@ contains
 
 
     call getInteger("nspheresurface", nSphereSurface, cLine, fLine, nLines, &
-         "Number of points on sphere surface: ","(a,i2,a)",1000,ok,.false.)
+         "Number of points on sphere surface: ","(a,i2,a)",100,ok,.false.)
 
 
     call getInteger("nsource", inputNSource, cLine, fLine, nLines, &
@@ -3021,6 +3051,35 @@ contains
 
     call getLogical("hotspot", hotSpot, cLine, fLine, nLines, &
          "Add a hotspot to the source: ","(a,1l,1x,a)",.false., ok, .false.)
+
+
+    call getLogical("pulsating", pulsatingStar, cLine, fLine, nLines, &
+         "Star is pulsating: ","(a,1l,1x,a)",.false., ok, .false.)
+    if (pulsatingStar) then
+       call getInteger("nmodes", nModes,  cLine, fLine, nLines, &
+            "Number of modes: ","(a,i2,a)",1, ok, .true.)
+
+
+       if (.not.allocated(lMode)) allocate(lMode(1:nModes))
+       if (.not.allocated(mMode)) allocate(mMode(1:nModes))
+       if (.not.allocated(periodMode)) allocate(periodMode(1:nModes))
+       if (.not.allocated(fracMode)) allocate(fracMode(1:nModes))
+
+
+       call getIntegerArray("lmode", lMode, cLine, fLine, nLines, &
+            "l mode: ",1, ok, .true.)
+
+       call getIntegerArray("mmode", mMode, cLine, fLine, nLines, &
+            "m mode: ",1, ok, .true.)
+
+       call getDoubleArray("period", periodMode, 1.d0, cLine, fLine, nLines, &
+            "Pulsation period (seconds): ",1.d0, ok, .true.)
+
+       call getDoubleArray("fracmode", fracMode, 1.d0, cLine, fLine, nLines, &
+            "Pulsation period (seconds): ",1.d0, ok, .true.)
+    endif
+
+
 
   end subroutine readSourceParameters
 
@@ -4151,6 +4210,15 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     real :: aspectRatio, thisAspectRatio
     type(VECTOR) :: viewvec
 
+    call getInteger("nphase", nPhase, cLine, fLine, nLines, &
+         "Number of phases: ", "(a,i3,1x,a)", 1, ok, .false.)
+    nStartPhase = 1
+    nEndPhase = nPhase
+
+    ! Used for optical depth tests in phaseloop
+    call getReal("lambdatau", lambdatau, 1.0, cLine, fLine, nLines, &
+         "Lambda for tau test: ","(a,1PE10.3,1x,a)", 5500.0, ok, .false.)
+
     call getBigInteger("nphotons", nphotons, cLine, fLine, nLines, &
          "Number of photons in image: ","(a,i9,a)", 10000_bigInt, ok, .false.)
 
@@ -4407,7 +4475,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     real :: imagesize, thisImageSize, wholeGrid
     real :: inclination, positionAngle, thisPA, thisInc
     real :: offsetX, offsetY, thisOffsetX, thisOffsetY
-    real :: aspectRatio, thisAspectRatio
+    real :: aspectRatio, thisAspectRatio, thisTime
     type(VECTOR) :: viewVec
     real(double) :: ang
 
@@ -4543,12 +4611,14 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
        
        write(imageFilename,'(a,i4.4,a)') "movie",i,".fits"
 
+       thisTime = 0.d0
        ang = twoPi * dble(i-1)/dble(nImage)
        viewVec = VECTOR(sin(thisInc),0.d0, cos(thisInc))
        viewVec = rotateZ(viewVec, dble(ang))
        if (writeoutput) write(*,*) i, viewvec
        call setImageParams(i, thisLambdaImage, outputimageType,imageFilename, thisnpixels, axisUnits, fluxUnits, &
-            thisImageSize, thisaspectRatio, thisInc, thisPA, thisOffsetx, thisOffsety, gridDistance, viewVec=viewVec)
+            thisImageSize, thisaspectRatio, thisInc, thisPA, thisOffsetx, thisOffsety, gridDistance, &
+            viewVec=viewVec, imageTime = thisTime)
     enddo
 
     call writeInfo(" ")
@@ -5117,6 +5187,60 @@ endif
  end do
  end subroutine findRealArray
 
+subroutine findIntegerArray(name, value, cLine, fLine, nLines, ok)
+ implicit none
+ character(len=*) :: name
+ integer :: value(:)
+ character(len=lencLine) :: cLine(:)
+ logical :: fLine(:)
+ integer :: nLines
+ logical :: ok
+ integer :: i, j, k
+
+ ok = .false.
+ do i = 1, nLines
+  j = len_trim(name)
+  k = index(cline(i)," ")-1
+     if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
+  if (.not.ok) then
+        ok = .true.
+        read(cLine(i)(j+1:),*) value
+        fLine(i) = .true.
+  else
+     call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
+     call torus_stop
+  endif
+endif
+ end do
+ end subroutine findIntegerArray
+
+subroutine findDoubleArray(name, value, cLine, fLine, nLines, ok)
+ implicit none
+ character(len=*) :: name
+ real(double) :: value(:)
+ character(len=lencLine) :: cLine(:)
+ logical :: fLine(:)
+ integer :: nLines
+ logical :: ok
+ integer :: i, j, k
+
+ ok = .false.
+ do i = 1, nLines
+  j = len_trim(name)
+  k = index(cline(i)," ")-1
+     if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
+  if (.not.ok) then
+        ok = .true.
+        read(cLine(i)(j+1:),*) value
+        fLine(i) = .true.
+  else
+     call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
+     call torus_stop
+  endif
+endif
+ end do
+end subroutine findDoubleArray
+
  subroutine getInteger(name, ival, cLine, fLine, nLines, message, format, idef, ok, &
                        musthave)
   character(len=*) :: name
@@ -5427,6 +5551,63 @@ end subroutine getVector
   call writeInfo(output, TRIVIAL)
   rVal = rVal * unitConversion
  end subroutine getRealArray
+
+ subroutine getDoubleArray(name, rval, unitConversion, cLine, fLine, nLines, message, rdef, ok, &
+                      musthave)
+  character(len=*) :: name
+  real(double) :: rval(:), unitConversion
+  logical :: musthave
+  character(len=lencLine) :: cLine(:)
+  logical :: fLine(:)
+  character(len=lencLine+200) :: output
+  integer :: nLines
+  character(len=*) :: message
+  character(len=10) :: default
+  real(double) :: rdef
+  logical :: ok
+  ok = .true.
+  default = " "
+  call findDoubleArray(name, rval, cLine, fLine, nLines, ok)
+  if (.not. ok) then
+    if (musthave) then
+       if (writeoutput)  write(*,'(a,a)') name, " must be defined"
+       call torus_stop
+    endif
+    rval(:) = rdef
+    default = " (default)"
+  endif
+  write(output,*) trim(message)//" ",rval,default
+  call writeInfo(output, TRIVIAL)
+  rVal = rVal * unitConversion
+ end subroutine getDoubleArray
+
+ subroutine getIntegerArray(name, rval,  cLine, fLine, nLines, message, rdef, ok, &
+                      musthave)
+  character(len=*) :: name
+  integer :: rval(:)
+  logical :: musthave
+  character(len=lencLine) :: cLine(:)
+  logical :: fLine(:)
+  character(len=lencLine+200) :: output
+  integer :: nLines
+  character(len=*) :: message
+  character(len=10) :: default
+  integer :: rdef
+  logical :: ok
+  ok = .true.
+  default = " "
+  call findIntegerArray(name, rval, cLine, fLine, nLines, ok)
+  if (.not. ok) then
+    if (musthave) then
+       if (writeoutput)  write(*,'(a,a)') name, " must be defined"
+       call torus_stop
+    endif
+    rval(:) = rdef
+    default = " (default)"
+  endif
+  write(output,*) trim(message)//" ",rval,default
+  call writeInfo(output, TRIVIAL)
+end subroutine getIntegerArray
 
 !Return boundary code for input boundary strings
  integer function getBoundaryCode(boundaryString)         

@@ -12,6 +12,7 @@
 #   10. make codecov=yes : Generate coverage statistics with ifort
 #   11. make zlib=yes:   : Use z-lib compression libary to produce vtu files
 #   12. make sundials=yes: Use sundials chemistry ODE tool
+#   13. make f2008=yes   : Use Fortran 2008 features
 #-------------------------------------------------------------------------
 
 USEMKL  = no
@@ -20,6 +21,7 @@ minusg = no
 netcdf = no
 sundials = no
 hdf = no
+f2008=no
 memcheck = yes
 zlib = yes
 debug   = no
@@ -129,13 +131,14 @@ ifeq ($(SYSTEM), gfortran)
         F95COMP = gfortran
     endif
      ZLIBLIBS = -lz
-    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Wno-surprising -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
+    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Wno-surprising -Wno-conversion -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
 #    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-surprising -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
 #    DEBUGFLAG= -ggdb -fbacktrace -Wunderflow -Wall -Werror -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
     FASTFLAG = -O3
     OPENMPFLAG = -fopenmp
 # -static-libgcc fixes linking problems under Mac OS
-    STARLIBS += -static-libgcc -static-libgfortran
+# -lcurl is required for newer cfitsio libraries to prevent failure at link stage
+    STARLIBS += -static-libgcc -static-libgfortran -lcurl
 #    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
     EXE = torus.gfortran
     KNOWN_SYSTEM = yes
@@ -263,6 +266,34 @@ ifeq ($(SYSTEM), complexity)
     ZLIBLIBS = -lz
     KNOWN_SYSTEM=yes
 endif
+#
+# The Dirac cosma6 system at Durham 
+# Default is an MPI build, use mpi=no for openmp/serial
+# Use 'module load cfitsio' to make FITS library available
+ifeq ($(SYSTEM), cosma)
+    ifeq ($(mpi), no)
+       F95COMP= ifort
+       MPIFLAG=
+    else
+       F95COMP= mpif90
+       MPIFLAG= -DMPI
+    endif
+    FASTFLAG= -O3 
+# For debugging with optimisations enabled use
+#    DEBUGFLAG= -O3 -g -debug extended
+    DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
+    STATICFLAG=
+    MATHTRAP=
+    EXE=torus.cosma
+    CFITSIOLIBS = -lcfitsio
+    STATICLIBS= -Bstatic
+    KROMELIBS = -L${HOME}/krome/build -lkrome
+    ifeq ($(chemistry), yes)
+       F95COMP+=-I${HOME}/krome/build
+    endif
+    ZLIBLIBS = -lz
+    KNOWN_SYSTEM=yes
+endif
 
 # Isca configuration: to pick up the FITS libraries load the CFITSIO module
 # there's no need to add the path to the FITS libraries in this Makefile. 
@@ -310,91 +341,6 @@ ifeq ($(SYSTEM), davesmac)
     MKLIBS = -I/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Headers -L/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Libraries -lmkl_lapack95 -lmkl_intel -lmkl_sequential -lmkl_core -lguide -lpthread #pthread for macs 
 #    MKLIBS = -I/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Headers -L/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Libraries -lmkl_lapack -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lguide -lpthread #pthread for macs 
     EXE = torus.intelmac
-    KNOWN_SYSTEM = yes
-endif
-
-ifeq ($(SYSTEM), zen)
-    F95COMP= mpif90
-    FASTFLAG= -mcmodel medium -shared-intel
-#    FASTFLAG= -O3 -xS #-fp-model fast=2 -no-prec-div -no-prec-sqrt -auto
-#    FASTFLAG= -fp-model fast=2 -no-prec-div -no-prec-sqrt -O3 -xT #-ipo 
-
-    DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created -mcmodel medium -shared-intel
-# Uncomment this line to include MPI correctness checking 
-# It is not enabled by default as it can be slow
-#    DEBUGFLAG += -check_mpi
-
-## This section was required for setting debug flags with Intel MPI version 3.x 
-## There was a conflict between -check in ifort and mpif90. This is fixed in the 4.x versions. 
-##
-## # Include run-time error checking using ifort. Use environment variable to avoid clash with 
-## # ITC -check option in version 3.1 of mpiifort/mpif90 scripts. 
-##    ifeq ($(debug), yes)
-##      export F90FLAGS=-check all -check noarg_temp_created
-##    endif
-## # Uncomment this line to include MPI correctness checking using ITC libraries
-## # when using version 3.1 of the Intel MPI libraries
-## #  DEBUGFLAG += -check
-
-    STATICFLAG=
-    MATHTRAP=
-    EXE=torus.zen
-    STATICLIBS= -Bstatic
-    CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
-    ifeq ($(hdf), yes)
-       F95COMP+=-I/sw/hdf5_intel/include
-       STARLIBS=-L/sw/hdf5_intel/lib
-    endif
-    ifeq ($(netcdf), yes)
-      NCDF_INC=-I/sw/netcdf-4.3.0/include/
-      NCDF_LIB=-L/sw/netcdf-4.3.0/lib/ -lnetcdff -lnetcdf
-    endif
-    ZLIBLIBS = -lz	
-    MKLIBS = -lmkl_lapack95 -lmkl_def -lmkl_em64t -lmkl_intel -lmkl_sequential -lmkl_core -lguide -lpthread #pthread for macs    
-    MPIFLAG = -DMPI
-    KROMELIBS = -L${HOME}/krome/build -lkrome
-    ifeq ($(chemistry), yes)
-       F95COMP+=-I${HOME}/krome/build
-    endif
-    SPHNG_FLAGS = -mcmodel=medium -i-dynamic
-    KNOWN_SYSTEM=yes
-endif
-
-ifeq ($(SYSTEM), zensingle)
-    F95COMP= ifort
-    FASTFLAG= -O3 
-# For debugging with optimisations enabled use
-#    FASTFLAG= -O3 -g -debug extended
-    DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
-    STATICFLAG=
-    MATHTRAP=
-    ifeq ($(netcdf), yes)
-       NCDF_INC=-I/sw/netcdf-4.3.0/include/
-       NCDF_LIB=-L/sw/netcdf-4.3.0/lib/ -lnetcdff -lnetcdf
-    endif
-    EXE=torus.zensingle
-    STATICLIBS= -Bstatic
-    CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
-    ifeq ($(hdf), yes)
-       F95COMP+=-I/sw/hdf5_intel/include
-       STARLIBS=-L/sw/hdf5_intel/lib
-    endif
-    ZLIBLIBS = -lz
-    MPIFLAG = 
-    KROMELIBS = -L${HOME}/krome/build -lkrome
-    ifeq ($(chemistry), yes)
-       F95COMP+=-I${HOME}/krome/build
-    endif
-    SPHNG_FLAGS = -mcmodel=medium -i-dynamic
-    KNOWN_SYSTEM=yes
-endif
-
-ifeq ($(SYSTEM), miracle)
-    F95COMP  = f90
-    DEBUGFLAG= -g
-    FASTFLAG = -O -OPT:Olimit=0 -mp -64
-#    FASTFLAG = -OPT:Olimit=0 -O -mp
-    EXE = torus.miracle
     KNOWN_SYSTEM = yes
 endif
 
@@ -449,6 +395,10 @@ endif
 
 ifeq ($(netcdf), yes)
    ETCFLAG += -DNETCDF
+endif
+
+ifeq ($(f2008), yes)
+   ETCFLAG += -DF2008
 endif
 
 #SUNFLAG = -sundials

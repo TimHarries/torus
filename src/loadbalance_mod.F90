@@ -18,7 +18,7 @@ contains
     real(double) :: frac(:)
     character(len=*) :: method
     integer :: i, iThread, j, nSolo
-    logical, save :: firstTime=.true.
+!    logical, save :: firstTime=.true.
     logical :: writeList
 
     ! allocate and initilialise arrays
@@ -91,15 +91,15 @@ contains
        write(*,*) "Load balancing thread list (balanced by "//method//")"
 
        writeList = .true.
-       ! if balancing by cells, only need to write out the list the first time
-       ! todo - add in condition that mindepth==maxdepth
-       if (method == "cells") then
-          if (firstTime) then
-             firstTime = .false.
-          else
-             writeList = .false.
-          endif
-       endif
+!       ! if balancing by cells, only need to write out the list the first time
+!       ! todo - add in condition that mindepth==maxdepth
+!       if (method == "cells") then
+!          if (firstTime) then
+!             firstTime = .false.
+!          else
+!             writeList = .false.
+!          endif
+!       endif
 
        if (writeList) then
           do i = 1, nHydroThreadsGlobal

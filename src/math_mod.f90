@@ -655,11 +655,11 @@ contains
         totalContEmissionDouble = 0.0_db
         totalContProb           = 0.0_db
         totalLineProb           = 0.0_db
-        
         call computeProbDist2AMR(grid%octreeRoot,totalLineEmissionDouble,&
                                                  totalContEmissionDouble,&
                                                  totalLineProb,&
                                                  totalContProb)
+!        write(*,*) "computeprobdist2amr ",totallineemissiondouble,totalcontemissiondouble
 
         if (totalLineProb /= 0.0) then
            biasCorrectionLine = totalLineEmissionDouble / totalLineProb

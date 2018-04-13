@@ -20,7 +20,7 @@ contains
     use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark, calcMovie, calcColumnImage
     use inputs_mod, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
     use inputs_mod, only : mie, gridDistance, nLambda, ncubes
-    use inputs_mod, only : postsublimate !, lineEmission, monteCarloRT, nv
+    use inputs_mod, only : postsublimate, lineEmission, nv
     use inputs_mod, only : dowriteradialfile, radialfilename
     use inputs_mod, only : sourcelimbaB, sourcelimbbB ,sourcelimbaV, sourcelimbbV
     use sed_mod, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
@@ -157,7 +157,11 @@ contains
        if (.not.loadBalancingThreadGlobal) then
           call createColumnDensityImage(grid, columnImageDirection,image)
           call findmultifilename(trim(columnImageFilename), iModel, thisFile)
+#ifdef USECFITSIO
           if (writeoutput) call writeFitsColumnDensityImage(image, trim(thisFile))
+#else
+          call writeWarning("Torus was build without FITS support. No image written.")
+#endif
        endif
 #endif
     endif
@@ -412,7 +416,7 @@ if (.false.) then
 
           fastIntegrate=.true.
           nPhotons = nPhotSpec
-          call do_phaseloop(grid, .false., 10000, miePhase, globalnsource, globalsourcearray, nmumie)
+          call do_phaseloop(grid, .false., 20000, miePhase, globalnsource, globalsourcearray, nmumie)
        end if
 
        if ((calcImage.or.calcMovie).and.(.not.calcDustCube)) then
@@ -425,7 +429,7 @@ if (.false.) then
 
              call setupDust(grid, xArray, nLambda, miePhase, nMumie)
              polarWavelength = lambdaimage
-             write(polarFilename,'(a,f4.2,a)') "polar",polarwavelength/1d4,".dat"
+             write(polarFilename,'(a,i6.6,a)') "polar",nint(polarwavelength/1d4),".dat"
              call dumpPolarizability(miePhase, nMuMie, xarray, nLambda)
              if (gasOpacityPhysics) then
                 allocate(xArrayDouble(1:nLambda))
@@ -457,8 +461,8 @@ if (.false.) then
 
                 call do_phaseloop(grid, .false., 10000, &
                      miePhase, globalnsource, globalsourcearray, nmumie, imNum=i)
-          enddo
-       endif
+             enddo
+          endif
 
        if (calcImage.and.calcDustCube) then
           call readLambdaFile(lambdaFilename, lambdaArray, nCubeLambda)
@@ -505,31 +509,44 @@ if (.false.) then
     endif
 
 !#ifdef CMFATOM
-!    if (atomicPhysics.and.(calcspectrum.or.calcimage.or.calcMovie)) then
-!       mie = .false.
-!       lineEmission = .true.
-!       grid%lineEmission = .true.
-!       if ( calcspectrum ) then 
-!          write(*,*) "calling setupxarray ",nv
-!          call setupXarray(grid, xarray, nv, atomicDataCube=.true.)
-!          write(*,*) "nlambda after setupxarray",nlambda,nv
-!          nlambda = nv
-!          call do_phaseloop(grid, .true., 10000, miePhase, globalnsource, globalsourcearray, nmumie) 
-!       end if
-!
-!       if (calcImage.or.calcMovie) then
-!          do i = 1, nImage
-!             nlambda = 1
-!             lambdaImage = getImageWavelength(i)
-!             call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage, lamMax=lambdaImage, &
-!                  wavLin=.true., numLam=1, dustRadEq=.true.)
-!
-!             call do_phaseloop(grid, .false., 10000, &
-!                  miePhase, globalnsource, globalsourcearray, nmumie, imNum=i)
-!          enddo
-!       endif
-!
-!    endif
+    if (atomicPhysics.and.(calcspectrum.or.calcimage.or.calcMovie)) then
+       mie = .false.
+       lineEmission = .true.
+       grid%lineEmission = .true.
+       if ( calcspectrum ) then 
+          write(*,*) "calling setupxarray ",nv
+          call setupXarray(grid, xarray, nv, phaseloop=.true.)
+          write(*,*) "nlambda after setupxarray",nlambda,nv
+          nlambda = nv
+          call do_phaseloop(grid, .true., 10000, miePhase, globalnsource, globalsourcearray, nmumie) 
+       end if
+
+       if (calcImage.or.calcMovie) then
+          if (dustPhysics) then
+             do i = 1, nImage
+                nlambda = 1
+                lambdaImage = getImageWavelength(i)
+                call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage, lamMax=lambdaImage, &
+                     wavLin=.true., numLam=1, dustRadEq=.true.)
+                
+                call do_phaseloop(grid, .false., 10000, &
+                     miePhase, globalnsource, globalsourcearray, nmumie, imNum=i)
+             enddo
+          else
+             nv = 200
+             write(*,*) "calling setupxarray for image ",nv
+             call setupXarray(grid, xarray, nv, phaseloop=.true.)
+             write(*,*) "nlambda after setupxarray",nlambda,nv
+             nlambda = nv
+             do i = 1, nImage
+                call do_phaseloop(grid, .true., 10000, miePhase, globalnsource, globalsourcearray, nmumie,imnum=i) 
+             enddo
+          endif
+           
+
+       endif
+
+    endif
 !#endif
     if (sourceHistory) then
        call writeSourceHistory(sourceHistoryfilename,globalSourceArray,globalnSource, oldMass, oldAge)

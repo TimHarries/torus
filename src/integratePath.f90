@@ -1578,7 +1578,8 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
                  nu  = real(cSpeed / (lambda0*angstromtocm))
                  tauSob(1:nTau) = chiLine(1:nTau)  / (nu  * velocityDeriv(1:nTau))
                  
-                 ! loop over all wavelength bins
+   
+              ! loop over all wavelength bins
 
                  do j = 1, nLambda, 1
 
@@ -1596,6 +1597,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
                     thisVel = thisVel + real(uHat.dot.vvec)
 
                     ! loop through the projected velocities to find the resonance zones
+
  
                     do i = 2, nTau-1, 1
 
@@ -1611,7 +1613,8 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
    
                           tauSobScalar2 = tauSob(i+1)
    
-   
+
+!                          write(*,*) "sob ",tausobscalar1,thisvel*cspeed/1.d5,chiline(i),velocityDeriv(i)
                           ! interpolate in velocity space to get sobolev depth
    
                           x = 1.

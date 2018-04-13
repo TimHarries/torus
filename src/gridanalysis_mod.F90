@@ -382,7 +382,9 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
 #endif
     use hydrodynamics_mod, only : setupevenuparray
 #endif
+#ifdef CFITSIO
     use image_mod, only : writeFitsColumnDensityImage 
+#endif
     use inputs_mod, only : calculateEmissionMeasure, calculateLymanFlux
     use inputs_mod, only : smallestCellSize, writeLums, plotAvgTemp, calculateGlobalAvgTemp, plotAvgTdust, calculateGlobalAvgTdust
     integer :: nMuMie
@@ -392,13 +394,15 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
     integer :: nSource, i
-    type(VECTOR) :: startPoint, endPoint, firststartpoint, thisDir
-    real(double) :: maxRho, totalMass 
-    character(len=80) :: thisFile, rootfilename, fm, thisFileGrid, thisFileRadius
+!    type(VECTOR) :: startPoint, endPoint, firststartpoint, thisDir
+!    real(double) :: maxRho, totalMass 
+    character(len=80) :: thisFile!, thisFileGrid, thisFileRadius!, rootFilename, fm
+#ifdef CFITSIO
     real(double), pointer :: image(:,:), rmsImage(:,:)
+#endif
     logical, save :: firstTime=.true.
-    real(double), save :: radius 
-    real(double) :: mass, highestRho, volume, ionizedMass, ionizedVolume, totalKE, totalTE, massflux
+!    real(double), save :: radius 
+!    real(double) :: mass, highestRho, volume, ionizedMass, ionizedVolume, totalKE, totalTE, massflux
     character(len=20) :: weighting
     integer :: ierr
     real(double) :: weightedFluxInRadius, massInRadius, meang0, g0inCell, distance
@@ -416,7 +420,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
        loopLimitTime = 1.d40 
        iterTime = 1.e30
        call setupevenuparray(grid, evenuparray)
-       call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, &
+       call photoIonizationloopAMR(grid, source, nsource, nLambda, &
             lamArray, nPhotoIter, loopLimitTime, looplimittime, .false.,iterTime,.true., &
             evenuparray, optID, iterStack, miePhase, nMuMie) 
     endif
@@ -468,7 +472,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
 !    endif
 
 !   temperature weighted-average along los 
-#IFDEF MPI
+#ifdef MPI
     if (plotAvgTemp .or. calculateGlobalAvgTemp) then
        do i=3,7
           if (i==1) then
@@ -486,6 +490,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
           elseif (i==7) then
              write(weighting, '(a)') "ionNone" 
           endif
+#ifdef CFITSIO
           if (plotAvgTemp) then
              ! pixel-by-pixel average
              if (writeoutput) write(*,*) "Making temperature image with weighting ", weighting
@@ -493,6 +498,9 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
              write(thisFile, '(i4.4,a,a,a)') grid%idump, "_avgtemp_", trim(weighting), ".fits"
              if (writeoutput) call writeFitsColumnDensityImage(image, thisFile)
           endif
+#else
+          call writeInfo("FITS not enabled, not writing",FORINFO)
+#endif
 
           if (calculateGlobalAvgTemp) then
              ! global average
@@ -544,6 +552,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
           elseif (i==2) then
              write(weighting, '(a)') "none" 
           endif
+#ifdef CFITSIO
           if (plotAvgTdust) then
              ! pixel-by-pixel average
              if (writeoutput) write(*,*) "Making tdust image with weighting ", weighting
@@ -557,6 +566,9 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
              write(thisFile, '(i4.4,a,a,a)') grid%idump, "_normvarianceTdust_", trim(weighting), ".fits"
              if (writeoutput) call writeFitsColumnDensityImage(rmsImage, thisFile)
           endif
+#else
+          call writeInfo("FITS not enabled, not writing",FORINFO)
+#endif
 
           if (calculateGlobalAvgTdust) then
              ! global average
@@ -596,12 +608,16 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
     endif
 
 ! emission measure image
+#ifdef CFITSIO
     if (calculateEmissionMeasure) then
 !       call resetNe(grid%octreeRoot)
        call createEmissionMeasureImage(grid, columnImageDirection, image)
        write(thisFile, '(a,i4.4,a)') "emissionMeasure_", grid%idump, ".fits"
        if (writeoutput) call writeFitsColumnDensityImage(image, thisFile)
    endif
+#else
+    call writeInfo("FITS not enabled, not writing",FORINFO)
+#endif
 
 
 !! luminosities
@@ -621,7 +637,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
              close(56)
           endif
     endif
-#ENDIF
+#endif
 
 
 ! assumes 1 thread only
@@ -741,6 +757,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
 
     
     
+#ifdef CFITSIO
 !    ! column along x, ionfrac along x and y 
 !    ! x dir
 !    thisDir = VECTOR(1.d0, 0.d0, 0.d0)
@@ -765,6 +782,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
 !    write(thisFile, '(a,i4.4,a)') "hiz_", grid%idump, ".fits"
 !    call createHiImage(grid, thisDir, image)
 !    if (writeoutput) call writeFitsColumnDensityImage(image, thisFile)
+#endif
 
     if (calculateLymanFlux) then
        if (.not. splitOverMPI) then
@@ -826,17 +844,16 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
   
   end subroutine findCloudEdge
 
-  subroutine writeCellValuesForSource(lunit, grid, thisSource, position) 
+  subroutine writeCellValuesForSource(grid, thisSource, position) 
      use inputs_mod, only : iModel
      use amr_mod, only : octalOnThread
      type(GRIDTYPE) :: grid
      type(OCTAL), pointer :: thisOctal
      type(SOURCETYPE) :: thisSource
      type(VECTOR) :: position
-     integer :: lunit
      integer :: subcell
-     real(double) :: time, rho, habingFlux, tgas, tdust, tval, rMod 
-     type(VECTOR) :: vHat
+     real(double) :: time, rho, habingFlux, tgas, tdust, rMod !, tval 
+!     type(VECTOR) :: vHat
     character(len=80) :: thisFile
 
      if (myrankGlobal /= 0 .and..not. loadBalancingThreadGlobal) then
@@ -855,7 +872,6 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
 !           call distanceToCellBoundary(grid, thisSource%position, vHat, tval, thisOctal, subcell)
            rMod = modulus(thisSource%position - position)
 
-!           write(lunit, '(i6.4, f20.2, 3(1x,es12.5), 2(1x,f9.2))') iModel, time, rho, habingFlux*1.d10, tval, tgas, tdust 
            write(thisFile, '(a)') "firststartpoint.dat"
            open(69, file=thisFile, status="old", position="append", form="formatted")
            write(69, '(i6.4, f20.2, 3(1x,es12.5), 2(1x,f9.2))') iModel, time, rho, habingFlux*1.d10, rmod, tgas, tdust 
@@ -942,7 +958,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
              ! case B recombination
              alphaB = 2.7d-13
              ! rubin's
-             alphaR = 4.1d-10 * thisOctal%temperature(subcell)**-0.8
+             alphaR = 4.1d-10 * thisOctal%temperature(subcell)**(-0.8d0)
              
              nlyA = nlyA + ne*(nHii*alphaAHi + nHeii*alphaAHei)*dV
              nlyB = nlyB + ne*(nHii + nHeii)*alphaB*dV

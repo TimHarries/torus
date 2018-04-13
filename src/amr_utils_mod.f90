@@ -195,6 +195,7 @@ module amr_utils_mod
          if (vvec%x >= 0.d0) then
             amrGridVelocity = modulus(vvec) * rHat
          else
+            write(*,*) "reversed"
             amrGridVelocity = modulus(vvec) * ((-1.d0)*rHat)
          endif
          goto 666

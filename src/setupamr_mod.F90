@@ -35,7 +35,8 @@ contains
     use inputs_mod, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, mDisc
     use inputs_mod, only : rCore, rInner, rOuter, gridDistance, massEnvelope, readTurb, virialAlpha, restartLucy
-    use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, logspacegrid, nmag, dospiral, sphereMass,sphereRadius
+    use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, logspacegrid, nmag, dospiral, sphereMass, &
+         sphereRadius, sourceRadius
     use disc_class, only:  new
 #ifdef ATOMIC
     use cmf_mod, only : checkVelocityInterp
@@ -47,7 +48,7 @@ contains
 #endif
 #ifdef SPH
     use cluster_class
-    use sph_data_class, only: read_sph_data_wrapper, deallocate_sph
+    use sph_data_class, only: read_sph_data_wrapper
 #endif
 #ifdef MPI 
     use mpi_amr_mod
@@ -431,7 +432,9 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
 
         call writeInfo("Calling routines to finalize the grid variables...",TRIVIAL)
         call fixParentPointers(grid%octreeRoot)
+        if (doTuning) call tune(6, "Finish grid")
         call finishGrid(grid%octreeRoot, grid, romData=romData)
+        if (doTuning) call tune(6, "Finish grid")
         call writeInfo("...final adaptive grid configuration complete",TRIVIAL)
 
 doGridshuffle: if(gridShuffle) then
@@ -534,6 +537,11 @@ doGridshuffle: if(gridShuffle) then
              grid%rInner = rInner
              grid%rOuter = rOuter
              grid%rCore = rCore
+
+
+
+          case("etacar")
+             grid%rstar1 = real(sourceRadius(1))
 
 #ifdef SPH
           case("cluster", "dale")
