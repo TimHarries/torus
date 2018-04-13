@@ -472,7 +472,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
 !    endif
 
 !   temperature weighted-average along los 
-#IFDEF MPI
+#ifdef MPI
     if (plotAvgTemp .or. calculateGlobalAvgTemp) then
        do i=3,7
           if (i==1) then
@@ -637,7 +637,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
              close(56)
           endif
     endif
-#ENDIF
+#endif
 
 
 ! assumes 1 thread only
@@ -958,7 +958,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
              ! case B recombination
              alphaB = 2.7d-13
              ! rubin's
-             alphaR = 4.1d-10 * thisOctal%temperature(subcell)**-0.8
+             alphaR = 4.1d-10 * thisOctal%temperature(subcell)**(-0.8d0)
              
              nlyA = nlyA + ne*(nHii*alphaAHi + nHeii*alphaAHei)*dV
              nlyB = nlyB + ne*(nHii + nHeii)*alphaB*dV
