@@ -1844,6 +1844,7 @@ CONTAINS
 !$OMP SHARED(curtains, starSurface, VoigtProf, nDustType, ttauri_disc, ttau_disc_on, positionAngle) &
 !$OMP SHARED(forcedWavelength, usePhotonWavelength, thin_disc_on, forceFirstScat, fastIntegrate) &
 !$OMP SHARED(o6yArray, yArray, yArrayStellarScattered, yArrayStellarDirect, yArrayThermalScattered, yArrayThermalDirect) &
+!$OMP SHARED(yArrayPAH) &
 !$OMP REDUCTION(+: ntot,tooFewSamples, boundaryProbs, negativeOpacity, totalOutputLuminosity)
 
     if (nSource > 0) &
