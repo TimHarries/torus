@@ -747,10 +747,10 @@ contains
 
   real function whitneyDensity(point, grid)
     use inputs_mod, only : erInner, erOuter, beta, mdisc, mdotenv, mcore, cavangle, cavdens, &
-         drouter, drinner 
+         drouter, drinner, rhofloor
     TYPE(VECTOR), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN), optional   :: grid
-    real :: r, mu, mu_0, rhoEnv, r_c, rho0
+    real :: r, mu, mu_0, rhoEnv, r_c, rho0, z, zcav
     real :: h, rhoDisc, alpha
     real(double) :: fac, theta
     logical :: withGrid
@@ -787,6 +787,7 @@ contains
          (drouter**(beta-alpha+2.)-drInner**(beta-alpha+2.))) ))
 
     r = real(sqrt(point%x**2 + point%y**2)*1.e10)
+    z = abs(point%z)
     h = real(0.1d0 * drInner * (r/drinner)**beta)
     rhoDisc = 1.e-30
     if ((r > drInner).and.(r < drOuter)) then
@@ -798,12 +799,19 @@ contains
        rhoDisc = max(rhoDisc, tiny(rhoDisc))
     endif
 
-    theta = acos(mu)
-    if (theta < cavAngle/2.d0)  then
+!    theta = acos(mu)
+!    if (theta < cavAngle/2.d0)  then
+!       rhoEnv = real(cavdens,kind=si)
+!    endif
+    r = sqrt(point%x**2 + point%y**2)/(drouter/1.d10)
+    zcav = r**1.2+(2.*h/drouter)
+    z = abs(point%z)/(drouter/1.d10)
+    if (z > zCav) then
        rhoEnv = real(cavdens,kind=si)
     endif
-    
+   
     whitneyDensity = max(rhoEnv, rhoDisc)
+    whitneyDensity = max(whitneyDensity, rhoFloor)
   end function whitneyDensity
 
   type(VECTOR) function whitneyVelocity(point)
@@ -1022,7 +1030,6 @@ contains
 
 
 
-
        if (smoothInnerEdge) then
           fac = 1.d0
           if (r < 1.02d0*rinner) then
@@ -1211,7 +1218,6 @@ contains
        endif
           
 
-
        fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
        fac = max(-50.d0,fac)
        rhoOut = dble(rho0) * (dble(rInner/r))**dble(alphaDisc) * exp(fac)
@@ -1259,6 +1265,7 @@ contains
     endif
 
     rhoOut = max(rhoOut, rhoAmbient)
+
 
   end function hd169142Disc
 

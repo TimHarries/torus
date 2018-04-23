@@ -176,6 +176,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   type(STOKESVECTOR) :: yArrayStellarScattered(nLambda)
   type(STOKESVECTOR) :: yArrayThermalDirect(nLambda)
   type(STOKESVECTOR) :: yArrayThermalScattered(nLambda)
+  type(STOKESVECTOR) :: yArrayPAH(nLambda)
   type(STOKESVECTOR), allocatable :: varianceArray(:), errorArray(:,:)
   logical :: rotateView
   logical :: tiltView
@@ -1191,6 +1192,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
      yArrayStellarDirect(:) = STOKESVECTOR(0., 0., 0., 0.)
      yArrayThermalDirect(:) = STOKESVECTOR(0., 0., 0., 0.)
+     yArrayPAH(:) = STOKESVECTOR(0., 0., 0., 0.)
      yArrayStellarScattered(:) = STOKESVECTOR(0., 0., 0., 0.)
      yArrayThermalScattered(:) = STOKESVECTOR(0., 0., 0., 0.)
 
@@ -1572,7 +1574,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
           if (geometry == "slab") then
              call writeSpectrumTrust(outFile,  nLambda, grid%lamArray, yArray, yArrayStellarDirect, yArrayStellarScattered, &
-                  yArrayThermalDirect, yArrayThermalScattered, varianceArray,&
+                  yArrayThermalDirect, yArrayThermalScattered, yArrayPAH, varianceArray,&
                   .false., objectDistance, .false., lamLine)
           endif
           
@@ -1590,6 +1592,10 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
        specFile = trim(outfile)//"_thermal_scattered"
        call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayThermalScattered, varianceArray,&
+            .false., objectDistance, .false., lamLine)
+
+       specFile = trim(outfile)//"_pah"
+       call writeSpectrum(specFile,  nLambda, grid%lamArray, yArrayPAH, varianceArray,&
             .false., objectDistance, .false., lamLine)
           
        
@@ -2156,6 +2162,9 @@ CONTAINS
                        endif
                     endif
 
+                    if (thisPhoton%pah) then
+                       yArrayPAH(iLambda) = yArrayPAH(iLambda) + (thisPhoton%stokes * obs_weight)
+                    endif
                     if (thisPhoton%thermal) then
                        if (thisPhoton%scattered) then
                           yArrayThermalScattered(iLambda) = yArrayThermalScattered(iLambda) + (thisPhoton%stokes * obs_weight)
@@ -2248,6 +2257,9 @@ CONTAINS
                           endif
                        endif
                        
+                       if (thisPhoton%pah) then
+                          yArrayPAH(iLambda) = yArrayPAH(iLambda) + (thisPhoton%stokes * obs_weight)
+                       endif
                        if (thisPhoton%thermal) then
                           if (thisPhoton%scattered) then
                              yArrayThermalScattered(iLambda) = yArrayThermalScattered(iLambda) + (thisPhoton%stokes * obs_weight)
@@ -2666,6 +2678,11 @@ CONTAINS
                           endif
                        endif
 
+                       if (obsPhoton%pah) then
+                          yArrayPAH(iLambda) = yArrayPAH(iLambda) + (obsPhoton%stokes * obs_weight)
+                       endif
+
+
                        if (obsPhoton%thermal) then
                           if (obsPhoton%scattered) then
                              yArrayThermalScattered(iLambda) = yArrayThermalScattered(iLambda) + (obsPhoton%stokes * obs_weight)
@@ -2775,6 +2792,11 @@ CONTAINS
                                 endif
                              endif
 
+
+                             if (obsPhoton%pah) then
+                                yArrayPAH(iLambda) = yArrayPAH(iLambda) + (obsPhoton%stokes * obs_weight)
+                             endif
+
                              if (obsPhoton%thermal) then
                                 if (obsPhoton%scattered) then
                                    yArrayThermalScattered(iLambda) = yArrayThermalScattered(iLambda) + &
@@ -2795,6 +2817,12 @@ CONTAINS
                                    yArrayStellarDirect(iLambda) = yArrayStellarDirect(iLambda) + &
                                         (obsPhoton%stokes * (oneOnFourpi* directionalweight * exp(-tauExt(ntau))))
                                 endif
+                             endif
+
+
+                             if (obsPhoton%pah) then
+                                yArrayPAH(iLambda) = yArrayPAH(iLambda) + &
+                                        (obsPhoton%stokes * (oneOnFourpi* directionalweight * exp(-tauExt(ntau))))
                              endif
                              
                              if (obsPhoton%thermal) then
@@ -3032,6 +3060,26 @@ CONTAINS
      yArrayThermalScattered%v = tempDoubleArray 
      deallocate(tempDoubleArray)
 
+     if (usePAH) then
+        allocate(tempDoubleArray(SIZE(yArrayPAH)))
+        tempDoubleArray = 0.0_db
+        call MPI_REDUCE(yArrayPAH%i,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
+             MPI_SUM,0,MPI_COMM_WORLD,ierr)
+        yArrayPAH%i = tempDoubleArray 
+        tempDoubleArray = 0.0_db
+        call MPI_REDUCE(yArrayPAH%q,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
+             MPI_SUM,0,MPI_COMM_WORLD,ierr)
+        yArrayPAH%q = tempDoubleArray 
+        tempDoubleArray = 0.0_db
+        call MPI_REDUCE(yArrayPAH%u,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
+             MPI_SUM,0,MPI_COMM_WORLD,ierr)
+        yArrayPAH%u = tempDoubleArray 
+        tempDoubleArray = 0.0_db
+        call MPI_REDUCE(yArrayPAH%v,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
+             MPI_SUM,0,MPI_COMM_WORLD,ierr)
+        yArrayPAH%v = tempDoubleArray 
+        deallocate(tempDoubleArray)
+     endif
 
 
 #endif
@@ -3273,7 +3321,9 @@ end subroutine rdintpro
     use messages_mod
     use constants_mod
     use phasematrix_mod
+    use spectrum_mod, only : redden
     use utils_mod, only: convertToJanskies
+    use inputs_mod, only :ism_rv, ism_av
 
     implicit none
     integer, intent(in) :: nLambda
@@ -3351,6 +3401,10 @@ end subroutine rdintpro
     do i = 2, nLambda-1
        dlam(i) = 0.5*((xArray(i+1)+xArray(i))-(xArray(i)+xArray(i-1)))
     enddo
+
+    call redden(nLambda, xArray*angsToMicrons, stokes_i, ism_av, ism_rv)
+    call redden(nLambda, xArray*angsToMicrons, stokes_q, ism_av, ism_rv)
+    call redden(nLambda, xArray*angsToMicrons, stokes_u, ism_av, ism_rv)
 
     if (.not.normalizeSpectrum) then
        !     ! convert from erg/s to erg/s/A
@@ -3471,7 +3525,7 @@ end subroutine rdintpro
 
   subroutine writeSpectrumTrust(outFile,  nLambda, xArray, yArray, &
        yArrayStellarDirect, yArrayStellarScattered, yArrayThermalDirect, &
-       yArrayThermalScattered, &
+       yArrayThermalScattered, yArrayPAH, &
        varianceArray,&
        normalizeSpectrum, objectDistance, velocitySpace, lamLine)
     use sed_mod
@@ -3495,11 +3549,13 @@ end subroutine rdintpro
     type(STOKESVECTOR), intent(in) :: yArrayStellarScattered(:)
     type(STOKESVECTOR), intent(in) :: yArrayThermalDirect(:)
     type(STOKESVECTOR), intent(in) :: yArrayThermalScattered(:)
+    type(STOKESVECTOR), intent(in) :: yArrayPAH(:)
     real(double), allocatable :: stokes_i(:), stokes_q(:), stokes_qv(:)
     real(double), allocatable :: stokes_i_sd(:)
     real(double), allocatable :: stokes_i_ss(:)
     real(double), allocatable :: stokes_i_td(:)
     real(double), allocatable :: stokes_i_ts(:)
+    real(double), allocatable :: stokes_i_pah(:)
     real(double), allocatable :: stokes_u(:), stokes_uv(:), dlam(:)
     real, allocatable, dimension(:) :: tmpXarray
     !  real :: tot
@@ -3520,6 +3576,7 @@ end subroutine rdintpro
     allocate(stokes_i_ss(1:nLambda))
     allocate(stokes_i_td(1:nLambda))
     allocate(stokes_i_ts(1:nLambda))
+    allocate(stokes_i_pah(1:nLambda))
     allocate(stokes_q(1:nLambda))
     allocate(stokes_qv(1:nLambda))
     allocate(stokes_u(1:nLambda))
@@ -3564,6 +3621,7 @@ end subroutine rdintpro
     stokes_i_ss = yArrayStellarScattered%i
     stokes_i_td = yArrayThermalDirect%i
     stokes_i_ts = yArrayThermalScattered%i
+    stokes_i_pah = yArrayPAH%i
 
     stokes_q = ytmpArray%q
     stokes_u = ytmpArray%u
@@ -3584,6 +3642,7 @@ end subroutine rdintpro
        stokes_i_ss(1:nLambda) = stokes_i_ss(1:nLambda) / dlam(1:nLambda)
        stokes_i_td(1:nLambda) = stokes_i_td(1:nLambda) / dlam(1:nLambda)
        stokes_i_ts(1:nLambda) = stokes_i_ts(1:nLambda) / dlam(1:nLambda)
+       stokes_i_pah(1:nLambda) = stokes_i_pah(1:nLambda) / dlam(1:nLambda)
 
 
        stokes_q(1:nLambda) = stokes_q(1:nLambda) / dlam(1:nLambda)
@@ -3601,6 +3660,7 @@ end subroutine rdintpro
        stokes_i_ss(1:nLambda) = stokes_i_ss(1:nLambda) / area
        stokes_i_td(1:nLambda) = stokes_i_td(1:nLambda) / area
        stokes_i_ts(1:nLambda) = stokes_i_ts(1:nLambda) / area
+       stokes_i_pah(1:nLambda) = stokes_i_pah(1:nLambda) / area
 
 
 
@@ -3616,6 +3676,7 @@ end subroutine rdintpro
        stokes_i_ss(1:nLambda) = stokes_i_ss(1:nLambda) * 1.d20
        stokes_i_td(1:nLambda) = stokes_i_td(1:nLambda) * 1.d20
        stokes_i_ts(1:nLambda) = stokes_i_ts(1:nLambda) * 1.d20
+       stokes_i_pah(1:nLambda) = stokes_i_pah(1:nLambda) * 1.d20
 
        stokes_q(1:nLambda) = stokes_q(1:nLambda)  * 1.d20
        stokes_u(1:nLambda) = stokes_u(1:nLambda)  * 1.d20
@@ -3630,6 +3691,7 @@ end subroutine rdintpro
              stokes_i_ss(i) = convertToJanskies(dble(stokes_i_ss(i)), dble(xArray(i)))
              stokes_i_td(i) = convertToJanskies(dble(stokes_i_td(i)), dble(xArray(i)))
              stokes_i_ts(i) = convertToJanskies(dble(stokes_i_ts(i)), dble(xArray(i)))
+             stokes_i_pah(i) = convertToJanskies(dble(stokes_i_pah(i)), dble(xArray(i)))
 
              stokes_q(i) = convertToJanskies(dble(stokes_i(i)), dble(xArray(i)))
              stokes_u(i) = convertToJanskies(dble(stokes_i(i)), dble(xArray(i)))
@@ -3661,6 +3723,7 @@ end subroutine rdintpro
        stokes_i_ss(1:nLambda) = stokes_i_ss(1:nLambda) * xArray(1:nLambda)
        stokes_i_td(1:nLambda) = stokes_i_td(1:nLambda) * xArray(1:nLambda)
        stokes_i_ts(1:nLambda) = stokes_i_ts(1:nLambda) * xArray(1:nLambda)
+       stokes_i_pah(1:nLambda) = stokes_i_pah(1:nLambda) * xArray(1:nLambda)
 
 
        stokes_q(1:nLambda) = stokes_q(1:nLambda) * xArray(1:nLambda)
@@ -3708,7 +3771,7 @@ end subroutine rdintpro
 
     deallocate(ytmpArray)
     deallocate(dlam,stokes_i,stokes_q,stokes_qv,stokes_u,stokes_uv)
-    deallocate(stokes_i_sd, stokes_i_ss, stokes_i_td, stokes_i_ts)
+    deallocate(stokes_i_sd, stokes_i_ss, stokes_i_td, stokes_i_ts, stokes_i_pah)
 
   end subroutine writeSpectrumTrust
 

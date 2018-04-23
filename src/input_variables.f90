@@ -483,6 +483,8 @@
 ! Now held in sed_mod
 !------------------------------
 
+  real(double) :: ism_av, ism_rv ! reddening
+
   real, protected :: thisInclination  ! Inclination when atomicPhysics=T (calculateAtomSpectrum and compute_obs_line_flux)
   real, protected :: thisPA           ! position angle
   real(double), protected :: thisimagePA
@@ -577,7 +579,8 @@
   real :: radius, kfac, xfac
   real :: rCore, rInner
   real :: rTorus, rOuter, rSublimation
-  real :: rho, rho0
+  real :: rho
+  real(double) :: rho0
   real(double) :: extMass
   real :: scale, rscale
   real :: mCore, diskTemp, mDisc

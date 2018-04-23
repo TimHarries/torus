@@ -398,9 +398,10 @@ contains
   end function getPAHFreqfromAdot
 
 
-  subroutine testPAHtable(u)
+  subroutine testPAHtable(u,fname)
     integer, parameter :: n = 1000
     real(double) :: intensity(n), lambda(n)
+    character(len=*) :: fname
     real(double) :: u, thisLambda
     integer :: i,j 
 
@@ -417,9 +418,13 @@ contains
           intensity(j) = intensity(j) + 1.d0
        endif
     enddo
-    do i = 1, n
-       if (Writeoutput) write(55,*) lambda(i), intensity(i)
-    enddo
+    if (writeoutput) then
+       open(43, file=fname, status="unknown", form="formatted")
+       do i = 1, n
+          write(43,*) lambda(i), intensity(i)
+       enddo
+       close(43)
+    endif
           
   end subroutine testPAHtable
 

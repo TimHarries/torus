@@ -1795,7 +1795,7 @@ contains
           end do
        else
           dv = cellVolume(thisOctal, subcell)*1.d30
-          thisOctal%adot(subcell) = (1.d0/dv) * (epsOverDt) * thisOctal%adotPAH(subcell)
+          thisOctal%adotPAH(subcell) = (1.d0/dv) * (epsOverDt) * thisOctal%adotPAH(subcell)
        endif
     enddo
   end subroutine calculateAdotPAH
@@ -3119,10 +3119,12 @@ subroutine addDustContinuumLucy(thisOctal, subcell, grid, nlambda, lamArray)
 
 
      if (usePAH) then
-        thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + PAHemissivityFromAdot(dble(lamArray(i)), &
-             thisOctal%adot(subcell), &
+        thisOctal%pahEmissivity(subcell) = PAHemissivityFromAdot(dble(lamArray(i)), &
+             thisOctal%adotPAH(subcell), &
              thisOctal%rho(subcell)) & 
-             *cSpeed/(lamArray(i)*angstromtocm)**2 * fourPi * 1.d-8
+             *cSpeed/(lamArray(i)*angstromtocm)**2 *dlam * fourPi * 1.d-8
+
+        thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + thisOctal%pahEmissivity(subcell)
      endif
   enddo
 
@@ -3150,11 +3152,13 @@ subroutine addDustContinuumLucyMono(thisOctal, subcell, grid,  lambda, iPhotonLa
              kappaAbs * 1.d-10 * fourPi * 1.d-8 ! conversion from per cm to per A
 
   if (usePAH) then
-     thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + &
-          PAHemissivityFromAdot(dble(lambda), &
-          thisOctal%adot(subcell), &
+     thisOctal%pahEmissivity(subcell) =  PAHemissivityFromAdot(dble(lambda), &
+          thisOctal%adotPAH(subcell), &
           thisOctal%rho(subcell)) &
           *cSpeed/(lambda*angstromtocm)**2 * fourPi * 1.d-8
+
+
+     thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + thisOctal%pahEmissivity(subcell)
   endif
 
   if (.not.thisOctal%inFlow(subcell)) thisOctal%etaCont(subcell) = 0.d0
@@ -3164,7 +3168,7 @@ end subroutine addDustContinuumLucyMono
 !-------------------------------------------------------------------------------
 
 subroutine addDustContinuumLucyMonoAtDustTemp(thisOctal, subcell, grid,  lambda, iPhotonLambda)
-  use inputs_mod, only : tminGlobal, decoupleGasDustTemperature
+  use inputs_mod, only : tminGlobal, decoupleGasDustTemperature, usePAH
   type(OCTAL), pointer :: thisOctal
   integer :: subcell
   type(GRIDTYPE) :: grid
@@ -3188,6 +3192,17 @@ subroutine addDustContinuumLucyMonoAtDustTemp(thisOctal, subcell, grid,  lambda,
   call returnKappa(grid, thisOctal, subcell, lambda=lambda, iLambda=iPhotonLambda, kappaAbs=kappaAbs)
   thisOctal%etaCont(subcell) =  bLambda(dble(lambda), thisOctal%tdust(subcell)) * &
              kappaAbs * 1.d-10 * fourPi * 1.d-8 ! conversion from per cm to per A
+  if (usePAH) then
+     thisOctal%pahEmissivity(subcell) =  PAHemissivityFromAdot(dble(lambda), &
+          thisOctal%adotPAH(subcell), &
+          thisOctal%rho(subcell)) &
+          *cSpeed/(lambda*angstromtocm)**2 * fourPi * 1.d-8
+
+
+     thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + thisOctal%pahEmissivity(subcell)
+  endif
+
+
   if (.not.thisOctal%inFlow(subcell)) thisOctal%etaCont(subcell) = 0.d0
 
 end subroutine addDustContinuumLucyMonoAtDustTemp

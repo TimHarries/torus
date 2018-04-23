@@ -279,7 +279,7 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           call randomNumberGenerator(randomSeed = .true.)
           do while(.not.gridconverged) 
              gridConverged = .true.
-             call splitGridFractal(grid%octreeRoot, rho0, 0.3, grid, gridconverged)
+             call splitGridFractal(grid%octreeRoot, real(rho0), 0.3, grid, gridconverged)
           enddo
           write(*,*) myrankglobal, " conv ",gridConverged
           call randomNumberGenerator(syncIseed=.true.)
