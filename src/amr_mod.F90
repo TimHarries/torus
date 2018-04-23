@@ -14548,6 +14548,7 @@ end function readparameterfrom2dmap
 
     call copyAttribute(dest%kappaTimesFlux, source%kappaTimesFlux)
     call copyAttribute(dest%kappaTimesFluxHistory, source%kappaTimesFluxHistory)
+    call copyAttribute(dest%habingFlux, source%habingFlux)
     call copyAttribute(dest%UVvector, source%UVvector)
     call copyAttribute(dest%UVvectorplus, source%UVvectorplus)
     call copyAttribute(dest%UVvectorminus, source%UVvectorminus)
@@ -15308,7 +15309,7 @@ end function readparameterfrom2dmap
 
   subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, allSca, &
        rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, debug, reset_kappa, dir)
-    use inputs_mod, only: nDustType, mie, includeGasOpacity, lineEmission, dustPhysics, dustonly
+    use inputs_mod, only: nDustType, mie, includeGasOpacity, lineEmission, dustPhysics, dustonly, decoupleGasDustTemperature
     use atom_mod, only: bnu
     use gas_opacity_mod, only: returnGasKappaValue
 #ifdef PHOTOION
@@ -15345,7 +15346,7 @@ end function readparameterfrom2dmap
 
     logical,save :: firsttime = .true.
     integer(double),save :: nlambda
-    real(double) :: tgas
+    real(double) :: tgas, tdust
 
 #ifdef PHOTOION
     real(double) :: kappaH, kappaHe
@@ -15663,9 +15664,15 @@ end function readparameterfrom2dmap
 
    if (PRESENT(kappap)) then
       temperature = thisOctal%temperature(subcell)
+      if (decoupleGasDustTemperature) then
+         tdust = thisOctal%tdust(subcell)
+      else
+         tdust = temperature
+      endif
 
       if (PRESENT(atthistemperature)) then
          temperature = atthistemperature
+         tdust = atthistemperature
       endif
       kappaP = 0.d0
       norm = 0.d0
@@ -15679,14 +15686,14 @@ end function readparameterfrom2dmap
          do j = 1, nDustType
             kappaP = kappaP + thisOctal%dustTypeFraction(subcell, j) * dble(grid%oneKappaAbs(j,i)) * &
                  thisOctal%rho(subcell) *&
-                 bnu(freq,tempdouble)  * dfreq
+                 bnu(freq,tdust)  * dfreq
 
             if (includeGasOpacity) then
-               kappaP = kappaP + tarray(i)*thisOctal%rho(subcell) * dble(bnu(freq,tempDouble))  * dfreq
+               kappaP = kappaP + tarray(i)*thisOctal%rho(subcell) * dble(bnu(freq,tdust))  * dfreq
             endif
 
          enddo
-         norm = norm + bnu(freq,tempDouble)  * dfreq
+         norm = norm + bnu(freq,tdust)  * dfreq
       enddo
       if (norm /= 0.d0) then
          kappaP = ((kappaP / norm) /1.d10)
@@ -18456,6 +18463,7 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%radiationMomentum,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%kappaTimesFlux, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%kappaTimesFluxHistory, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%habingFlux, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%UVvector, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%UVvectorPlus, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%UVvectorminus, thisOctal%maxChildren)
@@ -18878,6 +18886,7 @@ end function readparameterfrom2dmap
     call deallocateAttribute(thisOctal%kappaTimesFlux)
     call deallocateAttribute(thisOctal%kappaTimesFluxHistory)
 
+    call deallocateAttribute(thisOctal%habingFlux)
     call deallocateAttribute(thisOctal%UVvector)
     call deallocateAttribute(thisOctal%UVvectorPlus)
     call deallocateAttribute(thisOctal%UVvectorMinus)

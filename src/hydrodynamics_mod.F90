@@ -852,7 +852,6 @@ contains
 
     else if ((thisOctal%nDepth == (nDepth-1)).and.(thisOctal%nChildren==0)) then
 
-       write(*,*) "done this crap"
        do subcell = 1, thisOctal%maxChildren
           if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
           if (.not.thisOctal%edgeCell(subcell)) then
@@ -7928,9 +7927,9 @@ end subroutine sumFluxes
 
    globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + timestep*secstoyears
    if (nBodyPhysics .and..not.hosokawaTracks) then
+      write(message, '(a)') "Updating source properties."
+      call writeInfo(message, TRIVIAL)
       do i = 1, globalnSource
-         write(message, '(a,i4)') "Updating properties of source ", i
-         call writeInfo(message, TRIVIAL)
          call updateSourceProperties(globalsourcearray(i))
       enddo
    endif
@@ -8194,9 +8193,9 @@ end subroutine sumFluxes
 
    globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + timestep*secstoyears
    if (nBodyPhysics .and..not.hosokawaTracks) then
+      write(message, '(a)') "Updating source properties."
+      call writeInfo(message, TRIVIAL)
       do i = 1, globalnSource
-         write(message, '(a,i4)') "Updating properties of source ", i
-         call writeInfo(message, TRIVIAL)
          call updateSourceProperties(globalsourcearray(i))
       enddo
    endif
@@ -8212,6 +8211,16 @@ end subroutine sumFluxes
    else
       globalSourceArray(1:globalnSource)%velocity = VECTOR(0.d0,0.d0,0.d0)
    endif
+
+   if (habingFlux .and. globalnSource > 0) then
+      call updateSourceHabingFlux(grid, globalSourceArray, globalnSource)
+      if (writeoutput) then
+         do i = 1, globalnSource 
+            write(*,'(a,i3,a,es12.5)') "Source ", i, " Habing flux = ", globalSourceArray(i)%habingFlux
+         enddo
+      endif
+   endif
+
    if (myrankWorldglobal == 1) call tune(6,"Updating source properties")
    
 !   call findMassOverAllThreads(grid, totalMass)
@@ -20444,6 +20453,8 @@ end subroutine minMaxDepth
              localWorldCommunicator, ierr)
         call MPI_BCAST(globalsourceArray(1:globalnSource)%mdot     , globalnSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
+        call MPI_BCAST(globalsourceArray(1:globalnSource)%habingFlux, globalnSource, MPI_DOUBLE_PRECISION, 0, &
+             localWorldCommunicator, ierr)
         call MPI_BCAST(globalsourceArray(1:globalnSource)%accretionradius     , globalnSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
         call MPI_BCAST(globalsourceArray(1:globalnSource)%angMomentum%x     , globalnSource, MPI_DOUBLE_PRECISION, 0, &
@@ -20480,7 +20491,8 @@ end subroutine broadcastSinks
           call mpi_recv(source(1:nSource)%velocity%y, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%velocity%z, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%radius,     nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
-          call mpi_recv(source(1:nSource)%mdot,      nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
+          call mpi_recv(source(1:nSource)%mdot,       nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
+          call mpi_recv(source(1:nSource)%habingFlux, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%accretionRadius, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, &
                status, ierr)
           call mpi_recv(source(1:nSource)%angMomentum%x, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, &
@@ -20511,6 +20523,7 @@ end subroutine broadcastSinks
           call mpi_send(source(1:nSource)%velocity%z, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%radius,     nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%mdot,       nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+          call mpi_send(source(1:nSource)%habingFlux, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%accretionRadius, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%angMomentum%x, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%angMomentum%y, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
@@ -22255,6 +22268,39 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
        end if
     enddo
   end subroutine findJeansUnstableMassMPI
+
+  subroutine updateSourceHabingFlux(grid, source, nSource)
+     use mpi
+     type(GRIDTYPE) :: grid
+     type(OCTAL), pointer :: thisOctal
+     type(SOURCETYPE) :: source(:)
+     integer :: nSource, i, subcell
+     real(double), allocatable :: fluxes(:), temp(:)
+     integer :: ierr
+
+     allocate(fluxes(1:nSource))
+     fluxes(1:nSource) = 0.d0
+       
+     if (myrankGlobal /= 0 .and..not. loadBalancingThreadGlobal) then
+        thisOctal => grid%octreeRoot
+        do i = 1, nSource
+           call findSubcellLocal(source(i)%position, thisOctal, subcell) 
+           if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+
+              fluxes(i) = thisOctal%habingFlux(subcell)
+
+           endif
+        enddo
+     endif
+
+     ! reduce across hydro threads
+     allocate(temp(1:nSource))
+     temp(:) = 0.d0
+     call MPI_ALLREDUCE(fluxes(1:nSource), temp(1:nSource), nSource, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
+     source(1:nSource)%habingFlux = temp(1:nSource)
+     deallocate(temp, fluxes)
+     
+  end subroutine updateSourceHabingFlux 
 
 #endif
 

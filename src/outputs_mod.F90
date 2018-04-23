@@ -14,7 +14,7 @@ contains
 #endif
     use source_mod, only : globalNSource, globalSourceArray, writeSourceHistory
     use inputs_mod, only : gridOutputFilename, writegrid, calcPhotometry, amr2d
-    use inputs_mod, only : calcDataCube, atomicPhysics, nAtom, sourceHistory, calcDustCube, doAnalysis
+    use inputs_mod, only : calcDataCube, atomicPhysics, nAtom, sourceHistory, calcDustCube, doAnalysis, doClusterAnalysis
     use inputs_mod, only : iTransLine, iTransAtom, gridDistance, gasOpacityPhysics
     use inputs_mod, only : writePolar
     use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark, calcMovie, calcColumnImage
@@ -61,7 +61,7 @@ contains
     use photoion_utils_mod, only: quickSublimate
     use photoion_mod, only: createImagePhotoion
 #ifdef MPI
-    use inputs_mod, only : columnimagedirection, imodel, columnimagefilename
+    use inputs_mod, only : columnimagedirection, imodel, columnImageFilename
     use photoionAMR_mod, only : createImageSplitGrid
     use mpi_global_mod, only : loadBalancingThreadGlobal
 #endif
@@ -82,7 +82,6 @@ contains
 
 #ifdef MPI
     real(double), pointer :: image(:,:)
-    type(VECTOR) :: direction, xAxisDir, yAxisDir
     character(len=80) :: thisFile
 #endif
     real :: lambdaImage
@@ -141,6 +140,7 @@ contains
          (.not.calcColumnImage).and. &
          (.not.calcMovie).and. &
          (.not.doAnalysis).and. &
+         (.not.doClusterAnalysis).and. &
          (.not.calcDataCube).and. &
          (.not.calcPhotometry).and. &
          (.not.calcBenchmark) .and. &
@@ -155,19 +155,36 @@ contains
     if (calcColumnImage) then
 #ifdef MPI
        if (.not.loadBalancingThreadGlobal) then
-          direction = VECTOR(0.d0, 0.d0, -1.d0)
-          xAxisDir = VECTOR(1.d0, 0.d0, 0.d0)
-          yAxisDir = VECTOR(0.d0, 1.d0, 0.d0)
           call createColumnDensityImage(grid, columnImageDirection,image)
-          call findmultifilename(columnImageFilename, iModel, thisFile)
+          call findmultifilename(trim(columnImageFilename), iModel, thisFile)
 #ifdef USECFITSIO
-          if (writeoutput) call writeFitsColumnDensityImage(image, thisFile)
+          if (writeoutput) call writeFitsColumnDensityImage(image, trim(thisFile))
 #else
           call writeWarning("Torus was build without FITS support. No image written.")
 #endif
        endif
 #endif
     endif
+
+    if (doClusterAnalysis) then
+#ifdef PHOTOION
+       if (photoionPhysics) then
+          call setupXarray(grid, xArray, nLambda, photoion=.true.)
+          if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+       endif
+#endif
+       call clusterAnalysis(grid, globalSourceArray, globalnSource, nLambda, xArray, miePhase, nMuMie)
+    endif
+
+!    if (calcColumnImage) then
+#ifdef MPI
+!       if (.not.loadBalancingThreadGlobal) then
+!          call createColumnDensityImage(grid, columnImageDirection,image)
+!          call findmultifilename(columnImageFilename, iModel, thisFile)
+!          if (writeoutput) call writeFitsColumnDensityImage(image, thisFile)
+!       endif
+#endif
+!    endif
 
     if (doAnalysis) call analysis(grid)
 !    if (doAnalysis) call calculateToomreQ(grid%octreeRoot, grid)

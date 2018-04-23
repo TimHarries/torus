@@ -83,11 +83,19 @@
   Logical :: calcSpectrum
   logical :: calcBenchmark
   logical :: doAnalysis
-
+  ! cluster analysis tools
+  logical :: doClusterAnalysis
+  logical :: plotAvgTemp, calculateGlobalAvgTemp, writeLums, findNUndersampled, plotAvgTdust, calculateGlobalAvgTdust
+  logical :: calculateEmissionMeasure, calculateLymanFlux, findHabing
+  integer :: nClusterIonLoops
+  real(double) :: edgeRadius
+  
   logical :: dowriteRadialFile
   character(len=200) :: radialFilename
   character(len=80) :: columnImageFilename
   type(VECTOR) :: columnImageDirection
+  character(len=10) :: columnAxisUnits
+  character(len=10) :: columnDataUnits 
 
 !-----------------------------------
 ! Write/read a grid for a warm start
@@ -98,6 +106,7 @@
   logical :: multimodels          ! perform calculation on multiple models
   integer :: nModelStart, nModelEnd ! start and end numbers for multiple models
   integer :: iModel               ! current model number
+  integer :: modelStep
   logical :: justDump             !Dump a vtk file for the read in grid and exit
   logical :: rhofromtable
   character(len=80) :: rhofile
@@ -195,6 +204,7 @@
   logical :: CAKlineOpacity           !use Abbot82 temp invarient form of line driving
   logical :: RadForceMonte            !use a path length based estimation for the radation pressure rather than momentum tracking
   real(double):: RadForceThresh       !Threshold density above which stop using path length rad P and use momentum tracking
+  logical :: habingFlux               !calculate flux between 912 and 2400 A for sources
   logical :: MChistories              ! update Monte Carlo estimator histories
   real(double) :: radiationTimescale  !ratio of radation to hydro timescales
   integer :: shotNoiseWeight          !The number of crossings above which current MC rad estimate is weighted more than the history estimate
