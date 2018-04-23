@@ -983,6 +983,7 @@
   ! Select SPH particles above a density threshold
   real(double), protected :: sphdensitycut
   real(double) :: rCut
+  logical :: doDiscSplit
   
 !------------------
 ! Other parameters 

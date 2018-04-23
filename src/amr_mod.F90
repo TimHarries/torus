@@ -3590,7 +3590,7 @@ CONTAINS
     use magnetic_mod, only : safierfits
     use biophysics_mod, only : splitSkin
 ! Currently commented out. Reinstate if required.
-    use inputs_mod, only : smoothInnerEdge, variableDustSublimation, rCut
+    use inputs_mod, only : smoothInnerEdge, variableDustSublimation, rCut, doDiscSplit
 !    use inputs_mod, only: ttauriwind, smoothinneredge, amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
 
 #ifdef USECFITSIO
@@ -5197,10 +5197,11 @@ CONTAINS
           rVec = subcellCentre(thisOctal, subcell)
           r = sqrt(rVec%x**2 + rVec%y**2)
 
-          if ( (atan2(abs(rVec%z)-thisOctal%subcellsize/2.d0,r)*radtodeg < 30.) &
-               .and.(thisOctal%subcellSize>(r*tan(30.d0*degtorad)/20.)) ) then
-             split = .true.
-             write(*,*) "splitting for disc"
+          if (doDiscsplit) then
+             if ( (atan2(abs(rVec%z)-thisOctal%subcellsize/2.d0,r)*radtodeg < 30.) &
+                  .and.(thisOctal%subcellSize>(r*tan(30.d0*degtorad)/20.)) ) then
+                split = .true.
+             endif
           endif
 
 

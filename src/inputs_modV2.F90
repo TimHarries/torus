@@ -1613,6 +1613,8 @@ contains
           endif
           call getDouble("rcut", rCut, autocm/1.d10, cLine, fLine, nLines, &
                   "Cut off inner radius (au): ","(a,f5.1,a)", -1.d0, ok, .false.)
+          call getLogical("discsplit", doDiscSplit, cLine, fLine, nLines, &
+               "Split AMR mesh for disc: ","(a,1l,a)", .false., ok, .false.)
 
     case("spiral")
        call getReal("tthresh", tthresh, 1., cLine, fLine,  nLines, &
