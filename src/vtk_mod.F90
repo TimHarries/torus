@@ -940,6 +940,10 @@ contains
                case("scattered")
                   write(lunit, *) real(thisOctal%scatteredIntensity(subcell,5,3))
 
+               case("habing")
+                  ! note this is in units of 1e-10 Habing
+                  write(lunit, *) real(thisOctal%habingFlux(subcell))
+
                case("hydrovelocity")
                   if (thisOctal%threeD) then
                      write(lunit, *) real(thisOctal%rhou(subcell)/thisOctal%rho(subcell)), &
@@ -3232,6 +3236,10 @@ end subroutine writeXMLVtkFileAMR
                      rArray(1, n) = real(thisOctal%surfaceNormal(subcell)%x)
                      rArray(2, n) = real(thisOctal%surfaceNormal(subcell)%y)
                      rArray(3, n) = real(thisOctal%surfaceNormal(subcell)%z)
+
+               case("habing")
+                  ! note this is in units of 1e-10 Habing
+                  rArray(1, n) = real(thisOctal%habingFlux(subcell))
 
                case("radforce")
                      v = cellVolume(thisOctal, subcell)*1.d30

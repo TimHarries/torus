@@ -299,6 +299,72 @@ contains
     deallocate(numberOfScattersOnThread)
   end subroutine setLoadBalancingThreadsByScatters
 
+  subroutine setLoadBalancingThreadsByCrossScat(grid)
+    use mpi
+    type(GRIDTYPE) :: grid
+    integer(bigint), allocatable :: itemp(:)
+    integer(bigint), allocatable :: numberOfScattersOnThread(:), numberOfCrossingsOnThread(:)
+    real(double), allocatable :: frac(:), totalOnThread(:)
+    integer :: ierr
+
+
+    allocate(numberOfScattersOnThread(1:nHydroThreadsGlobal))
+    allocate(numberOfCrossingsOnThread(1:nHydroThreadsGlobal))
+    numberOfScattersOnThread = 0
+    numberOfCrossingsOnThread = 0
+    if ((.not.loadBalancingThreadGlobal).and.(myrankGlobal /=0)) then
+       call sumScatters(grid%octreeRoot, numberOfScattersOnThread(myRankGlobal))
+       call sumCrossings(grid%octreeRoot, numberOfCrossingsOnThread(myRankGlobal))
+       allocate(itemp(1:nHydroThreadsGlobal))
+       call MPI_ALLREDUCE(numberOfScattersOnThread, itemp, nHydroThreadsGlobal, MPI_INTEGER8, MPI_SUM, amrCommunicator, ierr)
+       numberOfScattersOnThread = itemp
+       call MPI_ALLREDUCE(numberOfCrossingsOnThread, itemp, nHydroThreadsGlobal, MPI_INTEGER8, MPI_SUM, amrCommunicator, ierr)
+       numberOfCrossingsOnThread = itemp
+       deallocate(itemp)
+    endif
+
+    call MPI_BCAST(numberOfScattersOnThread, nHydroThreadsGlobal, MPI_INTEGER8, 1, localWorldCommunicator, ierr)
+    call MPI_BCAST(numberOfCrossingsOnThread, nHydroThreadsGlobal, MPI_INTEGER8, 1, localWorldCommunicator, ierr)
+
+    allocate(totalOnThread(1:nHydroThreadsGlobal))
+    totalOnThread = dble(numberOfScattersOnThread) + dble(numberOfCrossingsOnThread)
+
+    if (writeoutput) write(*,*) "Total number of crossings plus scatters: ", sum(totalOnThread)
+
+    ! overflow check
+    if (any(numberOfScattersOnThread < 0)) then 
+       if (writeoutput) write(*,*) "WARNING: negative scatters on thread ", minloc(numberOfScattersOnThread), &
+          minval(numberOfScattersOnThread)
+    endif 
+    if (any(numberOfCrossingsOnThread < 0)) then 
+       if (writeoutput) write(*,*) "WARNING: negative crossings on thread ", minloc(numberOfCrossingsOnThread), &
+          minval(numberOfCrossingsOnThread)
+    endif 
+    
+    ! if there are no scatters at all (e.g. grid hasn't had a photoion loop before)
+    if (sum(numberOfScattersOnThread) <= 0) then  
+       if (sum(numberOfCrossingsOnThread) <= 0) then  
+          if (writeoutput) write(*,*) "Setting load balancing threads by cells instead."
+          call setLoadBalancingThreadsByCells(grid)
+       else
+          if (writeoutput) write(*,*) "Setting load balancing threads by crossings instead."
+          call setLoadBalancingThreadsByCrossings(grid)
+       endif
+       goto 777
+    endif
+
+
+    allocate(frac(1:nHydroThreadsGlobal))
+    frac = totalOnThread/SUM(totalOnThread)
+
+    call assignLoadBalancingThreads(grid, frac, "crossplusscat")
+
+    deallocate(frac)
+777 continue
+    deallocate(numberOfScattersOnThread)
+    deallocate(numberOfCrossingsOnThread)
+  end subroutine setLoadBalancingThreadsByCrossScat
+
   subroutine setLoadBalancingThreadsByCells(grid)
     use mpi
     type(GRIDTYPE) :: grid

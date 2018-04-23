@@ -191,12 +191,15 @@ contains
 
     nModelStart = 1
     nModelEnd = 1
+    modelStep = 1
     iModel = 1
     if (multimodels) then
        call getInteger("nstart", nModelStart, cLine, fLine, nLines, &
             "Starting number for model: ","(a,i7,a)", 1, ok, .true.)
        call getInteger("nend", nModelEnd, cLine, fLine, nLines, &
             "Starting number for model: ","(a,i7,a)", 1, ok, .true.)
+       call getInteger("modelstep", modelStep, cLine, fLine, nLines, &
+            "Step for multimodel loop: ","(a,i7,a)", 1, ok, .false.)
     endif
 
 
@@ -486,10 +489,10 @@ contains
 
     if (MChistories) then
        call getDouble("radiationtimescale", radiationTimeScale, 1.d0, cLine, fLine, nLines, &
-            "ratio of radiation to hydro timescales: ", "(a,f7.1,1x,a)", 1.0d0, ok, .false.)
+            "ratio of radiation to hydro timescales: ", "(a,f7.1,1x,a)", 1.0d0, ok, .true.)
        
        call getInteger("shotnoiseweight", ShotNoiseWeight, cLine, fLine, nLines, &
-            "#crossings for rad history weighted<current: ","(a,i8,a)", 400, ok, .false.)
+            "#crossings for rad history weighted<current: ","(a,i8,a)", 400, ok, .true.)
     endif
 
     call getLogical("caklineopacity", CAKlineOpacity, cLine, fLine, nLines, &
@@ -497,6 +500,9 @@ contains
 
     call getLogical("radforcemonte", RadForceMonte, cLine, fLine, nLines, &
          "use a path length based estimation for the rad pressure: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getLogical("habingflux", habingFlux, cLine, fLine, nLines, &
+         "Calculate flux between 912 and 2400 A for sources: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getDouble("radforcethresh", RadForceThresh, 1.d0, cLine, fLine, nLines, &
          "use a path length based estimation for the rad pressure: ","(a,f7.1,1x,a)", 1.0d-15, ok, .false.)
@@ -637,6 +643,47 @@ contains
     call getLogical("analysis", doAnalysis, cLine, fLine, nLines, &
          "Perform a grid analysis: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("clusteranalysis", doClusterAnalysis, cLine, fLine, nLines, &
+         "Perform a grid analysis for cluster models: ","(a,1l,1x,a)", .false., ok, .false.)
+    if (doClusterAnalysis) then
+       call getLogical("decouplegasdust", decoupleGasDustTemperature, cLine, fLine, nLines, &
+            "Decouple gas and dust temperature: ","(a,1l,1x,a)", .false., ok, .false.)
+
+       call getDouble("edgeradius", edgeRadius, pctocm/1.d10, cLine, fLine, nLines, &
+            "Cloud edge radius (pc): ","(a,f5.2,a)", 0.d0, ok, .false.)
+!
+!       call getString("columnfile", columnImageFilename, cLine, fLine, nLines, &
+!            "Output column image filename: ","(a,a,1x,a)","none", ok, .false.)
+       call getVector("columndir", columnImageDirection, 1.d0, cLine, fLine, nLines, &
+            "Direction for column image: ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 1.d0), ok, .false.)
+       call getString("columnaxisunits", columnAxisUnits, cLine, fLine, nLines,&
+         "Axis units for column image:", "(a,a,1x,a)", "pc", ok, .false.)
+       call getString("columndataunits", columnDataUnits, cLine, fLine, nLines,&
+            "Data units for column image:", "(a,a,1x,a)", "g/cm2", ok, .false.)
+
+      call readFitsParameters(cLine, fLine, nLines)
+      
+      call getLogical("plotavgtemp", plotAvgTemp, cLine, fLine, nLines, &
+            "Plot average temperature pixel-by-pixel: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("globalavgtemp", calculateGlobalAvgTemp, cLine, fLine, nLines, &
+            "Calculate global average temperature: ","(a,1l,1x,a)", plotAvgTemp, ok, .false.)
+      call getLogical("plotavgtdust", plotAvgTdust, cLine, fLine, nLines, &
+            "Plot average tdust pixel-by-pixel: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("globalavgtdust", calculateGlobalAvgTdust, cLine, fLine, nLines, &
+            "Calculate global average tdust: ","(a,1l,1x,a)", plotAvgTdust, ok, .false.)
+      call getLogical("emissionmeasure", calculateEmissionMeasure, cLine, fLine, nLines, &
+            "Plot emission measure: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("nlyman", calculateLymanFlux, cLine, fLine, nLines, &
+            "Estimate Lyman flux: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("writelums", writeLums, cLine, fLine, nLines, &
+            "Write total luminositys to log: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("nundersampled", findNUndersampled, cLine, fLine, nLines, &
+            "Find number of undersampled cells: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("calchabing", findHabing, cLine, fLine, nLines, &
+            "Write Habing flux to file: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getInteger("nionloops", nClusterIonLoops, cLine, fLine, nLines, &
+            "Number of photoionization loops: ","(a,i8,a)", 0, ok, .false.)
+    endif
 
     call getLogical("spectrum", calcSpectrum, cLine, fLine, nLines, &
          "Calculate a spectrum: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -1574,6 +1621,10 @@ contains
              call getReal("tthresh", tthresh, 1., cLine, fLine,  nLines, &
                   "Dust sublimation temperature (K): ","(a,f8.2,a)", 10., ok, .true.)
           endif
+          call getDouble("rcut", rCut, autocm/1.d10, cLine, fLine, nLines, &
+                  "Cut off inner radius (au): ","(a,f5.1,a)", -1.d0, ok, .false.)
+          call getLogical("discsplit", doDiscSplit, cLine, fLine, nLines, &
+               "Split AMR mesh for disc: ","(a,1l,a)", .false., ok, .false.)
 
     case("spiral")
        call getReal("tthresh", tthresh, 1., cLine, fLine,  nLines, &
@@ -2011,7 +2062,6 @@ contains
        call getReal("alphadisc", alphaDisc, 1., cLine, fLine, nLines, &
             "Disc alpha parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
 
-!       alphaDisc = betaDisc + 1.
        call getLogical("hydro", solveVerticalHydro, cLine, fLine, nLines, &
             "Solve vertical hydrostatical equilibrium: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -4145,25 +4195,24 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
          "Filename for detector output:", "(a,a,1x,a)", "au", ok, .true.)
   end subroutine readDetectorParameters
     
-
   subroutine readColumnImageParameters(cLine, fLine, nLines)
     use constants_mod
     use image_utils_mod
-
     character(len=lencLine) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
     logical :: ok
 
     call getString("columnfile", columnImageFilename, cLine, fLine, nLines, &
-         "Output column image  filename: ","(a,a,1x,a)","none", ok, .true.)
+         "Output column image filename: ","(a,a,1x,a)","none", ok, .true.)
 
     call getVector("columndir", columnImageDirection, 1.d0, cLine, fLine, nLines, &
-                  "Direction for column image: ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
+         "Direction for column image: ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
 
-
+    call getString("columnaxisunits", columnAxisUnits, cLine, fLine, nLines,&
+         "Axis units for column image:", "(a,a,1x,a)", "pc", ok, .false.)
   end subroutine readColumnImageParameters
-
+  
   subroutine readImageParameters(cLine, fLine, nLines)
     use constants_mod
     use image_utils_mod

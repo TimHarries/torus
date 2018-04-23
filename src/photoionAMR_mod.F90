@@ -37,7 +37,10 @@ implicit none
 private
 public :: photoIonizationloopAMR, createImagesplitgrid, ionizeGrid, &
      neutralGrid, resizePhotoionCoeff, resetNH, hasPhotoionAllocations, allocatePhotoionAttributes, &
-     computeProbDistAMRMpi, putStarsInGridAccordingToDensity, testBranchCopying
+     computeProbDistAMRMpi, putStarsInGridAccordingToDensity, testBranchCopying, createtemperaturecolumnimage,&
+     writeLuminosities, calculateAverageTemperature, createtdustColumnImage, calculateAverageTdust, &
+     createEmissionMeasureImage
+
 
 #ifdef HYDRO
 public :: radiationHydro
@@ -105,6 +108,9 @@ contains
     integer, parameter :: tagsne = 123
     real :: lamArray(:)
     character(len=80) :: mpiFilename, datFilename, mpifilenameB
+#ifdef CFITSIO
+    real(double), pointer :: columnDensityImage(:,:)
+#endif
     real(double) :: dt, cfl, gamma, mu
     integer :: iUnrefine
     integer :: ierr
@@ -131,7 +137,7 @@ contains
     logical, save :: firstWN=.true., firstFeedbackIter = .true.
     integer :: niter, nHydroCounter
     real(double) :: epsoverdeltat, totalMass, tauSca, tauAbs, tff, rhosphere, feedbackStartTime
-    real(double) :: ionizedVolume, ionizedMass, ke, jeansUnstableMass
+    real(double) :: ionizedVolume, ionizedMass, ke, jeansUnstableMass, maxRho
     logical :: sourcesCreated, doFeedback
 
     nPhotoIter = 1
@@ -1334,8 +1340,9 @@ contains
 
        if (nbodyPhysics) globalSourceArray(1:globalnSource)%time = grid%currentTime
 
-       call findMassOverAllThreads(grid, totalMass)
+       call findMassOverAllThreads(grid, totalMass, maxRho=maxRho)
        if (writeoutput) write(*,*) "Total mass on grid (msol) is ", totalmass/mSol
+       if (writeoutput) write(*,*) "Max density (g/cc) is ", maxRho
        call findJeansUnstableMass(grid, jeansUnstableMass)
        if (writeoutput) write(*,*) "Total Jeans-unstable mass (msol):", jeansUnstableMass/mSol
        ke = 0.d0
@@ -1427,9 +1434,26 @@ contains
                "diff         ","dust         ","tdust        ","u_i          ",  &
                "phi          ","rhou         ","rhov         ","rhow         ","rhoe         ", &
                "vphi         ","jnu          ","mu           ", &
-               "scatters     ","ioncross     ","tempconv     ",&
+               "scatters     ","ioncross     ","tempconv     ","habing       ",&
                "fvisc1       ","fvisc2       ","fvisc3       ","crossings    ","mpithread    "/))
 
+#ifdef CFITSIO
+          if (grid%octreeRoot%threeD) then
+             write(mpiFilename,'(a, i4.4, a)') "columnz_", grid%iDump,".fits"
+             call createColumnDensityImage(grid, VECTOR(0.d0, 0.d0, 1.d0), columnDensityImage)
+             if (writeoutput) call writeFitsColumnDensityImage(columnDensityImage, trim(mpiFilename))
+
+             write(mpiFilename,'(a, i4.4, a)') "columny_", grid%iDump,".fits"
+             call createColumnDensityImage(grid, VECTOR(0.d0, 1.d0, 0.d0), columnDensityImage)
+             if (writeoutput) call writeFitsColumnDensityImage(columnDensityImage, trim(mpiFilename))
+
+             write(mpiFilename,'(a, i4.4, a)') "columnx_", grid%iDump,".fits"
+             call createColumnDensityImage(grid, VECTOR(1.d0, 0.d0, 0.d0), columnDensityImage)
+             if (writeoutput) call writeFitsColumnDensityImage(columnDensityImage, trim(mpiFilename))
+          endif
+#else
+          call writeInfo("FITS not enabled, not writing",FORINFO)
+#endif
 
           if(densitySpectrum) then
              !           print *, "DUMPING DENSITY SPECTRUM"
@@ -1545,8 +1569,7 @@ contains
     stageCounter = stageCounter + 1
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
-    close(444)
-!    write(*,*) "myRank", myRankGlobal, "finishing loop. Time:", grid%currentTime, "tend ", tend
+!    close(444)
     if (gasdt < 1.d-3) then
       call torus_stop("tc less than 0.001 s")
     endif
@@ -1562,7 +1585,7 @@ end subroutine radiationHydro
          readGrid, dustOnly, bufferCap, doPhotorefine, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation, &
          radPressureTest, justdump, uv_vector, inputEV, xrayCalc, useionparam, dumpregularVTUs, decoupleGasDustTemperature, &
-         mchistories 
+         mchistories, habingFlux
 
     use inputs_mod, only : usePacketSplitting, inputNSmallPackets, amr2d, amr3d, forceminrho, nDustType, readgrid, &
          loadBalancing, loadBalancingMethod, tsub, bufferedSend!, inputSeed 
@@ -1639,6 +1662,8 @@ end subroutine radiationHydro
     integer(bigint) :: nEscaped=0, nIonizingPackets=0, nIonizingEscaped=0
     integer, parameter :: nTimes = 3
     logical :: photonsStillProcessing
+    integer :: iIdle, nIdleMax, iIdleOnThread(nThreadsGlobal-1)
+    logical :: photonsStillStacking
     integer(bigint), allocatable :: nEscapedArray(:), nIonizingEscapedArray(:)
     integer :: status(MPI_STATUS_SIZE)
 
@@ -1727,7 +1752,7 @@ end subroutine radiationHydro
     real(double) :: tempDouble
 
     real, allocatable :: tempCell(:,:), temp1(:), temp2(:), tempIon(:,:,:), tempDust(:,:), tempConverged(:,:)
-!    real, allocatable :: tempFracT(:,:), tempNiter(:,:)
+!    real, allocatable :: tempprop1(:,:), tempprop2(:,:), tempprop3(:,:)
     real(double), allocatable :: temp1d(:)
 
     integer :: n_rmdr, mOctal, nNotEscaped
@@ -2019,8 +2044,8 @@ end subroutine radiationHydro
        do loopsource = 1, globalnsource
           thisSourceFlux = ionizingFlux(source(loopSource))
           nIonizingPhotons = nionizingphotons + thisSourceFlux
-          if (writeoutput .and. thisSourceFlux > 1.d40) then
-            write(*,'(a, i3, 1pe12.1)') "Ionizing photons per sec for source ", loopsource, thisSourceFlux 
+          if (writeoutput) then
+            write(*,'(a, i3, 1pe12.5)') "Ionizing photons per sec for source ", loopsource, thisSourceFlux 
           endif 
        enddo
     else
@@ -2029,7 +2054,7 @@ end subroutine radiationHydro
     
     if (writeoutput) then
 !       write(*,'(a,1pe12.1)') "Ionizing photons per second ", ionizingFlux(source(1))
-       write(*,'(a,1pe12.1)') "Total ionizing photons per second ", nIonizingPhotons
+       write(*,'(a,1pe12.5)') "Total ionizing photons per second ", nIonizingPhotons
     endif
 
     if (inputNMonte < 0) then
@@ -2298,6 +2323,8 @@ end subroutine radiationHydro
                    call setLoadBalancingThreadsByCrossings(grid)
                 case("scatters")
                    call setLoadBalancingThreadsByScatters(grid)
+                case("crossplusscat", "crossscat")
+                   call setLoadBalancingThreadsByCrossScat(grid)
                 case DEFAULT
                    call setLoadBalancingThreadsByCrossings(grid)
              end select
@@ -2367,6 +2394,7 @@ end subroutine radiationHydro
 !       endif
 
 
+       nIdleMax = 2
        if (myRankGlobal == 0) then
              if (myrankWorldGlobal == 0) call tune(6, "All photons sent from rank 0")  ! stop a stopwatch
              ! initialize prob arrays in randomSource
@@ -2440,6 +2468,7 @@ end subroutine radiationHydro
                    ionizingPhoton = .true.
                 endif
                 
+
                 call findSubcellTD(rVec, grid%octreeRoot,thisOctal, subcell)
                 
                 
@@ -2550,7 +2579,7 @@ end subroutine radiationHydro
              end if
 
 
-             ! check if the last photon has escaped
+             ! check if the last-sent photon has escaped
              if (myrankWorldGlobal == 0) call tune(6, "Rank 0 received all finaltags")  ! start a stopwatch
              do i = 1, max(nSmallPackets,1)
                 call MPI_RECV(j, 1, MPI_INTEGER, MPI_ANY_SOURCE, &
@@ -2558,20 +2587,50 @@ end subroutine radiationHydro
              enddo
              if (myrankWorldGlobal == 0) call tune(6, "Rank 0 received all finaltags")  ! stop a stopwatch
 
+             ! poll threads, see how many consecutive polls they've received (more polls == idling)
+             if (myrankWorldGlobal==0)  write(*,*) "Polling threads to check if they're idling..."
+             if (myrankWorldGlobal == 0) call tune(6, "Idle check")  ! start a stopwatch
+             iIdleOnThread(:) = 0
+             photonsStillStacking = .true.
+             do while(photonsStillStacking)
+                do iThread = 1, nDomainThreads
+                   if (iIdleOnThread(iThread) < nIdleMax) then
+                      toSendStack(1)%destination = -200
+                      if (bufferedSend) then
+                         call MPI_BSEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)
+                      else
+                         call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)
+                      endif
+                      call MPI_RECV(iIdleOnThread(iThread), 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, status, ierr)  
+                    endif
+                end do
+                photonsStillStacking = any(iIdleOnThread < nIdleMax)
+             enddo
+             if (myrankWorldGlobal == 0) call tune(6, "Idle check")  ! stop a stopwatch
+
              ! tell ranks to send photons even if they're not in stacklimit-sized stacks
-             if (myrankWorldGlobal==0)  write(*,*) "Telling Ranks to pass stacks ASAP "
-             if (myrankWorldGlobal == 0) call tune(6, "Ranks passed stacks asap")  ! start a stopwatch
-             do iThread = 1, nDomainThreads
-                toSendStack(1)%destination = -500
-                call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)
-                call MPI_RECV(donePanicking, 1, MPI_LOGICAL, iThread, tag, localWorldCommunicator, status, ierr)  
-             end do
-             if (myrankWorldGlobal == 0) call tune(6, "Ranks passed stacks asap")  ! stop a stopwatch
-                
+!             if (myrankWorldGlobal==0)  write(*,*) "Telling Ranks to pass stacks ASAP "
+!             if (myrankWorldGlobal == 0) call tune(6, "Ranks passed stacks asap")  ! start a stopwatch
+!             do iThread = 1, nDomainThreads
+!                toSendStack(1)%destination = -500
+!                if (bufferedSend) then
+!                   call MPI_BSEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)
+!                else
+!                   call MPI_SEND(toSendStack, maxStackLimit, MPI_PHOTON_STACK, iThread, tag, localWorldCommunicator,  ierr)
+!                endif
+!             end do
+!             do iThread = 1, nDomainThreads
+!                call MPI_RECV(donePanicking, 1, MPI_LOGICAL, MPI_ANY_SOURCE, tag, localWorldCommunicator, status, ierr)  
+!             end do
+!             if (myrankWorldGlobal == 0) call tune(6, "Ranks passed stacks asap")  ! stop a stopwatch
+
+
+             ! check if all photons have escaped
              photonsStillProcessing = .true.
              
              i = 0
 
+             if (myrankWorldGlobal==0)  write(*,*) "Checking how many photons have escaped..."
              if (myrankWorldGlobal == 0) call tune(6, "Photon escape check")  ! start a stopwatch
              do while(photonsStillProcessing)                   
 
@@ -2621,6 +2680,7 @@ end subroutine radiationHydro
              else
                 write(*,*) "Ionizing photon escape fraction: ", 0.d0 
              endif
+             write(*,*) "    at time ", grid%currentTime
              
              if (myrankWorldGlobal == 0) write(*,*) "Finishing iteration..."
 
@@ -2648,6 +2708,7 @@ end subroutine radiationHydro
              stackSize = 0
              nSaved = 0
              nNotEndLoop = 0
+             iIdle = 0
              waitingTime = 0.d0
              call wallTime(globalStartTime)
              sendAllPhotons = .false.
@@ -2681,6 +2742,22 @@ end subroutine radiationHydro
 
                    !Check to see if a special action is required
 
+                   !check whether thread is idling (not doing work between two consecutive -200 signals)
+                   if (currentStack(1)%destination == -200 .and. .not.sendAllPhotons) then
+                      iIdle = iIdle + 1
+                      call MPI_SEND(iIdle, 1, MPI_INTEGER, 0, tag, localWorldCommunicator,  ierr)
+                      if (iIdle == nIdleMax) then
+                         currentStack(1)%destination = -600 ! evacuate 
+                         sendAllPhotons = .true. ! send one-by-one from now
+                      else
+                         ! recv next stack
+                         goto 777 
+                      endif
+                   else
+                      ! reset counter
+                      iIdle = 0 
+                   endif
+
                    escapeCheck = .false.
                    !Escape checking
                    if(currentStack(1)%destination == -999) then
@@ -2691,6 +2768,7 @@ end subroutine radiationHydro
                    else if (currentStack(1)%destination == -888) then
                       iSignal = 0                    
                       currentStack%destination = 0                      
+                   !Evacuate only (but keep stacking)
                    else if (currentStack(1)%destination == -600) then
                       stackSize = 0 
                       !Evacuate everything currently in need of sending
@@ -2718,6 +2796,7 @@ end subroutine radiationHydro
                       Currentstack%destination = 0
                       goto 777
 
+                   !Evacuate, inform rank0, and from now on send photons one-by-one instead of stacking  
                    else if(currentStack(1)%destination == -500 .and. .not. sendAllPhotons) then
                       sendAllPhotons = .true.
                       stackSize = 0
@@ -2979,6 +3058,7 @@ end subroutine radiationHydro
 
                          if (escaped) then
                             !$OMP CRITICAL (update_escaped)
+
                             if (smallPhotonPacket) nEscaped = nEscaped + 1
                             if (bigPhotonPacket) nEscaped = nEscaped + max(nSmallPackets,1)
                             if (lastPhoton.and.smallPhotonPacket) then
@@ -3147,9 +3227,12 @@ end subroutine radiationHydro
                             thisOctal%radiationMomentum(subcell) = thisOctal%radiationMomentum(subcell) + uHatDash * &
                                  photonMomentum * photonPacketWeight
 !                            write(*,*) "mom ",thisOctal%radiationMomentum(subcell)
-                               nScat = nScat + 1
-                               thisOctal%nScatters(subcell) = thisOctal%nScatters(subcell) + 1
 
+                               ! no of events for this photon on this thread
+                               nScat = nScat + 1 
+                               ! no of events (over all photons) taking place in this cell
+                               thisOctal%nScatters(subcell) = thisOctal%nScatters(subcell) + 1
+ 
                                if (bigPhotonPacket) nScatBigPacket = nScatBigPacket + 1
                                if (smallPhotonPacket) nScatSmallPacket = nScatSmallPacket + 1
                                nTotScat = nTotScat + 1
@@ -3376,12 +3459,12 @@ end subroutine radiationHydro
        globalTime = globalTime - globalStartTime
        if (firsttime) then
           if (myrankglobal == 0) then
-             write(*,'(i3.3,a,f9.2,a,f9.2,a)') myrankGlobal, " mainloop time ",waitingTime, " seconds or ", &
+             write(*,'(i4.4,a,f9.2,a,f9.2,a)') myrankGlobal, " mainloop time ",waitingTime, " seconds or ", &
                 waitingTime/GlobalTime*100.,"% of run"
           else
              do optCount = 1, nHydroThreadsGlobal
                 if (ANY(loadBalanceList(optCount,1:nLoadBalanceList(optCount)) == myRankGlobal)) then
-                   write(*,'(i3.3,a1,i3.3,a,f9.2,a,f9.2,a)') optcount, " ",myrankGlobal, & 
+                   write(*,'(i4.4,a1,i4.4,a,f9.2,a,f9.2,a)') optcount, " ",myrankGlobal, & 
                    " waited for ",waitingTime, " seconds or ", waitingTime/GlobalTime*100.,"% of run"
                 endif
              enddo
@@ -3409,6 +3492,8 @@ end subroutine radiationHydro
 !          endif
           if (writeoutput) write(*,*) "Median efficiency is ",efficiencyArray((nThreadsGlobal-1)/2), " %"
           medianEfficiency = efficiencyArray((nThreadsGlobal-1)/2)
+!          if (writeoutput) write(*,'(a,i3.3,a,f7.1,3(a,f7.1))') "sl ", maxstacklimit, " t(s) ", globaltime, " eff(%) ", &
+!             medianEfficiency, " min(%) ", minval(efficiencyArray), " max ", maxval(efficiencyArray)
           oldStackLimit = stackLimit
 !          if (medianEfficiency > oldMedianEfficiency) then
 !             stackLimit = stackLimit + 1
@@ -3426,7 +3511,6 @@ end subroutine radiationHydro
              if (writeoutput) write(*,*) "Iteration had ",&
                   real(nScatSmallPacket)/real(nThreadMonte*nSmallPackets), " scatters per small photon packet"
           endif
-
           
           if (nSmallPackets > 0) then
              call MPI_ALLREDUCE(nScatBigPacket, i, 1, MPI_INTEGER, MPI_SUM, allDomainsCommunicator, ierr)
@@ -3516,7 +3600,7 @@ end subroutine radiationHydro
 
     if (loadbalancing) call  setLoadBalancingThreadsByCells(grid)
 
-    maxBalanceIter = 10
+    maxBalanceIter = 20
     nNotConverged = 0
     if (myRankGlobal /= 0) then
 
@@ -3585,10 +3669,12 @@ end subroutine radiationHydro
           endif
           allocate(tempConverged(1:nOctal,1:maxChild))
           tempConverged = 0.
-!          allocate(tempFracT(1:nOctal,1:maxChild))
-!          tempFracT = 0.
-!          allocate(tempNiter(1:nOctal,1:maxChild))
-!          tempNiter = 0.
+!          allocate(tempprop1(1:nOctal,1:maxChild))
+!          tempprop1 = 0.
+!          allocate(tempprop2(1:nOctal,1:maxChild))
+!          tempprop2 = 0.
+!          allocate(tempprop3(1:nOctal,1:maxChild))
+!          tempprop3 = 0.
        endif
 
        !$OMP PARALLEL DEFAULT(NONE) &
@@ -3637,6 +3723,9 @@ end subroutine radiationHydro
                 if (.not.associated(thisOctal%ionFrac)) then
                    write(*,*) "not associated ",myrankGlobal,copyOfThread
                 endif
+!                thisOctal%etacont(1:thisOctal%maxchildren) = 1.d-30
+!                thisOctal%biasline3d(1:thisOctal%maxchildren) = 1.d-30
+!                thisOctal%biascont3d(1:thisOctal%maxchildren) = 1.d-30
                 oldT(1:thisOctal%maxChildren) = thisOctal%temperature(1:thisOctal%maxChildren)
                 oldF(1:thisOctal%maxChildren) = thisOctal%ionFrac(1:thisOctal%maxChildren,1)
                 subcellConverged(1:thisOctal%maxChildren) = .false.
@@ -3704,8 +3793,9 @@ end subroutine radiationHydro
                 tempConverged(iOctal,1:thisOctal%maxChildren) = 0.
              endwhere
           endif
-!          if (loadBalancing) tempFracT(iOctal,1:thisOctal%maxChildren) = thisOctal%etacont(1:thisOctal%maxChildren)
-!          if (loadBalancing) tempNiter(iOctal,1:thisOctal%maxChildren) = thisOctal%biasline3d(1:thisOctal%maxChildren)
+!          if (loadBalancing) tempprop1(iOctal,1:thisOctal%maxChildren) = thisOctal%etacont(1:thisOctal%maxChildren)
+!          if (loadBalancing) tempprop2(iOctal,1:thisOctal%maxChildren) = thisOctal%biasline3d(1:thisOctal%maxChildren)
+!          if (loadBalancing) tempprop3(iOctal,1:thisOctal%maxChildren) = thisOctal%biascont3d(1:thisOctal%maxChildren)
 
 
        enddo
@@ -3789,25 +3879,6 @@ end subroutine radiationHydro
           deallocate(temp1, temp2, tempIon)
           call resetNe(grid%octreeRoot)
 
-!          allocate(temp1(1:(nOctal*maxChild)), temp2(1:nOctal*maxChild))
-!          temp1 = RESHAPE(tempFracT, (/SIZE(temp1)/))
-!          call MPI_ALLREDUCE(temp1, temp2, SIZE(temp1), MPI_REAL, MPI_SUM, loadBalanceCommunicator(copyOfThread),ierr)
-!          tempFracT = RESHAPE(temp2,SHAPE(tempFracT))
-!          do iOctal = 1, nOctal
-!             octalArray(iOctal)%content%etacont(1:maxChild) = tempFracT(iOctal,1:maxChild)
-!          enddo
-!          deallocate(temp1, temp2, tempFracT)
-!
-!          allocate(temp1(1:(nOctal*maxChild)), temp2(1:nOctal*maxChild))
-!          temp1 = RESHAPE(tempNiter, (/SIZE(temp1)/))
-!          call MPI_ALLREDUCE(temp1, temp2, SIZE(temp1), MPI_REAL, MPI_SUM, loadBalanceCommunicator(copyOfThread),ierr)
-!          tempNiter = RESHAPE(temp2,SHAPE(tempNiter))
-!          do iOctal = 1, nOctal
-!             octalArray(iOctal)%content%biasline3d(1:maxChild) = tempNiter(iOctal,1:maxChild)
-!          enddo
-!          deallocate(temp1, temp2, tempNiter)
-
-
           allocate(temp1(1:(nOctal*maxChild)), temp2(1:nOctal*maxChild))
           temp1= RESHAPE(tempConverged, (/SIZE(temp1)/))
           call MPI_ALLREDUCE(temp1, temp2, SIZE(temp1), MPI_REAL, MPI_SUM, loadBalanceCommunicator(copyOfThread),ierr)
@@ -3821,6 +3892,34 @@ end subroutine radiationHydro
           enddo
           deallocate(temp1, temp2, tempConverged)
 
+          ! etacont, biasline3d, biascont3d - temporary properties
+!          allocate(temp1(1:(nOctal*maxChild)), temp2(1:nOctal*maxChild))
+!          temp1 = RESHAPE(tempprop1, (/SIZE(temp1)/))
+!          call MPI_ALLREDUCE(temp1, temp2, SIZE(temp1), MPI_REAL, MPI_SUM, loadBalanceCommunicator(copyOfThread),ierr)
+!          tempprop1 = RESHAPE(temp2,SHAPE(tempprop1))
+!          do iOctal = 1, nOctal
+!             octalArray(iOctal)%content%etacont(1:maxChild) = tempprop1(iOctal,1:maxChild)
+!          enddo
+!          deallocate(temp1, temp2, tempprop1)
+!
+!          allocate(temp1(1:(nOctal*maxChild)), temp2(1:nOctal*maxChild))
+!          temp1 = RESHAPE(tempprop2, (/SIZE(temp1)/))
+!          call MPI_ALLREDUCE(temp1, temp2, SIZE(temp1), MPI_REAL, MPI_SUM, loadBalanceCommunicator(copyOfThread),ierr)
+!          tempprop2 = RESHAPE(temp2,SHAPE(tempprop2))
+!          do iOctal = 1, nOctal
+!             octalArray(iOctal)%content%biasline3d(1:maxChild) = tempprop2(iOctal,1:maxChild)
+!          enddo
+!          deallocate(temp1, temp2, tempprop2)
+!
+!          allocate(temp1(1:(nOctal*maxChild)), temp2(1:nOctal*maxChild))
+!          temp1 = RESHAPE(tempprop3, (/SIZE(temp1)/))
+!          call MPI_ALLREDUCE(temp1, temp2, SIZE(temp1), MPI_REAL, MPI_SUM, loadBalanceCommunicator(copyOfThread),ierr)
+!          tempprop3 = RESHAPE(temp2,SHAPE(tempprop3))
+!          do iOctal = 1, nOctal
+!             octalArray(iOctal)%content%biascont3d(1:maxChild) = tempprop3(iOctal,1:maxChild)
+!          enddo
+!          deallocate(temp1, temp2, tempprop3)
+
        endif
        call walltime(endTime)
 !       write(*,*) myrankGlobal, " did thermal balance in ",endTime - startTime
@@ -3833,6 +3932,7 @@ end subroutine radiationHydro
     call adjustChiline(grid%octreeRoot)
     
     call calculateKappaTimesFlux(grid%octreeRoot, epsOverDeltaT)
+    call calculateHabingFlux(grid%octreeRoot, epsOverDeltaT)
 
 !    call writeVtkFile(grid, "rad.vtk", &
 !               valueTypeString=(/"radmom       ",     "radforce     "/))
@@ -3852,11 +3952,11 @@ end subroutine radiationHydro
     if (myrankWorldGlobal == 1) call tune(6, "Temperature/ion corrections")
 
     if (maxiter > 1) then
-       write(mpiFilename, '(a,i4.4,a)') "balance_",niter,".vtk"
+       write(mpiFilename, '(a,i4.4,a,i4.4,a)') "balance_",grid%idump,"_",niter,".vtk"
        call writeVtkFile(grid, mpiFilename, &
               valueTypeString=(/"rho        ","HI         " ,"temperature", &
                                 "crossings  ","ioncross   " ,"tdust      ", &
-                                "tempconv   ","scatters   "/))
+                                "tempconv   ","scatters   "/))!"etacont", "jnu", "bias"/))
     endif
 
 
@@ -5106,6 +5206,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
           if (.not.associated(thisOctal%nScatters)) found = .false. 
           if (.not.associated(thisOctal%nCrossIonizing)) found = .false. 
           if (.not.associated(thisOctal%temperatureConv)) found = .false. 
+          if (.not.associated(thisOctal%habingFlux)) found = .false. 
        endif
     enddo
   end subroutine CheckPhotoionAllocationsSub
@@ -5150,6 +5251,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
       call allocateAttribute(thisOctal%oldTemperature, thisOctal%maxChildren)
       call allocateAttribute(thisOctal%kappaRoss, thisOctal%maxChildren)
       call allocateAttribute(thisOctal%distanceGrid, thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%habingFlux, thisOctal%maxChildren)
       call allocateAttribute(thisOctal%nCrossings, thisOctal%maxChildren)
       call allocateAttribute(thisOctal%nCrossIonizing, thisOctal%maxChildren)
       call allocateAttribute(thisOctal%nScatters, thisOctal%maxChildren)
@@ -5218,6 +5320,9 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
           if (.not.associated(thisOctal%kappaTimesFlux)) then
              allocate(thisOctal%kappaTimesFlux(1:thisOctal%maxChildren))
           endif
+          if (.not.associated(thisOctal%habingFlux)) then
+             allocate(thisOctal%habingFlux(1:thisOctal%maxChildren))
+          endif
           if (.not.associated(thisOctal%UVvector)) then
              allocate(thisOctal%UVvector(1:thisOctal%maxChildren))
           endif
@@ -5228,6 +5333,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
              allocate(thisOctal%UVvectorMinus(1:thisOctal%maxChildren))
           endif
           thisOctal%kappaTimesFlux(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+          thisOctal%habingFlux(subcell) = 0.d0 
           thisOctal%UVvector(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
           thisOctal%UVvectorPlus(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
           thisOctal%UVvectorMinus(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
@@ -5406,6 +5512,42 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        endif
     enddo
   end subroutine testforZero
+  recursive subroutine getHalphaluminosity(thisOctal, grid, luminosity)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  type(GRIDTYPE) :: grid
+  real(double) :: luminosity, v, hbeta
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call getHalphaLuminosity(child, grid, luminosity)
+                exit
+             end if
+          end do
+       else
+          if (octalOnThread(thisOctal, subcell, myRankGlobal)) then             
+!             v = 3.d0*cellVolume(thisOctal, subcell)/fourpi 
+             v = cellVolume(thisOctal, subcell)
+!             if(thisOctal%oneD) then
+!                v = thisOctal%subcellSize**3 * 1.d30
+!             else if(thisOctal%twoD) then
+!                v = thisOctal%subcellSize**2 * 1.d30
+!             else
+!                v = 
+!             end if
+             hbeta = (10.d0**(-0.870d0*log10(thisOctal%temperature(subcell))+3.57d0)) * &
+                  thisOctal%ne(subcell) * thisOctal%ionFrac(subcell, 2) * &
+                  thisOctal%nh(subcell)*grid%ion(1)%abundance*1.d-25
+             luminosity = luminosity + 0.286E+01 * hbeta * (v*1.d30)
+          endif
+       end if
+    enddo
+  end subroutine getHalphaluminosity
 
   recursive subroutine getHbetaluminosity(thisOctal, grid, luminosity)
   type(octal), pointer   :: thisOctal
@@ -5586,7 +5728,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
 
   subroutine calculateIonizationBalance(grid, thisOctal, epsOverDeltaT, augerArray, subcellConverged) 
-    use inputs_mod, only : xraycalc, useionparam, mchistories, tMinGlobal
+    use inputs_mod, only : xraycalc, useionparam, tMinGlobal
     type(gridtype) :: grid
     type(AUGER) :: augerArray(5, 5, 10)
     type(octal), pointer   :: thisOctal
@@ -5614,20 +5756,20 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                    end if
                 endif
              else
-                if (.not. MChistories) then 
-                   ! make all species neutral
-                   do iIon = 1, grid%nIon 
-                      j = len(trim(grid%ion(iIon)%species))
-                      if (grid%ion(iIon)%species(j-1:j) == " I") then ! neutral
-                         thisOctal%ionFrac(subcell, iIon) = 1.d0
-                      else
-                         thisOctal%ionFrac(subcell, iIon) = 1.d-10
-                      endif
-                   enddo
-                   thisOctal%HHeating(subcell) = 1.d-30
+                ! make all species neutral
+                do iIon = 1, grid%nIon 
+                   j = len(trim(grid%ion(iIon)%species))
+                   if (grid%ion(iIon)%species(j-1:j) == " I") then ! neutral
+                      thisOctal%ionFrac(subcell, iIon) = 1.d0
+                   else
+                      thisOctal%ionFrac(subcell, iIon) = 1.d-10
+                   endif
+                enddo
+                thisOctal%HHeating(subcell) = 1.d-30
+                if (grid%nIon > 2) then
                    thisOctal%HeHeating(subcell) = 1.d-30
-                   thisOctal%ne(subcell) = returnNe(thisOctal, subcell, grid%ion, grid%nion)
                 endif
+                thisOctal%ne(subcell) = returnNe(thisOctal, subcell, grid%ion, grid%nion)
              endif
           endif
        endif
@@ -6469,12 +6611,14 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
             + (dS * dble(kappaAbs + kappaSca*(1.d0-gfac)) * photonPacketWeight)*uHatDash
     enddo
 
-       
-
-
 !     thisoctal%kappaTimesFlux(subcell) = thisoctal%kappaTimesFlux(subcell) &
 !         + (dble(distance) * dble(kappaExt) * photonPacketWeight)*uHatDash
 
+
+    if (cspeed/thisFreq > 912.d0*angstromToCm .and. cspeed/thisFreq < 2400.d0*angstromToCm) then
+       thisOctal%habingflux(subcell) = thisOctal%habingFlux(subcell) &
+         + distance * photonPacketWeight  
+    endif
 
     if(uv_vector) then
 !       if(thisFreq > (2.99792458d8/100.d-9) .and. thisFreq < (2.99792458d8/10.d-9)) then
@@ -7307,16 +7451,22 @@ end if
 end subroutine dumpLexingtonMPI
 
 
-subroutine getForbiddenLineLuminosity(grid, species, wavelength, luminosity)
+subroutine getForbiddenLineLuminosity(grid, species, wavelength, luminosity, thisOctal, subcell)
   type(GRIDTYPE) :: grid
   character(len=*) :: species
   real(double) :: wavelength
   real(double) :: fac
   real(double), intent(out) :: luminosity
   integer :: iIon, iTrans, i
+  type(octal), pointer, optional :: thisOctal
+  integer, optional :: subcell
 
   iTrans = 0
   iIon = returnIonNumber(species, grid%ion, grid%nIon) 
+  if (grid%nIon < 1) then
+     if (writeoutput) write(*,*) "Ions not set up, nion = ", grid%nion
+     call torus_stop
+  endif
   do i = 1, grid%ion(iIon)%nTransitions
      fac = grid%ion(iIon)%transition(i)%lambda
      fac = fac - wavelength
@@ -7332,7 +7482,13 @@ subroutine getForbiddenLineLuminosity(grid, species, wavelength, luminosity)
      stop
   endif
   luminosity = 0.d0
-  call sumLineLuminosity(grid%octreeroot, luminosity, iIon, iTrans, grid)
+  if (present(subcell)) then
+     ! this subcell
+     luminosity = cellLineLuminosity(iIon, iTrans, grid, thisOctal, subcell)
+  else
+     ! entire grid
+     call sumLineLuminosity(grid%octreeroot, luminosity, iIon, iTrans, grid)
+  endif
 end subroutine getForbiddenLineLuminosity
 
 recursive subroutine sumLineLuminosity(thisOctal, luminosity, iIon, iTrans, grid)
@@ -7340,9 +7496,7 @@ recursive subroutine sumLineLuminosity(thisOctal, luminosity, iIon, iTrans, grid
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   integer :: subcell, i, iIon, iTrans
-  real(double) :: luminosity, v, rate
-  real :: pops(10)
-  type(VECTOR) :: rvec
+  real(double) :: luminosity
   
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -7356,20 +7510,38 @@ recursive subroutine sumLineLuminosity(thisOctal, luminosity, iIon, iTrans, grid
           end do
        else
           if (octalOnThread(thisOctal, subcell, myrankGlobal)) then
-             rVec = subcellCentre(thisOctal,subcell)
-!             v = 3.d0*cellVolume(thisOctal, subcell)/fourpi
-             v = cellVolume(thisOctal, subcell)
-             
-             call solvePops(grid%ion(iIon), pops, thisOctal%ne(subcell), thisOctal%temperature(subcell))
-             
-             rate =  pops(grid%ion(iion)%transition(iTrans)%j) * grid%ion(iion)%transition(itrans)%energy * &
-                  grid%ion(iion)%transition(itrans)%a/ergtoev
-             rate = rate * grid%ion(iion)%abundance * thisOctal%nh(subcell) * thisOctal%ionFrac(subcell, iion)
-             luminosity = luminosity + rate * v * 1.d30
+!!             rVec = subcellCentre(thisOctal,subcell)
+!!             v = 3.d0*cellVolume(thisOctal, subcell)/fourpi
+!             v = cellVolume(thisOctal, subcell)
+!             
+!             call solvePops(grid%ion(iIon), pops, thisOctal%ne(subcell), thisOctal%temperature(subcell))
+!             
+!             rate =  pops(grid%ion(iion)%transition(iTrans)%j) * grid%ion(iion)%transition(itrans)%energy * &
+!                  grid%ion(iion)%transition(itrans)%a/ergtoev
+!             rate = rate * grid%ion(iion)%abundance * thisOctal%nh(subcell) * thisOctal%ionFrac(subcell, iion)
+!             luminosity = luminosity + rate * v * 1.d30
+             luminosity = luminosity + cellLineLuminosity(iIon, iTrans, grid, thisOctal, subcell) 
           end if
        endif
     enddo
   end subroutine sumLineLuminosity
+
+real(double) function cellLineLuminosity(iIon, iTrans, grid, thisOctal, subcell)
+  type(GRIDTYPE) :: grid
+  type(octal), pointer   :: thisOctal
+  integer :: subcell, iIon, iTrans
+  real(double) :: v, rate
+  real :: pops(10)
+  
+  v = cellVolume(thisOctal, subcell)
+  
+  call solvePops(grid%ion(iIon), pops, thisOctal%ne(subcell), thisOctal%temperature(subcell))
+  
+  rate =  pops(grid%ion(iion)%transition(iTrans)%j) * grid%ion(iion)%transition(itrans)%energy * &
+       grid%ion(iion)%transition(itrans)%a/ergtoev
+  rate = rate * grid%ion(iion)%abundance * thisOctal%nh(subcell) * thisOctal%ionFrac(subcell, iion)
+  cellLineLuminosity = rate * v * 1.d30
+end function cellLineLuminosity 
  
 subroutine metalcoolingRate(ionArray, nIons, thisOctal, subcell, nh, ne, temperature, total, debug)
   type(IONTYPE) :: ionArray(*)
@@ -7918,7 +8090,7 @@ subroutine readHeIIrecombination()
 end subroutine readHeIIrecombination
 
 recursive subroutine packvalues(thisOctal,nIndex,nCrossings,nCrossIonizing,nScatters, photoIonCoeff, hHeating, HeHeating,&
-     distanceGrid, radMomVec, kappaTimesFlux, uvVec)
+     distanceGrid, radMomVec, kappaTimesFlux, uvVec, habingFlux)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: nCrossings(:)
@@ -7928,6 +8100,7 @@ recursive subroutine packvalues(thisOctal,nIndex,nCrossings,nCrossIonizing,nScat
   real(double) :: hHeating(:)
   real(double) :: heHeating(:)
   real(double) :: distanceGrid(:)
+  real(double) :: habingFlux(:)
   type(VECTOR) :: radMomVec(:)
   type(VECTOR) :: kappaTimesFlux(:)
   type(VECTOR) :: uvVec(:)
@@ -7942,7 +8115,7 @@ recursive subroutine packvalues(thisOctal,nIndex,nCrossings,nCrossIonizing,nScat
            if (thisOctal%indexChild(i) == subcell) then
               child => thisOctal%child(i)
               call packvalues(child, nIndex,nCrossings,nCrossIonizing,nScatters, photoIonCoeff, hHeating, HeHeating,&
-               distanceGrid, radMomVec, kappaTimesFlux, uvVec)
+               distanceGrid, radMomVec, kappaTimesFlux, uvVec, habingFlux)
               exit
            end if
         end do
@@ -7959,12 +8132,13 @@ recursive subroutine packvalues(thisOctal,nIndex,nCrossings,nCrossIonizing,nScat
         radMomVec(nIndex) = thisOctal%radiationMomentum(subcell)
         kappaTimesFlux(nIndex) = thisOctal%kappaTimesFlux(subcell)
         uvVec(nIndex) = thisOctal%uvVector(subcell)
+        habingFlux(nIndex) = thisOctal%habingFlux(subcell)
      endif
   enddo
 end subroutine packvalues
 
 recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings,nCrossIonizing,nScatters, photoIonCoeff, hHeating, HeHeating, &
-     distanceGrid, radMomVec, kappaTimesFlux, uvVec)
+     distanceGrid, radMomVec, kappaTimesFlux, uvVec, habingFlux)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: nCrossings(:)
@@ -7974,6 +8148,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings,nCrossIonizing,nSc
   real(double) :: hHeating(:)
   real(double) :: heHeating(:)
   real(double) :: distanceGrid(:)
+  real(double) :: habingFlux(:)
   type(VECTOR) :: radMomVec(:)
   type(VECTOR) :: kappaTimesFlux(:)
   type(VECTOR) :: uvvec(:)
@@ -7988,7 +8163,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings,nCrossIonizing,nSc
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
                 call unpackvalues(child, nIndex,nCrossings,nCrossIonizing,nScatters, photoIonCoeff, hHeating, HeHeating, &
-                 distanceGrid, radMomVec, kappaTimesFlux, uvvec)
+                 distanceGrid, radMomVec, kappaTimesFlux, uvvec, habingFlux)
                 exit
              end if
           end do
@@ -8005,6 +8180,7 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings,nCrossIonizing,nSc
           thisOctal%radiationMomentum(subcell) = radMomVec(nIndex)
           thisOctal%kappaTimesFlux(subcell) = kappaTimesFlux(nIndex)
           thisOctal%uvvector(subcell) = uvvec(nIndex)
+          thisOctal%habingFLux(subcell) = habingFlux(nIndex)
        endif
     enddo
   end subroutine unpackvalues
@@ -8277,12 +8453,12 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
        else
           !assuming relevence of the MC estimate decays away at the somewhere between the hydro timescale for this cell 
           !and the hydro time for the smallest cell
-          if (thisOctal%radiationtimescale .EQ. 0) then
-             thisOctal%radiationtimescale =radiationTimescale
-          endif !radiationTimescale changed to a octal attribute so it can be varied on a per cell basis
-          
-          decayFactor = exp (-cflNumber * nHydroPerPhoto /( thisOctal%radiationTimescale * 2.d0**(maxDepthAMR-thisOctal%nDepth))) 
-          shotNoiseFac= 1.0/sqrt(1.0+thisOctal%ncrossings(subcell)/shotNoiseWeight)
+          decayFactor = exp (-cflNumber * nHydroPerPhoto /( radiationTimescale * 2.d0**(maxDepthAMR-thisOctal%nDepth))) 
+          if (shotNoiseWeight <= 0) then
+             shotNoiseFac= 1.0
+          else
+             shotNoiseFac= 1.0/sqrt(1.0+thisOctal%ncrossings(subcell)/shotNoiseWeight)
+          endif
 
           if ((decayFactor.ne.decayFactor).or.decayfactor<1.0d-6) decayfactor=1.0d-6
 
@@ -8320,7 +8496,8 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
                (thisOctal%kappaTimesFlux(subcell)%x .ne. 0.0d0 .or.&
                 thisOctal%kappaTimesFlux(subcell)%y .ne. 0.0d0 .or.&
                 thisOctal%kappaTimesFlux(subcell)%z .ne. 0.0d0)) then
-             thisOctal%kappaTimesFluxHistory(subcell)=thisOctal%kappaTimesFlux(subcell) * (1.0/decayFactor-1)/thisOctal%rho(subcell)
+             thisOctal%kappaTimesFluxHistory(subcell) = thisOctal%kappaTimesFlux(subcell) * &
+               (1.0/decayFactor-1.d0)/thisOctal%rho(subcell)
           endif !assume if the history isnt set then the current monte carlo estimate is a better guess than nothing
           
           tmpVector=thisOctal%kappaTimesFlux(subcell)
@@ -8328,36 +8505,36 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
                                                      thisOctal%kappaTimesFlux(subcell)/thisOctal%rho(subcell)
           ! sum_{i=0}^{inf} (exp(-i*a))== exp(a)/(exp(a)-1)
           thisOctal%kappaTimesFlux(subcell) = thisOctal%kappaTimesFluxHistory(subcell) * &
-                                              (1.0/decayFactor-1)*decayFactor *thisOctal%rho(subcell)
-          thisOctal%kappaTimesFlux(subcell) = thisOctal%kappaTimesFlux(subcell)*shotNoiseFac + tmpVector*(1-ShotNoiseFac)
+                                              (1.0/decayFactor-1.d0)*decayFactor *thisOctal%rho(subcell)
+          thisOctal%kappaTimesFlux(subcell) = thisOctal%kappaTimesFlux(subcell)*shotNoiseFac + tmpVector*(1.d0-ShotNoiseFac)
           ! each element in the infinite series is now one step older so divide by decay factor
           thisOctal%kappaTimesFluxHistory(subcell) = thisOctal%kappaTimesFluxHistory(subcell) * decayFactor
 
           !distanceGrid
            if (thisOctal%DistanceGridHistory(subcell) .eq. 0.0d0 .and.&
                  thisOctal%DistanceGrid(subcell) .ne. 0.0d0) then
-             thisOctal%DistanceGridHistory(subcell)=thisOctal%DistanceGrid(subcell) * (1.0/decayFactor-1)
+             thisOctal%DistanceGridHistory(subcell)=thisOctal%DistanceGrid(subcell) * (1.0/decayFactor-1.d0)
           endif !assume if the history isnt set then the current monte carlo estimate is a better guess than nothing
           
           tmpDouble=thisOctal%DistanceGrid(subcell) 
           thisOctal%DistanceGridHistory(subcell) = thisOctal%DistanceGridHistory(subcell) +thisOctal%DistanceGrid(subcell)
           ! sum_{i=0}^{inf} (exp(-i*a))== exp(a)/(exp(a)-1);decay factor = exp(-a)
-          thisOctal%DistanceGrid(subcell) = thisOctal%DistanceGridHistory(subcell) * (1.0/decayFactor-1)*decayFactor
-          thisOctal%DistanceGrid(subcell) = thisOctal%DistanceGrid(subcell)*shotNoiseFac + tmpDouble*(1-ShotNoiseFac)
+          thisOctal%DistanceGrid(subcell) = thisOctal%DistanceGridHistory(subcell) * (1.0/decayFactor-1.d0)*decayFactor
+          thisOctal%DistanceGrid(subcell) = thisOctal%DistanceGrid(subcell)*shotNoiseFac + tmpDouble*(1.d0-ShotNoiseFac)
           ! each element in the infinite series is now one step older so divide by decay factor
           thisOctal%DistanceGridHistory(subcell) = thisOctal%DistanceGridHistory(subcell) * decayFactor
 
           !hHeating
           if (thisOctal%hHeatingHistory(subcell) .eq. 0.0d0 .and.&
                  thisOctal%hHeating(subcell) .ne. 0.0d0) then
-             thisOctal%hHeatingHistory(subcell)=thisOctal%hHeating(subcell) * (1.0/decayFactor-1)
+             thisOctal%hHeatingHistory(subcell)=thisOctal%hHeating(subcell) * (1.0/decayFactor-1.d0)
           endif !assume if the history isnt set then the current monte carlo estimate is a better guess than nothing
           
           tmpDouble=thisOctal%hHeating(subcell) 
           thisOctal%hHeatingHistory(subcell) = thisOctal%hHeatingHistory(subcell) +thisOctal%hHeating(subcell)
           ! sum_{i=0}^{inf} (exp(-i*a))== exp(a)/(exp(a)-1);decay factor = exp(-a)
-          thisOctal%hHeating(subcell) = thisOctal%hHeatingHistory(subcell) * (1.0/decayFactor-1)*decayFactor
-          thisOctal%hHeating(subcell) = thisOctal%hHeating(subcell)*shotNoiseFac + tmpDouble*(1-ShotNoiseFac)
+          thisOctal%hHeating(subcell) = thisOctal%hHeatingHistory(subcell) * (1.0/decayFactor-1.d0)*decayFactor
+          thisOctal%hHeating(subcell) = thisOctal%hHeating(subcell)*shotNoiseFac + tmpDouble*(1.d0-ShotNoiseFac)
           ! each element in the infinite series is now one step older so divide by decay factor
           thisOctal%hHeatingHistory(subcell) = thisOctal%hHeatingHistory(subcell) * decayFactor
 
@@ -8365,14 +8542,14 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
              !heHeating
              if (thisOctal%heHeatingHistory(subcell) .eq. 0.0d0 .and.&
                     thisOctal%heHeating(subcell) .ne. 0.0d0) then
-                thisOctal%heHeatingHistory(subcell)=thisOctal%heHeating(subcell) * (1.0/decayFactor-1)
+                thisOctal%heHeatingHistory(subcell)=thisOctal%heHeating(subcell) * (1.0/decayFactor-1.d0)
              endif !assume if the history isnt set then the current monte carlo estimate is a better guess than nothing
              
              tmpDouble=thisOctal%HeHeating(subcell) 
              thisOctal%heHeatingHistory(subcell) = thisOctal%heHeatingHistory(subcell) +thisOctal%heHeating(subcell)
              ! sum_{i=0}^{inf} (exp(-i*a))== exp(a)/(exp(a)-1);decay factor = exp(-a)
-             thisOctal%heHeating(subcell) = thisOctal%heHeatingHistory(subcell) * (1.0/decayFactor-1)*decayFactor
-             thisOctal%HeHeating(subcell) = thisOctal%heHeating(subcell)*shotNoiseFac + tmpDouble*(1-ShotNoiseFac)
+             thisOctal%heHeating(subcell) = thisOctal%heHeatingHistory(subcell) * (1.0/decayFactor-1.d0)*decayFactor
+             thisOctal%HeHeating(subcell) = thisOctal%heHeating(subcell)*shotNoiseFac + tmpDouble*(1.d0-ShotNoiseFac)
              ! each element in the infinite series is now one step older so divide by decay factor
              thisOctal%heHeatingHistory(subcell) = thisOctal%heHeatingHistory(subcell) * decayFactor
           endif
@@ -8380,14 +8557,14 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
           !photoIonCoeff
           if (all(thisOctal%photoIonCoeffHistory(subcell, :) .eq. 0.0d0) .and. &
                any(thisOctal%photoIonCoeff(subcell,:) .ne. 0.0d0)) then
-             thisOctal%photoIonCoeffHistory(subcell,:)=thisOctal%photoIonCoeff(subcell,:) * (1.0/decayFactor-1)
+             thisOctal%photoIonCoeffHistory(subcell,:)=thisOctal%photoIonCoeff(subcell,:) * (1.0/decayFactor-1.d0)
           endif !assume if the history isnt set then the current monte carlo estimate is a better guess than nothing
 
           tmpDoubleArr = thisOctal%photoIonCoeff(subcell,:)
           thisOctal%photoIonCoeffHistory(subcell,:) = thisOctal%photoIonCoeffHistory(subcell,:) +thisOctal%photoIonCoeff(subcell,:)
           ! sum_{i=0}^{inf} (exp(-i*a))== exp(a)/(exp(a)-1) ;decay factor = exp(-a)
-          thisOctal%photoIonCoeff(subcell,:) = thisOctal%photoIonCoeffHistory(subcell,:) * (1.0/decayFactor-1)*decayFactor
-          thisOctal%photoIonCoeff(subcell,:) = thisOctal%PhotoIonCoeff(subcell,:)*shotNoiseFac + tmpDoubleArr*(1-ShotNoiseFac)
+          thisOctal%photoIonCoeff(subcell,:) = thisOctal%photoIonCoeffHistory(subcell,:) * (1.0/decayFactor-1.d0)*decayFactor
+          thisOctal%photoIonCoeff(subcell,:) = thisOctal%PhotoIonCoeff(subcell,:)*shotNoiseFac + tmpDoubleArr*(1.d0-ShotNoiseFac)
           ! each element in the infinite series is now one step older so divide by decay factor
           thisOctal%photoIonCoeffHistory(subcell,:) = thisOctal%photoIonCoeffHistory(subcell,:) * decayFactor
 
@@ -8417,7 +8594,6 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
        else
           V = cellVolume(thisOctal, subcell)*1.d30
           thisOctal%kappaTimesFlux(subcell) = epsOverDeltaT * thisOctal%kappaTimesFlux(subcell) / V
-
           thisOctal%radiationMomentum(subcell) = thisOctal%radiationMomentum(subcell) / V
 !          write(*,*) "mom ",thisOctal%radiationMomentum(subcell)
 !          write(*,*) " k times f ",thisOctal%kappaTimesFlux(subcell)
@@ -8425,6 +8601,31 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
        endif
     enddo
   end subroutine calculateKappaTimesFlux
+
+  recursive subroutine calculateHabingFlux(thisOctal, epsOverDeltaT)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: v, epsOverDeltaT
+
+    do subcell = 1, thisOctal%maxChildren
+       if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calculateHabingFlux(child, epsOverDeltaT)
+                exit
+             end if
+          end do
+       else
+          V = cellVolume(thisOctal, subcell)*1.d30
+          thisOctal%habingFlux(subcell) = epsOverDeltaT * thisOctal%habingFlux(subcell) / (V * habing)
+
+       endif
+    enddo
+  end subroutine calculateHabingFlux 
 
 
   recursive subroutine calculateUVfluxVec(thisOctal, epsOverDeltaT)
@@ -8540,7 +8741,11 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     ! Probability that a photon comes from a source rather than the envelope
     chanceSource = lCore / (lCore + totalEmission)
     ! Fraction of photons actually used to sample the sources
-    probSource   = 0.1d0
+    if(chanceSource == 0.d0) then
+       probSource = 0.01d0
+    else
+       probSource   = 0.1d0
+    endif
     ! Weight the source and envelope photons accordingly
     weightSource = chanceSource / probSource
     weightEnv    = (1.d0 - chanceSource) / (1.d0 - probSource) 
@@ -8688,11 +8893,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
              if (thisPhoton%observerPhoton) then
                 newThread = -1
-                if (.not.freeFreeImage) then
-                   call propagateObserverPhoton(grid, thisPhoton, addToImage, newThread)
-                else
-                   addtoImage = .true.
-                endif
+                call propagateObserverPhoton(grid, thisPhoton, addToImage, newThread, freeFreeImage, lambdaImage)
                 if (addToImage) then
                    call addPhotonToPhotoionImage(observerDirection, thisImage, thisPhoton, totalFluxArray(myRankGlobal))
                    goto 777
@@ -8720,7 +8921,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
                    observerPhoton%tau = 0.d0
                    observerPhoton%direction = observerDirection
                    newThread = -2
-                   call propagateObserverPhoton(grid, observerPhoton, addToImage, newThread)
+                   call propagateObserverPhoton(grid, observerPhoton, addToImage, newThread, freeFreeImage, lambdaImage)
                    if (addToImage) then
                       call addPhotonToPhotoionImage(observerDirection, thisImage, observerPhoton, totalFluxArray(myRankGlobal))
                    else
@@ -8885,7 +9086,8 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
   end subroutine scatterPhotonLocal
 
-  subroutine propagateObserverPhoton(grid, thisPhoton, addToImage, newThread)
+  subroutine propagateObserverPhoton(grid, thisPhoton, addToImage, newThread, freefreeImage, lambdaImage)
+    use stateq_mod, only : alpkk
     type(GRIDTYPE) :: grid
     type(PHOTON) :: thisPhoton
     logical,intent(out) :: addToImage
@@ -8895,6 +9097,9 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     integer :: subcell
     real(double) :: tVal
     real(double) :: kappaAbsDust, kappaScaDust, kappaExt
+    logical :: freeFreeImage
+    real :: lambdaImage
+    real(double) :: temperature, freq
 
     thisOctal => grid%octreeRoot
     call findSubcellTD(thisPhoton%position, grid%octreeRoot, thisOctal, subcell)
@@ -8910,9 +9115,16 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
           write(*,*) myrankGlobal, " bug in propagate observer ", thisphoton%position
        endif
        call distanceToCellBoundary(grid, thisPhoton%position, thisPhoton%direction, tval, thisOctal, subcell)
-       call returnKappa(grid, thisOctal, subcell, ilambda=thisPhoton%ilam, &
-            kappaAbs=kappaAbsDust, kappaSca=kappaScaDust, dir=thisPhoton%direction)
-       kappaExt = kappaAbsDust + kappaScaDust
+       if (freeFreeImage) then
+          temperature = dble(thisOctal%temperature(subcell))
+          freq = cspeed / (lambdaImage*angstromToCm) ! Hz
+          kappaExt = alpkk(freq, temperature) * thisOctal%ne(subcell)**2 * & 
+                 (1.d0 - exp(-hcgs*freq/(kerg*temperature))) / 1.d-10  ! 1e-10 cm-1 
+       else
+          call returnKappa(grid, thisOctal, subcell, ilambda=thisPhoton%ilam, &
+               kappaAbs=kappaAbsDust, kappaSca=kappaScaDust, dir=thisPhoton%direction)
+          kappaExt = kappaAbsDust + kappaScaDust
+       endif
 
 !       if(grid%geometry == "imgTest") then
 !          write(*,*) "kappaExt",kappaExt
@@ -9249,6 +9461,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     real(double), allocatable :: photoIonCoeff(:,:)
     real(double), allocatable :: tempDoubleArray(:)
     real(double), allocatable :: distanceGrid(:)
+    real(double), allocatable :: habingFlux(:)
     type(VECTOR), allocatable :: radMomVec(:)
     type(VECTOR), allocatable :: kappaTimesFlux(:)
     type(VECTOR), allocatable :: uvvec(:)
@@ -9268,10 +9481,11 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     allocate(radMomVec(1:nVoxels))
     allocate(kappaTimesFlux(1:nVoxels))
     allocate(uvvec(1:nVoxels))
+    allocate(habingFlux(1:nVoxels))
 
     nIndex = 0
     call packValues(grid%octreeRoot,nIndex,nCrossings,nCrossIonizing, nScatters, photoIonCoeff, hHeating, HeHeating, &
-     distanceGrid, radMomVec, kappaTimesFlux, uvvec)
+     distanceGrid, radMomVec, kappaTimesFlux, uvvec, habingFlux)
 
     allocate(tempDoubleArray(nVoxels))
 
@@ -9311,6 +9525,11 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     call MPI_ALLREDUCE(distanceGrid,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
          MPI_SUM, amrParComm, ierr)
     distanceGrid = tempDoubleArray 
+
+    tempDoubleArray = 0.0
+    call MPI_ALLREDUCE(habingFlux,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+         MPI_SUM, amrParComm, ierr)
+    habingFlux = tempDoubleArray 
 
     tempDoubleArray = 0.0
     call MPI_ALLREDUCE(radMomVec(1:nVoxels)%x,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
@@ -9365,10 +9584,10 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     
     nIndex = 0
     call unpackValues(grid%octreeRoot, nIndex,nCrossings,nCrossIonizing, nScatters, photoIonCoeff, hHeating, HeHeating, &
-     distanceGrid, radMomVec, kappaTimesFlux, uvvec)
+     distanceGrid, radMomVec, kappaTimesFlux, uvvec, habingFlux)
 
     deallocate(nCrossings,nCrossIonizing, nScatters, photoIonCoeff, hHeating, heHeating, &
-     distanceGrid, radMomVec, kappaTimesFlux, uvvec)
+     distanceGrid, radMomVec, kappaTimesFlux, uvvec, habingFlux)
 
   end subroutine updateGridMPIphoto
 
@@ -9501,6 +9720,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
   end function returnKappaP
 
   recursive subroutine setKappaP(thisOctal, grid)
+    use inputs_mod, only : decoupleGasDustTemperature
     use gas_opacity_mod, only: returnGasKappaValue
     use atom_mod, only : bnu
     type(GRIDTYPE) :: grid
@@ -9523,7 +9743,11 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
           if (.not.associated(thisOctal%kappap)) then
              allocate(thisOctal%kappap(1:ThisOctal%maxChildren))
           endif
-          thisOctal%kappaP(subcell) = returnKappaP(thisOctal, subcell, dble(thisOctal%temperature(subcell)))
+          if (decoupleGasDustTemperature) then
+             thisOctal%kappaP(subcell) = returnKappaP(thisOctal, subcell, thisOctal%tdust(subcell))
+          else
+             thisOctal%kappaP(subcell) = returnKappaP(thisOctal, subcell, dble(thisOctal%temperature(subcell)))
+          endif
           
        endif
     enddo
@@ -10002,6 +10226,513 @@ end subroutine putStarsInGridAccordingToDensity
         endif 
      enddo
   end subroutine calculateMassInAccretionRadius
+
+  subroutine createTemperatureColumnImage(grid, direction, image, weighting)
+    use mpi
+    use inputs_mod, only : maxDepthAMR, amrGridSize
+    real(double), pointer :: image(:,:)
+    real(double) :: halfGridSize, cellSize, xVal, yVal, sigma, total, tempDouble
+    type(VECTOR) :: direction, pos, centre, xAxisDir, yAxisDir
+    type(GRIDTYPE) :: grid
+    integer :: npix, i, j, ierr
+    character(len=*) :: weighting
+
+    if (abs(direction%x) > 0.d0) then
+       xAxisDir = VECTOR(0.d0, 1.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 0.d0, 1.d0)
+    else if (abs(direction%y) > 0.d0) then
+       xAxisDir = VECTOR(1.d0, 0.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 0.d0, 1.d0)
+    else
+       xAxisDir = VECTOR(1.d0, 0.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 1.d0, 0.d0)
+    endif
+    npix = 2**maxDepthAmr
+    centre = grid%octreeRoot%centre
+    halfGridSize = grid%octreeRoot%subcellSize
+    cellSize = amrGridSize/dble(npix)
+    allocate(image(1:npix, 1:npix))
+    image = 0.d0
+    do i = 1, nPix
+       do j = 1, nPix
+          pos = centre - (halfGridSize*direction) + (1.d-4*cellSize)*direction
+          xVal = -halfGridSize + ((dble(i-1)/dble(npix))) * amrGridSize + cellSize/2.d0
+          yVal = -halfGridSize + ((dble(j-1)/dble(npix))) * amrGridSize + cellSize/2.d0
+          pos = pos + (xVal * xAxisDir) + (yVal * yAxisDir)
+          sigma = 0.d0
+          total = 0.d0
+          tempDouble = 0.d0
+          if (myrankGlobal /= 0) then
+             call temperatureColumnAlongPathAMR(grid, pos, direction, sigma, total, weighting)
+          endif
+          ! image is <T> = sum(T*weight*dV)/sum(weight*dV) (along column) 
+          call MPI_ALLREDUCE(sigma, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
+          sigma = tempDouble
+          call MPI_ALLREDUCE(total, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
+          total = max(1.d-50, tempDouble)
+          image(i,j) = sigma/total
+       enddo
+    enddo
+  end subroutine createTemperatureColumnImage
+  subroutine temperatureColumnAlongPathAMR(grid, rVec, direction, sigma, total, weighting)
+    use mpi
+    use inputs_mod, only : hOnly
+    type(GRIDTYPE) :: grid
+    type(VECTOR) :: rVec, direction, currentPosition
+    real(double) :: sigma, distToNextCell, total
+    type(OCTAL), pointer :: thisOctal, sOctal
+    real(double) :: fudgeFac = 1.d-3
+    real(double) :: weight, j1, j2, j3, dv, nhii, nheii
+    integer :: subcell, iIon
+    character(len=*) :: weighting
+
+    sigma = 0.d0
+    total = 0.d0
+    currentPosition = rVec
+
+    CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
+
+    if (.not.inOctal(grid%octreeRoot, currentPosition)) write(*,*) "pos not in grid"
+
+    do while (inOctal(grid%octreeRoot, currentPosition))
+
+       call findSubcellLocal(currentPosition,thisOctal,subcell)
+
+       sOctal => thisOctal
+       call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
+  
+       currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
+       if (myrankGlobal == thisOctal%mpiThread(subcell)) then
+          dv = cellVolume(thisOctal, subcell) * 1.d30
+          if (weighting=='emissivity') then
+             ! emissivity-weighted
+             call getForbiddenLineLuminosity(grid, "O III", 5007.d0, j1, thisOctal, subcell)
+             call getForbiddenLineLuminosity(grid, "O III", 4959.d0, j2, thisOctal, subcell)
+             call getForbiddenLineLuminosity(grid, "O III", 4363.d0, j3, thisOctal, subcell)
+             weight = j1+j2+j3
+          elseif (weighting=='oiiidensity') then
+             ! weighted by n_e * n(OIII) (peimbert)
+             iIon = returnIonNumber("O III", grid%ion, grid%nIon)
+             weight = thisOctal%ne(subcell) * & 
+                  grid%ion(iion)%abundance * thisOctal%nh(subcell) * thisOctal%ionFrac(subcell, iion)
+          elseif (weighting=='hiidensity') then
+             ! weighted by n_e * (n(HII) + n(HeII)) (rubin1968)
+             nHii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * grid%ion(2)%abundance
+             if(.not. hOnly) then
+                nHeii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,4) * grid%ion(4)%abundance
+             else
+                nHeii = 0.d0
+             end if
+             weight = thisOctal%ne(subcell) * (nHii + nHeii) 
+          elseif (weighting=='ne2') then
+             ! weighted by n_e**2
+             weight = thisOctal%ne(subcell)**2 
+          elseif (weighting=='mass') then
+             ! ionized mass
+             if (thisOctal%ionfrac(subcell, 1) < 0.1d0) then
+                weight = thisOctal%rho(subcell) * dv 
+             else
+                weight = 0.d0
+             endif
+          elseif (weighting=='ionNone') then
+             if (thisOctal%ionfrac(subcell, 1) < 0.1d0) then
+                weight = 1.d0 
+             else
+                weight = 0.d0
+             endif
+          elseif (weighting=='none') then
+             weight = 1.d0
+          endif
+          sigma = sigma + thisOctal%temperature(subcell)*weight*dv
+          total = total + weight*dv
+
+
+
+       endif
+
+    end do
+  end subroutine temperatureColumnAlongPathAMR
+  recursive subroutine calculateAverageTemperature(thisOctal, grid, sigma, total, weighting, correction, t0, sigmaNe, n0)
+    use inputs_mod, only : hOnly
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, iIon
+    real(double) :: sigma, total, sigmaNe
+    character(len=*) :: weighting
+    logical :: correction
+    real(double) :: t0, n0
+    real(double) :: weight, j1, j2, j3, dv, nhii, nheii
+
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calculateAverageTemperature(child, grid, sigma, total, weighting, correction, t0, sigmaNe, n0)
+                exit
+             end if
+          end do
+       else
+          if(.not. thisoctal%ghostcell(subcell)) then
+             if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+
+                dv = cellVolume(thisOctal, subcell) * 1.d30
+                weight = 0.d0
+                if (weighting=='emissivity') then
+                   ! emissivity-weighted
+                   call getForbiddenLineLuminosity(grid, "O III", 5007.d0, j1, thisOctal, subcell)
+                   call getForbiddenLineLuminosity(grid, "O III", 4959.d0, j2, thisOctal, subcell)
+                   call getForbiddenLineLuminosity(grid, "O III", 4363.d0, j3, thisOctal, subcell)
+                   weight = j1+j2+j3
+                elseif (weighting=='oiiidensity') then
+                   ! weighted by n_e * n(OIII) (peimbert)
+                   iIon = returnIonNumber("O III", grid%ion, grid%nIon)
+                   weight = thisOctal%ne(subcell) * & 
+                        grid%ion(iion)%abundance * thisOctal%nh(subcell) * thisOctal%ionFrac(subcell, iion)
+                elseif (weighting=='hiidensity') then
+                   ! weighted by n_e * (n(HII) + n(HeII)) (rubin1968)
+                   nHii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * grid%ion(2)%abundance
+                   if(.not. hOnly) then
+                      nHeii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,4) * grid%ion(4)%abundance
+                   else
+                      nHeii = 0.d0
+                   end if
+                   weight = thisOctal%ne(subcell) * (nHii + nHeii) 
+                elseif (weighting=='ne2') then
+                   ! weighted by n_e**2
+                   weight = thisOctal%ne(subcell)**2 
+                elseif (weighting=='mass') then
+                   ! ionized mass
+                   if (thisOctal%ionfrac(subcell, 1) < 0.1d0) then
+                      weight = thisOctal%rho(subcell) * dv 
+                   else
+                      weight = 0.d0
+                   endif
+                elseif (weighting=='ionNone') then
+                   if (thisOctal%ionfrac(subcell, 1) < 0.1d0) then
+                      weight = 1.d0 
+                   else
+                      weight = 0.d0
+                   endif
+                elseif (weighting=='none') then
+                   weight = 1.d0
+                endif
+                if (correction) then
+                   ! rms^2 deviation 
+                   sigma = sigma + (thisOctal%temperature(subcell)-t0)**2 *weight*dv 
+                   total = total + weight*dv
+                   sigmaNe = sigmaNe + (thisOctal%ne(subcell)-n0)**2 *weight*dv 
+                else
+                   sigma = sigma + thisOctal%temperature(subcell)*weight*dv
+                   total = total + weight*dv
+                   sigmaNe = sigmaNe + thisOctal%ne(subcell)*weight*dv
+                endif
+
+
+
+             endif
+          endif
+       endif
+    enddo
+    
+  end subroutine calculateAverageTemperature
+
+  subroutine createTdustColumnImage(grid, direction, image, weighting, meanImage)
+    use mpi
+    use inputs_mod, only : maxDepthAMR, amrGridSize
+    real(double), pointer :: image(:,:)
+    real(double), pointer, optional :: meanImage(:,:)
+    real(double) :: halfGridSize, cellSize, xVal, yVal, sigma, total, tempDouble
+    type(VECTOR) :: direction, pos, centre, xAxisDir, yAxisDir
+    type(GRIDTYPE) :: grid
+    integer :: npix, i, j, ierr
+    character(len=*) :: weighting
+
+    if (abs(direction%x) > 0.d0) then
+       xAxisDir = VECTOR(0.d0, 1.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 0.d0, 1.d0)
+    else if (abs(direction%y) > 0.d0) then
+       xAxisDir = VECTOR(1.d0, 0.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 0.d0, 1.d0)
+    else
+       xAxisDir = VECTOR(1.d0, 0.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 1.d0, 0.d0)
+    endif
+    npix = 2**maxDepthAmr
+    centre = grid%octreeRoot%centre
+    halfGridSize = grid%octreeRoot%subcellSize
+    cellSize = amrGridSize/dble(npix)
+    allocate(image(1:npix, 1:npix))
+    image = 0.d0
+    do i = 1, nPix
+       do j = 1, nPix
+          pos = centre - (halfGridSize*direction) + (1.d-4*cellSize)*direction
+          xVal = -halfGridSize + ((dble(i-1)/dble(npix))) * amrGridSize + cellSize/2.d0
+          yVal = -halfGridSize + ((dble(j-1)/dble(npix))) * amrGridSize + cellSize/2.d0
+          pos = pos + (xVal * xAxisDir) + (yVal * yAxisDir)
+          sigma = 0.d0
+          total = 0.d0
+          tempDouble = 0.d0
+          if (myrankGlobal /= 0) then
+             if (present(meanImage)) then
+                ! mean has already been calculated in meanImage
+                ! now calculate the rms (deviation from meanImage)
+                ! image is rms^2 = sum( (T-Tavg)**2 *weight*dV)/sum(weight*dV) (along column) 
+                call TdustColumnAlongPathAMR(grid, pos, direction, sigma, total, weighting, meanImage(i,j))
+             else
+                ! calculate the mean tdust along column
+                ! image is <T> = sum(T*weight*dV)/sum(weight*dV) (along column) 
+                call TdustColumnAlongPathAMR(grid, pos, direction, sigma, total, weighting)
+             endif
+          endif
+          call MPI_ALLREDUCE(sigma, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
+          sigma = tempDouble
+          call MPI_ALLREDUCE(total, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
+          total = max(1.d-50, tempDouble)
+          image(i,j) = max(1.d-50, sigma/total)
+       enddo
+    enddo
+  end subroutine createTdustColumnImage
+  subroutine TdustColumnAlongPathAMR(grid, rVec, direction, sigma, total, weighting, mean)
+    use mpi
+    use inputs_mod, only : hOnly
+    type(GRIDTYPE) :: grid
+    type(VECTOR) :: rVec, direction, currentPosition
+    real(double) :: sigma, distToNextCell, total
+    type(OCTAL), pointer :: thisOctal, sOctal
+    real(double) :: fudgeFac = 1.d-3
+    real(double) :: weight, dv
+    integer :: subcell
+    character(len=*) :: weighting
+    real(double), optional :: mean
+
+    sigma = 0.d0
+    total = 0.d0
+    currentPosition = rVec
+
+    CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
+
+    if (.not.inOctal(grid%octreeRoot, currentPosition)) write(*,*) "pos not in grid"
+
+    do while (inOctal(grid%octreeRoot, currentPosition))
+
+       call findSubcellLocal(currentPosition,thisOctal,subcell)
+
+       sOctal => thisOctal
+       call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
+  
+       currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
+       if (myrankGlobal == thisOctal%mpiThread(subcell)) then
+          dv = cellVolume(thisOctal, subcell) * 1.d30
+          if (weighting=='dustmass') then
+             weight = 0.01d0 * thisOctal%rho(subcell) * dv
+          elseif (weighting=='ionmass') then
+             ! ionized mass
+             if (thisOctal%ionfrac(subcell, 1) < 0.1d0) then
+                weight = thisOctal%rho(subcell) * dv 
+             else
+                weight = 0.d0
+             endif
+          elseif (weighting=='gastemp') then
+             weight = thisOctal%temperature(subcell)
+          elseif (weighting=='none') then
+             weight = 1.d0
+          endif
+
+          if (present(mean)) then
+             ! calculate rms^2 
+             sigma = sigma + (thisoctal%tdust(subcell)-mean)**2 *weight*dv 
+             total = total + weight*dv
+          else
+             sigma = sigma + thisOctal%Tdust(subcell)*weight*dv
+             total = total + weight*dv
+          endif
+
+
+
+       endif
+
+    end do
+  end subroutine TdustColumnAlongPathAMR
+  recursive subroutine calculateAverageTdust(thisOctal, grid, sigma, total, weighting, correction, t0, sigmaNe)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: sigma, total, sigmaNe
+    character(len=*) :: weighting
+    logical :: correction
+    real(double) :: t0
+    real(double) :: weight, dv
+
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calculateAverageTdust(child, grid, sigma, total, weighting, correction, t0, sigmaNe)
+                exit
+             end if
+          end do
+       else
+          if(.not. thisoctal%ghostcell(subcell)) then
+             if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+
+                dv = cellVolume(thisOctal, subcell) * 1.d30
+                weight = 0.d0
+                if (weighting=='dustmass') then
+                   weight = 0.01d0 * thisOctal%rho(subcell) * dv
+                elseif (weighting=='ionmass') then
+                   ! ionized mass
+                   if (thisOctal%ionfrac(subcell, 1) < 0.1d0) then
+                      weight = thisOctal%rho(subcell) * dv 
+                   else
+                      weight = 0.d0
+                   endif
+                elseif (weighting=='gastemp') then
+                   weight = thisOctal%temperature(subcell)
+                elseif (weighting=='none') then
+                   weight = 1.d0
+                endif
+                if (correction) then
+                   ! rms deviation 
+                   sigma = sigma + (thisOctal%Tdust(subcell)-t0)**2 *weight*dv 
+                   total = total + weight*dv
+                else
+                   sigma = sigma + thisOctal%Tdust(subcell)*weight*dv
+                   total = total + weight*dv
+                   sigmaNe = sigmaNe + thisOctal%ne(subcell)*weight*dv
+                endif
+
+
+
+             endif
+          endif
+       endif
+    enddo
+    
+  end subroutine calculateAverageTdust
+  subroutine createEmissionMeasureImage(grid, direction, image)
+    use mpi
+    use inputs_mod, only : maxDepthAMR, amrGridSize
+    real(double), pointer :: image(:,:)
+    real(double) :: halfGridSize, cellSize, xVal, yVal, sigma, tempDouble
+    type(VECTOR) :: direction, pos, centre, xAxisDir, yAxisDir
+    type(GRIDTYPE) :: grid
+    integer :: npix, i, j, ierr
+
+    if (abs(direction%x) > 0.d0) then
+       xAxisDir = VECTOR(0.d0, 1.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 0.d0, 1.d0)
+    else if (abs(direction%y) > 0.d0) then
+       xAxisDir = VECTOR(1.d0, 0.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 0.d0, 1.d0)
+    else
+       xAxisDir = VECTOR(1.d0, 0.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 1.d0, 0.d0)
+    endif
+    npix = 2**maxDepthAmr
+    centre = grid%octreeRoot%centre
+    halfGridSize = grid%octreeRoot%subcellSize
+    cellSize = amrGridSize/dble(npix)
+    allocate(image(1:npix, 1:npix))
+    image = 0.d0
+    do i = 1, nPix
+       do j = 1, nPix
+          pos = centre - (halfGridSize*direction) + (1.d-4*cellSize)*direction
+          xVal = -halfGridSize + ((dble(i-1)/dble(npix))) * amrGridSize + cellSize/2.d0
+          yVal = -halfGridSize + ((dble(j-1)/dble(npix))) * amrGridSize + cellSize/2.d0
+          pos = pos + (xVal * xAxisDir) + (yVal * yAxisDir)
+          sigma = 0.d0
+          tempDouble = 0.d0
+          if (myrankGlobal /= 0) then
+             call emissionMeasureAlongPathAMR(grid, pos, direction, sigma)
+          endif
+          ! image is <T> = sum(T*weight*dV)/sum(weight*dV) (along column) 
+          call MPI_ALLREDUCE(sigma, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
+          image(i,j) = tempDouble
+       enddo
+    enddo
+  end subroutine createEmissionMeasureImage
+  subroutine emissionMeasureAlongPathAMR(grid, rVec, direction, sigma)
+    use mpi
+    use inputs_mod, only : hOnly
+    type(GRIDTYPE) :: grid
+    type(VECTOR) :: rVec, direction, currentPosition
+    real(double) :: sigma, distToNextCell
+    type(OCTAL), pointer :: thisOctal, sOctal
+    real(double) :: fudgeFac = 1.d-3
+    integer :: subcell
+
+    sigma = 0.d0
+    currentPosition = rVec
+
+    CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
+
+    if (.not.inOctal(grid%octreeRoot, currentPosition)) write(*,*) "pos not in grid"
+
+    do while (inOctal(grid%octreeRoot, currentPosition))
+
+       call findSubcellLocal(currentPosition,thisOctal,subcell)
+
+       sOctal => thisOctal
+       call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
+  
+       currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
+       if (myrankGlobal == thisOctal%mpiThread(subcell)) then
+          sigma = sigma + (distToNextCell*1.d10/pctocm) * thisOctal%ne(subcell)**2
+       endif
+
+    end do
+  end subroutine emissionMeasureAlongPathAMR
+
+  
+  subroutine writeLuminosities(grid) 
+    use mpi
+    type(GRIDTYPE) :: grid
+    real(double) :: luminosity, tempdouble
+    integer :: ierr
+
+    if (myrankglobal /= 0 .and..not. loadbalancingthreadglobal) then
+       if (myrankglobal==1) write(*,*) "t= ", grid%currentTime
+       luminosity = 0.d0
+       tempDouble = 0.d0 
+       call getHalphaLuminosity(grid%octreeRoot, grid, luminosity)
+       call MPI_ALLREDUCE(luminosity, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
+       if (myrankglobal==1) write(*,*) "L(Ha): ", tempdouble
+
+       luminosity = 0.d0
+       tempDouble = 0.d0 
+       call getHbetaLuminosity(grid%octreeRoot, grid, luminosity)
+       call MPI_ALLREDUCE(luminosity, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
+       if (myrankglobal==1) write(*,*) "L(Hbeta): ", tempdouble
+
+       luminosity = 0.d0
+       tempDouble = 0.d0 
+       call getForbiddenLineLuminosity(grid, "O III", 5007.d0, luminosity)
+       call MPI_ALLREDUCE(luminosity, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
+       if (myrankglobal==1) write(*,*) "L(OIII5007): ", tempdouble
+
+       luminosity = 0.d0
+       tempDouble = 0.d0 
+       call getForbiddenLineLuminosity(grid, "O III", 4959.d0, luminosity)
+       call MPI_ALLREDUCE(luminosity, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
+       if (myrankglobal==1) write(*,*) "L(OIII4959): ", tempdouble
+
+       luminosity = 0.d0
+       tempDouble = 0.d0 
+       call getForbiddenLineLuminosity(grid, "O III", 4363.d0, luminosity)
+       call MPI_ALLREDUCE(luminosity, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, amrCommunicator, ierr)
+       if (myrankglobal==1) write(*,*) "L(OIII4363): ", tempdouble
+    endif
+
+  end subroutine writeLuminosities
+
 
 #endif
 

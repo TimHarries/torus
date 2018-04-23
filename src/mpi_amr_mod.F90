@@ -313,12 +313,84 @@ contains
     end if
 
   end subroutine freeAMRCOMMUNICATOR
+  subroutine findNumberUndersampled(grid, nSampled, nUndersampled, nCells)
+    use mpi
+    type(GRIDTYPE) :: grid
+    integer, intent(out) :: nSampled, nUndersampled, nCells
+    integer, allocatable :: nSampledOnThreads(:), temp(:), nUndersampledOnThreads(:), nCellsOnThreads(:)
+    integer :: ierr
+!    real(double) :: totalVolume
 
-  subroutine findMassOverAllThreads(grid, mass)
+    if (loadBalancingThreadGlobal) goto 666
+
+    allocate(nSampledOnThreads(1:nThreadsGlobal), temp(1:nThreadsGlobal))
+    allocate(nUndersampledOnThreads(1:nThreadsGlobal))
+    allocate(nCellsOnThreads(1:nThreadsGlobal))
+    nSampledOnThreads = 0
+    nUndersampledOnThreads = 0
+    nCellsOnThreads = 0
+    temp = 0
+    if (.not.grid%splitOverMpi) then
+       call writeWarning("findNumberUndersampled: grid not split over MPI")
+       nSampled = 0
+       nUndersampled = 0
+       nCells = 0
+       goto 666
+    endif
+
+    if (myRankGlobal /= 0) then
+       call findNumberUndersampledMPI(grid%octreeRoot, nSampledOnThreads(myRankGlobal), nUndersampledOnThreads(myRankGlobal), &
+               nCellsOnThreads(myRankGlobal)) 
+
+       call MPI_ALLREDUCE(nSampledOnThreads, temp, nThreadsGlobal, MPI_INTEGER, MPI_SUM,amrCOMMUNICATOR, ierr)
+       nSampled = SUM(temp(1:nThreadsGlobal))
+       call MPI_ALLREDUCE(nUndersampledOnThreads, temp, nThreadsGlobal, MPI_INTEGER, MPI_SUM,amrCOMMUNICATOR, ierr)
+       nUndersampled = SUM(temp(1:nThreadsGlobal))
+       call MPI_ALLREDUCE(nCellsOnThreads, temp, nThreadsGlobal, MPI_INTEGER, MPI_SUM,amrCOMMUNICATOR, ierr)
+       nCells = SUM(temp(1:nThreadsGlobal))
+    end if
+666 continue
+  end subroutine findNumberUndersampled 
+
+    
+  recursive subroutine findNumberUndersampledMPI(thisOctal, nSampled, nUndersampled, nCells) 
+    use inputs_mod, only : hydrodynamics, cylindricalHydro, spherical
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: nSampled, nUndersampled, nCells 
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call findNumberUndersampledMPI(child, nSampled, nUndersampled, nCells) 
+                exit
+             end if
+          end do
+       else
+          if(.not. thisoctal%ghostcell(subcell)) then
+             if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+                if (thisOctal%undersampled(subcell)) then
+                   nUndersampled = nUndersampled + 1
+                else
+                   nSampled = nSampled + 1
+                endif
+                nCells = nCells + 1
+             endif
+          endif
+       end if
+    enddo
+  end subroutine findNumberUndersampledMPI 
+
+  subroutine findMassOverAllThreads(grid, mass, maxRho)
     use mpi
     type(GRIDTYPE) :: grid
     real(double), intent(out) :: mass
-    real(double), allocatable :: massOnThreads(:), temp(:), volumeOnThreads(:)
+    real(double), intent(out), optional :: maxRho 
+    real(double), allocatable :: massOnThreads(:), temp(:), volumeOnThreads(:), maxRhoOnThreads(:)
     integer :: ierr
 !    real(double) :: totalVolume
 
@@ -326,8 +398,10 @@ contains
 
     allocate(massOnThreads(1:nThreadsGlobal), temp(1:nThreadsGlobal))
     allocate(volumeOnThreads(1:nThreadsGlobal))
+    allocate(maxRhoOnThreads(1:nThreadsGlobal))
     massOnThreads = 0.d0
 !    volumeOnThreads = 0.d0
+    maxRhoOnThreads = 0.d0
     temp = 0.d0
     if (.not.grid%splitOverMpi) then
        call writeWarning("findMassOverAllThreads: grid not split over MPI")
@@ -336,9 +410,13 @@ contains
     endif
 
     if (myRankGlobal /= 0) then
-       call findtotalMassMPI(grid%octreeRoot, massOnThreads(myRankGlobal))
+       call findtotalMassMPI(grid%octreeRoot, massOnThreads(myRankGlobal), maxrho=maxrhoOnThreads(myRankGlobal))
        call MPI_ALLREDUCE(massOnThreads, temp, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
        mass = SUM(temp(1:nThreadsGlobal))
+       if (present(maxRho)) then
+          call MPI_ALLREDUCE(maxRhoOnThreads, temp, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
+          maxRho = maxval(temp(1:nThreadsGlobal))
+       endif
        !call MPI_ALLREDUCE(volumeOnThreads, temp, nThreadsGlobal, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
        !totalVolume = sum(temp(1:nThreadsGlobal))
        !print *, "totalVolume = ", totalVolume
@@ -4205,8 +4283,6 @@ contains
        enddo
     enddo
   end subroutine createColumnDensityImage
-          
-          
 
   subroutine columnAlongPathAMR(grid, rVec, direction, sigma)
     use mpi
@@ -4216,11 +4292,9 @@ contains
     type(OCTAL), pointer :: thisOctal, sOctal
     real(double) :: fudgeFac = 1.d-3
     integer :: subcell
-    real(double) ::  totDist
 
     sigma = 0.d0
     currentPosition = rVec
-    totDist = 0.d0
 
     CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
 
@@ -4234,13 +4308,162 @@ contains
        call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
   
        currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
-       totDist = totDist + distToNextCell
        if (myrankGlobal == thisOctal%mpiThread(subcell)) then
-          sigma = sigma + distToNextCell*thisOctal%rho(subcell)
+          if (.not. thisOctal%ghostCell(subcell)) then
+             sigma = sigma + distToNextCell*1.d10*thisOctal%rho(subcell)
+          endif
        endif
 
     end do
   end subroutine columnAlongPathAMR
+  subroutine createHiImage(grid, direction, image)
+    use mpi
+    use inputs_mod, only : maxDepthAMR, amrGridSize
+    real(double), pointer :: image(:,:)
+    real(double) :: halfGridSize, cellSize, xVal, yVal, sigma
+    type(VECTOR) :: direction, pos, centre, xAxisDir, yAxisDir
+    type(GRIDTYPE) :: grid
+    integer :: npix, i, j, ierr
+
+    if (abs(direction%x) > 0.d0) then
+       xAxisDir = VECTOR(0.d0, 1.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 0.d0, 1.d0)
+    else if (abs(direction%y) > 0.d0) then
+       xAxisDir = VECTOR(1.d0, 0.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 0.d0, 1.d0)
+    else
+       xAxisDir = VECTOR(1.d0, 0.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 1.d0, 0.d0)
+    endif
+    npix = 2**maxDepthAmr
+    centre = grid%octreeRoot%centre
+    halfGridSize = grid%octreeRoot%subcellSize
+    cellSize = amrGridSize/dble(npix)
+    allocate(image(1:npix, 1:npix))
+    image = 0.d0
+    do i = 1, nPix
+       do j = 1, nPix
+          pos = centre - (halfGridSize*direction) + (1.d-4*cellSize)*direction
+          xVal = -halfGridSize + ((dble(i-1)/dble(npix))) * amrGridSize + cellSize/2.d0
+          yVal = -halfGridSize + ((dble(j-1)/dble(npix))) * amrGridSize + cellSize/2.d0
+          pos = pos + (xVal * xAxisDir) + (yVal * yAxisDir)
+          sigma = 0.d0
+          if (myrankGlobal /= 0) then
+             call hiAlongPathAMR(grid, pos, direction, sigma)
+          endif
+!          write(*,*) myrankGlobal,sigma
+          call MPI_ALLREDUCE(sigma, image(i,j), 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
+       enddo
+    enddo
+  end subroutine createHiImage
+
+  subroutine hiAlongPathAMR(grid, rVec, direction, sigma)
+    use mpi
+    type(GRIDTYPE) :: grid
+    type(VECTOR) :: rVec, direction, currentPosition
+    real(double) :: sigma, distToNextCell
+    type(OCTAL), pointer :: thisOctal, sOctal
+    real(double) :: fudgeFac = 1.d-3
+    integer :: subcell
+
+    sigma = 0.d0
+    currentPosition = rVec
+
+    CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
+
+    if (.not.inOctal(grid%octreeRoot, currentPosition)) write(*,*) "pos not in grid"
+
+    do while (inOctal(grid%octreeRoot, currentPosition))
+
+       call findSubcellLocal(currentPosition,thisOctal,subcell)
+
+       sOctal => thisOctal
+       call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
+  
+       currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
+       if (myrankGlobal == thisOctal%mpiThread(subcell)) then
+          if (.not. thisOctal%ghostCell(subcell) .and..not.thisOctal%undersampled(subcell) ) then
+             sigma = max(sigma, thisOctal%ionfrac(subcell, 1)) 
+          endif
+       endif
+
+    end do
+  end subroutine hiAlongPathAMR
+
+  subroutine createIonizationImage(grid, direction, image)
+    use mpi
+    use inputs_mod, only : maxDepthAMR, amrGridSize
+    real(double), pointer :: image(:,:)
+    real(double) :: halfGridSize, cellSize, xVal, yVal, sigma
+    type(VECTOR) :: direction, pos, centre, xAxisDir, yAxisDir
+    type(GRIDTYPE) :: grid
+    integer :: npix, i, j, ierr
+
+    if (abs(direction%x) > 0.d0) then
+       xAxisDir = VECTOR(0.d0, 1.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 0.d0, 1.d0)
+    else if (abs(direction%y) > 0.d0) then
+       xAxisDir = VECTOR(1.d0, 0.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 0.d0, 1.d0)
+    else
+       xAxisDir = VECTOR(1.d0, 0.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 1.d0, 0.d0)
+    endif
+    npix = 2**maxDepthAmr
+    centre = grid%octreeRoot%centre
+    halfGridSize = grid%octreeRoot%subcellSize
+    cellSize = amrGridSize/dble(npix)
+    allocate(image(1:npix, 1:npix))
+    image = 0.d0
+    do i = 1, nPix
+       do j = 1, nPix
+          pos = centre - (halfGridSize*direction) + (1.d-4*cellSize)*direction
+          xVal = -halfGridSize + ((dble(i-1)/dble(npix))) * amrGridSize + cellSize/2.d0
+          yVal = -halfGridSize + ((dble(j-1)/dble(npix))) * amrGridSize + cellSize/2.d0
+          pos = pos + (xVal * xAxisDir) + (yVal * yAxisDir)
+          sigma = 0.d0
+          if (myrankGlobal /= 0) then
+             call ionizationAlongPathAMR(grid, pos, direction, sigma)
+          endif
+!          write(*,*) myrankGlobal,sigma
+          call MPI_ALLREDUCE(sigma, image(i,j), 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
+       enddo
+    enddo
+  end subroutine createIonizationImage
+
+  subroutine ionizationAlongPathAMR(grid, rVec, direction, sigma)
+    use mpi
+    type(GRIDTYPE) :: grid
+    type(VECTOR) :: rVec, direction, currentPosition
+    real(double) :: sigma, distToNextCell
+    type(OCTAL), pointer :: thisOctal, sOctal
+    real(double) :: fudgeFac = 1.d-3
+    integer :: subcell
+
+    sigma = 0.d0
+    currentPosition = rVec
+
+    CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
+
+    if (.not.inOctal(grid%octreeRoot, currentPosition)) write(*,*) "pos not in grid"
+
+    do while (inOctal(grid%octreeRoot, currentPosition))
+
+       call findSubcellLocal(currentPosition,thisOctal,subcell)
+
+       sOctal => thisOctal
+       call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
+  
+       currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
+       if (myrankGlobal == thisOctal%mpiThread(subcell)) then
+          if (.not. thisOctal%ghostCell(subcell) .and..not.thisOctal%undersampled(subcell) & 
+            .and. thisOctal%nCrossIonizing(subcell)>1) then
+             sigma = max(sigma, thisOctal%ionfrac(subcell, 2)) 
+          endif
+       endif
+
+    end do
+  end subroutine ionizationAlongPathAMR
 
   subroutine countSubcellsMPI(grid, nSubcells, nSubcellArray, includeGhosts)
     use mpi
@@ -8377,7 +8600,7 @@ end subroutine writeRadialFile
           !we should now have an array of values to send
           !first send the number of cells worth of data to expect
           call MPI_SEND(nvals, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, ierr)  
-         do counter = 1, nvals             
+          do counter = 1, nvals             
              call MPI_SEND(storageArray(counter,:), nStorage, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)             
           end do
           storageArray = 0.d0
@@ -8898,7 +9121,7 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     call packAttributePointer(thisOctal%underSampled)
     call packAttributePointer(thisOctal%temperatureConv)
     call packAttributePointer(thisOctal%distanceGrid)
-    call packAttributePointer(thisOctal%distanceGridHistory)
+!    call packAttributePointer(thisOctal%distanceGridHistory)
     call packAttributePointer(thisOctal%nCrossings)
     call packAttributePointer(thisOctal%nCrossIonizing)
     call packAttributePointer(thisOctal%nScatters)
@@ -8910,18 +9133,19 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     call packAttributePointer(thisOctal%nh)
     call packAttributePointer(thisOctal%ne)
     call packAttributePointer(thisOctal%HHeating)
-    call packAttributePointer(thisOctal%HHeatingHistory)
+!    call packAttributePointer(thisOctal%HHeatingHistory)
     call packAttributePointer(thisOctal%HeHeating)
-    call packAttributePointer(thisOctal%HeHeatingHistory)
+!    call packAttributePointer(thisOctal%HeHeatingHistory)
     call packAttributePointer(thisOctal%radiationMomentum)
     call packAttributePointer(thisOctal%ionFrac)
     call packAttributePointer(thisOctal%photoionCoeff)
-    call packAttributePointer(thisOctal%photoionCoeffHistory)
+!    call packAttributePointer(thisOctal%photoionCoeffHistory)
     call packAttributePointer(thisOctal%sourceContribution)
     call packAttributePointer(thisOctal%diffuseContribution)
     call packAttributePointer(thisOctal%normSourceContribution)
     call packAttributePointer(thisOctal%kappaTimesFlux)
  !   call packAttributePointer(thisOctal%kappaTimesFluxHistory)
+    call packAttributePointer(thisOctal%habingFlux)
     call packAttributePointer(thisOctal%uvvector)
     call packAttributePointer(thisOctal%oldfrac)
 
@@ -8962,7 +9186,7 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     call unpackAttributePointer(thisOctal%underSampled)
     call unpackAttributePointer(thisOctal%temperatureConv)
     call unpackAttributePointer(thisOctal%distanceGrid)
-    call unpackAttributePointer(thisOctal%distanceGridHistory)
+!    call unpackAttributePointer(thisOctal%distanceGridHistory)
     call unpackAttributePointer(thisOctal%nCrossings)
     call unpackAttributePointer(thisOctal%nCrossIonizing)
     call unpackAttributePointer(thisOctal%nScatters)
@@ -8974,18 +9198,19 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     call unpackAttributePointer(thisOctal%nh)
     call unpackAttributePointer(thisOctal%ne)
     call unpackAttributePointer(thisOctal%HHeating)
-    call unpackAttributePointer(thisOctal%HHeatingHistory)
+!    call unpackAttributePointer(thisOctal%HHeatingHistory)
     call unpackAttributePointer(thisOctal%HeHeating)
-    call unpackAttributePointer(thisOctal%HeHeatingHistory)
+!    call unpackAttributePointer(thisOctal%HeHeatingHistory)
     call unpackAttributePointer(thisOctal%radiationMomentum)
     call unpackAttributePointer(thisOctal%ionFrac)
     call unpackAttributePointer(thisOctal%photoionCoeff)
-    call unpackAttributePointer(thisOctal%photoionCoeffHistory)
+!    call unpackAttributePointer(thisOctal%photoionCoeffHistory)
     call unpackAttributePointer(thisOctal%sourceContribution)
     call unpackAttributePointer(thisOctal%diffuseContribution)
     call unpackAttributePointer(thisOctal%normSourceContribution)
     call unpackAttributePointer(thisOctal%kappaTimesFlux)
 !    call unpackAttributePointer(thisOctal%kappaTimesFluxHistory)
+    call unpackAttributePointer(thisOctal%habingFlux)
     call unpackAttributePointer(thisOctal%uvvector)
     call unpackAttributePointer(thisOctal%oldfrac)
 
