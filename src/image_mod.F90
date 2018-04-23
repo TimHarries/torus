@@ -833,9 +833,9 @@ module image_mod
 
        select case (fluxUnits)
           case("MJy/str")
-             call ftpkys(unit,'BUNIT', "MJY/STR", "units of image values", status)
+             call ftpkys(unit,'BUNIT', "MJy/sr", "units of image values", status)
           case("Jy/pix")
-             call ftpkys(unit,'BUNIT', "JY/PIXEL", "units of image values", status)
+             call ftpkys(unit,'BUNIT', "JANSKYS_PER_PIXEL", "units of image values", status)
           case("Jy/beam")
              call ftpkys(unit,'BUNIT', "JY/BEAM", "units of image values", status)
           case("mag/arcsec2")

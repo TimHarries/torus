@@ -1564,6 +1564,8 @@ contains
              call getReal("tthresh", tthresh, 1., cLine, fLine,  nLines, &
                   "Dust sublimation temperature (K): ","(a,f8.2,a)", 10., ok, .true.)
           endif
+          call getDouble("rcut", rCut, autocm/1.d10, cLine, fLine, nLines, &
+                  "Cut off inner radius (au): ","(a,f5.1,a)", -1.d0, ok, .false.)
 
     case("spiral")
        call getReal("tthresh", tthresh, 1., cLine, fLine,  nLines, &
@@ -1987,7 +1989,9 @@ contains
        call getReal("betadisc", betaDisc, 1., cLine, fLine, nLines, &
             "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
 
-       alphaDisc = betaDisc + 1.
+       call getReal("alphadisc", alphaDisc, 1., cLine, fLine, nLines, &
+            "Disc alpha parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
+
        call getLogical("hydro", solveVerticalHydro, cLine, fLine, nLines, &
             "Solve vertical hydrostatical equilibrium: ","(a,1l,1x,a)", .false., ok, .false.)
 

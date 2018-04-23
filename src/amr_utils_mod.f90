@@ -1230,6 +1230,7 @@ module amr_utils_mod
            write(*,*) thisOctal%subcellSize
            !          write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
            write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
+           do;enddo
         endif
         if(.not. suppresswarnings) then
            r = -2.d0

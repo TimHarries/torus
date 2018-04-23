@@ -972,6 +972,7 @@
   real(double), protected :: sphsphereradius ! Sphere radius
   ! Select SPH particles above a density threshold
   real(double), protected :: sphdensitycut
+  real(double) :: rCut
   
 !------------------
 ! Other parameters 
