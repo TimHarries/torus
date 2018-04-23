@@ -2083,7 +2083,7 @@ CONTAINS
     !   and calculates all the other variables in the model.
     ! this should be called once the structure of the grid is complete.
 
-    USE inputs_mod, ONLY : modelwashydro, splitOverMPI !, useHartmannTemp
+    USE inputs_mod, ONLY : modelwashydro, splitOverMPI, molecularPhysics !, useHartmannTemp
     USE luc_cir3d_class, ONLY:  calc_cir3d_temperature
     USE cmfgen_class, ONLY:     calc_cmfgen_temperature
     USE jets_mod, ONLY:         calcJetsTemperature
@@ -2150,6 +2150,7 @@ CONTAINS
        CASE ("sphfile","molcluster", "theGalaxy", "dale")
           if( .not. thisoctal%haschild(subcell)) then
 
+             if (molecularPhysics) then
              if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
              if (.not. associated(thisoctal%cornervelocity)) then
                 allocate(thisoctal%cornervelocity(27))
@@ -2160,6 +2161,7 @@ CONTAINS
                 recentoctal => thisoctal
                 CALL fillDensityCorners(thisOctal, clusterdensity, clustervelocity)
                 thisOctal%velocity = thisoctal%cornervelocity(14)
+             endif
              endif
              call assign_grid_values(thisOctal,subcell)
 !             write(*,*) "Assigned grid value ",thisOctal%rho(subcell)
@@ -3588,7 +3590,7 @@ CONTAINS
     use magnetic_mod, only : safierfits
     use biophysics_mod, only : splitSkin
 ! Currently commented out. Reinstate if required.
-    use inputs_mod, only : smoothInnerEdge, variableDustSublimation
+    use inputs_mod, only : smoothInnerEdge, variableDustSublimation, rCut
 !    use inputs_mod, only: ttauriwind, smoothinneredge, amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
 
 #ifdef USECFITSIO
@@ -5098,6 +5100,7 @@ CONTAINS
 
                 else
 
+
                    if ( abs(cellCentre%x) < 10.0*grid%rCore .and.  abs(cellCentre%y) < 10.0*grid%rCore .and.  abs(cellCentre%z) &
                         < 40.0*grid%rCore ) then
                       if ( cellSize > grid%rCore ) split = .true.
@@ -5111,6 +5114,13 @@ CONTAINS
                 end if
 
              end if
+
+
+
+             cellCentre = subcellCentre(thisOctal,subCell)
+             if (modulus(cellCentre) < 10.*smallestCellSize) then
+                if (thisOctal%nDepth < maxDepthAMR) split = .true.
+             endif
 
 ! Split to one SPH particle per cell
              if (nparticle > 1 .and. SphOnePerCell) then
@@ -5183,6 +5193,22 @@ CONTAINS
                 splitinazimuth = .false.
              endif
           endif
+
+          rVec = subcellCentre(thisOctal, subcell)
+          r = sqrt(rVec%x**2 + rVec%y**2)
+
+          if ( (atan2(abs(rVec%z)-thisOctal%subcellsize/2.d0,r)*radtodeg < 30.) &
+               .and.(thisOctal%subcellSize>(r*tan(30.d0*degtorad)/20.)) ) then
+             split = .true.
+             write(*,*) "splitting for disc"
+          endif
+
+
+          if (r+thisOctal%subcellSize/2. < rCut) then
+             split = .false.
+             splitinazimuth = .false.
+          endif
+
 
        case ("wr104")
           ! Splits if the number of particle is more than a critical value (~3).
@@ -19697,15 +19723,15 @@ end function readparameterfrom2dmap
 
        else ! cylindrical
           if (thisOctal%splitAzimuthally) then
-             z1 = thisOctal%centre%z - thisOctal%subcellSize
+             z1 = thisOctal%centre%z - thisOctal%subcellSize*0.99999d0
              z2 = thisOctal%centre%z
-             z3 = thisOctal%centre%z + thisOctal%subcellSize
+             z3 = thisOctal%centre%z + thisOctal%subcellSize*0.99999d0
              phi1 = thisOctal%phi - thisOctal%dPhi/2.d0
              phi2 = thisOctal%phi
              phi3 = thisOctal%phi + thisOctal%dPhi/2.d0
-             r1 = thisOctal%r - thisOctal%subcellSize
+             r1 = thisOctal%r - thisOctal%subcellSize*0.99999d0
              r2 = thisOctal%r
-             r3 = thisOctal%r + thisOctal%subcellSize
+             r3 = thisOctal%r + thisOctal%subcellSize*0.99999d0
 
              ! bottom level
 
@@ -19745,14 +19771,14 @@ end function readparameterfrom2dmap
 
           else
 
-             z1 = thisOctal%centre%z - thisOctal%subcellSize
+             z1 = thisOctal%centre%z - thisOctal%subcellSize*0.9999d0
              z2 = thisOctal%centre%z
-             z3 = thisOctal%centre%z + thisOctal%subcellSize
+             z3 = thisOctal%centre%z + thisOctal%subcellSize*0.9999d0
              phi1 = thisOctal%phi - thisOctal%dPhi/2.d0
              phi2 = thisOctal%phi + thisOctal%dPhi/2.d0
-             r1 = thisOctal%r - thisOctal%subcellSize
+             r1 = thisOctal%r - thisOctal%subcellSize*0.9999d0
              r2 = thisOctal%r
-             r3 = thisOctal%r + thisOctal%subcellSize
+             r3 = thisOctal%r + thisOctal%subcellSize*0.9999d0
 
 
              ! bottom level
