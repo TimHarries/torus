@@ -811,7 +811,7 @@ contains
     endif
    
     whitneyDensity = max(rhoEnv, rhoDisc)
-    whitneyDensity = max(whitneyDensity, rhoFloor)
+    whitneyDensity = max(whitneyDensity, real(rhoFloor))
   end function whitneyDensity
 
   type(VECTOR) function whitneyVelocity(point)
