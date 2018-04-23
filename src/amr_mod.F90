@@ -10088,7 +10088,8 @@ logical function insideCone(position, binarySep, momRatio)
     rVec = subcellCentre(thisOctal, subcell)
     r = modulus(rVec)*1.d10
 
-    rho0 = shellmass  * (3.d0 - shellalpha) / (fourPi * rInner**shellalpha * (rOuter**(3.d0-shellalpha) - rInner**(3.d0-shellalpha)))
+    rho0 = shellmass  * (3.d0 - shellalpha) / (fourPi * rInner**shellalpha * & 
+            (rOuter**(3.d0-shellalpha) - rInner**(3.d0-shellalpha)))
 
     if ((r > rInner).and.(r < rOuter)) then
        thisOctal%rho(subcell) = rho0 * (rInner/r)**(shellalpha)
