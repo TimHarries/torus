@@ -12801,13 +12801,13 @@ end function readparameterfrom2dmap
     use density_mod, only: density, HD169142Disc
     use inputs_mod, only : rOuter, betaDisc !, rGapOuter2, rInner, erInner, erOuter, alphaDisc
     use inputs_mod, only : curvedInnerEdge, nDustType, grainFrac, rGapInner1, rGapInner2
-    use inputs_mod, only : height, dustPhysics, photoionization, rinner
+    use inputs_mod, only : height, dustPhysics, photoionization, rinner, dustsettling
     use inputs_mod, only : rSublimation, heightInner, ringHeight, rGapOuter1, heightOuter, rGapOuter2
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    real(double) :: r, rd, rhoFid, thisRSub,z,fac, rho, dustSettling, scaleFac, hGas, hDust
+    real(double) :: r, rd, rhoFid, thisRSub,z,fac, rho, dustSettlingFac, scaleFac, hGas, hDust
     TYPE(vector) :: rVec
 
     type(VECTOR),save :: velocitysum
@@ -12870,22 +12870,22 @@ end function readparameterfrom2dmap
        rVec = subcellCentre(thisOctal, subcell)
        r = sqrt(rVec%x**2+rVec%y**2)
        z = rVec%z
-       dustSettling = 0.5d0
+       dustSettlingFac = 0.5d0
 
        hGas = height * (r / (100.d0*autocm/1.d10))**betaDisc
-       hDust = dustSettling * hGas
+       hDust = dustSettlingFac * hGas
        scalefac  = sqrt(hDust**2 + hGas**2) / hGas
        if (r < rGapInner1) then
           hGas = heightInner * (r / rInner)**betaDisc
-          hDust = dustSettling * hGas
+          hDust = dustSettlingFac * hGas
        endif
        if ((r > rGapOuter1).and.(r < rGapInner2)) then
           hGas = ringHeight * (r / rGapOuter1)**betaDisc
-          hDust = dustSettling * hGas
+          hDust = dustSettlingFac * hGas
        endif
        if (r > rGapOuter2) then
           hGas = heightOuter * (r / rGapOuter2)**betaDisc
-          hDust = dustSettling * hGas
+          hDust = dustSettlingFac * hGas
        endif
 
        scalefac  = hGas / sqrt(hDust**2 + hGas**2)
@@ -12893,14 +12893,17 @@ end function readparameterfrom2dmap
        fac = exp(-0.5d0 * (z/hDust)**2)
 
 
-
-       if (r < rGapInner1) then
-          thisOctal%dustTypeFraction(subcell,:) = 1.d-30
+       if (dustsettling) then
+          if (r < rGapInner1) then
+             thisOctal%dustTypeFraction(subcell,:) = 1.d-30
+          else
+             thisOctal%dustTypeFraction(subcell,1) = fac * grainFrac(1)
+             thisOctal%dustTypeFraction(subcell,3) = fac * grainFrac(3)
+             thisOctal%dustTypeFraction(subcell,2) = (1.d0-fac) * grainFrac(2)
+             thisOctal%dustTypeFraction(subcell,4) = (1.d0-fac) * grainFrac(4)
+          endif
        else
-          thisOctal%dustTypeFraction(subcell,1) = fac * grainFrac(1)
-          thisOctal%dustTypeFraction(subcell,3) = fac * grainFrac(3)
-          thisOctal%dustTypeFraction(subcell,2) = (1.d0-fac) * grainFrac(2)
-          thisOctal%dustTypeFraction(subcell,4) = (1.d0-fac) * grainFrac(4)
+          thisOctal%dustTypeFraction(subcell,1:4) = grainfrac(1:4)
        endif
 
 
@@ -12932,6 +12935,9 @@ end function readparameterfrom2dmap
        endif
 
 
+       if (r < rSublimation) then
+          thisOctal%dustTypeFraction(subcell,:) = 1.d-30
+       endif
 
     endif
 
@@ -14349,6 +14355,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%chiLine, source%chiLine)
     call copyAttribute(dest%etaLine, source%etaLine)
     call copyAttribute(dest%etaCont, source%etaCont)
+    call copyAttribute(dest%pahEmissivity, source%pahEmissivity)
     call copyAttribute(dest%biasCont3d, source%biasCont3d)
     call copyAttribute(dest%biasLine3d, source%biasLine3d)
     call copyAttribute(dest%distanceGrid, source%distanceGrid)
@@ -18335,6 +18342,7 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%nScatters, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%nTot, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%etaCont, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%pahEmissivity, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%etaLine, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%chiLine, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%biasCont3D, thisOctal%maxChildren)
@@ -18444,6 +18452,7 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%edgeCell,thisOctal%maxchildren)
 
        call allocateAttribute(thisOctal%etaCont, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%pahEmissivity, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%nh, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%ne, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%nhi, thisOctal%maxChildren)
@@ -18681,6 +18690,7 @@ end function readparameterfrom2dmap
 
   subroutine deallocateOctalDynamicAttributes(thisOctal)
     type(OCTAL) :: thisOctal
+    call deallocateAttribute(thisOctal%pahEmissivity)
     call deallocateAttribute(thisOctal%iEquationOfState)
     call deallocateAttribute(thisOctal%blackBody)
     call deallocateAttribute(thisOctal%iAnalyticalVelocity)
