@@ -2844,7 +2844,7 @@ recursive subroutine populateJaehan(thisOctal, nTheta, nr, nphi, rho, rArray, ph
   type(octal), pointer  :: child 
   type(VECTOR) :: rVec
   integer :: iTheta, iPhi, ir
-  integer :: subcell, i, n
+  integer :: subcell, i
   
   do subcell = 1, thisOctal%maxChildren
      if (thisOctal%hasChild(subcell)) then

@@ -198,7 +198,7 @@ ifeq ($(SYSTEM), testsuite)
     else
         F95COMP = gfortran 
     endif
-    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-surprising -Wno-error=maybe-uninitialized -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow
+    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-conversion -Wno-surprising -Wno-error=maybe-uninitialized -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow
     FASTFLAG = -O3
     OPENMPFLAG = -fopenmp
     CFITSIOLIBS = -L/home/torustest/cfitsio/lib -lcfitsio

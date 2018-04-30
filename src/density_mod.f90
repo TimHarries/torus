@@ -746,13 +746,13 @@ contains
 
 
   real function whitneyDensity(point, grid)
-    use inputs_mod, only : erInner, erOuter, beta, mdisc, mdotenv, mcore, cavangle, cavdens, &
-         drouter, drinner, rhofloor
+    use inputs_mod, only : erInner, erOuter, beta, mdisc, mdotenv, mcore, cavdens, &
+         drouter, drinner, rhofloor !, cavangle
     TYPE(VECTOR), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN), optional   :: grid
     real :: r, mu, mu_0, rhoEnv, r_c, rho0, z, zcav
     real :: h, rhoDisc, alpha
-    real(double) :: fac, theta
+    real(double) :: fac !, theta
     logical :: withGrid
     if (PRESENT(grid)) withGrid = .true.
 

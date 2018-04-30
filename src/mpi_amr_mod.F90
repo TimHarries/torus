@@ -354,13 +354,13 @@ contains
 
     
   recursive subroutine findNumberUndersampledMPI(thisOctal, nSampled, nUndersampled, nCells) 
-    use inputs_mod, only : hydrodynamics, cylindricalHydro, spherical
-  type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
-  integer :: nSampled, nUndersampled, nCells 
-  integer :: subcell, i
+    implicit none
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: nSampled, nUndersampled, nCells 
+    integer :: subcell, i
   
-  do subcell = 1, thisOctal%maxChildren
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1

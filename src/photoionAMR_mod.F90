@@ -1585,7 +1585,7 @@ end subroutine radiationHydro
          readGrid, dustOnly, bufferCap, doPhotorefine, doRefine, amrtolerance, hOnly, &
          optimizeStack, stackLimit, dStack, singleMegaPhoto, stackLimitArray, customStacks, tMinGlobal, variableDustSublimation, &
          radPressureTest, justdump, uv_vector, inputEV, xrayCalc, useionparam, dumpregularVTUs, decoupleGasDustTemperature, &
-         mchistories, habingFlux
+         mchistories
 
     use inputs_mod, only : usePacketSplitting, inputNSmallPackets, amr2d, amr3d, forceminrho, nDustType, readgrid, &
          loadBalancing, loadBalancingMethod, tsub, bufferedSend!, inputSeed 
@@ -10497,8 +10497,7 @@ end subroutine putStarsInGridAccordingToDensity
     enddo
   end subroutine createTdustColumnImage
   subroutine TdustColumnAlongPathAMR(grid, rVec, direction, sigma, total, weighting, mean)
-    use mpi
-    use inputs_mod, only : hOnly
+
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, direction, currentPosition
     real(double) :: sigma, distToNextCell, total
@@ -10557,6 +10556,7 @@ end subroutine putStarsInGridAccordingToDensity
 
     end do
   end subroutine TdustColumnAlongPathAMR
+
   recursive subroutine calculateAverageTdust(thisOctal, grid, sigma, total, weighting, correction, t0, sigmaNe)
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
@@ -10661,7 +10661,6 @@ end subroutine putStarsInGridAccordingToDensity
   end subroutine createEmissionMeasureImage
   subroutine emissionMeasureAlongPathAMR(grid, rVec, direction, sigma)
     use mpi
-    use inputs_mod, only : hOnly
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, direction, currentPosition
     real(double) :: sigma, distToNextCell

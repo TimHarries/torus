@@ -369,8 +369,8 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
   end subroutine writeKeplerianButterfly
   
   subroutine clusterAnalysis(grid, source, nSource, nLambda, lamArray, miePhase, nMuMie)
-    use inputs_mod, only : imodel, edgeRadius, splitOverMPI, burstTime, amrgridsize
-    use inputs_mod, only : columnImageDirection, columnImageFilename, findNUndersampled, nClusterIonLoops, findHabing
+    use inputs_mod, only : splitOverMPI, burstTime !, imodel, edgeRadius, amrgridsize
+    use inputs_mod, only : columnImageDirection, findNUndersampled, nClusterIonLoops, findHabing
     use utils_mod, only : findMultifilename
     use phasematrix_mod
 #ifdef MPI
@@ -382,7 +382,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
 #endif
     use hydrodynamics_mod, only : setupevenuparray
 #endif
-#ifdef CFITSIO
+#ifdef USECFITSIO
     use image_mod, only : writeFitsColumnDensityImage 
 #endif
     use inputs_mod, only : calculateEmissionMeasure, calculateLymanFlux
@@ -397,7 +397,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
 !    type(VECTOR) :: startPoint, endPoint, firststartpoint, thisDir
 !    real(double) :: maxRho, totalMass 
     character(len=80) :: thisFile!, thisFileGrid, thisFileRadius!, rootFilename, fm
-#ifdef CFITSIO
+#ifdef USECFITSIO
     real(double), pointer :: image(:,:), rmsImage(:,:)
 #endif
     logical, save :: firstTime=.true.
@@ -490,7 +490,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
           elseif (i==7) then
              write(weighting, '(a)') "ionNone" 
           endif
-#ifdef CFITSIO
+#ifdef USECFITSIO
           if (plotAvgTemp) then
              ! pixel-by-pixel average
              if (writeoutput) write(*,*) "Making temperature image with weighting ", weighting
@@ -552,7 +552,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
           elseif (i==2) then
              write(weighting, '(a)') "none" 
           endif
-#ifdef CFITSIO
+#ifdef USECFITSIO
           if (plotAvgTdust) then
              ! pixel-by-pixel average
              if (writeoutput) write(*,*) "Making tdust image with weighting ", weighting
@@ -608,7 +608,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
     endif
 
 ! emission measure image
-#ifdef CFITSIO
+#ifdef USECFITSIO
     if (calculateEmissionMeasure) then
 !       call resetNe(grid%octreeRoot)
        call createEmissionMeasureImage(grid, columnImageDirection, image)
@@ -757,7 +757,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
 
     
     
-#ifdef CFITSIO
+#ifdef USECFITSIO
 !    ! column along x, ionfrac along x and y 
 !    ! x dir
 !    thisDir = VECTOR(1.d0, 0.d0, 0.d0)
