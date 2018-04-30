@@ -173,7 +173,11 @@ contains
           if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
        endif
 #endif
+#ifdef MPI
        call clusterAnalysis(grid, globalSourceArray, globalnSource, nLambda, xArray, miePhase, nMuMie)
+#else
+       call clusterAnalysis(grid)
+#endif
     endif
 
 !    if (calcColumnImage) then

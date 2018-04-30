@@ -47,6 +47,8 @@ stateq = no
 datacube = no
 # Run script to get subversion version number
 getgitver = yes
+# Newer versions of cfitsio require -lcurl at link time
+curlflag = no 
 
 KNOWN_SYSTEM = no
 MPIFLAG = 
@@ -137,9 +139,11 @@ ifeq ($(SYSTEM), gfortran)
     FASTFLAG = -O3
     OPENMPFLAG = -fopenmp
 # -static-libgcc fixes linking problems under Mac OS
+    STARLIBS += -static-libgcc -static-libgfortran
 # -lcurl is required for newer cfitsio libraries to prevent failure at link stage
-    STARLIBS += -static-libgcc -static-libgfortran -lcurl
-#    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
+    ifeq ($(curlflag), yes)
+        STARLIBS += -lcurl
+    endif
     EXE = torus.gfortran
     KNOWN_SYSTEM = yes
     CFITSIOLIBS = -L${HOME}/cfitsio/lib -lcfitsio

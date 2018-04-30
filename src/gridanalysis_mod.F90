@@ -367,10 +367,14 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
 
     close(66)
   end subroutine writeKeplerianButterfly
-  
+
+#ifdef MPI
   subroutine clusterAnalysis(grid, source, nSource, nLambda, lamArray, miePhase, nMuMie)
-    use inputs_mod, only : splitOverMPI, burstTime !, imodel, edgeRadius, amrgridsize
-    use inputs_mod, only : columnImageDirection, findNUndersampled, nClusterIonLoops, findHabing
+#else
+  subroutine clusterAnalysis(grid)
+#endif
+    use inputs_mod, only : splitOverMPI, burstTime, findHabing
+!    use inputs_mod, only : imodel, edgeRadius, amrgridsize
     use utils_mod, only : findMultifilename
     use phasematrix_mod
 #ifdef MPI
@@ -381,37 +385,49 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
     use mpi_amr_mod, only : createIonizationImage, createColumnDensityImage, createhiimage, findNumberUndersampled
 #endif
     use hydrodynamics_mod, only : setupevenuparray
+    use inputs_mod, only: columnImageDirection, findNUndersampled, calculateGlobalAvgTdust, calculateGlobalAvgTemp 
+    use inputs_mod, only: calculateEmissionMeasure, nClusterIonLoops
+    use inputs_mod, only: writeLums, plotAvgTemp, plotAvgTdust
 #endif
 #ifdef USECFITSIO
     use image_mod, only : writeFitsColumnDensityImage 
 #endif
-    use inputs_mod, only : calculateEmissionMeasure, calculateLymanFlux
-    use inputs_mod, only : smallestCellSize, writeLums, plotAvgTemp, calculateGlobalAvgTemp, plotAvgTdust, calculateGlobalAvgTdust
-    integer :: nMuMie
+    use inputs_mod, only : smallestCellSize, calculateLymanFlux
+
+! Arguments
+    type(GRIDTYPE)    :: grid
+#ifdef MPI
+    type(SOURCETYPE)  :: source(:)
+    integer           :: nSource
+    integer           :: nLambda    
+    integer           :: nMuMie
     type(PHASEMATRIX) :: miePhase(:,:,:)
-    integer :: nLambda
-    real :: lamArray(:)
-    type(GRIDTYPE) :: grid
-    type(SOURCETYPE) :: source(:)
-    integer :: nSource, i
-!    type(VECTOR) :: startPoint, endPoint, firststartpoint, thisDir
-!    real(double) :: maxRho, totalMass 
-    character(len=80) :: thisFile!, thisFileGrid, thisFileRadius!, rootFilename, fm
+    real              :: lamArray(:)
+#endif
+
+! Local variables
+    logical, save :: firstTime=.true.
+    real(double)  :: weightedFluxInRadius, massInRadius, meang0, g0inCell, distance
+    integer :: iSource
+    real(double) :: nlyA, nlyB, nlyR
+    character(len=80) :: thisFile
+#ifdef MPI
 #ifdef USECFITSIO
     real(double), pointer :: image(:,:), rmsImage(:,:)
 #endif
-    logical, save :: firstTime=.true.
-!    real(double), save :: radius 
-!    real(double) :: mass, highestRho, volume, ionizedMass, ionizedVolume, totalKE, totalTE, massflux
     character(len=20) :: weighting
-    integer :: ierr
-    real(double) :: weightedFluxInRadius, massInRadius, meang0, g0inCell, distance
+    integer :: i, ierr
     real(double) :: n0, t0, trms, nrms, sigma, sigmane, total, tempDouble
     integer :: nSampled, nUndersampled, nCells, nPhotoIter
     real(double) :: loopLimitTime
     real :: iterTime(3)
-    integer :: evenUpArray(nHydroThreadsGlobal), iterStack(3), optID, iSource
-    real(double) :: nlyA, nlyB, nlyR
+    integer :: evenUpArray(nHydroThreadsGlobal), iterStack(3), optID
+!    type(VECTOR) :: startPoint, endPoint, firststartpoint, thisDir
+!    real(double) :: maxRho, totalMass 
+!    character(len=80) :: thisFileGrid, thisFileRadius!, rootFilename, fm
+!    real(double), save :: radius 
+!    real(double) :: mass, highestRho, volume, ionizedMass, ionizedVolume, totalKE, totalTE, massflux
+#endif
 
 #ifdef PHOTOION
 #ifdef MPI
