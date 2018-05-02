@@ -3312,14 +3312,14 @@ contains
     nparticles = 0; sumweight = 0.d0
     r = min(4.d0 * d, rcrit) 
     call findNearestParticles(point, nparticles, r, indexArray, q2array)
-    call doweights(sumweight, nparticles, q2array, partarray)
+    call doweights(sumweight, nparticles, q2array, partarray, indexArray)
 
     ! Attempt 2: 
     ! 2 rcrit is essential for the mass to be correctly done... (in my case it had to be hcrit = 99%)
     if (sumweight .le. 1d-3) then
        r = min(max(r * 4.d0, 2.d0 * rcrit), rmax * 0.1)
        call findNearestParticles(point, nparticles, r, indexArray, q2array)
-       call doweights(sumweight, nparticles, q2array, partarray)
+       call doweights(sumweight, nparticles, q2array, partarray, indexArray)
     end if
 
     ! Attempt 3: Search out to 0.5*rmax. If the sum of weights is still too small then this is 
@@ -3327,7 +3327,7 @@ contains
     if (sumweight .le. 1d-3) then
        r = rmax * 0.5d0
        call findNearestParticles(point, nparticles, r, indexArray, q2array)
-       call doweights(sumweight, nparticles, q2array, partarray)
+       call doweights(sumweight, nparticles, q2array, partarray, indexArray)
     end if
 
 
@@ -3428,7 +3428,7 @@ contains
   end function Clusterparameter
 
   subroutine init_clusterparameter_arrays
-    USE inputs_mod, only: kernelType, hcritPercentile, hmaxPercentile
+    USE inputs_mod, only: hcritPercentile, hmaxPercentile, variableEta
 
     implicit none
 
@@ -3520,17 +3520,19 @@ contains
     Harray(:) = sphdata%hn(ind(:)) ! repeat second time to fix messed up array by sort
     RhoArray(:) = sphdata%rhon(ind(:))
        
-    if (kerneltype == 1) then
-       call writeInfo("Spline kernel in use. Will calculate variable eta")
+    if (variableEta) then
+       call writeInfo("Will calculate variable eta to allow for eta !=1.2")
        ! added to fix smoothing length discrepancy - h != 1.2 (rho/m)^(1/3)
        ! etaarray stores 1/(eta**3)
        allocate(etaArray(npart)) 
-       etaarray(:) = sphdata%gasmass(:) / (rhoarray(:) * harray(:)**3)
+       etaarray(:) = sphdata%gasmass(ind(:)) / (rhoarray(:) * harray(:)**3)
        write(message, *) "Max/min eta", (1.d0/maxval(etaArray(:)))**(1.0/3.0), &
             (1.d0/minval(etaArray(:)))**(1.0/3.0)
        call writeinfo(message, TRIVIAL)
+    else
+       call writeInfo("Assuming eta=1.2 in smoothing length calculation")
     endif
-       
+ 
     write(message, *) "Critical smoothing Length in code units", hcrit
     call writeinfo(message, TRIVIAL)
     write(message, *) "Maximum smoothing Length in code units", hmax
@@ -3768,15 +3770,21 @@ contains
 
   end subroutine findnearestparticles
 
-  Subroutine doWeights(sumweight, nparticles, q2array, partarray)
+  Subroutine doWeights(sumweight, nparticles, q2array, partarray, indexArray)
 
-    use inputs_mod, only : kerneltype
+    use inputs_mod, only : kerneltype, variableEta
 
-!    real(double), parameter :: num = 0.578703703d0 ! (5/6)^3 ! (1/1.2^3)
+    ! This is eta^-nu with eta=1.2 and nu=3
+    real(double), parameter :: num = 0.578703703d0 ! (5/6)^3 = (1/1.2^3)
+
+    ! This constant is: eta^-nu * 1/(pi^(nu/2))
+    ! eta = 1.2 = 6/5 comes from the expression for the variable smoothing length
+    ! nu = 3 is the number of spatial dimensions
     real(double), parameter :: scalar = 0.103927732d0 ! 5 / 6 * one over sqrtpicubed
 
     integer,      intent(in)  :: nparticles
     real(double), intent(in)  :: q2array(npart)
+    integer,      intent(in)  :: indexArray(npart)
     real(double), intent(out) :: partarray(npart)
     real(double), intent(out) :: sumweight
 
@@ -3786,15 +3794,24 @@ contains
     if(nparticles .gt. 0) then
               
        if(kerneltype .eq. 0) then
-       
-          partarray(1:nparticles) = scalar * exp(-q2array(1:nparticles))
-       
+
+          if (variableEta) then
+             do i = 1, nparticles
+                partarray(i) = etaarray(indexArray(i)) * (1.0/pi**1.5) * exp(-q2array(i))
+             end do
+          else
+             partarray(1:nparticles) = scalar * exp(-q2array(1:nparticles))
+          end if
+          
        elseif( kerneltype .eq. 1) then
           
           do i = 1, nparticles
              sqrtq = sqrt(q2array(i))
-!             partarray(i) = num * SmoothingKernel3d(sqrtq)
-             partarray(i) = etaarray(i) * SmoothingKernel3d(sqrtq)
+             if (variableEta) then
+                partarray(i) = etaarray(indexArray(i)) * SmoothingKernel3d(sqrtq)
+             else
+                partarray(i) = num * SmoothingKernel3d(sqrtq)
+             endif
           enddo
           
        endif
