@@ -5,7 +5,7 @@ module sph_data_class
   use constants_mod
 
   ! 
-  ! Class definition for Mathew's SPH data.
+  ! Class definition for Matthew's SPH data.
   ! 
   ! LOGS: 
   ! Created on Jan-10-2003 (R. Kurosawa)
@@ -123,9 +123,9 @@ module sph_data_class
 ! This is the maximum line length when reading an ASCII file, specified as a module parameter
 ! as it appears in multiple subroutines. If the line is longer than this length itype is likely 
 ! to be lost leading to out of bounds array access. 
-  integer, parameter, private :: MaxAsciiLineLength=800
+  integer, parameter, private :: MaxAsciiLineLength=1200
 ! Maximum number of words per line when reading an ASCII file
-  integer, parameter, private :: MaxWords=50
+  integer, parameter, private :: MaxWords=100
 ! Flag to specify when we are reading a Gadget ASCII dump 
   logical :: gadget = .false.
 
@@ -391,7 +391,7 @@ contains
 ! Read SPH data from a splash ASCII dump.
   subroutine new_read_sph_data(rootfilename)
     use inputs_mod, only: convertRhoToHI, sphh2col, sphmolcol, sphwithchem, iModel, discardSinks
-    use inputs_mod, only: dragon, sphdensitycut
+    use inputs_mod, only: dragon, sphdensitycut, isotopologueFraction
     use angularImage_utils, only:  internalView, galaxyPositionAngle, galaxyInclination
     use utils_mod, only : findMultiFilename
     use parallel_mod, only: torus_abort
@@ -410,7 +410,7 @@ contains
     integer :: ipart, icount, iptmass, igas, istar, idead, i
     integer :: nptmass, nstar, nother, nlines
     integer :: irequired, irejected ! Record number of gas particles required and not required
-    integer, parameter :: maxNumVals=50 ! Maximum number of values per line (first dim of junkArray)
+    integer, parameter :: maxNumVals=100 ! Maximum number of values per line (first dim of junkArray)
     real(double), allocatable :: junkArray(:,:)
     character(LEN=1)  :: junkchar
     character(LEN=150) :: message
@@ -765,6 +765,7 @@ contains
        write (message,'(a,i2)') "Will store particle H2 density. H2 fraction is from column ", sphh2col
        call writeInfo(message,FORINFO)
        allocate(sphdata%rhoH2(npart))
+       print *, "isotopologueFraction = ", isotopologueFraction
     end if
 
     if (idustfrac/=0) then
@@ -857,7 +858,7 @@ part_loop: do ipart=1, nlines
 
           if (sphwithChem) then 
              COfrac = junkArray(sphmolcol,ipart)
-             sphdata%rhoCO(igas) = COfrac * rhon
+             sphdata%rhoCO(igas) = COfrac * rhon * isotopologueFraction
           endif
 
           if (convertRhoToHI.or.sphwithChem) then

@@ -301,7 +301,7 @@ contains
 
     use sph_data_class, only: Clusterparameter, sphData, sph_molecule, sph_molecularWeight
     use constants_mod, only: mhydrogen
-    use inputs_mod, only: tMinGlobal,doCOchemistry, x_D
+    use inputs_mod, only: tMinGlobal,doCOchemistry, x_D, rcut
     
     IMPLICIT NONE
 
@@ -309,19 +309,26 @@ contains
     INTEGER :: subcell
     type(vector) :: point, clusterparam
     logical, save :: firstTime=.true.
-    real(double) :: rho, rhoH2, rhoCO, temp, dustfrac
+    real(double) :: rho, rhoH2, rhoCO, temp, dustfrac, r
     character(len=80) :: message
+    
     
 ! Critical density if we are not using SPH temperature
 !    real(double), parameter :: density_crit = 1d13
 
     point = subcellcentre(thisOctal, subcell)
+
+    r = sqrt(point%x**2 + point%y**2)
 ! This function returns density, temperature and H2 (if required) 
     clusterparam = Clusterparameter(point, thisoctal, subcell, rho_out=rho, rhoH2_out=rhoH2, rhoCO_out=rhoCO, &
          temp_out=temp, dustfrac_out=dustfrac)
 
 ! Set octal density
     thisOctal%rho(subcell) = rho
+
+    if (r < rCut) then
+       thisOctal%rho(subcell) = 1.e-30
+    endif
 
 ! Set octal temperature
     thisOctal%temperature(subcell) =  max(real(temp), tMinGlobal)

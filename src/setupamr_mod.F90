@@ -202,6 +202,11 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           call readgridKengo(grid)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
+       case("jaehan")
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
+          call readJaehan(grid)
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+
        case("skin")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
@@ -279,7 +284,7 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           call randomNumberGenerator(randomSeed = .true.)
           do while(.not.gridconverged) 
              gridConverged = .true.
-             call splitGridFractal(grid%octreeRoot, rho0, 0.3, grid, gridconverged)
+             call splitGridFractal(grid%octreeRoot, real(rho0), 0.3, grid, gridconverged)
           enddo
           write(*,*) myrankglobal, " conv ",gridConverged
           call randomNumberGenerator(syncIseed=.true.)
@@ -2718,5 +2723,153 @@ recursive subroutine splitGridMagstream(thisOctal, grid, npoints, posArray, rhoA
      enddo
    end subroutine readMagstreamFile
 
+
+   subroutine readJaehan(grid)
+     use inputs_mod, only : maxDepthAMR
+     type(GRIDTYPE) :: grid
+     integer, parameter :: nPhi = 288, nR = 256, nTheta = 80
+     real(double) :: phi(nPhi), r(nR), theta(nTheta)
+     real(double),allocatable :: rho(:,:,:)
+     integer :: i, j, k
+     logical :: split, splitInAzimuth
+     type(OCTAL), pointer :: thisOctal
+     integer :: subcell
+     real(double)  :: dz
+     logical :: converged
+     type(VECTOR) :: point
+
+     open(31, file="domain_x.dat",status="old", form="formatted")
+     do i = 1, nPhi
+        read(31,*) phi(i)
+     enddo
+     phi = phi + 1.d-6
+     close(31)
+
+     open(21, file="domain_y.dat",status="old", form="formatted")
+     do i = 1, nR
+        read(21,*) r(i)
+     enddo
+     r = r / 1.d10
+     close(21)
+
+     open(21, file="domain_z.dat",status="old", form="formatted")
+     do i = 1, nTheta
+        read(21,*) theta(i)
+     enddo
+     theta = theta + 1.d-6
+     close(21)
+
+     allocate(rho(1:nPhi,1:nr,1:nTheta))
+
+     open(21, file="dens.dat",form="unformatted", &
+          status="old",access="stream") !, convert="big_endian")
+     read(21) rho
+     !     do k = 1, nTheta
+     !        do j = 1, nr
+     !           do i = 1, nPhi
+     !              read(21) rho(i,j,k)
+     !              write(*,*) i,j,k,rho(i,j,k)
+     !           enddo
+     !        enddo
+     !     enddo
+     close(21)
+
+
+
+     converged = .false.
+     thisOctal => grid%octreeRoot
+     do while (.not.converged)
+        converged = .true.
+        do k = 1, nTheta-1
+           do j = 2, nR
+              do i = 2,nPhi
+                 point = VECTOR( r(j)*sin(theta(k))*cos(phi(i)), &
+                      r(j)*sin(theta(k))*sin(phi(i)), &
+                      r(j)*cos(theta(k)))
+
+
+                 call findSubcellLocal(point,thisOctal,subcell)
+
+
+                 split = .false.
+                 splitinazimuth = .false.
+                 if ((r(j)-r(j-1)) < thisOctal%subcellSize) split = .true.
+                 dz = abs(r(j)*cos(theta(k+1))-r(j)*cos(theta(k)))
+                 if (dz < thisOctal%subcellSize) split = .true.
+                 if (abs(phi(i)-phi(i-1)) < thisOctal%dPhi) then
+                    split = .true.
+                    splitInAzimuth = .true.
+                 endif
+
+                 if (thisOctal%nDepth == maxDepthAMR) split = .false.
+
+                 if (split) then
+                    converged = .false.
+                    call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                         inherit=.true., interp=.false.,splitAzimuthally=splitinAzimuth)
+                 endif
+              enddo
+           enddo
+        enddo
+     enddo
+     do k = 1, nTheta
+        do j = 1, nR
+           do i = 1,nPhi
+              point = VECTOR( r(j)*sin(theta(k))*cos(phi(i)), &
+                   r(j)*sin(theta(k))*sin(phi(i)), &
+                   r(j)*cos(theta(k)))
+              
+              
+              call findSubcellLocal(point,thisOctal,subcell)
+              thisOctal%rho(subcell) = rho(i,j,k)
+
+           enddo
+        enddo
+     enddo
+
+     call populateJaehan(grid%octreeRoot, ntheta, nr, nphi, rho, r, phi, theta)
+
+
+
+
+   end subroutine readJaehan
+     
+
+
+recursive subroutine populateJaehan(thisOctal, nTheta, nr, nphi, rho, rArray, phiArray, thetaArray)
+  real(double) :: rho(:,:,:), rArray(:), phiArray(:), thetaArray(:)
+  integer :: nTheta, nr, nphi
+  real(double) :: r, phi, theta
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  type(VECTOR) :: rVec
+  integer :: iTheta, iPhi, ir
+  integer :: subcell, i, n
+  
+  do subcell = 1, thisOctal%maxChildren
+     if (thisOctal%hasChild(subcell)) then
+        ! find the child
+        do i = 1, thisOctal%nChildren, 1
+           if (thisOctal%indexChild(i) == subcell) then
+              child => thisOctal%child(i)
+              call populateJaehan(child, nTheta, nr, nphi, rho, rArray, phiArray, thetaArray)
+              exit
+           end if
+        end do
+     else 
+        rVec = subcellCentre(thisOctal, subcell)
+        r = modulus(rVec)
+        if ( (r > rArray(1)).and.(r < rArray(nr))) then
+           theta = acos(rVec%z/r)
+           phi = atan2(rVec%y, rVec%x)
+           call locate(rArray, nr, r, ir)
+           call locate(phiArray, nphi, phi, iphi)
+           call locate(thetaArray, ntheta, theta, itheta)
+           thisOctal%rho(subcell) = rho(iphi, ir, itheta)
+        endif
+
+     endif
+  enddo
+end subroutine populateJaehan
 
 end module setupamr_mod

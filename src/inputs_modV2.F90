@@ -817,8 +817,8 @@ contains
                "(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
 
        case("fractal")
-          call getReal("rho0", rho0, real(mhydrogen),cLine, fLine, nLines, &
-               "Initial number density: ","(a,f6.1,1x,a)", 100., ok, .true.)
+          call getDouble("rho0", rho0, mhydrogen,cLine, fLine, nLines, &
+               "Initial number density: ","(a,f6.1,1x,a)", 100.d0, ok, .true.)
 
 
        case("etacar")
@@ -932,6 +932,16 @@ contains
 
        call getDouble("arthurscaleheight", arthurScaleHeight, pctocm/1.d10, cLine, fLine, nLines, &
             "Scale height (in pc): ","(a,e12.3,1x,a)", 0.05d0 , ok, .false.)
+
+     case("shell")
+          call getReal("rinner", rInner, real(rSol), cLine, fLine, nLines, &
+               "Inner Radius (solar radii): ","(a,f7.3,a)", 12., ok, .true.)
+          call getReal("router", rOuter, real(rsol), cLine, fLine, nLines, &
+               "Outer Radius (solar radii): ","(a,f5.1,a)", 20., ok, .true.)
+          call getDouble("alpha", shellalpha, 1.d0, cLine, fLine, nLines, &
+               "Shell density power law index: ","(a,f7.3,a)", 12.d0, ok, .true.)
+          call getDouble("shellmass", shellMass, 1.d0, cLine, fLine, nLines, &
+               "Shell mass (g): ","(a,f5.1,a)", 20.d0, ok, .true.)
 
      case("unisphere","gravtest")
        oneKappa = .true.
@@ -1611,6 +1621,10 @@ contains
              call getReal("tthresh", tthresh, 1., cLine, fLine,  nLines, &
                   "Dust sublimation temperature (K): ","(a,f8.2,a)", 10., ok, .true.)
           endif
+          call getDouble("rcut", rCut, autocm/1.d10, cLine, fLine, nLines, &
+                  "Cut off inner radius (au): ","(a,f5.1,a)", -1.d0, ok, .false.)
+          call getLogical("discsplit", doDiscSplit, cLine, fLine, nLines, &
+               "Split AMR mesh for disc: ","(a,1l,a)", .false., ok, .false.)
 
     case("spiral")
        call getReal("tthresh", tthresh, 1., cLine, fLine,  nLines, &
@@ -1694,9 +1708,17 @@ contains
        call getReal("mdisc", mdisc, real(msol), cLine, fLine, nLines, &
             "Mass of disc (solar): ","(a,f5.1,a)", 180.0, ok, .true.)
 
+       call getDouble("cavangle", cavAngle, degToRad, cLine, fLine, nLines, &
+            "Cavity angle (deg): ","(a,f5.2,a)", 40.d0, ok, .false.)
+
+       call getDouble("cavdens", cavDens, 1.d0, cLine, fLine, nLines, &
+            "Cavity density (g/cc): ","(a,e12.2,a)", 1d-30, ok, .false.)
 
        call getReal("mass1", mcore, real(msol), cLine, fLine, nLines, &
             "Mass of core (solar): ","(a,f5.1,a)", 180.0, ok, .true.)
+
+    call getDouble("rhofloor", rhoFloor, 1.d0, cLine, fLine, nLines, &
+         "Minimum density in advection:  ","(a,e12.3,1x,a)", 1.d-30, ok, .false.)
 
 
     case("shakara")
@@ -1926,6 +1948,9 @@ contains
 
        rhoAmbient = 1.d-30
        oneKappa = .true.
+       call getLogical("dustsettling", dustSettling, cLine, fLine, nLines, &
+               "Dust settling model: : ","(a,1l,1x,a)", .false., ok, .false.)
+
        call getLogical("gasopacity", includeGasOpacity, cLine, fLine, nLines, &
             "Include gas opacity: ","(a,1l,a)", .false., ok, .false.)
 
@@ -2034,7 +2059,9 @@ contains
        call getReal("betadisc", betaDisc, 1., cLine, fLine, nLines, &
             "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
 
-       alphaDisc = betaDisc + 1.
+       call getReal("alphadisc", alphaDisc, 1., cLine, fLine, nLines, &
+            "Disc alpha parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
+
        call getLogical("hydro", solveVerticalHydro, cLine, fLine, nLines, &
             "Solve vertical hydrostatical equilibrium: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -2120,9 +2147,8 @@ contains
 !       mCore = mCore * mSol
 !       mDisc = mDisc * mSol
 
-       rho0  = real(mDisc *(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * (height*1.e10)/real(100.d0*autocm)**betaDisc  &
-            * (rInner*1.e10)**alphaDisc * &
-            (((rOuter*1.e10)**(betaDisc-alphaDisc+2.)-(rInner*1.e10)**(betaDisc-alphaDisc+2.))) ))
+       rho0  = 1.d-10
+
 
     case("MWC275")
 
@@ -2422,7 +2448,7 @@ contains
 !         density integration constant for each module of the disc
        enddo
 
-       rho0  = real( (mDisc / twoPi**1.5) * (1/ERF(1.d0/SQRT(2.d0))) * (rInnerMod(1)*1.d10)**((-1.d0)*alphaMod(1)) * &
+       rho0  = dble( (mDisc / twoPi**1.5) * (1/ERF(1.d0/SQRT(2.d0))) * (rInnerMod(1)*1.d10)**((-1.d0)*alphaMod(1)) * &
                (1/SUM(rhoNought)) )
 !      density integration constant for full disc
 
@@ -4789,6 +4815,13 @@ incStyle: if (checkPresent("inclinations", cline, nlines)) then
 
     call getReal("positionangle", thisPA, real(degtorad), cLine, fLine, nLines, &
          "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
+
+    call getDouble("ism_av", ism_av, 1.d0, cLine, fLine, nLines, &
+         "Interstellar extinction (A_V): ","(a,f5.1,1x,a)", 0.d0, ok, .false.)
+
+    call getDouble("ism_rv", ism_rv, 1.d0, cLine, fLine, nLines, &
+         "Interstellar R_V: ","(a,f5.1,1x,a)", 3.1d0, ok, .false.)
+
 
 
     call getDouble("maxVel", maxVel, 1.d0, cLine, fLine, nLines, &

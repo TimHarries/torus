@@ -493,6 +493,8 @@
 ! Now held in sed_mod
 !------------------------------
 
+  real(double) :: ism_av, ism_rv ! reddening
+
   real, protected :: thisInclination  ! Inclination when atomicPhysics=T (calculateAtomSpectrum and compute_obs_line_flux)
   real, protected :: thisPA           ! position angle
   real(double), protected :: thisimagePA
@@ -538,6 +540,7 @@
   logical :: addDisc
   type(VECTOR) :: sphereVelocity, spherePosition                  ! unisphere geometry
   real(double) :: sphereMass, sphereRadius, sphereSurroundingsFac ! unisphere geometry
+  real(double) :: shellMass, shellAlpha
   real(double) :: plumberMass, plumberRadius, plumberExponent     ! Plumber filament geometry
   real(double) :: omega
   integer :: nSphereSurface ! number of points on spherical surface
@@ -586,7 +589,8 @@
   real :: radius, kfac, xfac
   real :: rCore, rInner
   real :: rTorus, rOuter, rSublimation
-  real :: rho, rho0
+  real :: rho
+  real(double) :: rho0
   real(double) :: extMass
   real :: scale, rscale
   real :: mCore, diskTemp, mDisc
@@ -982,6 +986,8 @@
   real(double), protected :: sphsphereradius ! Sphere radius
   ! Select SPH particles above a density threshold
   real(double), protected :: sphdensitycut
+  real(double) :: rCut
+  logical :: doDiscSplit
   
 !------------------
 ! Other parameters 

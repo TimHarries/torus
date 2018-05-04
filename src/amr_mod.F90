@@ -1004,6 +1004,10 @@ CONTAINS
     CASE("unimed")
        call calcUniMed(thisOctal, subcell)
 
+       
+    CASE("shell")
+       call calcShell(thisOctal, subcell)
+
 
     CASE("sphere")
        call calcSphere(thisOctal, subcell)
@@ -2083,7 +2087,7 @@ CONTAINS
     !   and calculates all the other variables in the model.
     ! this should be called once the structure of the grid is complete.
 
-    USE inputs_mod, ONLY : modelwashydro, splitOverMPI !, useHartmannTemp
+    USE inputs_mod, ONLY : modelwashydro, splitOverMPI, molecularPhysics !, useHartmannTemp
     USE luc_cir3d_class, ONLY:  calc_cir3d_temperature
     USE cmfgen_class, ONLY:     calc_cmfgen_temperature
     USE jets_mod, ONLY:         calcJetsTemperature
@@ -2150,6 +2154,7 @@ CONTAINS
        CASE ("sphfile","molcluster", "theGalaxy", "dale")
           if( .not. thisoctal%haschild(subcell)) then
 
+             if (molecularPhysics) then
              if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
              if (.not. associated(thisoctal%cornervelocity)) then
                 allocate(thisoctal%cornervelocity(27))
@@ -2160,6 +2165,7 @@ CONTAINS
                 recentoctal => thisoctal
                 CALL fillDensityCorners(thisOctal, clusterdensity, clustervelocity)
                 thisOctal%velocity = thisoctal%cornervelocity(14)
+             endif
              endif
              call assign_grid_values(thisOctal,subcell)
 !             write(*,*) "Assigned grid value ",thisOctal%rho(subcell)
@@ -3588,7 +3594,7 @@ CONTAINS
     use magnetic_mod, only : safierfits
     use biophysics_mod, only : splitSkin
 ! Currently commented out. Reinstate if required.
-    use inputs_mod, only : smoothInnerEdge, variableDustSublimation
+    use inputs_mod, only : smoothInnerEdge, variableDustSublimation, rCut, doDiscSplit
 !    use inputs_mod, only: ttauriwind, smoothinneredge, amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
 
 #ifdef USECFITSIO
@@ -4599,6 +4605,12 @@ CONTAINS
           if (sqrt(rvec%x**2+(0.25*rvec%z)**2) <= (smallestCellSize * 2.5**(1+maxDepthAMR-thisOctal%nDepth))) then
               split=.true.
           endif
+       case("shell")
+          r = modulus(subcellCentre(thisOctal,subcell))*1.d10
+          split = .false.
+          if ( (r+thisOCtal%subcellsize*1.d10 >rInner).and.(  r-thisOCtal%subcellsize*1.d10 < rOuter)) split = .true.
+          
+
        case("spiral")
           call splitSpiral(thisOctal, split, splitInAzimuth)
           if (thisOctal%nDepth < minDepthAMR) split = .true.
@@ -5098,6 +5110,7 @@ CONTAINS
 
                 else
 
+
                    if ( abs(cellCentre%x) < 10.0*grid%rCore .and.  abs(cellCentre%y) < 10.0*grid%rCore .and.  abs(cellCentre%z) &
                         < 40.0*grid%rCore ) then
                       if ( cellSize > grid%rCore ) split = .true.
@@ -5111,6 +5124,13 @@ CONTAINS
                 end if
 
              end if
+
+
+
+             cellCentre = subcellCentre(thisOctal,subCell)
+             if (modulus(cellCentre) < 10.*smallestCellSize) then
+                if (thisOctal%nDepth < maxDepthAMR) split = .true.
+             endif
 
 ! Split to one SPH particle per cell
              if (nparticle > 1 .and. SphOnePerCell) then
@@ -5183,6 +5203,23 @@ CONTAINS
                 splitinazimuth = .false.
              endif
           endif
+
+          rVec = subcellCentre(thisOctal, subcell)
+          r = sqrt(rVec%x**2 + rVec%y**2)
+
+          if (doDiscsplit) then
+             if ( (atan2(abs(rVec%z)-thisOctal%subcellsize/2.d0,r)*radtodeg < 30.) &
+                  .and.(thisOctal%subcellSize>(r*tan(30.d0*degtorad)/20.)) ) then
+                split = .true.
+             endif
+          endif
+
+
+          if (r+thisOctal%subcellSize/2. < rCut) then
+             split = .false.
+             splitinazimuth = .false.
+          endif
+
 
        case ("wr104")
           ! Splits if the number of particle is more than a critical value (~3).
@@ -10040,6 +10077,27 @@ logical function insideCone(position, binarySep, momRatio)
 
   end subroutine calcSphere
 
+  subroutine calcShell(thisOctal,subcell)
+
+    use inputs_mod, only : rInner, rOuter, shellalpha, shellMass
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: r, rho0
+
+    rVec = subcellCentre(thisOctal, subcell)
+    r = modulus(rVec)*1.d10
+
+    rho0 = shellmass  * (3.d0 - shellalpha) / (fourPi * rInner**shellalpha * & 
+            (rOuter**(3.d0-shellalpha) - rInner**(3.d0-shellalpha)))
+
+    if ((r > rInner).and.(r < rOuter)) then
+       thisOctal%rho(subcell) = rho0 * (rInner/r)**(shellalpha)
+    endif
+
+
+  end subroutine calcShell
+
   subroutine calcPlumber(thisOctal,subcell)
 
     use inputs_mod, only : plumberRadius, plumberMass, plumberExponent, amrGridSize, rhoFloor, gridDistanceScale
@@ -12771,13 +12829,13 @@ end function readparameterfrom2dmap
     use density_mod, only: density, HD169142Disc
     use inputs_mod, only : rOuter, betaDisc !, rGapOuter2, rInner, erInner, erOuter, alphaDisc
     use inputs_mod, only : curvedInnerEdge, nDustType, grainFrac, rGapInner1, rGapInner2
-    use inputs_mod, only : height, dustPhysics, photoionization, rinner
+    use inputs_mod, only : height, dustPhysics, photoionization, rinner, dustsettling
     use inputs_mod, only : rSublimation, heightInner, ringHeight, rGapOuter1, heightOuter, rGapOuter2
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    real(double) :: r, rd, rhoFid, thisRSub,z,fac, rho, dustSettling, scaleFac, hGas, hDust
+    real(double) :: r, rd, rhoFid, thisRSub,z,fac, rho, dustSettlingFac, scaleFac, hGas, hDust
     TYPE(vector) :: rVec
 
     type(VECTOR),save :: velocitysum
@@ -12840,22 +12898,22 @@ end function readparameterfrom2dmap
        rVec = subcellCentre(thisOctal, subcell)
        r = sqrt(rVec%x**2+rVec%y**2)
        z = rVec%z
-       dustSettling = 0.5d0
+       dustSettlingFac = 0.5d0
 
        hGas = height * (r / (100.d0*autocm/1.d10))**betaDisc
-       hDust = dustSettling * hGas
+       hDust = dustSettlingFac * hGas
        scalefac  = sqrt(hDust**2 + hGas**2) / hGas
        if (r < rGapInner1) then
           hGas = heightInner * (r / rInner)**betaDisc
-          hDust = dustSettling * hGas
+          hDust = dustSettlingFac * hGas
        endif
        if ((r > rGapOuter1).and.(r < rGapInner2)) then
           hGas = ringHeight * (r / rGapOuter1)**betaDisc
-          hDust = dustSettling * hGas
+          hDust = dustSettlingFac * hGas
        endif
        if (r > rGapOuter2) then
           hGas = heightOuter * (r / rGapOuter2)**betaDisc
-          hDust = dustSettling * hGas
+          hDust = dustSettlingFac * hGas
        endif
 
        scalefac  = hGas / sqrt(hDust**2 + hGas**2)
@@ -12863,14 +12921,17 @@ end function readparameterfrom2dmap
        fac = exp(-0.5d0 * (z/hDust)**2)
 
 
-
-       if (r < rGapInner1) then
-          thisOctal%dustTypeFraction(subcell,:) = 1.d-30
+       if (dustsettling) then
+          if (r < rGapInner1) then
+             thisOctal%dustTypeFraction(subcell,:) = 1.d-30
+          else
+             thisOctal%dustTypeFraction(subcell,1) = fac * grainFrac(1)
+             thisOctal%dustTypeFraction(subcell,3) = fac * grainFrac(3)
+             thisOctal%dustTypeFraction(subcell,2) = (1.d0-fac) * grainFrac(2)
+             thisOctal%dustTypeFraction(subcell,4) = (1.d0-fac) * grainFrac(4)
+          endif
        else
-          thisOctal%dustTypeFraction(subcell,1) = fac * grainFrac(1)
-          thisOctal%dustTypeFraction(subcell,3) = fac * grainFrac(3)
-          thisOctal%dustTypeFraction(subcell,2) = (1.d0-fac) * grainFrac(2)
-          thisOctal%dustTypeFraction(subcell,4) = (1.d0-fac) * grainFrac(4)
+          thisOctal%dustTypeFraction(subcell,1:4) = grainfrac(1:4)
        endif
 
 
@@ -12902,6 +12963,9 @@ end function readparameterfrom2dmap
        endif
 
 
+       if (r < rSublimation) then
+          thisOctal%dustTypeFraction(subcell,:) = 1.d-30
+       endif
 
     endif
 
@@ -14319,6 +14383,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%chiLine, source%chiLine)
     call copyAttribute(dest%etaLine, source%etaLine)
     call copyAttribute(dest%etaCont, source%etaCont)
+    call copyAttribute(dest%pahEmissivity, source%pahEmissivity)
     call copyAttribute(dest%biasCont3d, source%biasCont3d)
     call copyAttribute(dest%biasLine3d, source%biasLine3d)
     call copyAttribute(dest%distanceGrid, source%distanceGrid)
@@ -18312,6 +18377,7 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%nScatters, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%nTot, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%etaCont, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%pahEmissivity, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%etaLine, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%chiLine, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%biasCont3D, thisOctal%maxChildren)
@@ -18421,6 +18487,7 @@ end function readparameterfrom2dmap
        call allocateAttribute(thisOctal%edgeCell,thisOctal%maxchildren)
 
        call allocateAttribute(thisOctal%etaCont, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%pahEmissivity, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%nh, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%ne, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%nhi, thisOctal%maxChildren)
@@ -18659,6 +18726,7 @@ end function readparameterfrom2dmap
 
   subroutine deallocateOctalDynamicAttributes(thisOctal)
     type(OCTAL) :: thisOctal
+    call deallocateAttribute(thisOctal%pahEmissivity)
     call deallocateAttribute(thisOctal%iEquationOfState)
     call deallocateAttribute(thisOctal%blackBody)
     call deallocateAttribute(thisOctal%iAnalyticalVelocity)
@@ -19706,15 +19774,15 @@ end function readparameterfrom2dmap
 
        else ! cylindrical
           if (thisOctal%splitAzimuthally) then
-             z1 = thisOctal%centre%z - thisOctal%subcellSize
+             z1 = thisOctal%centre%z - thisOctal%subcellSize*0.99999d0
              z2 = thisOctal%centre%z
-             z3 = thisOctal%centre%z + thisOctal%subcellSize
+             z3 = thisOctal%centre%z + thisOctal%subcellSize*0.99999d0
              phi1 = thisOctal%phi - thisOctal%dPhi/2.d0
              phi2 = thisOctal%phi
              phi3 = thisOctal%phi + thisOctal%dPhi/2.d0
-             r1 = thisOctal%r - thisOctal%subcellSize
+             r1 = thisOctal%r - thisOctal%subcellSize*0.99999d0
              r2 = thisOctal%r
-             r3 = thisOctal%r + thisOctal%subcellSize
+             r3 = thisOctal%r + thisOctal%subcellSize*0.99999d0
 
              ! bottom level
 
@@ -19754,14 +19822,14 @@ end function readparameterfrom2dmap
 
           else
 
-             z1 = thisOctal%centre%z - thisOctal%subcellSize
+             z1 = thisOctal%centre%z - thisOctal%subcellSize*0.9999d0
              z2 = thisOctal%centre%z
-             z3 = thisOctal%centre%z + thisOctal%subcellSize
+             z3 = thisOctal%centre%z + thisOctal%subcellSize*0.9999d0
              phi1 = thisOctal%phi - thisOctal%dPhi/2.d0
              phi2 = thisOctal%phi + thisOctal%dPhi/2.d0
-             r1 = thisOctal%r - thisOctal%subcellSize
+             r1 = thisOctal%r - thisOctal%subcellSize*0.9999d0
              r2 = thisOctal%r
-             r3 = thisOctal%r + thisOctal%subcellSize
+             r3 = thisOctal%r + thisOctal%subcellSize*0.9999d0
 
 
              ! bottom level

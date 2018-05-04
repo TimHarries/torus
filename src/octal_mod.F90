@@ -248,7 +248,8 @@ MODULE octal_mod
 
     REAL(double), DIMENSION(:), pointer                 :: chiLine  => null()       ! line opacity
     REAL(double), DIMENSION(:), pointer                 :: etaLine  => null()       ! line emissivity
-    REAL(double), DIMENSION(:), pointer                 :: etaCont   => null()      ! line emissivity
+    REAL(double), DIMENSION(:), pointer                 :: etaCont   => null()      ! cont emissivity
+    REAL(double), DIMENSION(:), pointer                 :: pahEmissivity   => null()      ! pah emissivity
     REAL(double), DIMENSION(:), pointer                 :: biasLine3D  => null()    ! grid bias distribution
     REAL(double), DIMENSION(:), pointer                 :: biasCont3D  => null()   ! grid bias distribution
     REAL(double), DIMENSION(:), pointer                 :: source  => null()   ! source for poissons equation

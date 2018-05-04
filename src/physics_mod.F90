@@ -451,10 +451,11 @@ contains
     real(double) :: packetWeight
     real(double) :: temp, dustMass, ksca, kabs
     real(double) :: temp2
+    character(len=20) :: fname
     integer :: i
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
     integer, parameter :: nMuMie = 200
-    integer :: nlower, nupper, sign
+    integer :: nlower, nupper, sign, u
     type(GRIDTYPE) :: grid
 #ifdef MPI
 #ifdef PHOTOION
@@ -469,6 +470,10 @@ contains
     
     if (usePAH) then
        call readPAHEmissivityTable()
+       do u = 1, 8
+          write(fname,'(a,i1,a)') "pah",u
+          call testPAHtable(dble(10.d0**u), fname)
+       enddo
     endif
 
 !#ifdef MPI

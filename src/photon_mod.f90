@@ -50,6 +50,7 @@ module photon_mod
      logical :: thermal ! thermal emission?
      logical :: scattered ! has photon been scattered?
      logical :: stellar ! stellar emission
+     logical :: pah ! pah emission
      logical :: observerPhoton
      real :: tau
      integer :: iLam
@@ -538,7 +539,7 @@ contains
        filterSet, mie,  starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,&
        VoigtProf,  photonFromEnvelope, dopShift, sourceOctal, sourceSubcell)
     use inputs_mod, only : photoionization, pencilbeam, lineEmission, vRot, useBias, &
-         narrowBandImage, nspot, thetaSpot, phiSpot
+         narrowBandImage, nspot, thetaSpot, phiSpot, usePAH
     use atom_mod, only: bLambda, bigGamma
     use amr_mod
     use phasematrix_mod
@@ -649,7 +650,7 @@ contains
     real :: temperature,  N_HI
     real(double) :: rho
     real(double) :: nu_shuffled, lambda_shuffled, nu, Gamma, Ne
-    real(double) :: r3_oct, sourceWeight
+    real(double) :: r3_oct, sourceWeight, probPAH
     type(Vector) ::  velocity
 !    type(octal), pointer :: thisOctal
 
@@ -675,6 +676,7 @@ contains
     thisPhoton%weight = 1.d0
     thisPhoton%stokes%i = 1.d0 * energyPerPhoton
     thisPhoton%scattered = .false.
+    thisPhoton%pah = .false.
     thisPhoton%thermal = .false.
     thisPhoton%stellar = .false.
     thisPointSource = .false.
@@ -793,6 +795,17 @@ contains
 
                   thisPhoton%position = randomPositionInCell(sourceOctal, sourcesubcell)
 
+
+                  if (usePAH) then
+                     probPAH = sourceOctal%PAHemissivity(sourceSubcell) / &
+                          sourceOctal%etaCont(sourcesubcell)
+                     call randomNumberGenerator(getDouble=randomDouble)
+                     if (randomDouble < probPAH) then
+                        thisPhoton%thermal = .false.
+                        thisPhoton%pah = .true.
+                     endif
+                  endif
+                
 
                 if (grid%geometry(1:7) == "ttauri"    .or.  &
                     grid%geometry(1:9) == "luc_cir3d" .or.  &

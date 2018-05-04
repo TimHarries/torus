@@ -804,6 +804,9 @@ module image_mod
                 call ConvertArrayToJanskiesPerBeam(array, lambdaImage, dx, objectDistance, beamArea)
              case("MJy/str")
                 call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, samplings)
+             case("mJy/arcsec2")
+                call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, samplings)
+                array = array * 2.340443d-5 * 1000.d0
              case("Jy/pix")
                 call ConvertArrayToJanskysPerPix(array, lambdaImage, objectDistance)
              case("mag/arcsec2")
@@ -823,6 +826,338 @@ module image_mod
 
        call ftppre(unit,group,fpixel,nelements,array,status)
 
+       !
+       !  Write another optional keyword to the header.
+       !
+!       call ftpkyj(unit,'EXPOSURE',1500,'Total Exposure Time',status)
+
+       select case (fluxUnits)
+          case("MJy/str")
+             call ftpkys(unit,'BUNIT', "MJy/sr", "units of image values", status)
+          case("mJy/arcsec2")
+             call ftpkys(unit,'BUNIT', "mJY/arcsec2", "units of image values", status)
+          case("Jy/pix")
+             call ftpkys(unit,'BUNIT', "Jy/Pix", "units of image values", status)
+          case("Jy/beam")
+             call ftpkys(unit,'BUNIT', "Jy/beam", "units of image values", status)
+          case("mag/arcsec2")
+             call ftpkys(unit,'BUNIT', "MAG/ARCSEC2", "units of image values", status)
+          case("flux/arcsec2")
+             call ftpkys(unit,'BUNIT', "FLUX/ARCSEC2", "units of image values", status)
+          case DEFAULT
+             call writeFatal("Flux unit not recognised: "//trim(fluxUnits))
+       end select
+
+
+
+
+       ! write keywords and set values which depend on the axis units
+       select case (axisUnits)
+       case ("arcsec")
+          dx = ((dx * 1.d10)/objectDistance)*radtodeg
+          dy = ((dy * 1.d10)/objectDistance)*radtodeg
+          refValX = (( image%xAxisCentre(1) * 1.d10)/objectDistance)*radiansToArcsec
+          refValY = (( image%yAxisCentre(1) * 1.d10)/objectDistance)*radiansToArcsec
+          refValX = 0.
+          refValY = 0.
+          call ftpkys(unit,'CUNIT1', "deg", "x axis unit", status)
+          call ftpkys(unit,'CUNIT2', "deg", "y axis unit", status)
+       case ("mas")
+          dx = ((dx * 1.d10)/objectDistance)*radiansToArcsec*1000.d0
+          dy = ((dy * 1.d10)/objectDistance)*radiansToArcsec*1000.d0
+          refValX = (( image%xAxisCentre(1) * 1.d10)/objectDistance)*radiansToArcsec
+          refValY = (( image%yAxisCentre(1) * 1.d10)/objectDistance)*radiansToArcsec
+          refValX = 0.
+          refValY = 0.
+          call ftpkys(unit,'CUNIT1', "deg", "x axis unit", status)
+          call ftpkys(unit,'CUNIT2', "deg", "y axis unit", status)
+       case ("au", "AU")
+          dx = (dx * 1.d10)/autocm
+          dy = (dy * 1.d10)/autocm
+          refValX = image%xAxisCentre(1) * 1.d10 / autocm
+          refValY = image%yAxisCentre(1) * 1.d10 / autocm
+          call ftpkys(unit,'CUNIT1', "AU", "x axis unit", status)
+          call ftpkys(unit,'CUNIT2', "AU", "y axis unit", status)
+       case ("pc","PC")
+          dx = (dx * 1.d10)/pctocm
+          dy = (dy * 1.d10)/pctocm
+          refValX = image%xAxisCentre(1) * 1.d10 / pctocm
+          refValY = image%yAxisCentre(1) * 1.d10 / pctocm
+          call ftpkys(unit,'CUNIT1', "PC", "x axis unit", status)
+          call ftpkys(unit,'CUNIT2', "PC", "y axis unit", status)
+       case ("cm")
+          dx = dx * 1.d10
+          dy = dy * 1.d10
+          refValX = image%xAxisCentre(1) * 1.d10
+          refValY = image%yAxisCentre(1) * 1.d10
+          call ftpkys(unit,'CUNIT1', "cm", "x axis unit", status)
+          call ftpkys(unit,'CUNIT2', "cm", "y axis unit", status)
+       case default
+          call writeFatal("Unrecognised units for image axis: "//trim(axisUnits))
+       end select
+
+       if (axisUnits == "arcsec") then 
+!       if (.false.) then
+          ! write x-axis keywords
+          call ftpkys(unit,'CTYPE1',"RA---SIN","x axis", status)
+          call ftpkyd(unit,'CRPIX1',dble(image%nx/2.d0),-3,'reference pixel',status)
+          call ftpkyd(unit,'CDELT1',-dx,10,' ',status)
+          call ftpkyd(unit,'CROTA1',0.d0,10,' ',status)
+          call ftpkyd(unit,'CRVAL1',refValX,-5,'coordinate value at reference point',status)
+
+          ! write y-axis keywords
+          call ftpkys(unit,'CTYPE2',"DEC--SIN","y axis", status)
+          call ftpkyd(unit,'CRPIX2',dble(image%ny/2.d0),-3,'reference pixel',status)
+          call ftpkyd(unit,'CDELT2',dy,10 ,' ',status)
+          call ftpkyd(unit,'CROTA2',0.d0,10,' ',status)
+          call ftpkyd(unit,'CRVAL2',refValY,-5,'coordinate value at reference point',status)
+
+!          call ftpkyd(unit,'CD1_1',dx,10,' ',status)
+!          call ftpkyd(unit,'CD1_2',0.d0,10,' ',status)
+!          call ftpkyd(unit,'CD2_1',0.d0,10,' ',status)
+!          call ftpkyd(unit,'CD2_2',dy,10,' ',status)
+
+       else
+          ! write x-axis keywords
+          call ftpkys(unit,'CTYPE1'," X","x axis", status)
+          call ftpkyd(unit,'CRPIX1',0.5_db,-3,'reference pixel',status)
+          call ftpkyd(unit,'CDELT1',dx,10,' ',status)
+          call ftpkyd(unit,'CRVAL1',refValX,-3,'coordinate value at reference point',status)
+
+          ! write y-axis keywords
+          call ftpkys(unit,'CTYPE2'," Y","y axis", status)
+          call ftpkyd(unit,'CRPIX2',0.5_db,-3,'reference pixel',status)
+          call ftpkyd(unit,'CDELT2',dy,10 ,' ',status)
+          call ftpkyd(unit,'CRVAL2',refValY,-3,'coordinate value at reference point',status)
+
+       endif
+
+       !
+       !  Close the file and free the unit number.
+       !
+       call ftclos(unit, status)
+       call ftfiou(unit, status)
+
+       rfile = filename(1:(len(trim(filename))-5))//".dat"
+       open(22,file=rfile,status="unknown",form="formatted")
+       do k = 1,100
+          rMin = dble(k-1)/100.d0 * image%xAxisCentre(image%nx)
+          rMax = dble(k)/100.d0 *  image%xAxisCentre(image%nx)
+          tot = 0.d0
+          n = 0
+          do  i = 1, image%nx
+             do j = 1, image%ny
+                r = sqrt(image%xAxisCentre(i)**2 + image%yAxisCentre(j)**2)
+                if ((r >= rMin).and.(r < rMax)) then
+                   n  = n + 1
+                   tot = tot + array(i,j)
+                endif
+             enddo
+          enddo
+          if (n/=0)write(22,*) 0.5d0*(rMin+rMax)*1.d10/objectDistance*radianstoarcsec,tot/dble(n)
+       enddo
+       close(22)
+                
+          
+       !
+       !  Check for any error, and if so print out error messages
+       !
+       if (status > 0) then
+          call printFitserror(status)
+       end if
+
+     End subroutine writeFitsImage
+
+     subroutine writeGPITVFitsImage(image, filename, objectDistance, type, fluxUnits, axisUnits, lambdaImage,  &
+          pointTest, cylinderTest)
+
+       use inputs_mod, only : fwhmPixels, beamArea
+       use fits_utils_mod
+       use utils_mod, only : returnFlux
+       use image_utils_mod
+
+! Arguments
+       type(IMAGETYPE),intent(in) :: image
+       character (len=*), intent(in) :: filename, type, fluxUnits, axisUnits
+       character(len=80) :: rFile
+       real(double) :: objectDistance
+       real, intent(in), optional :: lambdaImage
+       logical, optional :: pointTest, cylinderTest
+! Local variables
+       integer :: status,unit,blocksize,bitpix,naxis,naxes(2)
+       integer :: group,fpixel,nelements
+       real, allocatable :: array(:,:)
+       integer, allocatable :: samplings(:,:)
+       integer :: i, j,k, n
+       real(double) :: rMin, rMax, r, tot, starFlux
+
+       real(double) :: scale,  dx, dy, phi
+       logical :: simple,extend
+       logical :: oldFilePresent
+       character(len=80) :: message
+       real(double) :: refValX, refValY ! co-ordinate values in reference pixel
+       real(double) :: xt, yt
+
+       dx = image%xAxisCentre(2) - image%xAxisCentre(1)
+       dy = image%yAxisCentre(2) - image%yAxisCentre(1)
+
+
+       allocate(array(1:image%nx, 1:image%ny))
+       allocate(samplings(1:image%nx, 1:image%ny))
+       call writeInfo("Writing fits image to: "//trim(filename),TRIVIAL)
+
+       call checkBitpix(FitsBitpix)
+
+       status=0
+       !
+       !  Delete the file if it already exists, so we can then recreate it.
+       !
+       inquire(file=filename, exist=oldFilePresent)
+       if (oldFilePresent) then 
+          call writeInfo("Removing old file", FORINFO)
+          call deleteFile(filename, status)
+       end if
+
+       !
+       !  Get an unused Logical Unit Number to use to open the FITS file.
+       !
+       call ftgiou ( unit, status )
+       !
+       !  Create the new empty FITS file.
+       !
+       blocksize=1
+       call ftinit(unit,filename,blocksize,status)
+       !
+       !  Initialize parameters about the FITS image (300 x 200 16-bit integers).
+       !
+       simple=.true.
+       bitpix=fitsbitpix
+       naxis=2
+       naxes(1)=image%nx
+       naxes(2)=image%ny
+       extend=.true.
+       !
+       !  Write the required header keywords.
+       !
+       call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+       !
+       !  Write the array to the FITS file.
+       !
+       group=1
+       fpixel=1
+       nelements=naxes(1)*naxes(2)
+
+       if (fwhmPixels > 0.d0) call smoothImage(image, fwhmpixels)
+
+       scale = 1.
+       array = 0.
+       select case(type)
+          case("intensity")
+             array = real(image%pixel%i * scale)
+!             print *, "image%pixel%i", image%pixel%i
+          case("stokesq")
+             where (image%pixel%i /= 0.d0) 
+                array = real(image%pixel%q/image%pixel%i)
+             end where
+          case("stokesu")
+             where (image%pixel%i /= 0.d0) 
+                array = real(image%pixel%u/image%pixel%i)
+             end where
+          case("pol")
+             array = real(sqrt(image%pixel%q**2 + image%pixel%u**2))
+
+          case("polr2")
+             array = real(sqrt(image%pixel%q**2 + image%pixel%u**2))
+             if (abs(lambdaImage - 1.22d4)/1.22d4 < 1.d-4) then
+                starFlux = returnFlux(7.3d0, "J")
+                starFlux = 10.d0**(-0.4d0 * 7.3d0) 
+             else if (abs(lambdaImage - 1.63d4)/1.63d4 < 1.d-4) then
+                starFlux = returnFlux(6.9d0, "H")
+                starFlux = 10.d0**(-0.4d0 * 6.9d0)
+             else
+                starFlux = 1.d0
+             endif
+             do i = 1, image%nx
+                do j = 1, image%ny
+                   xt = (( image%xAxisCentre(i) * 1.d10)/objectDistance)*radiansToArcsec
+                   yt = (( image%yAxisCentre(j) * 1.d10)/objectDistance)*radiansToArcsec
+                   array(i,j) = array(i,j) * real(fourPi * (xt**2 + yt**2)) ! /starFlux )
+                enddo
+             enddo
+
+          case("qr")
+             do i = 1, image%nx
+                do j = 1, image%ny
+                   phi = atan2(image%xAxisCentre(i), image%yAxisCentre(j)) + piby2
+                   array(i,j) = real(cos(2.d0*phi) * image%pixel(i,j)%q + sin(2.d0*phi)*image%pixel(i,j)%u)
+                enddo
+             enddo
+
+          case("ur")
+             do i = 1, image%nx
+                do j = 1, image%ny
+                   phi = atan2(image%xAxisCentre(i), image%yAxisCentre(j)) + piby2
+                   array(i,j) = real(-sin(2.d0*phi) * image%pixel(i,j)%q + cos(2.d0*phi)*image%pixel(i,j)%u)
+                enddo
+             enddo
+
+          case("pa")
+             array = real(-0.5*atan2(image%pixel%u,image%pixel%q)*radtodeg)
+             where (array < 0.e0) 
+                array = array + 180.e0
+             end where
+             where (array > 180.e0) 
+                array = array - 180.e0
+             end where
+          case DEFAULT
+             write(*,*) "Unknown type in writefitsimage ",type
+       end select
+
+
+
+       samplings = 0
+
+! Convert pixel units if a wavelength has been provided
+
+       if (present(lambdaImage)) then 
+          write(message,"(a,f14.2,a)") "Converting flux units using lambda= ", &
+               lambdaImage, " Angstrom"
+          call writeInfo(message,FORINFO)
+          if(present(pointTest)) then
+             call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, &
+                  samplings, pointTest=.true.)
+          else if(present(cylinderTest)) then
+             samplings = image%nSamples
+             call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, &
+                  samplings, cylinderTest=.true.)
+          else
+             select case (trim(fluxUnits))
+             case("Jy/beam")
+                call ConvertArrayToJanskiesPerBeam(array, lambdaImage, dx, objectDistance, beamArea)
+             case("MJy/str")
+                call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, samplings)
+             case("Jy/pix")
+                call ConvertArrayToJanskysPerPix(array, lambdaImage, objectDistance)
+             case("mag/arcsec2")
+                call ConvertArrayToMagPerSqArcsec(array, lambdaImage, dx, objectDistance)
+             case("flux/arcsec2")
+                call ConvertArrayToFluxPerSqArcsec(array, lambdaImage, dx, objectDistance)
+             case DEFAULT
+                call writeFatal("Flux unit not recognised: "//trim(fluxUnits))
+             end select
+          end if
+       else
+          call writeInfo("No wavelength provided, not converting axis units")
+       endif
+
+       ! Add keywords for bitpix=16 and bitpix=8 
+
+       write(*,*) "minimum/maximum value in image ",minval(array), maxval(array)
+       call addScalingKeywords(maxval(array), minval(array), unit, bitpix)
+
+       ! write Array
+
+       call ftppre(unit,group,fpixel,nelements,array,status)
        !
        !  Write another optional keyword to the header.
        !
@@ -891,7 +1226,8 @@ module image_mod
           call writeFatal("Unrecognised units for image axis: "//trim(axisUnits))
        end select
 
-       if (axisUnits == "arcsec") then 
+!       if (axisUnits == "arcsec") then 
+       if (.false.) then
           ! write x-axis keywords
           call ftpkys(unit,'CTYPE1',"RA---SIN","x axis", status)
           call ftpkyd(unit,'CRPIX1',dble(image%nx/2.d0),-3,'reference pixel',status)
@@ -960,7 +1296,7 @@ module image_mod
           call printFitserror(status)
        end if
 
-     End subroutine writeFitsImage
+     End subroutine writeGPITVFitsImage
 
      subroutine writeFitsColumnDensityImage(image, filename)
 

@@ -3155,6 +3155,13 @@ end subroutine readHeIIrecombination
     if (writeoutput) write(*,*) "Probabilities computed."
     totalEmission = totalEmission * 1.d30
 
+       call writeVtkFile(grid, "prob.vtk", &
+            valueTypeString=(/"rho        ", "temperature", "HI         ", &
+            "tdust      ", &
+            "dust1      ", &
+            "etacont    "/))
+
+
     ! Probability that a photon comes from a source rather than the envelope
     chanceSource = lCore / (lCore + totalEmission)
     ! Fraction of photons actually used to sample the sources
