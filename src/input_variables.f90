@@ -955,6 +955,7 @@
 
   character(len=80), protected :: sphdataFilename
   character(len=80), protected :: inputFileFormat 
+  logical, protected :: sphToGridSimple
   real, protected    :: hcritPercentile
   real, protected    :: hmaxPercentile
   real, protected    :: sph_norm_limit

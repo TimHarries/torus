@@ -1517,6 +1517,9 @@ contains
           call getLogical("dragon", dragon, cLine, fLine, nLines, &
                "SPH file is from dragon SPH: ","(a,1l,a)",.false., ok, .false.)
 
+          call getLogical("sphToGridSimple", sphToGridSimple, cLine, fLine, nLines, &
+               "Use simple SPH to grid mapping: ","(a,1l,a)",.false., ok, .false.)
+
           call getReal("hcritPercentile", hcritPercentile, 1., cLine, fLine, nLines, &
                "Percentile for hcrit: ", "(a,f10.4,1x,a)", 0.80, ok, .false.)
 
