@@ -494,7 +494,7 @@ contains
 
     !    call luSlv(matrixA, matrixB, nMatrix)
     call GAUSSJ(matrixA, nMatrix, nMatrix, matrixB, 1, nMatrix, ok)
-
+    if (.not.ok) goto 666
     !    allocate(indx(1:nMatrix))
     !    call ludcmp(matrixA, nMatrix, nMatrix, indx, d)
     !    call lubksb(matrixA, nMatrix, nMatrix, indx, matrixB)
@@ -519,6 +519,8 @@ contains
        if (continuumGround(iatom)) npops(iAtom,thisAtom(iatom)%nlevels) = matrixB(1+nOffset(iatom+1))
 !       write(*,*) "iatom ",iatom, continuumGround(iatom)
     enddo
+
+666 continue
     deallocate(matrixA, matrixB)
 
 
@@ -1356,8 +1358,8 @@ contains
     integer :: iStage
     real(double), allocatable :: oldpops(:,:), newPops(:,:), dPops(:,:), mainoldpops(:,:)
     real(double) :: newNe
-    real(double), parameter :: underCorrect = 0.8d0
-    real(double), parameter :: underCorrectne = 0.8d0
+    real(double), parameter :: underCorrect = 0.5d0
+    real(double), parameter :: underCorrectne = 1.d0
     real(double) :: dne
     logical :: sobolevApprox
     real(double) :: fac
@@ -1396,7 +1398,7 @@ contains
     integer, parameter :: iNgStep = 5
     integer :: nStage
     real(double) :: inu_times_betacmn, betamn, sobJnuLine
-
+    logical :: dongStep
 #ifdef MPI
     ! For MPI implementations
     integer       ::   my_rank        ! my processor rank
@@ -1603,6 +1605,8 @@ contains
 
     sobolevApprox = .true.
 
+    dongStep = .true.
+
     if (sobolevApprox) nStage = 1
     do iStage = 1, nStage
 
@@ -1683,7 +1687,7 @@ contains
           !$OMP PRIVATE(weightOmega, icont, neiter, iter,popsConverged, oldpops, mainoldpops, firstCheckonTau) &
           !$OMP PRIVATE(fac,dne,message,itmp,ne,recalcjbar,ratio,nstar,dpops,newne) &
           !$OMP PRIVATE(nhit, jnucont,tauav,newpops,ntot,iatom,itrans) &
-          !$OMP SHARED(octalArray, grid, ioctal_beg, ioctal_end, nsource, nray, nrbbtrans) &
+          !$OMP SHARED(dongstep, octalArray, grid, ioctal_beg, ioctal_end, nsource, nray, nrbbtrans) &
           !$OMP SHARED(indexRbbtrans, indexatom, sobolevApprox, ifilename) &
                !$OMP SHARED(freq,dfreq,nfreq, natom,myrankiszero,debug,rcore, iseed, fixedRays) &
           !$OMP SHARED(source, thisAtom, myrankGlobal, writeoutput, noctals)
@@ -1852,25 +1856,27 @@ contains
                             thisOctal%newAtomLevel(subcell,1:nAtom,:) = 1.d-30
                          end where
 
-                         oldpops1 = oldpops2
-                         oldpops2 = oldpops3
-                         oldpops3 = oldpops4
-                         oldpops4(1:nAtom,:) = thisOctal%newAtomLevel(subcell,1:nAtom,:)
-
-                         if (mod(iter, iNgStep) == 0) then
-                            !                               if (writeoutput) write(*,*) "Doing Ng acceleration step"
-                            do iAtom = 1, nAtom
-                               !                                  if (writeoutput) then
-                               !                                     write(*,*) "oldpops 1",real(oldpops1(iatom, 1:6))
-                               !                                     write(*,*) "oldpops 2",real(oldpops2(iatom, 1:6))
-                               !                                     write(*,*) "oldpops 3",real(oldpops3(iatom, 1:6))
-                               !                                     write(*,*) "oldpops 4",real(oldpops4(iatom, 1:6))
-                               !                                  endifwrite(
-                               call ngStep(thisOctal%newAtomLevel(subcell, iAtom, :), &
-                                    oldpops1(iAtom, :), oldpops2(iAtom, :), &
-                                    oldpops3(iAtom, :), oldpops4(iAtom, :), length=thisAtom(iAtom)%nLevels)
-                               !                               if (writeoutput) write(*,*) "newpops ",real(thisOctal%newAtomLevel(subcell, iAtom, 1:6))
-                            enddo
+                         if (dongStep) then
+                            oldpops1 = oldpops2
+                            oldpops2 = oldpops3
+                            oldpops3 = oldpops4
+                            oldpops4(1:nAtom,:) = thisOctal%newAtomLevel(subcell,1:nAtom,:)
+                            
+                            if (mod(iter, iNgStep) == 0) then
+                               !                               if (writeoutput) write(*,*) "Doing Ng acceleration step"
+                               do iAtom = 1, nAtom
+                                  !                                  if (writeoutput) then
+                                  !                                     write(*,*) "oldpops 1",real(oldpops1(iatom, 1:6))
+                                  !                                     write(*,*) "oldpops 2",real(oldpops2(iatom, 1:6))
+                                  !                                     write(*,*) "oldpops 3",real(oldpops3(iatom, 1:6))
+                                  !                                     write(*,*) "oldpops 4",real(oldpops4(iatom, 1:6))
+                                  !                                  endifwrite(
+                                  call ngStep(thisOctal%newAtomLevel(subcell, iAtom, :), &
+                                       oldpops1(iAtom, :), oldpops2(iAtom, :), &
+                                       oldpops3(iAtom, :), oldpops4(iAtom, :), length=thisAtom(iAtom)%nLevels)
+                                  !                               if (writeoutput) write(*,*) "newpops ",real(thisOctal%newAtomLevel(subcell, iAtom, 1:6))
+                               enddo
+                            endif
                          endif
                          newNe = tiny(newNe)
                          do iAtom = 1, nAtom
@@ -1891,7 +1897,7 @@ contains
                                     SUM(thisOctal%newAtomLevel(subcell, iAtom, 1:thisAtom(iAtom)%nLevels-1)) &
                                     * dble(thisAtom(iAtom)%charge)
                                newne = newne + thisOctal%newAtomLevel(subcell, iAtom, thisAtom(iAtom)%nLevels) &
-                                    * dble((thisAtom(iAtom)%charge+1))
+                                       * dble((thisAtom(iAtom)%charge+1))
                             endif
                          enddo
                          if (newNe < 0.d0) then
@@ -1979,7 +1985,6 @@ contains
                                  thisOctal%newAtomLevel(subcell,3,thisAtom(3)%nlevels)
                          endif
 
-                      enddo
 
                       !                      write(*,*) "Main iteration route converged after ", iter, " iterations"
 
@@ -2031,6 +2036,7 @@ contains
                               log10(thisOctal%newAtomLevel(subcell,3,thisAtom(3)%nlevels) / ntot), &
                               thisOctal%newAtomLevel(subcell,3,thisAtom(3)%nlevels)
                       endif
+                   enddo
 
 
 !                      if (myRankisZero) then
@@ -2072,7 +2078,7 @@ contains
                       !             enddo
                       !             close(31)
                       !             stop
-                   endif
+                      endif
                 endif
 
              end do
@@ -3154,7 +3160,7 @@ contains
        if (occultingDisc) then
           if (distToDisc < distToGrid) then
              i0 = tiny(i0)
-             write(*,*) "ray hit occulting disc"
+!             write(*,*) "ray hit occulting disc"
              goto 666
           endif
        endif

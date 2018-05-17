@@ -2905,7 +2905,7 @@ contains
 
 
     call getLogical("thickcont", opticallyThickContinuum, cLine, fLine, nLines, &
-         "Continuum is optically thick: ","(a,1l,a)", .false., ok, .false.)
+         "Continuum is optically thick: ","(a,1l,a)", .true., ok, .false.)
 
     call getDouble("xabundance", Xabundance, 1.d0, cLine, fLine, nLines, &
             "Hydrogen abundance (by number): ","(a,f7.3,a)",1.d0, ok, .true.)

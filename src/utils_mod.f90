@@ -2245,7 +2245,6 @@ SUBROUTINE GAUSSJ(A,N,NP,B,M,MP, ok)
                  ENDIF
               ELSE IF (IPIV(K).GT.1) THEN
                  write(*,*) '! Singular matrix: pivot'
-                 stop
                  ok = .false.
                  goto 666
               ENDIF
