@@ -13,7 +13,7 @@ double precision :: I=0.0
 double precision :: I_plus=0.0
 double precision :: I_minus=0.0
 double precision :: j 
-double precision :: j_o = 5.644345149731824e23
+double precision :: j_o = 1.408978936035213e26
 double precision :: L = 3.e18
 integer :: counter, ierr
 
