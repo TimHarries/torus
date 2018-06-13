@@ -1550,6 +1550,10 @@ contains
                "Convert density to HI:", "(a,1l,1x,a)", .false., ok, .false.)
           call getLogical("sphwithchem", sphwithchem, cLine, fLine, nLines, &
                "SPH has chemistry information:", "(a,1l,1x,a)", .false., ok, .false.)
+          if (sphwithchem) then
+             call getDouble("isotopologuefrac", isotopologueFraction, 1.d0, cLine, fLine, nLines, &
+                  "Fractional abundance of this isotopologue: ", "(a,f8.3,1x,a)", 0.d0, ok, .false.)
+          end if
 
 ! If the dump format is ASCII then we can specify which columns to read H2 and molecular abundance from
           if (inputFileFormat=="ascii" .or. inputFileFormat=="ascii-gadget") then
