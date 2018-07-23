@@ -112,7 +112,7 @@ program torus
   endif
 
   call initBibCode()
-  call setVersion("V3.0.1")
+  call setVersion("V4.0")
   grid%version = torusVersion
   currentlyDoingHydroStep = .false.
   verbosityLevel = 5
