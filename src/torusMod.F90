@@ -81,7 +81,7 @@ subroutine torus(b_idim,  b_npart,       b_nptmass,  b_num_gas,   &
 
   call writeTorusBanner()
 
-  call setVersion("V2.0")
+  call setVersion("V4.0")
   grid%version = torusVersion
   verbosityLevel = 5
   call writeBanner("TORUS ("//trim(torusVersion)//") model","-",IMPORTANT)

@@ -4,4 +4,4 @@
 ### TORUS radiative transfer code ###
 
 * TORUS radiation transfer and hydrodynamics code
-* Version 3
+* Version 4

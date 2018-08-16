@@ -739,13 +739,14 @@ contains
         type(VECTOR) :: vec
         type(PHOTONSOURCE) :: source
 
-        logical :: subcellHasInterface, hitsInterface, doesEnter, firstwrite, stored
+        logical :: subcellHasInterface, hitsInterface, doesEnter, stored
         type(mediumProps) :: thisMedium, nextMedium
         type(objectIntersection) :: intersect
         type(DETECTORTYPE) :: thisDetector
         integer, parameter :: maxEvents = 100000
-        type(VECTOR) :: cellEvent(maxEvents)
-        real(double) :: lengthEvent(maxEvents), distToDet, tauToDet
+        type(VECTOR), allocatable :: cellEvent(:)
+        real(double), allocatable :: lengthEvent(:)
+        real(double) :: distToDet, tauToDet
         integer :: nEvent
         integer(bigint) :: iMonte_beg, iMonte_end
 #ifdef MPI
@@ -793,23 +794,21 @@ contains
                  end if
 #endif    
 
+                 allocate(cellEvent(maxevents), lengthEvent(maxevents))
 
-!$OMP PARALLEL DEFAULT(NONE) &
-!$OMP PRIVATE(i, firstWrite, photonNormal, photonPosition, photonWeight, photonDirection, photonWavelength, nEvent) &
+!$OMP PARALLEL DO DEFAULT(NONE) &
+!$OMP PRIVATE(i, photonNormal, photonPosition, photonWeight, photonDirection, photonWavelength, nEvent) &
 !$OMP PRIVATE(dist, hitgrid, absorbed, countEvent, thisOctal, subcell, thisObjectID, thisMedium, subcellHasInterface) &
 !$OMP PRIVATE(distToDet, tauToDet) &
 !$OMP PRIVATE(intersect, tautoboundary, r, tau, cellEvent, lengthEvent, albedo, hitsInterface, vec, nextMedium, doesenter, stored) &
-!$OMP SHARED(nPhotons, thisDetector, source, grid, smallestCellSize, iMonte_beg, iMonte_end, writeoutput) 
-
-!$OMP DO SCHEDULE(DYNAMIC,2)
+!$OMP SHARED(nPhotons, thisDetector, source, grid, smallestCellSize, iMonte_beg, iMonte_end, writeoutput) &
+!$OMP SCHEDULE(DYNAMIC,2)
         do i = iMonte_beg, iMonte_end
 
            if (mod(i-iMonte_beg+1,(iMonte_end-iMonte_beg)/10)==0) then
               if (writeoutput) write(*,*) nint(100.*real(i-iMonte_beg+1)/real(iMonte_end-iMonte_beg)), " % complete"
            endif
 
-
-           firstwrite=.true.
 
             call  emitPhoton(source, photonPosition, photonDirection, photonWavelength, photonWeight, photonNormal)
             nEvent = 0
@@ -853,14 +852,6 @@ contains
                     if(intersect%globalObjectId > -1 .and. intersect%distance < dist) then ! if interface is closer than boudary
                         hitsInterface = .true.
                         dist = intersect%distance
-
-
-
-                    if (intersect%globalObjectID==1.and.firstwrite) then
-                       firstwrite=.false.
-                    endif
-
-
                     else
                         hitsInterface = .false.
                     end if
@@ -1012,15 +1003,16 @@ contains
             else
 !               write(*,*) "photon absorbed after ", countEvent, "events"
             endif
-       end do ! all photons
-!$OMP END DO
+         end do ! all photons
 
-!$OMP END PARALLEL
+!$OMP END PARALLEL DO
 
 #ifdef MPI
         call updateGridMPI(grid)
         call gatherDetector(thisDetector)
 #endif
+
+        deallocate(cellEvent, lengthEvent)
 
         if (writeoutput) call writeDetectorfile(thisDetector, detFilename)
         call writeInfo("Done.",TRIVIAL)

@@ -186,8 +186,8 @@ contains
     end do
 
     mean_deviation = deviation/real(npoints)
-    write(*,'(a,es10.4)') "Mean deviation= ", mean_deviation
-    write(*,'(a,es10.4)') "Tolerance=      ", tolerance
+    write(*,'(a,es11.4)') "Mean deviation= ", mean_deviation
+    write(*,'(a,es11.4)') "Tolerance=      ", tolerance
     if (mean_deviation > tolerance) then 
        fail=.true.
     endif
