@@ -834,7 +834,7 @@ contains
     type(DATACUBE) :: cube
     real(double) :: freq
 
-    cube%vAxis(:) = freq*(1.d0 + ((cube%vAxis(:)*1.d5)/cspeed))
+    cube%vAxis(:) = freq*(1.d0 - ((cube%vAxis(:)*1.d5)/cspeed))
 
   end subroutine convertVelocityToHz
 
