@@ -1,6 +1,7 @@
 .DS_Store
 build
 bin
+lib
 run
 stable_version_tests
 *~

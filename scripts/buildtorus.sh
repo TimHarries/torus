@@ -4,7 +4,8 @@
 #
 # Original: D. Acreman, February 2012
 # Updated: October 2012
-# Updated: Added Isca November 2016
+# Updated: Added Isca, November 2016
+# Updated: check for and build cfitio library, August 2018
 
 # Error codes: 1 - problem with toolchain
 #              2 - build failure
@@ -33,6 +34,8 @@ openmp=no
 mpi=no
 hybrid=no
 single=no
+
+base_dir=${PWD}
 
 ############################
 # Parse command line flags #
@@ -104,17 +107,9 @@ cd ..
 
 thisHost=`hostname -f`
 
-if [[ $thisHost == dirac*.rcs.cluster ]]; then
-    echo "This looks like Complexity"
-    system_mpi=complexity
-    system_hybrid=complexity
-    system_openmp=complexity
-
-elif [[ $thisHost == login*.cluster.local ]]; then
+if [[ $thisHost == login*.cluster.local ]]; then
     echo "This looks like Isca"
-    system_mpi=isca
-    system_hybrid=isca
-    system_openmp=isca
+    export SYSTEM=isca
     
 else
 
@@ -127,9 +122,7 @@ else
 	gfortranVersion=`gfortran -v 2>&1 | grep 'gcc version' | awk '{print $3}'`
 	echo "Found gfortran version ${gfortranVersion}"
 	torusFortranCompiler=gfortran
-	system_openmp=gfortran
-	system_mpi=gfortran
-	system_hybrid=gfortran
+	export SYSTEM=gfortran
     else
 	echo "gfortran not found"
     fi
@@ -140,9 +133,7 @@ else
 	ifortVersion=`ifort --version 2>&1 | head -1 | awk '{print $3}'`
 	echo "Found ifort version ${ifortVersion}"
 	torusFortranCompiler=ifort
-	system_openmp=ifort
-	system_mpi=ifort
-	system_hybrid=ifort
+	export SYSTEM=ifort
 	ifortMajorVersion=`echo ${ifortVersion} | awk 'BEGIN {FS="."}; {print $1}'`
 	if [[ ${ifortMajorVersion} -lt 15 ]]; then
 	    echo "Intel Fortran is older than v15. Using -openmp for OpenMP builds"
@@ -156,6 +147,8 @@ else
 	echo "No fortran compiler found."
 	echo "I'm expecting to find ifort or gfortran"
 	exit 1
+    else
+	echo "Building using ${torusFortranCompiler}"
     fi
 
 # Look for mpif90
@@ -171,9 +164,71 @@ else
 
 fi
 
-#
-# Do builds 
-#
+########################################
+# Check that we can link with cfitsio  #
+########################################
+
+if [[ -e ${base_dir}/lib/cfitsio/libcfitsio.a ]]; then
+    echo "Found ${base_dir}/lib/cfitsio/libcfitsio.a"
+    export LIBRARY_PATH=${LIBRARY_PATH}:${base_dir}/lib/cfitsio
+    make_args="${make_args} curlflag=yes"
+else
+    echo "Checking that we can link with a cfitsio library"
+    fitsTestDir=build/fitsTest
+    if [[ -d $fitsTestDir ]]; then
+	echo "Removing existing $fitsTestDir"
+	rm -r $fitsTestDir
+    fi
+    mkdir -p $fitsTestDir
+    cd $fitsTestDir
+    ln -s ../../benchmarks/disc/check_disc_image.f90
+
+    # ifort and gfortran SYSTEMs include ${HOME}/cfitsio/lib in link line
+    if [[ $SYSTEM == gfortran || $SYSTEM == ifort ]]; then
+	if [[ -d ${HOME}/cfitsio/lib ]]; then
+	    ${torusFortranCompiler} -o check_disc_image check_disc_image.f90 -lcfitsio -L${HOME}/cfitsio/lib > /dev/null 2>&1 
+	else
+	    ${torusFortranCompiler} -o check_disc_image check_disc_image.f90 -lcfitsio > /dev/null 2>&1
+	fi
+    else
+	${torusFortranCompiler} -o check_disc_image check_disc_image.f90 -lcfitsio > /dev/null 2>&1
+    fi
+
+    if [[ -x check_disc_image ]]; then
+	echo "Linking with cfitsio works"
+    else
+	# Try again with a -lcurl flag
+	if [[ $SYSTEM == gfortran || $SYSTEM == ifort ]]; then
+	    if [[ -d ${HOME}/cfitsio/lib ]]; then
+		${torusFortranCompiler} -o check_disc_image check_disc_image.f90 -lcfitsio -lcurl -L${HOME}/cfitsio/lib > /dev/null 2>&1 
+	    else
+		${torusFortranCompiler} -o check_disc_image check_disc_image.f90 -lcfitsio -lcurl > /dev/null 2>&1
+	    fi
+	else
+	    ${torusFortranCompiler} -o check_disc_image check_disc_image.f90 -lcfitsio -lcurl > /dev/null 2>&1
+	fi
+	if [[ -x check_disc_image ]]; then
+	    echo "Linking with cfitsio works (requires -lcurl)"
+	    make_args="${make_args} curlflag=yes"
+	else
+	    echo "Did not find a working cfitsio. Building a cfitsio library ..."
+	    cd ../..
+	    if [[ ! -d lib ]]; then
+		mkdir lib
+	    fi
+	    cd lib
+	    ../scripts/buildcfitsio.sh
+	    export LIBRARY_PATH=${LIBRARY_PATH}:${base_dir}/lib/cfitsio
+	    make_args="${make_args} curlflag=yes"
+	fi
+    fi
+    cd ${base_dir}
+    rm -r build/fitsTest
+fi
+
+###############
+# Do builds   #
+###############
 
 # OpenMP build 
 if [[ $openmp == yes ]]; then
@@ -187,10 +242,11 @@ if [[ $openmp == yes ]]; then
 	cd $builddir
 	ln -s ../../src/* . 
     fi
-    make depends SYSTEM=${system_openmp} 
-    make getgitver=no SYSTEM=${system_openmp} openmp=yes mpi=no $make_args
-    if [[ -e torus.${system_openmp} ]]; then
-	cp torus.${system_openmp} ../../bin/torus.openmp
+    make depends 
+    make getgitver=no openmp=yes mpi=no $make_args
+    if [[ -x torus.${SYSTEM} ]]; then
+	echo "OpenMP executable built successfully"
+	cp torus.${SYSTEM} ../../bin/torus.openmp
     else
 	echo "Build failed. Aborting ..."
 	exit 2
@@ -200,7 +256,7 @@ fi
 
 # Serial build 
 if [[ $single == yes ]]; then
-    echo "Building Torus wih no parallelisation"
+    echo "Building serial executable"
     builddir=build/single
     if [[ -d $builddir ]]; then 
 	echo "Found existing $builddir"
@@ -210,10 +266,11 @@ if [[ $single == yes ]]; then
 	cd $builddir
 	ln -s ../../src/* . 
     fi
-    make depends SYSTEM=${system_openmp}
-    make getgitver=no SYSTEM=${system_openmp} openmp=no mpi=no $make_args
-    if [[ -e torus.${system_openmp} ]]; then
-	cp torus.${system_openmp} ../../bin/torus.single
+    make depends
+    make getgitver=no openmp=no mpi=no $make_args
+    if [[ -x torus.${SYSTEM} ]]; then
+	echo "Serial executable built successfully"
+	cp torus.${SYSTEM} ../../bin/torus.single
     else
 	echo "Build failed. Aborting ..."
 	exit 2
@@ -233,10 +290,11 @@ if [[ $mpi == yes ]]; then
 	cd $builddir
 	ln -s ../../src/* . 
     fi
-    make depends SYSTEM=${system_mpi}
-    make getgitver=no SYSTEM=${system_mpi} mpi=yes openmp=no $make_args
-    if [[ -e torus.${system_mpi} ]]; then
-	cp torus.${system_mpi} ../../bin/torus.mpi
+    make depends
+    make getgitver=no mpi=yes openmp=no $make_args
+    if [[ -x torus.${SYSTEM} ]]; then
+	echo "MPI executable built successfully"
+	cp torus.${SYSTEM} ../../bin/torus.mpi
     else
 	echo "Build failed. Aborting ..."
 	exit 2
@@ -256,10 +314,11 @@ if [[ $hybrid == yes ]]; then
 	cd $builddir
 	ln -s ../../src/* . 
     fi
-    make depends SYSTEM=${system_hybrid}
-    make getgitver=no SYSTEM=${system_hybrid} mpi=yes openmp=yes $make_args
-    if [[ -e torus.${system_hybrid} ]]; then
-	cp torus.${system_hybrid} ../../bin/torus.hybrid
+    make depends
+    make getgitver=no mpi=yes openmp=yes $make_args
+    if [[ -x torus.${SYSTEM} ]]; then
+	echo "Hybrid executable built successfully"
+	cp torus.${SYSTEM} ../../bin/torus.hybrid
     else
 	echo "Build failed. Aborting ..."
 	exit 2
@@ -269,4 +328,4 @@ fi
 
 exit 0
 
-# End of file
+# End of file ################################################################
