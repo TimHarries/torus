@@ -140,10 +140,6 @@ ifeq ($(SYSTEM), gfortran)
     OPENMPFLAG = -fopenmp
 # -static-libgcc fixes linking problems under Mac OS
     STARLIBS += -static-libgcc -static-libgfortran
-# -lcurl is required for newer cfitsio libraries to prevent failure at link stage
-    ifeq ($(curlflag), yes)
-        STARLIBS += -lcurl
-    endif
     EXE = torus.gfortran
     KNOWN_SYSTEM = yes
     CFITSIOLIBS = -L${HOME}/cfitsio/lib -lcfitsio
@@ -395,6 +391,11 @@ ifeq ($(cfitsio), no)
    CFITSIOLIBS  =
 else
    ETCFLAG += -DUSECFITSIO
+endif
+
+# -lcurl is required for newer cfitsio libraries to prevent failure at link stage
+ifeq ($(curlflag), yes)
+   STARLIBS += -lcurl
 endif
 
 ifeq ($(netcdf), yes)
