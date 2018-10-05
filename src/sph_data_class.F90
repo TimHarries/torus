@@ -123,7 +123,7 @@ module sph_data_class
 ! This is the maximum line length when reading an ASCII file, specified as a module parameter
 ! as it appears in multiple subroutines. If the line is longer than this length itype is likely 
 ! to be lost leading to out of bounds array access. 
-  integer, parameter, private :: MaxAsciiLineLength=1200
+  integer, parameter, private :: MaxAsciiLineLength=1400
 ! Maximum number of words per line when reading an ASCII file
   integer, parameter, private :: MaxWords=100
 ! Flag to specify when we are reading a Gadget ASCII dump 
@@ -839,6 +839,8 @@ part_loop: do ipart=1, nlines
                 sphdata%temperature(igas) = utemp
              else
                 sphdata%temperature(igas) = (2.0/3.0) * u * ( gmw / Rgas) * utemp
+!using next line instead for krome_sph
+!                 sphdata%temperature(igas) = u / junkArray(iUoverT,ipart)
              endif
           else if (haveDustTemperature) then
              sphdata%temperature(igas) = junkArray(iDustTemperature,ipart)
