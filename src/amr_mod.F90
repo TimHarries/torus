@@ -3600,7 +3600,8 @@ CONTAINS
 ! Currently commented out. Reinstate if required.
     use inputs_mod, only : smoothInnerEdge, variableDustSublimation, rCut, doDiscSplit
 !    use inputs_mod, only: ttauriwind, smoothinneredge, amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
-
+    use ramses, only: splitRamses
+    
 #ifdef USECFITSIO
     use gridFromFitsFile, only : checkFitsSplit
 #endif
@@ -5224,7 +5225,9 @@ CONTAINS
              splitinazimuth = .false.
           endif
 
-
+       case ("Gareth")
+          split = splitRamses(thisOctal%subcellSize,subcellCentre(thisOctal, subcell))
+          
        case ("wr104")
           ! Splits if the number of particle is more than a critical value (~3).
           limit = nint(amrLimitScalar)

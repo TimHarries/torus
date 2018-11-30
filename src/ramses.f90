@@ -1,7 +1,6 @@
 module ramses
 
-  ! To do: Get fillRamses to assign correct values
-  !        Fill with missing data outside ramses grid
+  ! To do: Fill with missing data outside ramses grid
   !        Report number of points in/outside ramses grid
   !        Set up HI
   !        Set up corner velocities
@@ -9,12 +8,14 @@ module ramses
   !        Deallocate arrays once grid has been set up
   !        Use constants mod and double instead of kind=8
   !        Write output correctly with MPI
+  !        Smarter cell search
+  !        Change module name to ramses_mod
   
   implicit none
 
   private
 
-  public rd_gas, fillRamses
+  public rd_gas, fillRamses, splitRamses
 
   real(kind=8), dimension(:),   allocatable :: dx,HI,temp,rho,mg,ratio,nH
   real(kind=8), dimension(:,:), allocatable :: xg,vg
@@ -94,20 +95,62 @@ module ramses
       implicit none
 
       type(OCTAL) :: thisOctal
+      type(VECTOR) :: position
       integer, intent(in) :: subcell
       integer :: index
+      integer, save :: prevIndex=1
 
+      position = subcellCentre(thisOctal, subcell)
+      
+      ! See if this point is in the same cell as last time
+      if (incell(prevIndex, position)) call fillFromCell(prevIndex)
+
+      ! Otherwise search for the cell
       do index=1, nleaf
-         if (incell(index, subcellCentre(thisOctal, subcell))) then 
-            thisOctal%rho(subcell)         = rho(index)
-            thisOctal%temperature(subcell) = temp(index)
-            thisOctal%velocity(subcell)    = VECTOR(vg(index,1), vg(index,2), vg(index,3))
+         if (incell(index, position)) then
+            call fillFromCell(index)
+            prevIndex=index
+            exit
+         end if
+      end do
+
+    contains
+
+      subroutine fillFromCell(i)
+        integer, intent(in) :: i
+        
+        thisOctal%rho(subcell)         = rho(i)
+        thisOctal%temperature(subcell) = temp(i)
+        thisOctal%velocity(subcell)    = VECTOR(vg(i,1), vg(i,2), vg(i,3))
+      end subroutine fillFromCell
+      
+    end subroutine fillRamses
+
+    logical function splitRamses(size, position)
+      use constants_mod
+      use vector_mod
+      implicit none
+      integer :: index
+      
+      real(double), intent(in) :: size
+      type(VECTOR), intent(in) :: position
+      real(double) :: size_kpc
+      
+      size_kpc = size * 1.0e10_db/kpcToCm
+      splitRamses=.false. ! In case the point is not within the Ramses grid
+      do index=1, nleaf
+         if (incell(index, position)) then
+            if ( size_kpc > dx(index) ) then
+               splitRamses=.true.
+            else
+               splitRamses=.false.
+            end if
             exit
          end if
       end do
       
-    end subroutine fillRamses
-
+    end function splitRamses
+    
     logical function inCell(index, position)
       use constants_mod
       use vector_mod
