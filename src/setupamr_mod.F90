@@ -67,6 +67,7 @@ contains
     use gridFromFitsFile
 #endif
     use gridFromFlash
+    use ramses
 
     implicit none
 
@@ -238,7 +239,12 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
-
+       case("Gareth")
+          call rd_gas("SeleneTORUSinp.dat")
+          call writeInfo("Initialising adaptive grid...", TRIVIAL)
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
 
        case("wr104")
