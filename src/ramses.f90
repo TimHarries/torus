@@ -97,22 +97,43 @@ module ramses
       type(OCTAL) :: thisOctal
       type(VECTOR) :: position
       integer, intent(in) :: subcell
-      integer :: index
+      integer :: i, iup, idown
       integer, save :: prevIndex=1
 
       position = subcellCentre(thisOctal, subcell)
       
       ! See if this point is in the same cell as last time
-      if (incell(prevIndex, position)) call fillFromCell(prevIndex)
+      if (incell(prevIndex, position)) then
+         call fillFromCell(prevIndex)
+      else
+         
+      ! Otherwise search for the cell assuming it is close to the previous cell
+         iup   = prevIndex+1
+         idown = prevIndex-1
+         cellLoop: do i=1, nleaf
 
-      ! Otherwise search for the cell
-      do index=1, nleaf
-         if (incell(index, position)) then
-            call fillFromCell(index)
-            prevIndex=index
-            exit
-         end if
-      end do
+            if (idown > 0) then
+               if (incell(idown, position)) then
+                  call fillFromCell(idown)
+                  prevIndex=idown
+                  exit cellLoop
+               end if
+            end if
+
+            if (iup < nleaf+1) then
+               if (incell(iup, position)) then
+                  call fillFromCell(iup)
+                  prevIndex=iup
+                  exit cellLoop
+               end if
+            endif
+
+            idown = idown-1
+            iup   = iup+1
+         
+         end do cellLoop
+
+      endif
 
     contains
 
@@ -140,14 +161,20 @@ module ramses
       splitRamses=.false. ! In case the point is not within the Ramses grid
       do index=1, nleaf
          if (incell(index, position)) then
-            if ( size_kpc > dx(index) ) then
-               splitRamses=.true.
-            else
-               splitRamses=.false.
-            end if
+            splitRamses=splitThisCell()
             exit
          end if
       end do
+
+    contains
+
+      logical function splitThisCell()
+        if ( size_kpc > dx(index) ) then
+           splitThisCell=.true.
+        else
+           splitThisCell=.false.
+           end if
+      end function splitThisCell
       
     end function splitRamses
     
