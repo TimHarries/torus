@@ -1546,6 +1546,7 @@ doGridshuffle: if(gridShuffle) then
 #ifdef SPH
     use sph_data_class, only: sph_mass_within_grid, info_sph
 #endif
+    use ramses, only: finishRamses
     use inputs_mod, only : mDisc, geometry, sphWithChem
     use memory_mod, only : findTotalMemory, reportMemory
     type(GRIDTYPE) :: grid
@@ -1604,6 +1605,9 @@ doGridshuffle: if(gridShuffle) then
 
 #endif
 
+    case("Gareth")
+       call finishRamses
+       
     case("fitsfile")
        call writeVTKfile(grid, "gridFromFitsFile.vtk",  &
             valueTypeString=(/"rho        ", "temperature", "dust1      ","velocity   "/))

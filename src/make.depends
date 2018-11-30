@@ -71,7 +71,7 @@ photon_mod.o: amr_mod.o atom_mod.o constants_mod.o disc_class.o \
 	utils_mod.o vector_mod.o
 qShep2D_mod.o: kind_mod.o
 qShep3D_mod.o: kind_mod.o
-ramses.o: constants_mod.o messages_mod.o octal_mod.o vector_mod.o
+ramses.o: constants_mod.o kind_mod.o messages_mod.o octal_mod.o vector_mod.o
 romanova_class.o: constants_mod.o kind_mod.o octal_mod.o vector_mod.o \
 	zeus_data_class.o
 sed_mod.o: constants_mod.o kind_mod.o messages_mod.o vector_mod.o

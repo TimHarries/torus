@@ -1,47 +1,46 @@
 module ramses
 
-  ! To do: Fill with missing data outside ramses grid
-  !        Report number of points in/outside ramses grid
-  !        Set up HI
+  ! To do: Set up HI
   !        Set up corner velocities
-  !        Split grid according to original grid resolution
-  !        Deallocate arrays once grid has been set up
   !        Use constants mod and double instead of kind=8
-  !        Write output correctly with MPI
-  !        Smarter cell search
   !        Change module name to ramses_mod
   
   implicit none
 
   private
 
-  public rd_gas, fillRamses, splitRamses
+  public rd_gas, fillRamses, splitRamses, finishRamses
 
   real(kind=8), dimension(:),   allocatable :: dx,HI,temp,rho,mg,ratio,nH
   real(kind=8), dimension(:,:), allocatable :: xg,vg
   integer :: nleaf
+  integer, save :: num_outside=0
   
   contains
 
     subroutine rd_gas(fname)
       use messages_mod
-      
+      use kind_mod
       implicit none
       
-      real(kind=8), parameter :: Msol = 1.9891d+33
-      real(kind=8), parameter :: kpc = 3.086d+21
-      real(kind=8),parameter ::mH = 1.6600000d-24
-      real(kind=8),parameter ::X = 0.76
-      real(kind=8) :: scale_l,scale_d,scale_t,aexp
+      real(double), parameter :: Msol = 1.9891d+33
+      real(double), parameter :: kpc = 3.086d+21
+      real(double), parameter :: mH = 1.6600000d-24
+      real(double), parameter :: X = 0.76
+      real(double) :: scale_l,scale_d,scale_t,aexp
       character(len=*) :: fname
+      character(len=120) :: message
 
-      call writeInfo("Reading SeleneTORUSinp.dat", TRIVIAL)
+      call writeInfo("Reading "//fname, TRIVIAL)
       
       open(13, file=fname, status='unknown', form='unformatted')
       rewind 13
       read(13) scale_l,scale_d,scale_t,aexp
       read(13) nleaf
-      print *,'nleaf, aexp, scale_l,scale_d,scale_t ',nleaf,aexp,scale_l,scale_d,scale_t
+      write(message,*) 'nleaf, aexp: ', nleaf, aexp
+      call writeInfo(message, TRIVIAL)
+      write(message,*) 'scale_l, scale_d, scale_t: ', scale_l, scale_d, scale_t
+      call writeInfo(message, TRIVIAL)
       allocate(xg(nleaf,3),vg(nleaf,3),mg(nleaf),rho(nleaf),dx(nleaf),temp(nleaf),HI(nleaf),ratio(nleaf),nH(nleaf))
       read(13) xg(:,:)
       read(13) vg(:,:)
@@ -52,19 +51,30 @@ module ramses
       read(13) HI(:)
       close(13)
   
-      print *,'Min/Max values in code units'
-      print *,'x ',minval(xg(:,1)),maxval(xg(:,1))
-      print *,'y ',minval(xg(:,2)),maxval(xg(:,2))
-      print *,'z ',minval(xg(:,3)),maxval(xg(:,3))
-      print *,'vx ',minval(vg(:,1)),maxval(vg(:,1))
-      print *,'vy ',minval(vg(:,2)),maxval(vg(:,2))
-      print *,'vz ',minval(vg(:,3)),maxval(vg(:,3))
-      print *,'mg ',minval(mg),maxval(mg)
-      print *,'rho ',minval(rho),maxval(rho)
-      print *,'dx ',minval(dx),maxval(dx)
-      print *,'T ',minval(temp),maxval(temp)
-      print *,'HI ',minval(HI),maxval(HI)
-      print *
+      call writeInfo('Min/Max values in code units:', TRIVIAL)
+      write(message,*) 'x ',minval(xg(:,1)),maxval(xg(:,1))
+      call writeInfo(message, TRIVIAL)
+      write(message,*) 'y ',minval(xg(:,2)),maxval(xg(:,2))
+      call writeInfo(message, TRIVIAL)
+      write(message,*) 'z ',minval(xg(:,3)),maxval(xg(:,3))
+      call writeInfo(message, TRIVIAL)
+      write(message,*) 'vx ',minval(vg(:,1)),maxval(vg(:,1))
+      call writeInfo(message, TRIVIAL)
+      write(message,*) 'vy ',minval(vg(:,2)),maxval(vg(:,2))
+      call writeInfo(message, TRIVIAL)
+      write(message,*) 'vz ',minval(vg(:,3)),maxval(vg(:,3))
+      call writeInfo(message, TRIVIAL)
+      write(message,*) 'mg ',minval(mg),maxval(mg)
+      call writeInfo(message, TRIVIAL)
+      write(message,*) 'rho ',minval(rho),maxval(rho)
+      call writeInfo(message, TRIVIAL)
+      write(message,*) 'dx ',minval(dx),maxval(dx)
+      call writeInfo(message, TRIVIAL)
+      write(message,*) 'T ',minval(temp),maxval(temp)
+      call writeInfo(message, TRIVIAL)
+      write(message,*) 'HI ',minval(HI),maxval(HI)
+      call writeInfo(message, TRIVIAL)
+      call writeInfo("", TRIVIAL)
       
       xg=xg*scale_l/kpc             ! convert to kpc
       vg=vg*scale_l/scale_t/1d5     ! convert to km/s
@@ -74,19 +84,32 @@ module ramses
       dx=dx*scale_l/kpc             ! convert to kpc
       HI = 10**HI                   ! convert to nHI/cm^3
       
-      print *,'Min/Max values in useful units'
-      print *,'x (kpc)   ', minval(xg(:,1)),maxval(xg(:,1))
-      print *,'y (kpc)   ', minval(xg(:,2)),maxval(xg(:,2))
-      print *,'z (kpc)   ', minval(xg(:,3)),maxval(xg(:,3))
-      print *,'vx (km/s) ',minval(vg(:,1)),maxval(vg(:,1))
-      print *,'vy (km/s) ',minval(vg(:,2)),maxval(vg(:,2))
-      print *,'vz (km/s) ',minval(vg(:,3)),maxval(vg(:,3))
-      print *,'mg (Msol) ',minval(mg),maxval(mg)
-      print *,'rho (g/cc)',minval(rho),maxval(rho)
-      print *,'dx (kpc)  ',minval(dx),maxval(dx)
-      print *,'T         ',minval(temp),maxval(temp)
-      print *,'nHI       ',minval(HI),maxval(HI)
-      print *,'nH        ',minval(nH),maxval(nH)
+      call writeInfo('Min/Max values in useful units:', TRIVIAL)
+      write(message,*) 'x (kpc)   ', minval(xg(:,1)),maxval(xg(:,1))
+      call writeInfo(message, TRIVIAL)
+      write(message,*) 'y (kpc)   ', minval(xg(:,2)),maxval(xg(:,2))
+      call writeInfo(message, TRIVIAL)
+      write(message,*) 'z (kpc)   ', minval(xg(:,3)),maxval(xg(:,3))
+      call writeInfo(message, TRIVIAL)
+      write(message,*) 'vx (km/s) ',minval(vg(:,1)),maxval(vg(:,1))
+      call writeInfo(message, TRIVIAL)
+      write(message,*) 'vy (km/s) ',minval(vg(:,2)),maxval(vg(:,2))
+      call writeInfo(message, TRIVIAL)
+      write(message,*) 'vz (km/s) ',minval(vg(:,3)),maxval(vg(:,3))
+      call writeInfo(message, TRIVIAL)
+      write(message,*) 'mg (Msol) ',minval(mg),maxval(mg)
+      call writeInfo(message, TRIVIAL)
+      write(message,*) 'rho (g/cc)',minval(rho),maxval(rho)
+      call writeInfo(message, TRIVIAL)
+      write(message,*) 'dx (kpc)  ',minval(dx),maxval(dx)
+      call writeInfo(message, TRIVIAL)
+      write(message,*) 'T         ',minval(temp),maxval(temp)
+      call writeInfo(message, TRIVIAL)
+      write(message,*) 'nHI       ',minval(HI),maxval(HI)
+      call writeInfo(message, TRIVIAL)
+      write(message,*) 'nH        ',minval(nH),maxval(nH)
+      call writeInfo(message, TRIVIAL)
+      call writeInfo("Finished reading "//fname, TRIVIAL)
       
     end subroutine rd_gas
 
@@ -128,6 +151,16 @@ module ramses
                end if
             endif
 
+            ! If we're off the array both ends then this point is not in the grid
+            ! so set missing data values
+            if (idown<1 .and. iup>nleaf) then
+               thisOctal%rho(subcell)         = 1.0e-33_db
+               thisOctal%temperature(subcell) = 10.0_db
+               thisOctal%velocity(subcell)    = VECTOR(2.0_db,2.0_db,2.0_db)
+               num_outside=num_outside+1
+               exit cellLoop
+            end if
+            
             idown = idown-1
             iup   = iup+1
          
@@ -236,6 +269,18 @@ module ramses
       endif
       
     end function inCell
+
+    ! Deallocate arrays and report information
+    subroutine finishRamses
+      use messages_mod
+      implicit none
+      character(len=80) :: message
+
+      write(message,*) "Number of points allocated missing data values: ", num_outside
+      call writeInfo(trim(message), TRIVIAL)
+      deallocate(xg, vg, mg, rho, dx, temp, HI, ratio, nH)
+      
+    end subroutine finishRamses
     
   end module ramses
 
