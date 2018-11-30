@@ -151,25 +151,35 @@ module ramses
       use constants_mod
       use vector_mod
       implicit none
-      integer :: index
       
       real(double), intent(in) :: size
       type(VECTOR), intent(in) :: position
       real(double) :: size_kpc
+      integer :: index
+      integer, save :: prevIndex=1
       
       size_kpc = size * 1.0e10_db/kpcToCm
-      splitRamses=.false. ! In case the point is not within the Ramses grid
-      do index=1, nleaf
-         if (incell(index, position)) then
-            splitRamses=splitThisCell()
-            exit
-         end if
-      end do
 
+      ! Is this point the same cell as last time?
+      if (incell(prevIndex, position)) then
+         splitRamses=splitThisCell(prevIndex)
+      else
+         ! In case the point is not within the Ramses grid
+         splitRamses=.false. 
+         do index=1, nleaf
+            if (incell(index, position)) then
+               splitRamses=splitThisCell(index)
+               prevIndex = index
+               exit
+            end if
+         end do
+      end if
+      
     contains
 
-      logical function splitThisCell()
-        if ( size_kpc > dx(index) ) then
+      logical function splitThisCell(i)
+        integer, intent(in) :: i
+        if ( size_kpc > dx(i) ) then
            splitThisCell=.true.
         else
            splitThisCell=.false.
