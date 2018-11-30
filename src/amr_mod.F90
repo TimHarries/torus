@@ -717,7 +717,8 @@ CONTAINS
     use gridFromFitsFile, only: assign_from_fitsfile
 #endif
     use angularImage_utils, only: calcAngImgTest
-
+    use ramses, only: fillRamses
+    
     IMPLICIT NONE
 
     TYPE(octal), INTENT(INOUT)    :: thisOctal   ! the octal being changed
@@ -1088,6 +1089,9 @@ CONTAINS
        thisoctal%rho(subcell) = -9.9d99
        if (associated (thisoctal%cornervelocity)) thisoctal%cornervelocity = VECTOR(-9.9d99,-9.9d99,-9.9d99)
 
+    CASE("Gareth")
+       call fillRamses(thisOctal, subcell)
+       
     CASE ("benchmark")
        CALL benchmarkDisk(thisOctal, subcell)
 

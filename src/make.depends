@@ -71,7 +71,7 @@ photon_mod.o: amr_mod.o atom_mod.o constants_mod.o disc_class.o \
 	utils_mod.o vector_mod.o
 qShep2D_mod.o: kind_mod.o
 qShep3D_mod.o: kind_mod.o
-ramses.o: messages_mod.o
+ramses.o: messages_mod.o octal_mod.o
 romanova_class.o: constants_mod.o kind_mod.o octal_mod.o vector_mod.o \
 	zeus_data_class.o
 sed_mod.o: constants_mod.o kind_mod.o messages_mod.o vector_mod.o
@@ -104,8 +104,8 @@ amr_mod.o: amr_utils_mod.o analytical_velocity_mod.o angularImage_utils.o \
 	gas_opacity_mod.o gridFromFitsFile.o gridFromFlash.o gridtype_mod.o \
 	h21cm_mod.o inputs_modV2.o jets_mod.o luc_cir3d_class.o magField.o \
 	magnetic_mod.o memory_mod.o mpi_global_mod.o octal_mod.o ostar_mod.o \
-	phfit2.o romanova_class.o source_mod.o sph_data_class.o surface_mod.o \
-	unix_mod.o utils_mod.o vector_mod.o vh1_mod.o
+	phfit2.o ramses.o romanova_class.o source_mod.o sph_data_class.o \
+	surface_mod.o unix_mod.o utils_mod.o vector_mod.o vh1_mod.o
 angularImage_mod.o: amr_mod.o angularImage_utils.o atom_mod.o constants_mod.o \
 	datacube_mod.o gridtype_mod.o h21cm_mod.o inputs_modV2.o kind_mod.o \
 	messages_mod.o molecular_mod.o mpi_global_mod.o octal_mod.o \

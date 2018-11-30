@@ -4,7 +4,7 @@ module ramses
 
   private
 
-  public rd_gas
+  public rd_gas, fillRamses
   
   contains
 
@@ -77,7 +77,22 @@ module ramses
       print *, 'nH',minval(nH),maxval(nH)
       
     end subroutine rd_gas
-    
+
+    subroutine fillRamses(thisOctal, subcell)
+      use octal_mod
+      implicit none
+
+      type(OCTAL) :: thisOctal
+      integer, intent(in) :: subcell
+
+      ! WRITE ME !!!
+      ! Fill with dummy values for now
+      thisOctal%rho(subcell)         = 1.0e-20
+      thisOctal%temperature(subcell) = 100.0
+      thisOctal%velocity             = VECTOR(0.,0.,0.)
+      
+    end subroutine fillRamses
+      
   end module ramses
 
   
