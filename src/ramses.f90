@@ -1,8 +1,9 @@
 module ramses
-
+  use kind_mod
+  
   ! To do: Use HI density instead of total density
   !        Set up corner velocities more sensibly
-  !        Use constants mod and double instead of kind=8
+  !        Set correct FITS keywords for kvis
   !        Change module name to ramses_mod
   
   implicit none
@@ -11,8 +12,8 @@ module ramses
 
   public rd_gas, fillRamses, splitRamses, finishRamses
 
-  real(kind=8), dimension(:),   allocatable :: dx,HI,temp,rho,mg,ratio,nH
-  real(kind=8), dimension(:,:), allocatable :: xg,vg
+  real(double), dimension(:),   allocatable :: dx,HI,temp,rho,mg,ratio,nH
+  real(double), dimension(:,:), allocatable :: xg,vg
   integer :: nleaf
   integer, save :: num_outside=0
   
@@ -20,12 +21,11 @@ module ramses
 
     subroutine rd_gas(fname)
       use messages_mod
-      use kind_mod
+      use constants_mod
       implicit none
       
-      real(double), parameter :: Msol = 1.9891d+33
-      real(double), parameter :: kpc = 3.086d+21
-      real(double), parameter :: mH = 1.6600000d-24
+      real(double), parameter :: kpc = kpcToCm
+      real(double), parameter :: mH = mHydrogen
       real(double), parameter :: X = 0.76
       real(double) :: scale_l,scale_d,scale_t,aexp
       character(len=*) :: fname
