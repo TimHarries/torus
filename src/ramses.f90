@@ -155,24 +155,43 @@ module ramses
       real(double), intent(in) :: size
       type(VECTOR), intent(in) :: position
       real(double) :: size_kpc
-      integer :: index
+      integer :: i, iup, idown
       integer, save :: prevIndex=1
-      
+
+      ! In case the point is not within the Ramses grid
+      splitRamses=.false.
       size_kpc = size * 1.0e10_db/kpcToCm
 
       ! Is this point the same cell as last time?
       if (incell(prevIndex, position)) then
          splitRamses=splitThisCell(prevIndex)
       else
-         ! In case the point is not within the Ramses grid
-         splitRamses=.false. 
-         do index=1, nleaf
-            if (incell(index, position)) then
-               splitRamses=splitThisCell(index)
-               prevIndex = index
-               exit
+
+      ! Otherwise search for the cell assuming it is close to the previous cell
+         iup   = prevIndex+1
+         idown = prevIndex-1
+         cellLoop: do i=1, nleaf
+
+            if (idown > 0) then
+               if (incell(idown, position)) then
+                  splitRamses=splitThisCell(idown)
+                  prevIndex=idown
+                  exit cellLoop
+               end if
             end if
-         end do
+
+            if (iup < nleaf+1) then
+               if (incell(iup, position)) then
+                  splitRamses=splitThisCell(iup)
+                  prevIndex=iup
+                  exit cellLoop
+               end if
+            endif
+
+            idown = idown-1
+            iup   = iup+1
+         
+         end do cellLoop
       end if
       
     contains
