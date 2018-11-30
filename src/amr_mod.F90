@@ -2179,6 +2179,12 @@ CONTAINS
 !          CASE("molebench")
 !             CALL fillDensityCorners(thisOctal,grid, molebenchdensity, molebenchvelocity, thisOctal%threed)
 
+       case ("Gareth")
+          if (.not. associated(thisoctal%cornervelocity)) then
+             allocate(thisoctal%cornervelocity(27))
+             thisoctal%cornervelocity(:) = thisOctal%velocity
+          endif
+          
        CASE DEFAULT
           ! Nothing to be done for this geometry so just return.
           if(.not. (modelWasHydro.or.h21cm)) then

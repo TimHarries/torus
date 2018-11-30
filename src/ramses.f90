@@ -1,7 +1,7 @@
 module ramses
 
-  ! To do: Set up HI
-  !        Set up corner velocities
+  ! To do: Use HI density instead of total density
+  !        Set up corner velocities more sensibly
   !        Use constants mod and double instead of kind=8
   !        Change module name to ramses_mod
   
@@ -171,11 +171,12 @@ module ramses
     contains
 
       subroutine fillFromCell(i)
+        use constants_mod
         integer, intent(in) :: i
         
         thisOctal%rho(subcell)         = rho(i)
         thisOctal%temperature(subcell) = temp(i)
-        thisOctal%velocity(subcell)    = VECTOR(vg(i,1), vg(i,2), vg(i,3))
+        thisOctal%velocity(subcell)    = VECTOR(vg(i,1)* 1.0e5/cSpeed, vg(i,2)* 1.0e5/cSpeed, vg(i,3)* 1.0e5/cSpeed) 
       end subroutine fillFromCell
       
     end subroutine fillRamses
