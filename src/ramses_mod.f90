@@ -3,7 +3,6 @@ module ramses_mod
   
   ! To do: Use HI density instead of total density
   !        Set up corner velocities more sensibly
-  !        Set correct FITS keywords for kvis
   
   implicit none
 
@@ -186,8 +185,11 @@ module ramses_mod
       subroutine fillFromCell(i)
         use constants_mod
         integer, intent(in) :: i
-        
+
+        ! Total gas density
         thisOctal%rho(subcell)         = rho(i)
+        ! HI density
+        !thisOctal%rho(subcell)         = HI(i) * mHydrogen
         thisOctal%temperature(subcell) = temp(i)
         thisOctal%velocity(subcell)    = VECTOR(vg(i,1)* 1.0e5/cSpeed, vg(i,2)* 1.0e5/cSpeed, vg(i,3)* 1.0e5/cSpeed) 
       end subroutine fillFromCell

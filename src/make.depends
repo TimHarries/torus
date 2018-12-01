@@ -128,8 +128,8 @@ cmf_mod.o: amr_mod.o atom_mod.o constants_mod.o datacube_mod.o gridio_mod.o \
 	modelatom_mod.o mpi_global_mod.o octal_mod.o parallel_mod.o \
 	random_mod.o source_mod.o stateq_mod.o surface_mod.o timing.o \
 	utils_mod.o vector_mod.o vtk_mod.o
-datacube_mod.o: constants_mod.o fits_utils_mod.o interferometry_mod.o \
-	kind_mod.o messages_mod.o
+datacube_mod.o: constants_mod.o fits_utils_mod.o h21cm_mod.o \
+	interferometry_mod.o kind_mod.o messages_mod.o
 diffusion_mod.o: amr_mod.o amr_utils_mod.o constants_mod.o gridtype_mod.o \
 	inputs_modV2.o messages_mod.o mpi_global_mod.o octal_mod.o \
 	parallel_mod.o vector_mod.o vtk_mod.o
