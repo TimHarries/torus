@@ -1,7 +1,9 @@
 module ramses_mod
   use kind_mod
   
-  ! To do: Use HI density instead of total density
+  ! Module for working with Gareth Few's Ramses data
+  ! The rd_gas subroutine is based on code contributed by Gareth
+  ! D. Acreman, December 2018
   
   implicit none
 
@@ -187,9 +189,9 @@ module ramses_mod
         integer, intent(in) :: i
 
         ! Total gas density
-        thisOctal%rho(subcell)         = rho(i)
+        !thisOctal%rho(subcell)         = rho(i)
         ! HI density
-        !thisOctal%rho(subcell)         = HI(i) * mHydrogen
+        thisOctal%rho(subcell)         = HI(i) * mHydrogen
         thisOctal%temperature(subcell) = temp(i)
         thisOctal%velocity(subcell)    = VECTOR(vg(i,1)* 1.0e5/cSpeed, vg(i,2)* 1.0e5/cSpeed, vg(i,3)* 1.0e5/cSpeed) 
       end subroutine fillFromCell
@@ -299,5 +301,3 @@ module ramses_mod
     end subroutine finishRamses
     
   end module ramses_mod
-
-  
