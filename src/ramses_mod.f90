@@ -47,7 +47,7 @@ module ramses_mod
 
       call writeInfo("Reading "//fname, TRIVIAL)
       
-      open(13, file=fname, status='unknown', form='unformatted')
+      open(13, file=fname, status='old', form='unformatted')
       rewind 13
       read(13) scale_l,scale_d,scale_t,aexp
       read(13) nleaf
