@@ -1091,6 +1091,7 @@ CONTAINS
 
     CASE("Gareth")
        call fillRamses(thisOctal, subcell)
+       if (associated (thisoctal%cornervelocity)) thisoctal%cornervelocity = VECTOR(-9.9d99,-9.9d99,-9.9d99)
        
     CASE ("benchmark")
        CALL benchmarkDisk(thisOctal, subcell)
@@ -2182,7 +2183,10 @@ CONTAINS
        case ("Gareth")
           if (.not. associated(thisoctal%cornervelocity)) then
              allocate(thisoctal%cornervelocity(27))
-             thisoctal%cornervelocity(:) = thisOctal%velocity
+             thisoctal%cornervelocity(:) = VECTOR(-9.9d99,-9.9d99,-9.9d99)
+          endif
+          if(thisoctal%cornervelocity(14)%x .eq. -9.9d99) then
+             call interpolateVelocityCorners(thisOctal)
           endif
           
        CASE DEFAULT
@@ -6409,6 +6413,66 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 
   END SUBROUTINE fillVelocityCorners
 
+  subroutine interpolateVelocityCorners(thisOctal)
+    use vector_mod
+    implicit none
+    type(OCTAL) :: thisOctal
+    logical, parameter :: debug=.false.
+    integer :: i
+
+    ! Base level
+    thisOctal%cornerVelocity(1) =  thisOctal%velocity(1)
+    thisOctal%cornerVelocity(2) = (thisOctal%velocity(1) + thisOctal%velocity(2)) / 2.0_db
+    thisOctal%cornerVelocity(3) =  thisOctal%velocity(2)
+
+    thisOctal%cornerVelocity(4) = (thisOctal%velocity(1) + thisOctal%velocity(3)) / 2.0_db
+    thisOctal%cornerVelocity(5) = (thisOctal%velocity(1) + thisOctal%velocity(2) + &
+                                   thisOctal%velocity(3) + thisOctal%velocity(4)) / 4.0_db
+    thisOctal%cornerVelocity(6) = (thisOctal%velocity(2) + thisOctal%velocity(4)) / 2.0_db
+    
+    thisOctal%cornerVelocity(7) =  thisOctal%velocity(3)
+    thisOctal%cornerVelocity(8) = (thisOctal%velocity(3) + thisOctal%velocity(4)) / 2.0_db
+    thisOctal%cornerVelocity(9) =  thisOctal%velocity(4)
+
+    ! Top level
+    thisOctal%cornerVelocity(19) =  thisOctal%velocity(5)
+    thisOctal%cornerVelocity(20) = (thisOctal%velocity(5) + thisOctal%velocity(6)) / 2.0_db
+    thisOctal%cornerVelocity(21) =  thisOctal%velocity(6)
+
+    thisOctal%cornerVelocity(22) = (thisOctal%velocity(5) + thisOctal%velocity(7)) / 2.0_db
+    thisOctal%cornerVelocity(23) = (thisOctal%velocity(5) + thisOctal%velocity(6) + &
+                                   thisOctal%velocity(7) + thisOctal%velocity(8)) / 4.0_db
+    thisOctal%cornerVelocity(24) = (thisOctal%velocity(6) + thisOctal%velocity(8)) / 2.0_db
+    
+    thisOctal%cornerVelocity(25) =  thisOctal%velocity(7)
+    thisOctal%cornerVelocity(26) = (thisOctal%velocity(7) + thisOctal%velocity(8)) / 2.0_db
+    thisOctal%cornerVelocity(27) =  thisOctal%velocity(8)
+
+    ! Average base and top levels onto middle level
+    do i=1,9
+       thisOctal%cornerVelocity(i+9) = (thisOctal%cornerVelocity(i) + thisOctal%cornerVelocity(i+18)) / 2.0_db
+    end do
+    
+    if (debug) then
+       write(*,*) "DMA: subcell locations"
+       do i=1,8
+          write(*,*) i, subcellCentre(thisOctal,i)
+       end do
+       write(*,*) "DMA: subcell velocities"
+       do i=1,8
+          write(*,*) i, thisOctal%velocity(i)
+       end do
+       write(*,*) "DMA: corner velocities"
+       do i=1,27
+          write(*,*) i, thisOctal%cornerVelocity(i)
+       end do
+       write(*,*)
+       read(*,*)
+    end if
+
+    
+  end subroutine interpolateVelocityCorners
+  
   TYPE(vector) FUNCTION TTauriVelocity(point)
     ! calculates the velocity vector at a given point for a model
     !   of a T Tauri star with magnetospheric accretion

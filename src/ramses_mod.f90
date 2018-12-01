@@ -2,7 +2,6 @@ module ramses_mod
   use kind_mod
   
   ! To do: Use HI density instead of total density
-  !        Set up corner velocities more sensibly
   
   implicit none
 
@@ -20,6 +19,7 @@ module ramses_mod
 
     subroutine setGridFromRamsesParameters(ramsesfilename)
       use messages_mod
+
       character(len=*), intent(in) :: ramsesfilename
       logical :: foundFile
       
