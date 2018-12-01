@@ -1,17 +1,17 @@
-module ramses
+module ramses_mod
   use kind_mod
   
   ! To do: Use HI density instead of total density
   !        Set up corner velocities more sensibly
   !        Set correct FITS keywords for kvis
-  !        Change module name to ramses_mod
   
   implicit none
 
   private
 
-  public rd_gas, fillRamses, splitRamses, finishRamses
+  public setGridFromRamsesParameters, rd_gas, fillRamses, splitRamses, finishRamses
 
+  character(len=80) :: fname
   real(double), dimension(:),   allocatable :: dx,HI,temp,rho,mg,ratio,nH
   real(double), dimension(:,:), allocatable :: xg,vg
   integer :: nleaf
@@ -19,7 +19,21 @@ module ramses
   
   contains
 
-    subroutine rd_gas(fname)
+    subroutine setGridFromRamsesParameters(ramsesfilename)
+      use messages_mod
+      character(len=*), intent(in) :: ramsesfilename
+      logical :: foundFile
+      
+      fname=ramsesfilename
+
+      inquire(file=fname, exist=foundFile)
+      if (.not. foundFile) then
+         call writeFatal("File "//trim(fname)//" not found")
+      end if
+      
+    end subroutine setGridFromRamsesParameters
+      
+    subroutine rd_gas
       use messages_mod
       use constants_mod
       implicit none
@@ -28,7 +42,6 @@ module ramses
       real(double), parameter :: mH = mHydrogen
       real(double), parameter :: X = 0.76
       real(double) :: scale_l,scale_d,scale_t,aexp
-      character(len=*) :: fname
       character(len=120) :: message
 
       call writeInfo("Reading "//fname, TRIVIAL)
@@ -283,6 +296,6 @@ module ramses
       
     end subroutine finishRamses
     
-  end module ramses
+  end module ramses_mod
 
   

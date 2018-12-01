@@ -67,7 +67,7 @@ contains
     use gridFromFitsFile
 #endif
     use gridFromFlash
-    use ramses
+    use ramses_mod, only: rd_gas
 
     implicit none
 
@@ -240,7 +240,7 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case("Gareth")
-          call rd_gas("SeleneTORUSinp.dat")
+          call rd_gas
           call writeInfo("Initialising adaptive grid...", TRIVIAL)
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
@@ -1546,7 +1546,7 @@ doGridshuffle: if(gridShuffle) then
 #ifdef SPH
     use sph_data_class, only: sph_mass_within_grid, info_sph
 #endif
-    use ramses, only: finishRamses
+    use ramses_mod, only: finishRamses
     use inputs_mod, only : mDisc, geometry, sphWithChem
     use memory_mod, only : findTotalMemory, reportMemory
     type(GRIDTYPE) :: grid

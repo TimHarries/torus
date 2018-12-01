@@ -71,7 +71,8 @@ photon_mod.o: amr_mod.o atom_mod.o constants_mod.o disc_class.o \
 	utils_mod.o vector_mod.o
 qShep2D_mod.o: kind_mod.o
 qShep3D_mod.o: kind_mod.o
-ramses.o: constants_mod.o kind_mod.o messages_mod.o octal_mod.o vector_mod.o
+ramses_mod.o: constants_mod.o kind_mod.o messages_mod.o octal_mod.o \
+	vector_mod.o
 romanova_class.o: constants_mod.o kind_mod.o octal_mod.o vector_mod.o \
 	zeus_data_class.o
 sed_mod.o: constants_mod.o kind_mod.o messages_mod.o vector_mod.o
@@ -104,7 +105,7 @@ amr_mod.o: amr_utils_mod.o analytical_velocity_mod.o angularImage_utils.o \
 	gas_opacity_mod.o gridFromFitsFile.o gridFromFlash.o gridtype_mod.o \
 	h21cm_mod.o inputs_modV2.o jets_mod.o luc_cir3d_class.o magField.o \
 	magnetic_mod.o memory_mod.o mpi_global_mod.o octal_mod.o ostar_mod.o \
-	phfit2.o ramses.o romanova_class.o source_mod.o sph_data_class.o \
+	phfit2.o ramses_mod.o romanova_class.o source_mod.o sph_data_class.o \
 	surface_mod.o unix_mod.o utils_mod.o vector_mod.o vh1_mod.o
 angularImage_mod.o: amr_mod.o angularImage_utils.o atom_mod.o constants_mod.o \
 	datacube_mod.o gridtype_mod.o h21cm_mod.o inputs_modV2.o kind_mod.o \
@@ -175,8 +176,8 @@ image_mod.o: amr_mod.o atom_mod.o constants_mod.o datacube_mod.o \
 inputs_modV2.o: angularImage_utils.o atom_mod.o constants_mod.o \
 	datacube_mod.o fits_utils_mod.o gridFromFitsFile.o gridFromFlash.o \
 	h21cm_mod.o image_utils_mod.o ion_mod.o kind_mod.o messages_mod.o \
-	octal_mod.o parallel_mod.o sed_mod.o units_mod.o unix_mod.o \
-	vector_mod.o vh1_mod.o zlib_mod.o
+	octal_mod.o parallel_mod.o ramses_mod.o sed_mod.o units_mod.o \
+	unix_mod.o vector_mod.o vh1_mod.o zlib_mod.o
 ion_mod.o: constants_mod.o kind_mod.o messages_mod.o phfit2.o utils_mod.o
 loadbalance_mod.o: gridio_mod.o gridtype_mod.o mpi_global_mod.o octal_mod.o \
 	source_mod.o timing.o
@@ -272,7 +273,7 @@ setupamr_mod.o: TTauri_mod.o amr_mod.o biophysics_mod.o cluster_class.o \
 	discwind_class.o gridFromFitsFile.o gridFromFlash.o grid_mod.o \
 	gridio_mod.o gridtype_mod.o inputs_modV2.o lucy_mod.o magnetic_mod.o \
 	memory_mod.o messages_mod.o mpi_amr_mod.o mpi_global_mod.o \
-	octal_mod.o parallel_mod.o photoionAMR_mod.o ramses.o \
+	octal_mod.o parallel_mod.o photoionAMR_mod.o ramses_mod.o \
 	sph_data_class.o stateq_mod.o turbulence_mod.o utils_mod.o \
 	vector_mod.o vh1_mod.o vtk_mod.o
 setuppdr_mod.o: grid_mod.o healpix_modules.o inputs_modV2.o octal_mod.o \

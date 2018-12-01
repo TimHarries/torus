@@ -717,7 +717,7 @@ CONTAINS
     use gridFromFitsFile, only: assign_from_fitsfile
 #endif
     use angularImage_utils, only: calcAngImgTest
-    use ramses, only: fillRamses
+    use ramses_mod, only: fillRamses
     
     IMPLICIT NONE
 
@@ -3606,7 +3606,7 @@ CONTAINS
 ! Currently commented out. Reinstate if required.
     use inputs_mod, only : smoothInnerEdge, variableDustSublimation, rCut, doDiscSplit
 !    use inputs_mod, only: ttauriwind, smoothinneredge, amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
-    use ramses, only: splitRamses
+    use ramses_mod, only: splitRamses
     
 #ifdef USECFITSIO
     use gridFromFitsFile, only : checkFitsSplit
