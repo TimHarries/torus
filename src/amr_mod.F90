@@ -2159,7 +2159,7 @@ CONTAINS
        CASE ("sphfile","molcluster", "theGalaxy", "dale")
           if( .not. thisoctal%haschild(subcell)) then
 
-             if (molecularPhysics) then
+             if (molecularPhysics.or.h21cm) then
              if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
              if (.not. associated(thisoctal%cornervelocity)) then
                 allocate(thisoctal%cornervelocity(27))
