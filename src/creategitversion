@@ -6,7 +6,7 @@
 # Check whether git is available
 which git > /dev/null
 
-# Set the version number using svnversion if available or set to unknown otherwise
+# Set the version string using git if available or set to unknown otherwise
 if [ $? -eq 0 ]; then
 
 # A seven character abbreviation of the commit object name matches the name used on bitbucket
