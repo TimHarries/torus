@@ -741,7 +741,6 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
 !    endif
 
 ! average habing flux over accretionRadius of first source
-    ! TODO add tauBetweenPoints to this output
     if (findHabing) then
        if (.not. splitOverMPI) then
           write(thisFile, '(a,i3.3,a)') "averageHabingFlux_allStars_primarySource",primarySource,".dat"
