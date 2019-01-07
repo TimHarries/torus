@@ -681,8 +681,12 @@ contains
             "Find number of undersampled cells: ","(a,1l,1x,a)", .false., ok, .false.)
       call getLogical("calchabing", findHabing, cLine, fLine, nLines, &
             "Write Habing flux to file: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("taufuv", calculateTauFUV, cLine, fLine, nLines, &
+            "Calculate tau(FUV) between points: ","(a,1l,1x,a)", .false., ok, .false.)
       call getInteger("nionloops", nClusterIonLoops, cLine, fLine, nLines, &
             "Number of photoionization loops: ","(a,i8,a)", 0, ok, .false.)
+      call getInteger("primary", primarySource, cLine, fLine, nLines, &
+            "Primary source for G0/tau rays: ","(a,i8,a)", 1, ok, .false.)
     endif
 
     call getLogical("spectrum", calcSpectrum, cLine, fLine, nLines, &
