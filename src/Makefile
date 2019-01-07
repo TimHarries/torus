@@ -588,7 +588,7 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90 image_uti
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
             magnetic_mod.f90 units_mod.f90 interferometry_mod.f90 \
             qShep3D_mod.f90 qShep2D_mod.f90 turbulence_mod.f90 eos_mod.f90 citations_mod.f90 \
-            detector_mod.f90 interface_hierarchy_mod.f90 triangle_mesh_mod.f90 object_media_mod.f90 obj_io_mod.f90 \
+            detector_mod.f90 interface_hierarchy_mod.f90 triangle_mesh_mod.f90 object_media_mod.f90 obj_io_mod.f90 ramses_mod.f90 \
             $(VERSIONSOURCE)
             
 

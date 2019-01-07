@@ -5668,6 +5668,8 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
 
         thisPosition = currentPosition
 
+        ! The "velocity" function comes from molecular_mod and returns an analytical velocity or
+        ! result from amrGridVelocity
         startVel = Velocity(currentPosition, grid, startoctal = thisoctal, subcell = subcell)       
         endposition = currentposition + (1.d0 - 1d-10) * tval * direction
 
