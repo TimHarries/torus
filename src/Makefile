@@ -266,6 +266,42 @@ ifeq ($(SYSTEM), complexity)
     ZLIBLIBS = -lz
     KNOWN_SYSTEM=yes
 endif
+# 
+# The Dirac 2.5 system at Leicester AKA DIaL (Data Intensive at Leicester) 
+# Default is an MPI build, use mpi=no for openmp/serial
+ifeq ($(SYSTEM), dial)
+    ifeq ($(mpi), no)
+       F95COMP= ifort
+       MPIFLAG=
+    else
+       F95COMP= mpif90
+       MPIFLAG= -DMPI
+    endif
+    OPENMPFLAG = -fopenmp
+    FASTFLAG= -O3 
+# For debugging with optimisations enabled use
+#    DEBUGFLAG= -O3 -g -debug extended
+    DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
+    STATICFLAG=
+    MATHTRAP=
+    EXE=torus.dial
+    STATICLIBS= -Bstatic
+#    CFITSIOLIBDIR= /home/dc-harr1/cfitsio
+#    CFITSIOLIBS = -L${CFITSTIOLIBDIR} -lcfitsio
+    CFITSIOLIBS = -L/home/dc-ali1/cfitsio -lcfitsio
+    ifeq ($(hdf), yes)
+       F95COMP+=-I/cm/shared/apps/hdf5-par/intel/1.6.10/lib
+       STARLIBS=-L/cm/shared/apps/hdf5-par/intel/1.6.10/lib
+    endif
+    KROMELIBS = -L${HOME}/krome/build -lkrome
+    ifeq ($(chemistry), yes)
+       F95COMP+=-I${HOME}/krome/build
+    endif
+
+    SPHNG_FLAGS = -mcmodel=medium -i-dynamic
+    ZLIBLIBS = -lz
+    KNOWN_SYSTEM=yes
+endif
 #
 # The Dirac cosma6 system at Durham 
 # Default is an MPI build, use mpi=no for openmp/serial
