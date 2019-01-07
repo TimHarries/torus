@@ -285,7 +285,8 @@ ifeq ($(SYSTEM), cosma)
     STATICFLAG=
     MATHTRAP=
     EXE=torus.cosma
-    CFITSIOLIBS = -lcfitsio
+#    CFITSIOLIBS = -lcfitsio
+    CFITSIOLIBS = -L/cosma/home/dp015/dc-ali1/cfitsio -lcfitsio
     STATICLIBS= -Bstatic
     KROMELIBS = -L${HOME}/krome/build -lkrome
     ifeq ($(chemistry), yes)
