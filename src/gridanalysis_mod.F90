@@ -1026,7 +1026,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
     real :: startLambda, endLambda
     type(OCTAL), pointer :: thisOctal, sOctal
     real(double) :: fudgeFac = 1.d-1
-    real(double) :: meankappaSca, meankappaAbs, meankappaExt, rTot
+    real(double) :: meankappaSca, meankappaAbs, meankappaExt !, rTot
     real(double), allocatable :: kappaAbsArray(:), kappaScaArray(:), dLambda(:)
     integer :: subcell
     integer :: iLamStart, iLamEnd, i
