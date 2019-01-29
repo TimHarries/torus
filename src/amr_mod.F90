@@ -2092,7 +2092,7 @@ CONTAINS
     !   and calculates all the other variables in the model.
     ! this should be called once the structure of the grid is complete.
 
-    USE inputs_mod, ONLY : modelwashydro, splitOverMPI, molecularPhysics !, useHartmannTemp
+    USE inputs_mod, ONLY : modelwashydro, splitOverMPI, molecularPhysics, densitySubSample !, useHartmannTemp
     USE luc_cir3d_class, ONLY:  calc_cir3d_temperature
     USE cmfgen_class, ONLY:     calc_cmfgen_temperature
     USE jets_mod, ONLY:         calcJetsTemperature
@@ -2187,6 +2187,10 @@ CONTAINS
           endif
           if(thisoctal%cornervelocity(14)%x .eq. -9.9d99) then
              call interpolateVelocityCorners(thisOctal)
+             if (densitySubSample) then
+                if(.not. associated(thisoctal%cornerrho)) allocate(thisOctal%cornerrho(27))
+                call interpolateDensityCorners(thisOctal)
+             end if
           endif
           
        CASE DEFAULT
@@ -6472,6 +6476,47 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 
     
   end subroutine interpolateVelocityCorners
+
+  subroutine interpolateDensityCorners(thisOctal)
+    use vector_mod
+    implicit none
+    type(OCTAL) :: thisOctal
+    integer :: i
+
+    ! Base level
+    thisOctal%cornerRho(1) =  thisOctal%rho(1)
+    thisOctal%cornerRho(2) = (thisOctal%rho(1) + thisOctal%rho(2)) / 2.0_db
+    thisOctal%cornerRho(3) =  thisOctal%rho(2)
+
+    thisOctal%cornerRho(4) = (thisOctal%rho(1) + thisOctal%rho(3)) / 2.0_db
+    thisOctal%cornerRho(5) = (thisOctal%rho(1) + thisOctal%rho(2) + &
+                                   thisOctal%rho(3) + thisOctal%rho(4)) / 4.0_db
+    thisOctal%cornerRho(6) = (thisOctal%rho(2) + thisOctal%rho(4)) / 2.0_db
+
+    thisOctal%cornerRho(7) =  thisOctal%rho(3)
+    thisOctal%cornerRho(8) = (thisOctal%rho(3) + thisOctal%rho(4)) / 2.0_db
+    thisOctal%cornerRho(9) =  thisOctal%rho(4)
+
+    ! Top level
+    thisOctal%cornerRho(19) =  thisOctal%rho(5)
+    thisOctal%cornerRho(20) = (thisOctal%rho(5) + thisOctal%rho(6)) / 2.0_db
+    thisOctal%cornerRho(21) =  thisOctal%rho(6)
+
+    thisOctal%cornerRho(22) = (thisOctal%rho(5) + thisOctal%rho(7)) / 2.0_db
+    thisOctal%cornerRho(23) = (thisOctal%rho(5) + thisOctal%rho(6) + &
+                               thisOctal%rho(7) + thisOctal%rho(8)) / 4.0_db
+    thisOctal%cornerRho(24) = (thisOctal%rho(6) + thisOctal%rho(8)) / 2.0_db
+
+    thisOctal%cornerRho(25) =  thisOctal%rho(7)
+    thisOctal%cornerRho(26) = (thisOctal%rho(7) + thisOctal%rho(8)) / 2.0_db
+    thisOctal%cornerRho(27) =  thisOctal%rho(8)
+
+    ! Average base and top levels onto middle level
+    do i=1,9
+       thisOctal%cornerRho(i+9) = (thisOctal%cornerRho(i) + thisOctal%cornerRho(i+18)) / 2.0_db
+    end do
+
+  end subroutine interpolateDensityCorners
   
   TYPE(vector) FUNCTION TTauriVelocity(point)
     ! calculates the velocity vector at a given point for a model
