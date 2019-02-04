@@ -1,0 +1,80 @@
+! Torus v2 parameter file for 2D benchmark disc
+! See Pascucci et al, 2004, A&A, 417, 793
+
+dustphysics T   ! use dust microphysics 
+
+radeq T  ! perform a radiative equilibrium calculation
+splitovermpi T
+loadbalancing T
+nhydrothreads 2
+! AMR grid parameters
+
+readgrid F   ! we aren't reading a grid, we will set one up from scratch
+writegrid F  ! we don't need to write out the AMR file - we just need SEDs
+amrgridsize 4.e6
+amrgridcentrex 2.e6 ! the linear size of the top-level AMR mesh in units of 10^10 cm
+amr1d T  ! this is a 2d (cylindical) model
+
+! grid smoothing switches
+
+smoothgridtau T  ! smooths the grid for optical depth, in order to resolve disc photosphere
+dosmoothgrid T  ! smooth the grid for jumps in cell refinement
+smoothfactor 3.0 ! make sure that neighbouring cells are not only one AMR depth apart
+
+
+! Source parameters
+
+nsource 1  ! there is just one source
+radius1 1.  ! it has a radius of 1 solar radius
+teff1 5800.  ! the source effective temperature 
+contflux1 blackbody ! the continuum flux is assumed to be a blackbody
+mass1 1.   ! the source has a mass of one solar mass
+sourcepos1 0. 0. 0  ! it is located at the grid cntre
+
+! Geometry specific parameters
+
+geometry benchmark  ! this is the Pascucci (2004) benchmark
+rinner 1. ! inner disc radius (AU)                                
+router 1000. ! outer disc radius        
+height 125. ! disc scaleheight at 100 AU (in AU)
+rho 8.16136e-18  ! density at inner edge midplane (g/cc)
+
+! Dust grain properties
+
+iso_scatter T      ! Assume isotropic scattering (assumed by benchmark)
+graintype1 sil_dl  ! Draine and Lee silicates
+grainfrac1 0.05    ! grain mass fraction (in terms of gas)
+tsub1 2000.0       ! Temperature for dust sublimation
+amin1 0.12         ! minimum grain size (microns)
+amax1 0.1201       ! maximum grain size (microns)
+qdist1 0.01        ! power law index (flat)
+
+! Output SEDs
+
+spectrum T   ! produce a spectrum
+
+! SED parameters
+
+ninc 2               ! number of inclinations
+firstinc 12.5        ! the first inclination (degrees)
+lastinc 77.5         ! the last inclination (degrees)
+nphotspec 500000      ! the number of photon packets in each SED
+filename test        ! the root of the output filename
+sised T              ! Write spectrum as lambda vs F lambda in SI units
+distance 2.25558e-8  ! Distance to observer
+sedlammin 0.12       ! minimum wavelength in SED file
+sedlammax 2000       ! maximum wavelength in SED file
+sedwavlin F          ! Linear spacing in SED file? 
+
+! Image parameters
+
+image T                    ! Produce images
+lambdaimage  220000.0      ! at 22 microns
+nimage 2                   ! There will be two images
+
+imagefile1 test_22um.fits  ! Filename for the first image
+imagefile2 test2_22um.fits ! Filename for the second image
+
+inclination1 12.5          ! Inclination angle for first image 
+inclination2 77.5          ! Inclination angle for second image
+

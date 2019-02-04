@@ -6,16 +6,16 @@ module constants_mod
 
 
 
-  
+
   use kind_mod
 
   public
   character(len=20) :: torusVersion
-  
+
   real, parameter :: reallySmall = 1.e-30
 
   ! pi stuff
-  
+
   real(double), parameter :: pi = 3.1415926535897932_db
   real(double), parameter :: piDouble = 3.1415926535897932_db
   real(double), parameter :: twoPi = 2.d0*pi
@@ -62,22 +62,22 @@ module constants_mod
   ! atomic
 
   real(double), parameter :: hConst = 6.626176d-34   ! Js
-  real(double), parameter :: hCgs = 6.626205d-27
-  real(double), parameter :: twoTimeshCgs = 2.d0 * hCgs  
+  real(double), parameter :: hCgs = 6.626205d-27  !erg second
+  real(double), parameter :: twoTimeshCgs = 2.d0 * hCgs
   real(double), parameter :: hCgsOverfourPi = hCgs / fourPi
   real(double), parameter :: kConst = 1.380662d-23   ! J/k
   real(double), parameter :: kErg = 1.380626d-16     ! erg/k
   real(double), parameter :: hCgsOverKerg = hCgs/kErg
   real(double), parameter :: kev = 8.6171d-5         ! erg/k
   real(double), parameter :: sigmaE = 6.6525d-25       ! cm^2
-  real(double), parameter :: eCharge = 4.803242384d-10 ! 
+  real(double), parameter :: eCharge = 4.803242384d-10 !
   real(double), parameter :: hydE0eV = 13.598433       ! eV
   real(double), parameter :: rydbergtoEv = 13.605692312d0 ! ev/ry
   real(double), parameter :: rydbergtoCm = 1.0973731568539d5 !cm^-1
   real(double), parameter :: hydE0eVdb = 13.598433_db! eV
 
-  real(double), parameter :: ergToEv = 6.24145d11   
-  real(double), parameter :: evtoerg = 1.d0/6.24145d11   
+  real(double), parameter :: ergToEv = 6.24145d11
+  real(double), parameter :: evtoerg = 1.d0/6.24145d11
 
   real(double), parameter :: nuHydrogen = (hydE0eVdb/(ergToEv)) / (hCgs)
 
@@ -107,11 +107,11 @@ module constants_mod
 
   real(double), parameter :: Tcbr = 2.728d0 !K
   real(double), parameter :: Navogadro = 6.0221415d23   ! per mol
-  real(double), parameter :: Rgas = Navogadro * kerg    
+  real(double), parameter :: Rgas = Navogadro * kerg
 
   ! densities
 
-  real(double), parameter :: msolpercAUtogpercc = msol / (autocm**3)    
+  real(double), parameter :: msolpercAUtogpercc = msol / (autocm**3)
 
   ! unit conversions
   real(double), parameter :: kmsToC = 1.d5/cSpeed
@@ -129,5 +129,3 @@ module constants_mod
   real(double), parameter :: v_turbPDR = 1.5d5 !cm s-1
 
 end module constants_mod
-
-

@@ -5,6 +5,9 @@ dustphysics T   ! use dust microphysics
 
 radeq T  ! perform a radiative equilibrium calculation
 
+loadbalancing T
+nhydrothreads 2
+
 ! AMR grid parameters
 
 readgrid F   ! we aren't reading a grid, we will set one up from scratch

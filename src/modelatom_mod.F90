@@ -88,7 +88,7 @@ contains
        if (found) exit
     enddo
     if (found) then
-       write(message, '(a, a, a, i2)') "Transition found: name=",trim(AtomArray(iAtom)%name), ", iTrans=",iTrans 
+       write(message, '(a, a, a, i2)') "Transition found: name=",trim(AtomArray(iAtom)%name), ", iTrans=",iTrans
        call writeInfo(message,TRIVIAL)
     else
        write(message,'(a,f10.1)') "Transition not found in identifyTransition: ",lamline
@@ -105,7 +105,7 @@ contains
     character(len=120) :: junk
     character(len=20) :: chunk(20)
     character(len=80) :: message
-
+    real(double) :: lamTrans
     dataDirectory = " "; chunk = " "; nChunks = 0
 
     call unixGetenv("TORUS_DATA", dataDirectory, i)
@@ -136,7 +136,6 @@ contains
 
     thisAtom%iPot = abs(thisAtom%energy(1))*hCgs*ergtoev
     thisAtom%energy = (thisAtom%energy(1) - thisAtom%energy)*hCgs*ergtoev ! eV
-
     read(30,*) thisAtom%nTrans
 
 
@@ -164,6 +163,10 @@ contains
        enddo
        if (thisAtom%iUpper(i) <= thisAtom%nLevels) then
           thisAtom%transFreq(i) = ((thisAtom%energy(thisAtom%iUpper(i)) - thisAtom%energy(thisAtom%iLower(i)))*evToErg)/Hcgs
+          lamTrans = ((cspeed/thisAtom%transfreq(i))*1d8)/nAir
+          !print*,"freq",thisAtom%transFreq(i)," iupper",thisAtom%iUpper(i)," ilower",thisatom%iLower(i)," Wavelength",lamTrans
+
+
        endif
     enddo
     close(30)
@@ -176,7 +179,7 @@ contains
            thisAtom%fMatrix(thisAtom%iLower(i), thisAtom%iUpper(i)) = thisAtom%params(i,1)
         endif
     enddo
-       
+
   end subroutine readAtom
 
 
@@ -203,7 +206,7 @@ contains
        if (i /= 0) then
           nChunks = nChunks + 1
           chunk(nChunks) = tLine(1:i-1)
-          tLine(1:) = tLine(i+1:) 
+          tLine(1:) = tLine(i+1:)
           call stripLeadingSpaces(tLine)
           if (len(trim(tLine)) == 0) i = 0
        endif
@@ -248,7 +251,7 @@ contains
     real(double) :: pops(:,:), ne
     type(MODELATOM) :: thisAtom(:)
     integer :: nAtom, iAtom
-    
+
     ne = 0.d0
     nAtom = size(thisAtom)
     do iAtom = 1,nAtom
@@ -332,7 +335,7 @@ contains
           stop
      end select
    end function photoCrossSection
-   
+
    real(double) function gauntTest(nu, gIIx, gIIy, gIIz)
      real(double) :: nu, gIIx, gIIy, gIIz
      gauntTest = gIIx + gIIy / nu + GIIz / nu**2
@@ -344,7 +347,7 @@ contains
     quickPhotoCrossSection  = thisAtom%photoSec(iRBF, iFreq)
   end function quickPhotoCrossSection
 
-    
+
 
 
    subroutine addCrossSectionstoAtom(thisAtom, nFreq, freq)
@@ -367,7 +370,7 @@ contains
            thisAtom%photoSec(j, iFreq) = photoCrossSection(thisAtom, iLevel, freq(ifreq))
         enddo
      enddo
-        
+
 
 
    end subroutine addCrossSectionstoAtom
@@ -398,10 +401,10 @@ contains
     select case(thisAtom%transType(iTrans))
     case("CBB")
        select case(thisAtom%name)
-       case("HI") 
+       case("HI")
           rate = cijt_hyd_hillier(thisAtom%iLower(iTrans), thisAtom%iUpper(iTrans), temperature, thisAtom)
 
-       case("HeI") 
+       case("HeI")
           select case(thisAtom%equation(itrans))
              case(2)
                 if (thisAtom%nParams(iTrans) == 1) then
@@ -422,7 +425,7 @@ contains
                 EH = hydE0eVdb * evtoErg
                 u0 = Hcgs*thisAtom%transFreq(iTrans)/(kErg*temperature)
                 u1 = u0 + 0.2d0
-                rate = 5.465d-11 * sqrt(temperature) * 4.d0 * thisAtom%params(itrans,1) 
+                rate = 5.465d-11 * sqrt(temperature) * 4.d0 * thisAtom%params(itrans,1)
                 rate = rate * (EH/(hCgs*thisAtom%transFreq(iTrans)))**2 * u0 * (expint(1, u0) - &
                      (u0/u1)*exp(-0.2d0)*expint(1,u1))
             case(8)
@@ -437,7 +440,7 @@ contains
                 call writeFatal("CBB rate equation not implemented for He")
                 stop
            end select
-       case("HeII") 
+       case("HeII")
           EH = hydE0eVdb * evtoErg
           u0 = Hcgs*thisAtom%transFreq(iTrans)/(kErg*temperature)
           fij = thisAtom%fMatrix(thisAtom%iLower(iTrans), thisAtom%iUpper(iTrans))
@@ -456,7 +459,7 @@ contains
        end select
     case("CBF")
        select case(thisAtom%name)
-       case("HI") 
+       case("HI")
           rate = cikt_hyd_hillier(thisAtom%iLower(iTrans), temperature, thisAtom)
        case("HeI")
           if (thisAtom%iLower(iTrans) <= 15) then
@@ -525,7 +528,7 @@ contains
     real(double) :: factor
     integer :: level
     real(double), parameter :: eTrans(23) =                      &
-         (/ (hydE0eVdb*(1.0d0 - 1.0d0/level**2),level=1,SIZE(eTrans)) /) 
+         (/ (hydE0eVdb*(1.0d0 - 1.0d0/level**2),level=1,SIZE(eTrans)) /)
 
     t1 = min(t,1.e5_db)
     i1 = min(i,j)
@@ -554,19 +557,19 @@ contains
     !
     ! this function calculates the collisional ionization rate
     ! (using Hillier coefficients for most levels).
-    ! 
+    !
     type(MODELATOM) :: thisAtom
     integer, intent(in)              :: i        ! the level
     real(double),intent(in) :: t        ! the temperature
     real(double) cikt
-    real(double) :: t1                  
+    real(double) :: t1
 !    real(double) :: gammait             ! see k&c
     real(double) :: chi                 ! potential from i to k
     integer :: lower, upper
     real(double) :: factor
     integer :: level
     real(double), parameter :: eTrans(23) =                      &
-         (/ (hydE0eVdb*(1.0d0 - 1.0d0/level**2),level=1,SIZE(eTrans)) /) 
+         (/ (hydE0eVdb*(1.0d0 - 1.0d0/level**2),level=1,SIZE(eTrans)) /)
 
     ! making cint a PARAMETER may cause problems with XL Fortran
     !  real(double) :: cint(5,10)
@@ -586,7 +589,7 @@ contains
 
     t1 = min(t,1.5e5_db)
     chi=hydE0eV-eTrans(i)
-    !    if (i .ne. 2) then 
+    !    if (i .ne. 2) then
     call locate(tempTable,size(tempTable),t,lower)
     if (lower == 0 .or. lower == size(tempTable)) then
        print *, 'In cikt, temperature is out of range! (',t1,')'
@@ -614,7 +617,7 @@ contains
     real(double)            :: lam,e ! the photon wavelength
     integer :: level
     real(double), parameter :: eTrans(23) =                      &
-         (/ (hydE0eVdb*(1.0d0 - 1.0d0/dble(level)**2),level=1,SIZE(eTrans)) /) 
+         (/ (hydE0eVdb*(1.0d0 - 1.0d0/dble(level)**2),level=1,SIZE(eTrans)) /)
 
     lam=cSpeed/nu
     lam=lam * 1.e8_db
@@ -679,7 +682,7 @@ contains
   end subroutine readTopbase
 
   function BoltzSahaGeneral(thisAtom, level, Ne, t) result(ratio)
-  
+
     type(MODELATOM) :: thisAtom
     integer              ::  level
     real(double) :: Ne, t, ratio
@@ -705,9 +708,9 @@ contains
           else
              N1overN0 = 0.d0
           endif
-          
+
           !          n1overn0 = (2.d0*u1)/(ne*u0) * ((twoPi * melectron * kerg * t)/(hCgs**2))**1.5d0 * exp(-thisAtom%iPot/(kev*t))
-          
+
           if (N1overN0 /= 0.d0) then
              ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u0 / N1overn0
           else
@@ -774,7 +777,7 @@ contains
    end function BoltzSahaGeneral
 
   function BoltzSahaEquationAbsolute(thisAtom, nTotal, level, Ne, t) result(pop)
-  
+
     type(MODELATOM) :: thisAtom
     real(double) :: Ne, t, pop, nTotal
     real :: tReal
@@ -801,7 +804,7 @@ contains
           else
              N1overN0 = 0.d0
           endif
-          
+
           pop = nTotal / (1.d0+n1OverN0)
           pop = pop * thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))/u0
        case(2)
@@ -844,7 +847,7 @@ contains
    end function BoltzSahaEquationAbsolute
 
   function SahaEquationNextIon(thisAtom, nTotal, Ne, t) result(pop)
-  
+
     type(MODELATOM) :: thisAtom
     real(double) :: Ne, t, pop, nTotal
     real :: tReal
@@ -870,7 +873,7 @@ contains
           else
              N1overN0 = 1.d-30
           endif
-          
+
           pop = nTotal / (1.d0 + 1.d0/ max(1.d-20,n1OverN0))
        case(2)
 
@@ -907,7 +910,7 @@ contains
           stop
        end select
    end function SahaEquationNextIon
-          
+
 
    function getUT(t, coeff) result (ut)
      real :: t, coeff(:),  ut
@@ -953,15 +956,15 @@ contains
    end subroutine createRBBarrays
 
 
-  real(double) function oldcikt_ma(i,t, thisAtom) 
+  real(double) function oldcikt_ma(i,t, thisAtom)
     !
     ! this function calculates the collisional ionization rate (see k&c and
     ! mihalas 1967 (apj 149 169) ).
-    ! 
+    !
     integer, intent(in)              :: i        ! the level
     real(double),intent(in) :: t        ! the temperature
     type(MODELATOM) :: thisAtom
-    real(double) :: t1                  
+    real(double) :: t1
     real(double) :: gammait             ! see k&c
     real(double) :: lgt
     real(double) :: chi                 ! potential from i to k
@@ -983,7 +986,7 @@ contains
 
     t1 = min(t,1.5e5_db)
     lgt=log10(t1)
-    if (i .ne. 2) then 
+    if (i .ne. 2) then
        gammait=cint(1,i)+cint(2,i)*lgt+cint(3,i)*(lgt**2)+ &
             (cint(4,i)/lgt)+(cint(5,i)/(lgt**2))
     else
@@ -1022,13 +1025,13 @@ contains
           eta = eta + nStar * annu_hyd(j,freq) * exp(-(hcgs*freq)/(kerg*temperature))
        endif
     enddo
-    
+
 ! free-free
 
     eta = eta + (ne**2) * alpkk_hyd(freq,temperature) * exp(-(hcgs*freq)/(kerg*temperature))/fourPi
-  
+
     eta=eta*real((2.0*dble(hcgs)*dble(freq)**3)/(dble(cspeed)**2))
-  
+
   end function etaContHydrogen
 
   Real(double) pure function alpkk_hyd(freq,t)
@@ -1037,11 +1040,11 @@ contains
      !
      real(double), intent(in) :: freq,t
      real(double)             :: wav,gauntf
-      
+
      wav=1.e8_db*cSpeed/freq
      gauntf=giii_hyd(1.e0_db,t,wav)
      alpkk_hyd=gauntf*real(3.6d8/((dble(freq)**3)*sqrt(dble(t))))
- 
+
    end function alpkk_hyd
 
 
@@ -1049,14 +1052,14 @@ contains
      !
      !   ferland's fabulous functional fits
      !
-     
+
      real(double), intent(in) :: wl, t, z
      real(double) :: c, u, ulog, gam2
      integer               :: i,j,k, m
      real(double) :: b2
      real(double) :: frac, sum1, sum2, d
      ! making coeff and a2 PARAMETERs may cause problems with XL Fortran
-     !  real(double) :: coeff(28) 
+     !  real(double) :: coeff(28)
      !  real(double) :: a2(7)
      !  coeff =                                                           &
      !     (/1.102d0       ,-0.1085d0     ,0.09775d0     ,-0.01125d0     ,&
@@ -1067,8 +1070,8 @@ contains
      !       1.16d0        ,-0.707333d0   ,0.112d0       ,0.0053333333d0 ,&
      !       0.883d0       ,-0.76885d0    ,0.190175d0    ,0.022675d0     /)
      !  a2 = (/100.d0, 10.d0, 3.d0, 1.d0, 0.3d0, 0.1d0, 0.001d0/)
-       
-     real(double), parameter :: coeff(28) =                   & 
+
+     real(double), parameter :: coeff(28) =                   &
         (/1.102d0       ,-0.1085d0     ,0.09775d0     ,-0.01125d0     ,&
           1.2d0         ,-0.24016667d0 ,0.07675d0     ,-0.01658333d0  ,&
           1.26d0        ,-0.313166667d0,0.15075d0     ,0.00241667d0   ,&
@@ -1078,7 +1081,7 @@ contains
           0.883d0       ,-0.76885d0    ,0.190175d0    ,0.022675d0     /)
      real(double), parameter :: a2(7) =                       &
           (/100.d0, 10.d0, 3.d0, 1.d0, 0.3d0, 0.1d0, 0.001d0/)
-       
+
        u = 1.44e+8 / (wl*t)
        ulog = log10(u)
        gam2 = 1.58e+5 * z*z/t
@@ -1174,9 +1177,9 @@ contains
              write(*,*) "negative bfopacity!!!!"
              firstTime = .false.
           endif
-          kappa = 0.d0 
+          kappa = 0.d0
        endif
-       
+
      end function bfOpacity
 
   function bfEmissivity(freq, nAtom, thisAtom, pops, nStar, temperature, ne,  ifreq) result(eta)
@@ -1203,8 +1206,8 @@ contains
 !    bound-free
 
     fac = (2.d0 * hCgs * freq**3)/(cSpeed**2)
-    expFac = exp(-(hcgs*freq)/(kerg*temperature)) 
- 
+    expFac = exp(-(hcgs*freq)/(kerg*temperature))
+
     do iAtom = 1, nAtom
 
        do  i = 1, thisAtom(iAtom)%nRBFtrans
@@ -1329,7 +1332,7 @@ contains
     type(MODELATOM) :: thisAtom
     integer :: maxBoundLevels
     integer :: iOldContinuum, iNewContinuum, iTrans
-  
+
     if (maxBoundLevels > thisAtom%nLevels-1) then
        call writeFatal("maxBoundLevels exceeds bound levels in atom")
     endif
@@ -1382,17 +1385,17 @@ contains
   !
   ! See sub_phot_gen.f in CMFGEN source files distrubution
   !
-  ! The data tabulation is from Hillier.. Don't know where the original 
-  ! data is from.... Need to ask him  
+  ! The data tabulation is from Hillier.. Don't know where the original
+  ! data is from.... Need to ask him
   ! Units in cm^2.
   function annu_He_I(n,nu) result(out)
     implicit none
-    real(double) :: out 
+    real(double) :: out
     integer, intent(in)      :: n   ! [-] energy level
     real(double), intent(in) :: nu  ! [Hz]  frequency of photon
     !
     integer, parameter :: nmax= 19  ! max level in the data file.. skipping the SuperLevels
-    integer, parameter :: npar=8    ! # of parameter in the fitting function 
+    integer, parameter :: npar=8    ! # of parameter in the fitting function
     !
     real(double),save :: a(nmax,npar)     ! fitting parameters
     logical, save :: first_time = .true.
@@ -1400,13 +1403,13 @@ contains
     real(double) :: alpha
     character(LEN=80) :: msg
     !
-    real(double), parameter :: E_1k=198310.7600d0 !  [Ry] ionization energy from ground 
+    real(double), parameter :: E_1k=198310.7600d0 !  [Ry] ionization energy from ground
     ! Conversion factor for unit change from [Ry] to [Hz]
-    real(double), parameter :: conv_fac = (13.6056923/109737.316 * 1.60217646d-12/6.626205d-27)  
+    real(double), parameter :: conv_fac = (13.6056923/109737.316 * 1.60217646d-12/6.626205d-27)
     ! Conversion factor for unit change from [Ry] to [eV]
 !    real(double), parameter :: Ry2eV = 13.6056923/109737.316  !
     !
-    
+
     ! Energy levels with respect the the ground state... in Hillier's data
     ! Units are in [Ry]
     real(double), parameter :: E_i(nmax) =  &
@@ -1419,7 +1422,7 @@ contains
 
 !    ! JUST FOR TESTING!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !    out = annu(n,nu)   !hydrogen!!
-!    return 
+!    return
     !
 
 
@@ -1457,7 +1460,7 @@ contains
        a(13,1:npar)= (/ 1.324D+00, -1.692D+00, -2.916D-01,  9.027D-02, 0.8438d0, 1.51684d0, -2.10272d0, 1.60093d0  /)
        ! For level 14 ==> 1s4p3Po
        a(14,1:npar)= (/ 1.619D+00, -2.109D+00, -3.357D-01, -2.532D-02, 1.0280d0, 2.02110d0, -2.87157d0, 1.64584d0  /)
-       ! For level 15 ==>1s4d3De 
+       ! For level 15 ==>1s4d3De
        a(15,1:npar)= (/ 1.565D+00, -2.781D+00, -6.497D-01, -5.979D-03, 1.0410d0, 2.25756d0, -4.12940d0, 1.60889d0  /)
        ! For level 16 ==>1s4d1De
        a(16,1:npar)= (/ 1.553D+00, -2.781D+00, -6.841D-01, -4.083D-03, 1.1870d0, 2.50403d0, -4.40022d0, 1.63108d0  /)
@@ -1468,8 +1471,8 @@ contains
        ! For level 19 ==>1s4p1Po
        a(19,1:npar)= (/ 1.620D+00, -2.303D+00, -3.045D-01, -1.391D-01, 1.2720d0, 2.63942d0, -3.71668d0, 1.60525d0  /)
     end if
-    
-    ! Checking 
+
+    ! Checking
 
     if (nu <= 0.0d0) then
        write(msg,*) "Error:: nu <= 0.0d0 in annu_He_I!!!"
@@ -1479,7 +1482,7 @@ contains
        alpha = sqrt(nu)
        stop
     end if
-    
+
 
     !
     ! Computes the cross section...
@@ -1492,9 +1495,9 @@ contains
     elseif (n > nmax) then
        ! No data exists
        out = 1.0d-20  ! just returning for small number for now
-    elseif (n<1) then 
+    elseif (n<1) then
        ! out of range
-       write(msg,*) "Error:: n is negative in photoion_xsect::annu_He_I."       
+       write(msg,*) "Error:: n is negative in photoion_xsect::annu_He_I."
        call writeinfo(msg)
        write(msg,*) "n, nmax = ", n, nmax
        call writefatal(msg)
@@ -1516,7 +1519,7 @@ contains
 
        EDGE=  Eion_from_n*conv_fac ! edge freqenecy  [Hz]
 
-       
+
        if (EDGE <= 0.0d0) then
           write(msg,*) "Error:: EDGE <= 0.0d0 in annu_He_I!!!"
           call writeInfo(msg)
@@ -1531,8 +1534,8 @@ contains
        X=LOG10(U+3.0D0*SPACING(U)) ! slightly larger than U
 !       if (n == 1) then
 !          print *, "n            = ", n
-!          print *, "EDGE [in eV] = ", Eion_from_n*Ry2eV 
-!          print *, "EDGE [in Hz] = ", Eion_from_n*conv_fac 
+!          print *, "EDGE [in eV] = ", Eion_from_n*Ry2eV
+!          print *, "EDGE [in Hz] = ", Eion_from_n*conv_fac
 !          print *, "U [-]        = " , U
 !          print *, "X [-]        = " , X
 !          print *, "a(n,5)       = " , a(n,5)
@@ -1548,12 +1551,12 @@ contains
 
           out = alpha*megabarn  ! should be in cm^2 here now.
 
-       ELSE ! this is below the edge 
+       ELSE ! this is below the edge
           out = 1.0d-30
        END IF
 
     end if
-  
+
    end function annu_He_I
 
 
@@ -1570,7 +1573,7 @@ contains
     !  See P.132 of the book entitled:
     !  "The observation and analysis of stellar photosphere" by D. F. Gray
     !
-    ! We use the fact that He II is hydrogenic ion and use propertionality 
+    ! We use the fact that He II is hydrogenic ion and use propertionality
     ! from the proton number (Z).  (see Mihalas's book)
     !
     integer, intent(in)              :: n     ! the level
@@ -1610,19 +1613,19 @@ contains
     real(double), intent(in):: z      ! Nuclear charge
     real(double), intent(in):: nu     ! the photon frequency
     real(double)            :: lam, E ! the photon wavelength
-    real(double)            :: E_ion  ! ionization energy 
+    real(double)            :: E_ion  ! ionization energy
     real(double)            :: En     ! Energy level
     real(double) :: z2, annu_hyd
     !
     ! Enegry levels of H I
     real(double), parameter :: En_H_I(30) =   &
        & (/ 0.0d0, 10.19882475d0, 12.087496d0, 12.74853094d0, 13.05449568d0,  &
-       &    13.22069875d0, 13.32091396d0, 13.38595748d0, 13.43055111d0, 13.46244867d0,  & 
+       &    13.22069875d0, 13.32091396d0, 13.38595748d0, 13.43055111d0, 13.46244867d0,  &
        &    13.48604926d0, 13.50399944d0, 13.5179689d0, 13.52905324d0,  13.53799552d0,  &
        &    13.54531412d0, 13.5513796d0,  13.55646253d0, 13.56076421d0, 13.56443692d0,  &
        &    13.56759755d0, 13.57033706d0, 13.57272708d0, 13.57482461d0, 13.57667551d0,  &
        &    13.57831697d0, 13.57977946d0, 13.58108806d0, 13.58226364d0, 13.58332363d0   /)
-    
+
     lam=cSpeed/nu
     lam=lam * 1.d8
 
@@ -1632,14 +1635,14 @@ contains
 
     E = hCgs * nu * ergToEv  ! energy of photon
 
-    ! Check if the energy is the edge energy/frequency 
+    ! Check if the energy is the edge energy/frequency
     if (E > (E_ion - En)) then
 
 !       annu_hyd = 1.044d-26*gii(n,1.0d0,lam)*(lam**3)/dble(n)**5
 
        annu_hyd = 1.044d-26*gii(n,z,lam)*(lam**3)/dble(n)**5
 
-       annu_hgi = annu_hyd*z2*z2  ! Z^4 factor 
+       annu_hgi = annu_hyd*z2*z2  ! Z^4 factor
     else
        annu_hgi = 1.d-30
     endif
@@ -1662,8 +1665,8 @@ contains
     real(double), intent(in) ::  z,wl
     real(double) ::  efree,sum,ag,alam
     integer               :: i
-    
-    real(double) :: nDouble 
+
+    real(double) :: nDouble
     ! making coeff  a PARAMETER may cause problems with XL Fortran
     real(double),dimension(6), parameter :: coeff = &
           (/-0.338276d0, 0.808398d0, -0.59941d0, 0.104292d0, &
@@ -1694,9 +1697,9 @@ contains
        gii = (1.e0-sum) * alam + 0.93e0_db*sum+0.2e0_db*sum*(1.e0_db-sum)
        return
     endif
-    
+
   end function gii
-  
+
 
 
   !
@@ -1708,7 +1711,7 @@ contains
 
     real(double)             :: u, gii, term
     real(double), parameter  :: twoThirds = 2.e0_db/3.e0_db
-    real(double), parameter  :: fourThirds = 2.0_db * twoThirds 
+    real(double), parameter  :: fourThirds = 2.0_db * twoThirds
 
     u = nDouble*nDouble*911.76e0_db / (wl*z*z)-1.e0_db
     gii = 1.e0_db + 0.1728e0_db * (u-1.e0_db) / ((nDouble*(u+1.e0_db))**twoThirds)
@@ -1720,7 +1723,7 @@ contains
        giia = 1.0_db
        return
     endif
-    
+
   end function giia
 
 

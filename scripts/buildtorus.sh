@@ -11,14 +11,14 @@
 #              2 - build failure
 
 print_help(){
-    echo 
+    echo
     echo "This script builds Torus for MPI/OpenMP/hybrid configurations."
     echo "The Torus source code needs to be available."
-    echo "Exiting builds will not be deleted but will be updated."
+    echo "Existing builds will not be deleted but will be updated."
     echo "Torus executables will be put in the bin directory"
     echo "Run script with arguments openmp/mpi/hybrid/all/single."
     echo "Other arguments are passed to the make command"
-    echo 
+    echo
 }
 
 ####################################
@@ -28,7 +28,7 @@ print_help(){
 echo
 echo "Torus build script"
 echo "------------------"
-echo 
+echo
 
 openmp=no
 mpi=no
@@ -43,7 +43,7 @@ base_dir=${PWD}
 make_args=
 while [ $# -gt 0 ]
 do
-    case "$1" in 
+    case "$1" in
 	-h) print_help
 	    exit;;
 	all) openmp=yes
@@ -59,7 +59,7 @@ shift
 done
 
 # If no build options have been specified then build with OpenMP only
-if [[ $mpi == no && $openmp == no && $hybrid == no && $single == no ]]; then 
+if [[ $mpi == no && $openmp == no && $hybrid == no && $single == no ]]; then
     echo "Building with OpenMP (this is the default option)"
     openmp=yes
 fi
@@ -68,7 +68,7 @@ fi
 # Pre-build checks. #
 #####################
 
-# Is the Torus source directory present? 
+# Is the Torus source directory present?
 if [[ -d src ]]; then
     echo "Found src directory"
 else
@@ -78,7 +78,7 @@ else
     exit 1
 fi
 
-# Do we have a make file? 
+# Do we have a make file?
 if [[ -e src/Makefile ]]; then
     echo "Found a Makefile in the src directory"
 else
@@ -87,7 +87,7 @@ else
 fi
 
 # Do we have a bin directory?
-if [[ -d bin ]];then 
+if [[ -d bin ]];then
     echo "Found bin directory"
 else
     echo "Making bin directory"
@@ -110,14 +110,14 @@ thisHost=`hostname -f`
 if [[ $thisHost == login*.cluster.local ]]; then
     echo "This looks like Isca"
     export SYSTEM=isca
-    
+
 else
 
 # Look for compiler for OpenMP/serial builds
     torusFortranCompiler=none
 
     echo "Looking for gfortran"
-    which gfortran > /dev/null 2>&1 
+    which gfortran > /dev/null 2>&1
     if [[ $? -eq 0 ]]; then
 	gfortranVersion=`gfortran -v 2>&1 | grep 'gcc version' | awk '{print $3}'`
 	echo "Found gfortran version ${gfortranVersion}"
@@ -159,8 +159,8 @@ else
 	else
 	    echo "mpif90 not found. Aborting ..."
 	    exit 1
-	fi 
-    fi 
+	fi
+    fi
 
 fi
 
@@ -186,7 +186,7 @@ else
     # ifort and gfortran SYSTEMs include ${HOME}/cfitsio/lib in link line
     if [[ $SYSTEM == gfortran || $SYSTEM == ifort ]]; then
 	if [[ -d ${HOME}/cfitsio/lib ]]; then
-	    ${torusFortranCompiler} -o check_disc_image check_disc_image.f90 -lcfitsio -L${HOME}/cfitsio/lib > /dev/null 2>&1 
+	    ${torusFortranCompiler} -o check_disc_image check_disc_image.f90 -lcfitsio -L${HOME}/cfitsio/lib > /dev/null 2>&1
 	else
 	    ${torusFortranCompiler} -o check_disc_image check_disc_image.f90 -lcfitsio > /dev/null 2>&1
 	fi
@@ -200,7 +200,7 @@ else
 	# Try again with a -lcurl flag
 	if [[ $SYSTEM == gfortran || $SYSTEM == ifort ]]; then
 	    if [[ -d ${HOME}/cfitsio/lib ]]; then
-		${torusFortranCompiler} -o check_disc_image check_disc_image.f90 -lcfitsio -lcurl -L${HOME}/cfitsio/lib > /dev/null 2>&1 
+		${torusFortranCompiler} -o check_disc_image check_disc_image.f90 -lcfitsio -lcurl -L${HOME}/cfitsio/lib > /dev/null 2>&1
 	    else
 		${torusFortranCompiler} -o check_disc_image check_disc_image.f90 -lcfitsio -lcurl > /dev/null 2>&1
 	    fi
@@ -230,19 +230,19 @@ fi
 # Do builds   #
 ###############
 
-# OpenMP build 
+# OpenMP build
 if [[ $openmp == yes ]]; then
     echo "Building Torus wih OpenMP"
     builddir=build/openmp
-    if [[ -d $builddir ]]; then 
+    if [[ -d $builddir ]]; then
 	echo "Found existing $builddir"
 	cd $builddir
     else
 	mkdir -p $builddir
 	cd $builddir
-	ln -s ../../src/* . 
+	ln -s ../../src/* .
     fi
-    make depends 
+    make depends
     make getgitver=no openmp=yes mpi=no $make_args
     if [[ -x torus.${SYSTEM} ]]; then
 	echo "OpenMP executable built successfully"
@@ -251,20 +251,20 @@ if [[ $openmp == yes ]]; then
 	echo "Build failed. Aborting ..."
 	exit 2
     fi
-    cd ../.. 
+    cd ../..
 fi
 
-# Serial build 
+# Serial build
 if [[ $single == yes ]]; then
     echo "Building serial executable"
     builddir=build/single
-    if [[ -d $builddir ]]; then 
+    if [[ -d $builddir ]]; then
 	echo "Found existing $builddir"
 	cd $builddir
     else
 	mkdir -p $builddir
 	cd $builddir
-	ln -s ../../src/* . 
+	ln -s ../../src/* .
     fi
     make depends
     make getgitver=no openmp=no mpi=no $make_args
@@ -275,20 +275,20 @@ if [[ $single == yes ]]; then
 	echo "Build failed. Aborting ..."
 	exit 2
     fi
-    cd ../.. 
+    cd ../..
 fi
 
 # MPI build
 if [[ $mpi == yes ]]; then
     echo "Building Torus with MPI"
     builddir=build/mpi
-    if [[ -d $builddir ]]; then 
+    if [[ -d $builddir ]]; then
 	echo "Found existing $builddir"
 	cd $builddir
     else
 	mkdir -p $builddir
 	cd $builddir
-	ln -s ../../src/* . 
+	ln -s ../../src/* .
     fi
     make depends
     make getgitver=no mpi=yes openmp=no $make_args
@@ -306,13 +306,13 @@ fi
 if [[ $hybrid == yes ]]; then
     echo "Building hybrid Torus"
     builddir=build/hybrid
-    if [[ -d $builddir ]]; then 
+    if [[ -d $builddir ]]; then
 	echo "Found existing $builddir"
 	cd $builddir
     else
 	mkdir -p $builddir
 	cd $builddir
-	ln -s ../../src/* . 
+	ln -s ../../src/* .
     fi
     make depends
     make getgitver=no mpi=yes openmp=yes $make_args

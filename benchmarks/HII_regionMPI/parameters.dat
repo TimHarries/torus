@@ -27,7 +27,7 @@ nhydrothreads 2
 ! See readPhotoionPhysicsParameters for parameters
 !
 
-photoionphysics  T 
+photoionphysics  T
 dustphysics      T
 
 ! Source parameters 
@@ -64,4 +64,3 @@ writegrid F
 ! Geometry specific parameters
 spherical T
 rinner 30.0
-

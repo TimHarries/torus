@@ -5,7 +5,7 @@ use messages_mod
 use mpi_global_mod
 implicit none
 
-public 
+public
 private :: seedFromClockTime, RAN3_double, localSort
 contains
 
@@ -24,7 +24,7 @@ contains
     real(double), intent(out), optional :: getDoubleArray(:)
     real(double), intent(out), optional :: getDoubleArray2d(:,:)
     integer(bigInt), optional :: inputSeed
-    integer(bigInt), save :: iSeed = 0 
+    integer(bigInt), save :: iSeed = 0
     integer(bigInt) :: iseed_syncval
     real(double) :: r
     integer :: i, j
@@ -62,7 +62,7 @@ contains
 !$OMP BARRIER
           iseed = iseed_syncval
           r = ran3_double(iseed, reset=.true.)
-!$OMP END PARALLEL 
+!$OMP END PARALLEL
        endif
     endif
 
@@ -123,7 +123,7 @@ contains
   end subroutine randomNumberGenerator
 
 #ifdef MPI
-! Syncronise random seed across all MPI processes. 
+! Syncronise random seed across all MPI processes.
   subroutine sync_random_seed(iSeed)
 
     use mpi
@@ -139,11 +139,11 @@ contains
 #endif
 
 ! Run tests to check that random seeds are the same/different across
-! MPI processes and OpenMP threads. 
+! MPI processes and OpenMP threads.
   subroutine run_random_test_suite()
     implicit none
 
-    if (torusSerial) return 
+    if (torusSerial) return
 
     call randomNumberGenerator(randomSeed=.true.)
     call test_random_hybrid()
@@ -204,8 +204,8 @@ contains
 #ifdef _OPENMP
     iOmpThread = omp_get_thread_num() + 1
 #endif
-    
- 
+
+
 
     iThread = myRankWorldGlobal*nOmpThreads + iOmpThread
     call randomNumberGenerator(getDouble=r)
@@ -221,7 +221,7 @@ contains
     itest = itemp
     deallocate(itemp)
 #endif
-    
+
     if (myrankWorldGlobal == 0) then
     different = .true.
     call localsort(size(itest),itest)
@@ -235,11 +235,11 @@ contains
           call writeInfo("Random sequence test:  Success - threads have independent random sequences",TRIVIAL)
     endif
 #ifdef MPI
-    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 #endif
     deallocate(itest)
   end subroutine test_random_hybrid
-    
+
 
   subroutine test_same_hybrid()
 #ifdef MPI
@@ -288,8 +288,8 @@ contains
 #ifdef _OPENMP
     iOmpThread = omp_get_thread_num() + 1
 #endif
-    
- 
+
+
 
     iThread = myRankWorldGlobal*nOmpThreads + iOmpThread
     call randomNumberGenerator(getDouble=r)
@@ -305,7 +305,7 @@ contains
     itest = itemp
     deallocate(itemp)
 #endif
-    
+
     if (myrankWorldGlobal == 0) then
     different = .false.
     call localsort(size(itest),itest)
@@ -321,11 +321,11 @@ contains
        endif
     endif
 #ifdef MPI
-    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 #endif
     deallocate(itest)
   end subroutine test_same_hybrid
-    
+
 #ifdef MPI
 ! Test whether all threads are producing independent random numbers
   subroutine test_random_across_threads(debug)
@@ -380,7 +380,7 @@ contains
 !!$    integer :: np
 !!$    integer :: nTest = 100
 !!$    real :: r
-!!$    integer :: i, j 
+!!$    integer :: i, j
 !!$    integer, allocatable :: array(:,:)
 !!$    logical :: allTheSame
 !!$
@@ -433,7 +433,7 @@ contains
      j = omp_get_thread_num()+1
      nt = omp_get_num_threads()
 #endif
-     
+
     ibig = (j+(myRankWorldGlobal+1)*nt)*ibig
   END SUBROUTINE seedFromClockTime
 
@@ -452,7 +452,7 @@ contains
      j = omp_get_thread_num()+1
      nt = omp_get_num_threads()
 #endif
-     
+
      iSeed = (j+(myRankWorldGlobal+1)*nt)*inputSeed
 
 
@@ -473,7 +473,7 @@ contains
 !$OMP THREADPRIVATE (ma, iff, inext, inextp)
 
     doreset = .false.
-      if (present(reset)) doreset=reset 
+      if (present(reset)) doreset=reset
      IF(doreset.OR.IFF.EQ.0)THEN
         IFF=1
         MJ=MSEED-ABS(IDUM)
@@ -565,7 +565,7 @@ contains
        call locatelocal(prob, n+1, r, randomIndex)
        deallocate(prob)
     endif
-    
+
   end function randomIndex
 
     PURE SUBROUTINE LOCATElocal(XX,N,X,J)
