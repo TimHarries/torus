@@ -76,7 +76,7 @@ contains
     do i = 1, SIZE(atomArray)
        do j = 1, atomArray(i)%nTrans
           if (atomArray(i)%transType(j)=="RBB") then
-             lamTrans = ((cspeed/atomArray(i)%transfreq(j))*1d8)/nAir
+             lamTrans = ((cspeed/atomArray(i)%transfreq(j))*1d8)/nAir !!tjgw201 (04/02/19) this will not match wavelengths in H.atm becuse of correction for air (rather than vacuum)
              if ( (abs(lamTrans-lamLine)) < 1.d0) then
                 found = .true.
                 iAtom = i
