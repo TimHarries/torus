@@ -378,6 +378,14 @@ contains
        call getLogical("movesinks", moveSources, cLine, fLine, nLines, &
             "Allow sources to move: ", "(a,1l,1x,a)", .true., ok, .false.)
 
+       call getLogical("clustersinks", clusterSinks, cLine, fLine, nLines, &
+            "Sinks represent clusters: ", "(a,1l,1x,a)", .false., ok, .false.)
+
+       if (clusterSinks) then
+          call getDouble("criticalmass", criticalMass, 1.d0, cLine, fLine, nLines, &
+               "Critical mass for creating subsources: ","(a,f6.1,a)", 120.d0, ok, .true.)
+       endif
+
     endif
 
     call getLogical("evolvesources", evolveSources, cLine, fLine, nLines, &
@@ -1033,6 +1041,11 @@ contains
        call getDouble("omega", omega, 1.d0, cLine, fLine, nLines, &
             "Angular frequency of rotation: ","(a,f7.2,a)",1.d-13, ok, .true.)
 
+     case("mgascii")
+       call getString("mgasciifile", mgasciifile, cLine, fLine, nLines, &
+            "3D ascii file: ","(a,a,1x,a)","constant", ok, .true.)
+       call getReal("isothermtemp", isoThermTemp, 1., cLine, fLine, nLines, &
+            "Isothermal temperature (K): ","(a,f7.1,1x,a)", 10.0, ok, .false.)
 
      case("magstream")
        call getString("magstreamfile", magStreamFile, cLine, fLine, nLines, &

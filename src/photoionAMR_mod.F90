@@ -76,7 +76,7 @@ contains
     use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics, amrUnrefineTolerance, smallestCellSize, dounrefine
     use inputs_mod, only : addSinkParticles, cylindricalHydro, vtuToGrid, timedependentRT,dorefine, alphaViscosity
     use inputs_mod, only : UV_vector, spherical, forceminrho 
-    use inputs_mod, only : sphereRadius, sphereMass, feedbackDelay, amrgridsize
+    use inputs_mod, only : sphereRadius, sphereMass, feedbackDelay, amrgridsize, clusterSinks
     use starburst_mod
     use viscosity_mod, only : viscousTimescale,viscousTimescaleCylindrical
     use dust_mod, only : emptyDustCavity, sublimateDust
@@ -137,7 +137,7 @@ contains
     logical, save :: firstWN=.true., firstFeedbackIter = .true.
     integer :: niter, nHydroCounter
     real(double) :: epsoverdeltat, totalMass, tauSca, tauAbs, tff, rhosphere, feedbackStartTime
-    real(double) :: ionizedVolume, ionizedMass, ke, jeansUnstableMass, maxRho
+    real(double) :: ionizedVolume, ionizedMass, ke, jeansUnstableMass, maxRho, totalCreatedMass
     logical :: sourcesCreated, doFeedback
 
     nPhotoIter = 1
@@ -1188,7 +1188,7 @@ contains
              globalsourceArray(:)%outsideGrid = .false.
              globalnSource = 0
              call createSources(globalnSource, globalSourceArray, burstType,&
-                  burstAge, mStarburst, 0.d0)
+                  burstAge, mStarburst, 0.d0, totalCreatedMass)
              if (.not.loadBalancingThreadGlobal) then
                  call putStarsInGridAccordingToDensity(grid, globalnSource, globalsourceArray)
 
@@ -1264,7 +1264,15 @@ contains
 
 !add/merge sink particles where necessary
        if ((myrankGlobal /= 0).and.(.not.loadBalancingThreadGlobal)) then
-          if (nbodyPhysics.and.addSinkParticles) call addSinks(grid, globalsourceArray, globalnSource)       
+          if (nbodyPhysics.and.addSinkParticles) then 
+             call addSinks(grid, globalsourceArray, globalnSource)       
+          endif
+
+          ! TODO - only after sink is created
+          if (nBodyPhysics .and. clusterSinks) then
+             ! if sink mass exceeds critical mass, sample IMF
+          endif
+          ! end todo
 
 !xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 !          call freeglobalsourceArray()

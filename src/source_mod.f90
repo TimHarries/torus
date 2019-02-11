@@ -42,6 +42,8 @@
      real(double) :: accretionRadius
      real(double) :: time
      real(double) :: habingFlux ! units of 1e-10 Habing 
+     integer :: nSubsource=0 ! if source is a cluster, individual stars are subsources
+     type(SOURCETYPE), pointer :: subSourceArray(:) => null()
   end type SOURCETYPE
 
   type(SOURCETYPE), pointer :: globalSourceArray(:) => null()

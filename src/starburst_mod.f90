@@ -79,7 +79,32 @@ contains
     mass = 10.d0**mass
   end function randomMassFromIMF
 
-  subroutine createSources(nSource, source, burstType, burstAge, burstMass, sfRate)
+  subroutine createSubsources(cluster) 
+    real(double) :: totalCreatedMass 
+
+    call createSources(cluster%nSubsource, cluster%subsourceArray, "instantaneous", 0.d0, cluster%reservoirMass, 0.d0, &
+          totalCreatedMass)
+    ! FIXME need to add the new stars to the array, not overwrite them
+
+    !todo cluster SED/luminosity
+
+    do i = 1, cluster%nSubsource
+       cluster%subsourceArray(i)%position = cluster%position
+       cluster%subsourceArray(i)%velocity = cluster%velocity
+    enddo
+  end subroutine createSubsources
+
+  real(double) function clusterReservoir(cluster)
+    real(double) :: totalStellarMass
+    integer :: i
+    totalStellarMass = 0.d0
+    do i = 1, cluster%nSubsource
+       totalStellarMass = totalStellarMass + cluster%subSourceArray(i)%mass 
+    enddo
+    clusterReservoir = cluster%mass - totalStellarMass
+  end function clusterReservoir
+
+  subroutine createSources(nSource, source, burstType, burstAge, burstMass, sfRate, totMass)
     integer :: nSource
     type(SOURCETYPE) :: source(:)
     type(TRACKTABLE) :: thisTable
@@ -136,6 +161,9 @@ contains
           temp = pack(initialMasses, initialMasses /= 0.d0) ! pick out non-zero elements (i.e. actual masses) 
           call sort(nSource, temp) ! sort in ascending order
           temp = temp(nSource:1:-1) ! reverse, i.e. sort in descending order
+          if (.not.associated(source)) then
+             allocate(source(1:nSource))
+          endif
           do i = 1, nSource
              source(i)%initialMass = temp(i)
           enddo
@@ -168,6 +196,7 @@ contains
 
       ! now get actual masses, temps, and luminosities, and radii for age from evolution tracks
 
+      ! todo save tracks
       call readinTracks("schaller", thisTable)
       call writeInfo("Schaller tracks successfully read", FORINFO)
       i = 1
@@ -177,6 +206,7 @@ contains
          if (.not.isSourceDead(source(i), thisTable)) then
             write(message, '(a,i4)') "Setting properties of source ", i
             call writeInfo(message, TRIVIAL)
+            ! TODO clustersinks
             call setSourceProperties(source(i))
             i = i + 1
          else
@@ -208,6 +238,7 @@ contains
 !      enddo
 
       if (writeoutput) then
+         ! todo clustersinks
          do i = 1, nSource
             write(filename,'(a, i3.3, a)') "spectrum_source", i,".dat"
             open(67,file=filename,status="replace",form="formatted")

@@ -7963,8 +7963,8 @@ end subroutine sumFluxes
        group, nGroup,doSelfGrav, perturbPressure)
     use mpi
     use inputs_mod, only : nBodyPhysics, severeDamping, dirichlet, doGasGravity, useTensorViscosity, &
-         moveSources, hydroSpeedLimit, nbodyTest, imposeFixing
-    use starburst_mod, only : updateSourceProperties
+         moveSources, hydroSpeedLimit, nbodyTest, imposeFixing, clusterSinks, criticalMass
+    use starburst_mod, only : updateSourceProperties, clusterReservoir
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
     logical, optional :: doSelfGrav
@@ -8192,10 +8192,22 @@ end subroutine sumFluxes
 
 
    globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + timestep*secstoyears
+
+   if (nBodyPhysics .and. clusterSinks) then
+      ! if sink mass exceeds critical mass, sample IMF
+      do i = 1, globalnSource
+         if (clusterReservoir(globalSourceArray(i)) >= criticalMass) then
+            if (writeoutput) write(*,*) "Creating subsources for source ", i
+            call createSubsources(globalSourceArray(i))
+         endif
+      enddo
+   endif
+
    if (nBodyPhysics .and..not.hosokawaTracks) then
       write(message, '(a)') "Updating source properties."
       call writeInfo(message, TRIVIAL)
       do i = 1, globalnSource
+         ! TODO update clusterSink star properties?
          call updateSourceProperties(globalsourcearray(i))
       enddo
    endif
@@ -8214,11 +8226,11 @@ end subroutine sumFluxes
 
    if (habingFlux .and. globalnSource > 0) then
       call updateSourceHabingFlux(grid, globalSourceArray, globalnSource)
-      if (writeoutput) then
-         do i = 1, globalnSource 
-            write(*,'(a,i3,a,es12.5)') "Source ", i, " Habing flux = ", globalSourceArray(i)%habingFlux
-         enddo
-      endif
+!      if (writeoutput) then
+!         do i = 1, globalnSource 
+!            write(*,'(a,i3,a,es12.5)') "Source ", i, " Habing flux = ", globalSourceArray(i)%habingFlux
+!         enddo
+!      endif
    endif
 
    if (myrankWorldglobal == 1) call tune(6,"Updating source properties")
@@ -21061,6 +21073,8 @@ end subroutine broadcastSinks
        sourceArray(iSource)%angMomentum = sourceArray(iSource)%angMomentum + accretedAngMomentum(iSource)
 
        sourceArray(iSource)%mdot = accretedMass(isource)/timestep
+
+
        if (myrankWorldGlobal == 1) then
        if (accretedMass(iSource) > 0.d0) write(*,*) "Accretion rate for source ",isource, ": ", &
             (accretedMass(isource)/timestep)/msol * (365.25d0*24.d0*3600.d0)
