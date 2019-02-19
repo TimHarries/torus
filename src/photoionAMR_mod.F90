@@ -3951,13 +3951,13 @@ end subroutine radiationHydro
     firstTime = .false.
     if (myrankWorldGlobal == 1) call tune(6, "Temperature/ion corrections")
 
-    if (maxiter > 1) then
-       write(mpiFilename, '(a,i4.4,a,i4.4,a)') "balance_",grid%idump,"_",niter,".vtk"
-       call writeVtkFile(grid, mpiFilename, &
-              valueTypeString=(/"rho        ","HI         " ,"temperature", &
-                                "crossings  ","ioncross   " ,"tdust      ", &
-                                "tempconv   ","scatters   "/))!"etacont", "jnu", "bias"/))
-    endif
+!    if (maxiter > 1) then
+!       write(mpiFilename, '(a,i4.4,a,i4.4,a)') "balance_",grid%idump,"_",niter,".vtk"
+!       call writeVtkFile(grid, mpiFilename, &
+!              valueTypeString=(/"rho        ","HI         " ,"temperature", &
+!                                "crossings  ","ioncross   " ,"tdust      ", &
+!                                "tempconv   ","scatters   "/))!"etacont", "jnu", "bias"/))
+!    endif
 
 
     if(grid%geometry == "lexington" .or. grid%geometry == "lexpdr") then
