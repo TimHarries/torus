@@ -8,7 +8,7 @@
 # enable Docker for your repository
 options:
   docker: true
-
+  size: 2x
 pipelines:
   default:
     - step:
