@@ -1216,6 +1216,9 @@ CONTAINS
    CASE("fitsfile")
       call assign_from_fitsfile(thisOctal, subcell)
 #endif
+   CASE("mgascii")
+      thisOctal%rho = 1d-30
+      thisOctal%temperature = 10.
 
     CASE ("magstream")
 
@@ -4525,6 +4528,10 @@ CONTAINS
             "SB_coolshk", "SB_gasmix", "bubble", "SB_Dtype", "uniformden", &
             "arthur06", "3dgaussian", "krumholz")
 
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
+
+
+       case("mgascii")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
        case("isosphere")
