@@ -1614,6 +1614,11 @@ end subroutine assignMgAsciiValues
     character(len=80) :: message
     real(double) :: minRho, maxRho, totalmasstrap, totalmass, totalMassMol
 #endif
+#ifdef MPI
+#ifdef CFITSIO
+    real(double), pointer :: columnDensityImage(:,:)
+#endif
+#endif
 
     call findTotalMemory(grid, i)
     call reportMemory(i)
@@ -1671,6 +1676,19 @@ end subroutine assignMgAsciiValues
        call writeVTKfile(grid, "gridFromFitsFile.vtk",  &
             valueTypeString=(/"rho        ", "temperature", "dust1      ","velocity   "/))
 
+#ifdef MPI
+#ifdef CFITSIO
+    case("mgascii")
+       call createColumnDensityImage(grid, VECTOR(0.d0, 0.d0, 1.d0), columnDensityImage)
+       if (writeoutput) call writeFitsColumnDensityImage(columnDensityImage, trim("columnz.fits"))
+
+       call createColumnDensityImage(grid, VECTOR(0.d0, 1.d0, 0.d0), columnDensityImage)
+       if (writeoutput) call writeFitsColumnDensityImage(columnDensityImage, trim("columny.fits"))
+
+       call createColumnDensityImage(grid, VECTOR(1.d0, 0.d0, 0.d0), columnDensityImage)
+       if (writeoutput) call writeFitsColumnDensityImage(columnDensityImage, trim("columnx.fits"))
+#endif
+#endif
     case DEFAULT
     end select
   end subroutine postSetupChecks
