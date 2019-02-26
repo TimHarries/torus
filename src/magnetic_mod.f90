@@ -45,7 +45,7 @@ contains
     real(double) :: rDash, phiDash, beta
     real(double) :: thisY, thisX
     beta = dipoleOffset
-    r = modulus(rVec)    
+    r = modulus(rVec)
 
     thisY = rVec%y
     thisX = rVec%x
@@ -65,7 +65,7 @@ contains
   end function pMahdavi
 
 
-  logical function inFlowMahdaviSingle(rVec) 
+  logical function inFlowMahdaviSingle(rVec)
     use inputs_mod, only : ttauriRinner, ttauriRouter, dipoleOffset, ttauriRstar, &
          TTauriDiskHeight
     type(VECTOR) :: rVec
@@ -74,13 +74,13 @@ contains
     real(double) :: thisRmax, sin2theta0dash,rmaxmin, rmaxmax,thisY, thisX
 
     beta = dipoleOffset
-    r = modulus(rVec)    
+    r = modulus(rVec)
     if (r == 0.d0) then
        inflowMahdaviSingle = .false.
        goto 666
     endif
     theta = acos(rVec%z/r)
-    
+
     thisY = rVec%y
     thisX = rVec%x
 !    if ((thisY == 0.d0).and.(rVec%x > 0.d0)) thisY = 1.d-10
@@ -162,11 +162,11 @@ contains
     rMaxMin = ttauriRinner / sin2theta0dash
     rMaxMax = ttauriRouter / sin2theta0dash
     rTrunc = ttauriRinner + (ttauriRouter-ttauriRinner)*(thisrMax-rMaxmin)/(rMaxMax-rMaxMin)
-    
+
     deltaU =  bigG * TTauriMstar * (1.d0/r - 1.d0/rTrunc)
     modvp = sqrt(2.d0*abs(deltaU))
     if (deltaU < 0.d0) modvp = -modvp
-    y = SIN(thetaDash)**2 
+    y = SIN(thetaDash)**2
 
     vP = vector(3.0 * SQRT(y) * SQRT(1.0-y) / SQRT(4.0 - (3.0*y)), &
          0.0, &
@@ -185,8 +185,8 @@ contains
     rVec = VECTOR(point%x,point%y,0.d0)
     vSolid = rVec .cross. VECTOR(0.d0, 0.d0, 1.d0)
     call normalize(vSolid)
-    vSolid = (modulus(rVec)/ttauriRouter*velMagAtCorotation) * vSolid 
-    
+    vSolid = (modulus(rVec)/ttauriRouter*velMagAtCorotation) * vSolid
+
 
     velocityMahdavi = vp + vSolid
 
@@ -214,7 +214,7 @@ contains
           a(1) = 0.21; a(2) = 0.30; a(3) = 1.23; a(4) = 0.21
           a(5) = 1.27; a(6) = 0.92; a(7) = 0.04; a(8) = 0.28
           b(0) = 0.035; b(1) = 12.16; b(2) = 0.65; b(3) = 0.33
-          b(4) = 1.0; b(5) = 0.40; b(6) = 0.50; b(7) = 0.0 
+          b(4) = 1.0; b(5) = 0.40; b(6) = 0.50; b(7) = 0.0
           b(8) = 1.25; b(9) = 0.6
        case DEFAULT
           write(*,*) "Solution ",solution, " not found in safierFits"
@@ -272,7 +272,7 @@ contains
     use inputs_mod, only : DW_Rmin, DW_Rmax, DW_theta
     type(VECTOR) :: rVec
     real(double) :: r0, r, z, zMax, zMin
-       
+
     inFlowBlandfordPayneSingle = .false.
     r0 = sqrt(rVec%x**2 + rVec%y**2)
     if (r0 < DW_Rmin) goto 666
@@ -286,7 +286,7 @@ contains
     endif
 666 continue
   end function inflowBlandfordPayneSingle
-    
+
 
   type (VECTOR) function velocityBlandfordPayne(point)
     use inputs_mod, only : DW_theta, DW_rMin, ttauriMstar, ttauriRstar
@@ -309,12 +309,12 @@ contains
     Vesc = sqrt(2.d0*bigG * ttauriMstar/ttauriRstar)
 
     x = r0/DW_rMin
-    
+
     if ((r /= 0.d0).and.(x >= 0.d0)) then
        if (r0/r < 1.d0) then
           vel = vEsc * (1.d0/sqrt(x))*sqrt(1.d0 - r0/r) ! Kwan Edwards & Fischer
 !          vel = max(20.d5, vel)
-          velocityBlandfordPayne = (vel/cSpeed) * rVec 
+          velocityBlandfordPayne = (vel/cSpeed) * rVec
           velocityBlandfordPayne = rotateZ(velocityBlandfordPayne, -phi)
           velocityBlandfordPayne = velocityBlandfordPayne + ttauriKeplerianVelocity(point)
        endif
@@ -322,7 +322,7 @@ contains
 
 666 continue
   end function velocityBlandfordPayne
-
+!!!finds the accretion area by randomyl sampling vectors in the source - tjgw201 26/02/19
   function accretingAreaMahdavi() result (accretingarea)
     use inputs_mod, only : ttauriRstar
     type(VECTOR) :: rVec
@@ -331,7 +331,7 @@ contains
     integer, parameter :: nLines = 1000000
     j = 0
     do i = 1, nLines
-       rVec = (ttauriRstar * 1.01d0)*randomUnitVector() 
+       rVec = (ttauriRstar * 1.01d0)*randomUnitVector()
        if (inFlowMahdavi(rVec)) j = j + 1
     enddo
     accretingArea = fourPi * ttauriRstar**2 * dble(j)/dble(nLines)

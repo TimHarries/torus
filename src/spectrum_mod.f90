@@ -19,7 +19,7 @@ module spectrum_mod
      integer :: nLambda
      real(double), pointer :: ppw(:) => null() !Thaw - photon packet weight
   end type SPECTRUMTYPE
-  
+
 
   contains
 
@@ -122,9 +122,9 @@ module spectrum_mod
        alambda = av*(ax + bx/rv)
      end function extinction
 
-      
 
-    
+
+
     subroutine getWavelength(spectrum, wavelength, photonPacketWeight)
       use random_mod, only: randomNumberGenerator
       type(SPECTRUMTYPE) :: spectrum
@@ -155,12 +155,12 @@ module spectrum_mod
 
       call locate(spectrum%lambda, spectrum%nLambda, tlam1, i1)
       call locate(spectrum%lambda, spectrum%nLambda, tlam2, i2)
-      
+
 
       write(*,*) "spectrum%nlambda",spectrum%nlambda
       write(*,*) lam1,tlam1,lam2,tlam2
       write(*,*) i1,i2
-      if (i1 == i2) then 
+      if (i1 == i2) then
          tot = spectrum%normFlux(i1)*(tlam2 - tlam1)
       else
          tot = 0.d0
@@ -187,7 +187,7 @@ module spectrum_mod
 
       call locate(spectrum%lambda, spectrum%nLambda, tlam1, i1)
       call locate(spectrum%lambda, spectrum%nLambda, tlam2, i2)
-      
+
 
       tot = 0.d0
       ePhoton = hCgs*cspeed/(tlam1*angstromtocm)
@@ -215,9 +215,9 @@ module spectrum_mod
 
       call locate(spectrum%lambda, spectrum%nLambda, tlam1, i1)
       call locate(spectrum%lambda, spectrum%nLambda, tlam2, i2)
-      
 
-      if (i1 == i2) then 
+
+      if (i1 == i2) then
          tot = spectrum%flux(i1)*(tlam2 - tlam1)
       else
          tot = 0.d0
@@ -248,8 +248,8 @@ module spectrum_mod
 
       call locate(spectrum%lambda, spectrum%nLambda, tlam1, i1)
       call locate(spectrum%lambda, spectrum%nLambda, tlam2, i2)
-      
-      if (i1 == i2) then 
+
+      if (i1 == i2) then
          call randomNumberGenerator(getDouble=r)
          r = r - 0.5d0
          wavelength = spectrum%lambda(i1) + r * spectrum%dlambda(i1)
@@ -286,7 +286,7 @@ module spectrum_mod
       real, optional :: lamArray(:)
       real(double) :: logLamStart, logLamEnd
       integer :: i
-      
+
       if (associated(spectrum%flux)) deallocate(spectrum%flux)
       if (associated(spectrum%lambda)) deallocate(spectrum%lambda)
       if (associated(spectrum%dlambda)) deallocate(spectrum%dlambda)
@@ -301,7 +301,7 @@ module spectrum_mod
 
       logLamStart = log10(lamStart)
       logLamEnd = log10(lamEnd)
-      
+
       if (.not.PRESENT(lamArray)) then
          do i = 1, nLambda
             spectrum%lambda(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
@@ -315,7 +315,7 @@ module spectrum_mod
       enddo
       spectrum%dlambda(1) = spectrum%lambda(2)-spectrum%lambda(1)
       spectrum%dlambda(nLambda) = spectrum%lambda(nlambda)-spectrum%lambda(nLambda-1)
-      
+
       do i = 1, nLambda
          spectrum%flux(i) = max(1.d-30,pi*bLambda(spectrum%lambda(i), dble(teff)) * 1.d-8) ! (Per cm to per angstrom)
       enddo
@@ -350,7 +350,7 @@ module spectrum_mod
       xrayFlux = (frac / (1.d0 - frac)) * totalflux
       lamStart = (cSpeed / (10.d0 * 1000.d0 * evtoerg/hcgs))*1.d8
       lamEnd = (cSpeed / (0.09d0 * 1000.d0 * evtoerg/hcgs))*1.d8
-      
+
       do i = 10, 1, -1
          lambda = 10.d0**(log10(lamStart) + (log10(lamend)-log10(lamstart))*dble(i-1)/9.d0)
          call insertWavelength(spectrum, lambda)
@@ -358,7 +358,7 @@ module spectrum_mod
 
       lamStart = (cSpeed / (10.d0 * 1000.d0 * evtoerg/hcgs))*1.d8
       lamEnd = (cSpeed / (0.1d0 * 1000.d0  * evtoerg/hcgs))*1.d8
-      
+
       xRayFluxPerAngs = xRayFlux / (lamEnd - lamStart)
 
 
@@ -369,7 +369,7 @@ module spectrum_mod
       enddo
       bolFlux =  integrateSpectrumOverBand(spectrum, 0.d0, 1.d30)
       if (writeoutput) write(*,*) "X-ray flux added LX/LBol",xRayFlux/bolFlux
-      
+
 
       call probSpectrum(spectrum)
 
@@ -403,7 +403,7 @@ module spectrum_mod
       if (len(trim(cline)).gt.0) then
          if (cLine(1:1) /="#") then
             read(cLine,*,err=10) x, f
-         else 
+         else
             goto 10
          endif
       else
@@ -459,7 +459,7 @@ module spectrum_mod
       if (len(trim(cline)).gt.0) then
          if (cLine(1:1) /="#") then
             read(cLine,*,err=10) x, f
-         else 
+         else
             goto 10
          endif
       else
@@ -508,7 +508,7 @@ module spectrum_mod
       if (len(trim(cline)).gt.0) then
          if (cLine(1:1) /="#") then
             read(cLine,*,err=10) x, f
-         else 
+         else
             goto 10
          endif
       else
@@ -560,7 +560,7 @@ module spectrum_mod
     subroutine readSpectrumFromDump(spectrum, lunit)
       type(SPECTRUMTYPE) :: spectrum
       integer ::lunit, nLambda
-      
+
       read(lunit) nLambda
 !      write(*,*) myrankWorldGlobal, " reading nlambda ",nlambda
       allocate(spectrum%flux(1:nLambda))
@@ -580,7 +580,7 @@ module spectrum_mod
     subroutine writeSpectrumToDump(spectrum, lunit)
       type(SPECTRUMTYPE) :: spectrum
       integer ::lunit
-      
+
       write(lunit) spectrum%nLambda
       write(lunit) spectrum%flux(1:spectrum%nLambda)
       write(lunit) spectrum%lambda(1:spectrum%nLambda)
@@ -602,16 +602,16 @@ module spectrum_mod
       enddo
       if (.not. ok) goto 666
 
-      if (lambda < spectrum%lambda(1)) then 
+      if (lambda < spectrum%lambda(1)) then
          flux = 1.d-30
       else if (lambda > spectrum%lambda(spectrum%nLambda)) then
          flux = 1.d-30
       else
          flux = loginterp_dble(spectrum%flux, spectrum%nlambda, spectrum%lambda, lambda)
       endif
-      
+
       newnLambda = spectrum%nlambda + 1
-      
+
       allocate(tmpspectrum%flux(1:newnLambda))
       allocate(tmpspectrum%lambda(1:newnLambda))
       allocate(tmpspectrum%dlambda(1:newnLambda))
@@ -619,16 +619,16 @@ module spectrum_mod
       allocate(tmpspectrum%ppw(1:newnLambda))
       tmpSpectrum%nLambda = newNLambda
 
-      if (lambda < spectrum%lambda(1)) then 
+      if (lambda < spectrum%lambda(1)) then
          tmpSpectrum%lambda(1) = lambda
-         tmpSpectrum%flux(1) = flux 
+         tmpSpectrum%flux(1) = flux
          tmpSpectrum%lambda(2:newnLambda) = spectrum%lambda(1:spectrum%nLambda)
          tmpSpectrum%flux(2:newnLambda) = spectrum%flux(1:spectrum%nLambda)
 
      else if (lambda > spectrum%lambda(spectrum%nLambda)) then
 
          tmpSpectrum%lambda(newnLambda) = lambda
-         tmpSpectrum%flux(newnLambda) = flux 
+         tmpSpectrum%flux(newnLambda) = flux
          tmpSpectrum%lambda(1:newnLambda-1) = spectrum%lambda(1:spectrum%nLambda)
          tmpSpectrum%flux(1:newnLambda-1) = spectrum%flux(1:spectrum%nLambda)
 
@@ -641,11 +641,11 @@ module spectrum_mod
          tmpSpectrum%flux(1:i) = spectrum%flux(1:i)
 
          tmpSpectrum%lambda(i+1) = lambda
-         tmpSpectrum%flux(i+1) = flux 
+         tmpSpectrum%flux(i+1) = flux
 
          tmpSpectrum%lambda(i+2:newnLambda) = spectrum%lambda(i+1:spectrum%nLambda)
          tmpSpectrum%flux(i+2:newnLambda) = spectrum%flux(i+1:spectrum%nLambda)
-       
+
       endif
 
 
@@ -658,8 +658,8 @@ module spectrum_mod
       spectrum%dlambda(1) = spectrum%lambda(2)-spectrum%lambda(1)
       spectrum%dlambda(spectrum%nLambda) = spectrum%lambda(spectrum%nlambda) - &
            spectrum%lambda(spectrum%nLambda-1)
-      
-      
+
+
       666 continue
      end subroutine insertWavelength
 
@@ -708,7 +708,7 @@ module spectrum_mod
             spectrum%ppw(i) = 1.d0
          endif
       enddo
-      
+
       spectrum%prob(1:spectrum%nLambda) = spectrum%prob(1:spectrum%nLambda) / spectrum%prob(spectrum%nLambda)
 
       if(biasToLyman) then
@@ -721,7 +721,7 @@ module spectrum_mod
             spectrum%ppw(i) = abs(unbiasedProb(i+1) - unbiasedProb(i)) / abs(spectrum%prob(i+1) - spectrum%prob(i))
          end do
       end if
-     
+
     end subroutine probSpectrum
 
     subroutine normalizedSpectrum(spectrum)
@@ -737,13 +737,13 @@ module spectrum_mod
       integer :: i, i1, i2
 
       if ((lambda < lam1).or.(lambda > lam2)) then
-         returnNormValue2 = 0.d0 
+         returnNormValue2 = 0.d0
       else
 
          call locate(spectrum%lambda, spectrum%nLambda, lam1, i1)
          call locate(spectrum%lambda, spectrum%nLambda, lam2, i2)
-      
-         if (i1 == i2) then 
+
+         if (i1 == i2) then
             returnNormValue2 = spectrum%flux(i1)/(spectrum%flux(i1)*(lam2-lam1))
          else
             tot = 0.d0
@@ -761,7 +761,7 @@ module spectrum_mod
       endif
 
     end function returnNormValue2
-         
+
     subroutine fillSpectrumKurucz(spectrum, teff, mass, radius, freeup)
       type(SPECTRUMTYPE) :: spectrum, spec1, spec2
       real(double) :: teff, mass, radius
@@ -811,14 +811,14 @@ module spectrum_mod
          i2 = i + 1
          call createKuruczFilename(teffArray(i1), loggArray(j), thisFile1, label1)
          call createKuruczFilename(teffArray(i2), loggArray(j), thisFile2, label2)
-         
+
          if (firstTime) then
             write(message, '(a,a)') "Interpolating Kurucz atmospheres between: ",trim(label1)
             call writeInfo(message, TRIVIAL)
             write(message, '(a,a)') "                                        : ",trim(label2)
             call writeInfo(message, TRIVIAL)
          endif
-         
+
          call readKuruczSpectrum(spec1, label1, klabel, kspectrum, nKurucz, ok1)
          if (.not.ok1) then
             if (writeoutput) then
@@ -833,7 +833,7 @@ module spectrum_mod
          if (.not.ok2) then
             if (writeoutput) write(*,*) "Can't find kurucz spectrum: ",trim(thisfile2), " ", trim(label2)
          endif
-         
+
          if (ok1.and.ok2) then
             call createInterpolatedSpectrum(spectrum, spec1, spec2, t)
          else
@@ -882,7 +882,7 @@ module spectrum_mod
       type(SPECTRUMTYPE),save :: kSpectrum(nKurucz)
       character(len=80),save :: klabel(nKurucz)
       if (firstTime) call  readTlustyGrid(klabel, kspectrum, nKurucz)
-      
+
       call freeSpectrum(spectrum)
 
       logg = log10(bigG * mass / radius**2)
@@ -922,14 +922,14 @@ module spectrum_mod
          i2 = i + 1
          call createTlustyFilename(teffArray(i1), loggArray(j), thisFile1, label1)
          call createTlustyFilename(teffArray(i2), loggArray(j), thisFile2, label2)
-         
+
          if (firstTime) then
             write(message, '(a,a)') "Interpolating TLUSTY atmospheres between: ",trim(label1)
             call writeInfo(message, TRIVIAL)
             write(message, '(a,a)') "                                        : ",trim(label2)
             call writeInfo(message, TRIVIAL)
          endif
-         
+
          call readTlustySpectrum(spec1, label1, klabel, kspectrum, nKurucz, ok1)
          if (.not.ok1) then
             if (writeoutput) then
@@ -944,7 +944,7 @@ module spectrum_mod
          if (.not.ok2) then
             if (writeoutput) write(*,*) "Can't find tlusty spectrum: ",trim(thisfile2), " ", trim(label2)
          endif
-         
+
          if (ok1.and.ok2) then
             call createInterpolatedSpectrum(spectrum, spec1, spec2, t)
          else
@@ -970,14 +970,14 @@ module spectrum_mod
       call freeSpectrum(spec2)
       call probSpectrum(spectrum)
 
-      
+
     end subroutine fillSpectrumTlusty
 
      subroutine createInterpolatedSpectrum(spectrum, spec1, spec2, t)
        use utils_mod, only: loginterp_dble
        type(SPECTRUMTYPE) :: spectrum, spec1, spec2
        real(double) :: t
-       integer :: i 
+       integer :: i
        real(double) :: y1, y2
        call copySpectrum(spectrum, spec1)
 
@@ -1002,7 +1002,7 @@ module spectrum_mod
        if (teff < 10000.) then
           write(fluxfile,'(a,i4,a,i3.3,a)') "f",int(teff),"_",int(logg),".dat"
        else
-          write(fluxfile,'(a,i5,a,i3.3,a)') "f",int(teff),"_",int(logg),".dat"          
+          write(fluxfile,'(a,i5,a,i3.3,a)') "f",int(teff),"_",int(logg),".dat"
        endif
        thisLabel = fluxfile
        thisFile = trim(dataDirectory)//"/Kurucz/"//trim(fluxfile)
@@ -1011,18 +1011,18 @@ module spectrum_mod
 
      subroutine createTlustyFileName(teff, logg, thisfile, thislabel)
        use inputs_mod, only :  stellarMetallicity
-       real :: teff, logg       
+       real :: teff, logg
        integer :: i
        character(len=*) thisfile, thisLabel
        character(len=80) :: fluxfile, dataDirectory
-       
+
        call unixGetenv("TORUS_DATA", dataDirectory, i)
-       
-       
+
+
        if (teff < 10000.) then
           write(fluxfile,'(a,i4,a,i3.3,a)') "G",int(teff),"g",int(logg),"v10.flux"
        else
-          write(fluxfile,'(a,i5,a,i3.3,a)') "G",int(teff),"g",int(logg),"v10.flux"          
+          write(fluxfile,'(a,i5,a,i3.3,a)') "G",int(teff),"g",int(logg),"v10.flux"
        endif
        thisLabel = fluxfile
        if(stellarMetallicity == 0.5) then
@@ -1038,13 +1038,13 @@ module spectrum_mod
        character(len=*) :: label(:)
        type(SPECTRUMTYPE) :: spectrum(:)
        integer :: nFiles
-       character(len=200) :: tfile,fluxfile,dataDirectory 
+       character(len=200) :: tfile,fluxfile,dataDirectory
        logical :: ok
        integer :: i
        ok = .true.
 
        call unixGetenv("TORUS_DATA", dataDirectory, i)
-       
+
        call writeInfo("Reading Kurucz grid...",TRIVIAL)
 
        tfile = trim(dataDirectory)//"/Kurucz/files.dat"
@@ -1066,20 +1066,20 @@ module spectrum_mod
        character(len=*) :: label(:)
        type(SPECTRUMTYPE) :: spectrum(:)
        integer :: nFiles
-       character(len=200) :: tfile,fluxfile,dataDirectory 
+       character(len=200) :: tfile,fluxfile,dataDirectory
        logical :: ok
        integer :: i
        ok = .true.
-       
+
        call unixGetenv("TORUS_DATA", dataDirectory, i)
 
        call writeInfo("Reading Tlusty grid...",TRIVIAL)
        if(stellarmetallicity == 0.5) then
-          tfile = trim(dataDirectory)//"/tlusty/z0p5sol/files.dat"                 
-       elseif(stellarmetallicity == 1.0) then             
-          tfile = trim(dataDirectory)//"/tlusty/zsol/files.dat"       
-       elseif(stellarmetallicity == 2.0) then             
-          tfile = trim(dataDirectory)//"/tlusty/z2sol/files.dat"       
+          tfile = trim(dataDirectory)//"/tlusty/z0p5sol/files.dat"
+       elseif(stellarmetallicity == 1.0) then
+          tfile = trim(dataDirectory)//"/tlusty/zsol/files.dat"
+       elseif(stellarmetallicity == 2.0) then
+          tfile = trim(dataDirectory)//"/tlusty/z2sol/files.dat"
       else
          print *, "can only have 0.5, 1.0 or 2.0 times solar metallicity at present"
          stop
@@ -1090,7 +1090,7 @@ module spectrum_mod
           read(31,*) fluxfile
           label(i) = trim(fluxfile)
           if(stellarmetallicity == 0.5) then
-             tfile = trim(dataDirectory)//"/tlusty/z0p5sol/"//trim(fluxfile)             
+             tfile = trim(dataDirectory)//"/tlusty/z0p5sol/"//trim(fluxfile)
           elseif(stellarmetallicity == 1.0) then
              tfile = trim(dataDirectory)//"/tlusty/zsol/"//trim(fluxfile)
           elseif(stellarmetallicity == 2.0) then
@@ -1105,14 +1105,14 @@ module spectrum_mod
        call writeInfo("Done.",TRIVIAL)
 
      end subroutine readTlustyGrid
-     
+
      subroutine readKuruczSpectrum(thisSpectrum,thisLabel, label, spectrum, nFiles, ok)
        character(len=*) :: label(:), thisLabel
        type(SPECTRUMTYPE) :: spectrum(:), thisSpectrum
        integer :: nFiles
        logical :: ok
        integer :: i
-       
+
        ok = .false.
        do i = 1, nFiles
           if (trim(label(i)).eq.trim(thisLabel)) then
@@ -1129,7 +1129,7 @@ module spectrum_mod
        integer :: nFiles
        logical :: ok
        integer :: i
-       
+
        ok = .false.
        do i = 1, nFiles
           if (trim(label(i)).eq.trim(thisLabel)) then

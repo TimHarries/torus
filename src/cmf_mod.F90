@@ -50,7 +50,7 @@ contains
 !    integer, allocatable :: indx(:)
 !    real(double), allocatable :: vMatrix(:,:), wMatrix(:,:), xMatrix(:)
 !    real(double) :: wMax, wMin
-!    real(double) :: d 
+!    real(double) :: d
     real(double) :: boltzFac
     integer :: nLevels
     integer :: i
@@ -112,9 +112,9 @@ contains
     do iAtom = 1, nAtom
        if (iAtom /= nAtom) then
           if (thisAtom(iAtom)%nz /= thisAtom(iAtom+1)%nz) then ! if next atom is different element
-             nMatrix = nMatrix + thisAtom(iAtom)%nLevels 
+             nMatrix = nMatrix + thisAtom(iAtom)%nLevels
              nCons(iAtom) = nMatrix
-!             nMatrix = nMatrix + 1  
+!             nMatrix = nMatrix + 1
              nOffset(iAtom+1) = nMatrix
           else
              nMatrix = nMatrix + thisAtom(iAtom)%nLevels-1  ! continuum state of this atom is ground state of next
@@ -124,8 +124,8 @@ contains
           endif
        else
           nMatrix = nMatrix + thisAtom(iAtom)%nLevels  ! last atom
-!          nMatrix = nMatrix + 1      ! TJH 1/6/11 
-          nCons(iAtom) = nMatrix     ! TJH 1/6/11  
+!          nMatrix = nMatrix + 1      ! TJH 1/6/11
+          nCons(iAtom) = nMatrix     ! TJH 1/6/11
        endif
     enddo
 
@@ -164,7 +164,7 @@ contains
           l = thisAtom(iAtom)%iLower(iTrans)
 
           NstarRatio = boltzSahaGeneral(thisAtom(iAtom),  l, ne, temperature)
-          
+
 
           if ((thisAtom(iAtom)%transType(iTrans) == "RBF").and.&
                (.not.thisAtom(iAtom)%inDetailedBalance(iTrans)))  then ! radiative recomb
@@ -198,7 +198,7 @@ contains
 !             if (thisAtom(iatom)%name == "HeII") write(*,*) "Radiative recomb out of continuum ", &
 !                  Nstarratio*recombratekl*npops(iatom,k)
 
-             if ((thisAtom(iatom)%name == "HeII")) then 
+             if ((thisAtom(iatom)%name == "HeII")) then
                 if (l==2) rate03 = rate03 + Nstarratio*recombratekl*npops(iatom,k)
 !                if (l==2) write(*,'(a,1p,e10.2)') "Rad ",Nstarratio*recombratekl*npops(iatom,k)
              endif
@@ -207,7 +207,7 @@ contains
              matrixA(l + noffset(iatom), k+nOffset(iAtom)) = matrixA(l + noffset(iatom), k+nOffset(iAtom)) + &
                   NstarRatio * recombratekl
              matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) &
-                  - NstarRatio * recombratekl 
+                  - NstarRatio * recombratekl
 
 
              tot1 = tot1  + NstarRatio * recombratekl
@@ -217,7 +217,7 @@ contains
 !             endif
 
 
-             radtot = radtot + tot1 * ne 
+             radtot = radtot + tot1 * ne
 
           endif
 
@@ -230,7 +230,7 @@ contains
 !                  Nstarratio*collex*ne*npops(iatom,k)
 
 
-             if ((thisAtom(iatom)%name == "HeII")) then 
+             if ((thisAtom(iatom)%name == "HeII")) then
                 if (l==2) then
                    rate03 = rate03 + Nstarratio*collex*npops(iatom,k)
 !                   write(*,'(a,1p,e10.2)') "N(HeIII) ",npops(iatom,k)
@@ -253,7 +253,7 @@ contains
 
              colltot = colltot + tot2 * ne
 
-          
+
           endif
 
 
@@ -288,18 +288,18 @@ contains
 
 
              if (.not.thisAtom(iAtom)%inDetailedBalance(iTrans)) then
-                
+
 
 !                if ((thisAtom(iatom)%name=="HeII").and.(l==2)) write(*,*) "Rad bound-bound out of  level 2: ", &
 !                    (Blu * jnu) * npops(iatom,l)
 !                if ((thisAtom(iatom)%name=="HeII").and.(k==2)) write(*,*) "Rad bound-bound into level 2 (lyman alpha): ", &
 !                    (Blu * jnu) * npops(iatom,l)
-!                if ((thisAtom(iatom)%name=="HeII").and.(k==2)) then 
+!                if ((thisAtom(iatom)%name=="HeII").and.(k==2)) then
 !                   write(*,*) "Rad bound-bound out of   level 2 (ly alpha): ", &
 !                        (Bul * jnu + a )*npops(iatom,k), blu*jnu,a
 !                endif
 !                if ((thisAtom(iatom)%name=="HeII").and.(l==2)) write(*,*) "Rad bound-bound into  level 2 (recomb cascade): ", &
-!                    (Bul * jnu + a )*npops(iatom,k) 
+!                    (Bul * jnu + a )*npops(iatom,k)
 !
 !                if ((thisAtom(iatom)%name=="HeII").and.(l==2)) write(*,*) "Bul ",Bul * jnu, " a ",a
 
@@ -311,7 +311,7 @@ contains
 !                      write(*,*) "jnu ",jnu
                    endif
                 endif
- 
+
                 if ((thisAtom(iatom)%name == "HeII")) then
                    if (k==2) rate01 = rate01 + (npops(iatom,l) * blu * jnu - npops(iatom,k) * bul * jnu)
                    if (k==2) rate01 = rate01 - npops(iatom,k) * a
@@ -324,7 +324,7 @@ contains
 
                 betamn = 1.d0
 
-                
+
                 if (sobolevApprox) then
                    call getSobolevJnuLine(grid, thisOctal, subcell, iatom, itrans, thisAtom, &
                         source(1), inu_times_betacmn, betamn, jnusob)
@@ -368,13 +368,13 @@ contains
 !                  (collex+colldeex) * ne *npops(iatom,l)
 !             if ((thisAtom(iatom)%name=="HeII").and.(k==2)) write(*,*) "Col bound-bound into level 2: ", &
 !                  (collex+colldeex) * ne * npops(iatom,k)
-	
 
-             if ((thisAtom(iatom)%name == "HeII")) then 
+
+             if ((thisAtom(iatom)%name == "HeII")) then
                 if (k==2) rate01 = rate01 + ne * (npops(iatom,l) * collex - npops(iatom,k) * colldeex)
              endif
 
-             if ((thisAtom(iatom)%name == "HeII")) then 
+             if ((thisAtom(iatom)%name == "HeII")) then
                 if (l==2) rate02 = rate02 + ne * (npops(iatom,k) * colldeex - npops(iatom,l) * collex)
              endif
 
@@ -399,7 +399,7 @@ contains
                 nuStart = (thisAtom(iAtom)%iPot - thisAtom(iAtom)%energy(l))*evtoerg/hcgs
 
                 call locate(freq, nfreq, nuStart, istart)
-                
+
                 photoRatelk = 0.d0
                 do i = istart+2, nFreq
                    xSection = photoCrossSection(thisAtom(iAtom), l, freq(i-1))
@@ -417,8 +417,8 @@ contains
 !             if (thisAtom(iatom)%name == "HeII") write(*,*) "Photoion into continuum ", &
 !                  photoRatelk * npops(iatom,l)
 
-                
-                if ((thisAtom(iatom)%name == "HeII")) then 
+
+                if ((thisAtom(iatom)%name == "HeII")) then
                    if (l==2) rate04 = rate04 - photoRatelk * npops(iatom,l)
 
                 endif
@@ -444,8 +444,8 @@ contains
 
              collEx = collisionRate(thisAtom(iAtom), iTrans, temperature)
 
-             
-             if ((thisAtom(iatom)%name == "HeII")) then 
+
+             if ((thisAtom(iatom)%name == "HeII")) then
                 if (l==2) rate04 = rate04 - npops(iatom,l) * collex * ne
              endif
 
@@ -457,7 +457,7 @@ contains
              matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) + collex * ne
              totcion = totcion + collex*ne
 
-             
+
           endif
 
 
@@ -612,7 +612,7 @@ contains
        do iRBB = 1, nRBBTRans
           iAtom = indexAtom(iRBB)
           iTrans = indexRBBTrans(iRBB)
-          
+
           if ((thisAtom(iatom)%name == "HeII").and.(thisAtom(iatom)%ilower(itrans) == 1).and. &
                (thisAtom(iatom)%iupper(itrans) == 2)) iflagRBB = iRbb
 
@@ -670,9 +670,9 @@ contains
     call randomNumberGenerator(getDouble=r)
 
 
-    deltaV = 4.3 * thisOctal%microturb(subcell) * (r-0.5d0) ! random frequency near line spectrum peak. 
+    deltaV = 4.3 * thisOctal%microturb(subcell) * (r-0.5d0) ! random frequency near line spectrum peak.
 
-!    deltaV = 10.d0 * thisOctal%microturb(subcell) * (r-0.5d0) ! random frequency near line spectrum peak. 
+!    deltaV = 10.d0 * thisOctal%microturb(subcell) * (r-0.5d0) ! random frequency near line spectrum peak.
 
     rayDeltaV = deltaV
     ! 4.3 corresponds to the width where the peak of the line profile has dropped to 1% of its peak
@@ -718,7 +718,7 @@ contains
        endif
 
 
-       startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
+       startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell)
        !       startVel = getVel(grid, thisOctal, subcell, currentposition, direction)
 
        endPosition = currentPosition + tval * direction
@@ -747,7 +747,7 @@ contains
 
 
        if (.not.thisOctal%inflow(subcell)) ntau = 2
-       
+
        ok = .false.
        do while (.not.ok)
           ok = .true.
@@ -764,7 +764,7 @@ contains
           startOctal => thisOctal
           thisPosition = currentPosition + distArray(i)*direction
 
-          thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
+          thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell)
           !          thisVel = getVel(grid, thisOctal, subcell, thisposition, direction)
 
 
@@ -800,7 +800,7 @@ contains
                    dustOpac = kappaExt/1.d10
                    dustEmiss = kappaAbs * bnu(freq(ifreq), dble(thisOctal%temperature(subcell)))/1.d10
                 endif
-                
+
                 jnuCont(ifreq) = jnuCont(ifreq) + dustEmiss
                 alphaNuCont(iFreq) = alphaNuCont(ifreq) + dustOpac
 
@@ -837,7 +837,7 @@ contains
              iAtom = indexAtom(iRBB)
              iTrans = indexRBBTrans(iRBB)
 
-            
+
 
 !             call locate(freq, nfreq, thisAtom(iAtom)%transFreq(iTrans), iFreq)
              call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
@@ -886,7 +886,7 @@ contains
                         thisAtom(iatom)%transfreq(itrans), thisAtom(iatom))/thisAtom(iAtom)%transFreq(iTrans)
 
 
-             if (opticallyThickContinuum) jnu = jnu + jnuCont(iFreqRBB(iRBB)) 
+             if (opticallyThickContinuum) jnu = jnu + jnuCont(iFreqRBB(iRBB))
 
 
              if (alphanu > 1.d-30) then
@@ -997,7 +997,7 @@ contains
     integer :: subcell
     real(double) :: dv, nu
     type(MODELATOM) :: thisAtom
-    
+
     if ((thisAtom%name=="HI").and.(thisOctal%microturb(subcell)==0.d0)) then
        phiProf = phiProfStark(dv, thisOctal, subcell, nu, thisAtom)
     else
@@ -1026,7 +1026,7 @@ contains
     real(double) :: n_hi, a, dopplerWidth, hay, nu, v_th
 
     V_th = sqrt(2.*kErg*thisOctal%temperature(subcell)/(thisAtom%mass*mHydrogen))  ! [cm/s] theram speed
-             
+
     DopplerWidth = nu/cSpeed * V_th !eq 7  [Hz]
 
     N_HI = thisoctal%atomlevel(subcell, 1, 1)
@@ -1044,7 +1044,7 @@ contains
     type(GRIDTYPE) :: grid
     type(VECTOR) :: position(:), direction(:), thisPosition, startVel, thisVel, endVel, endPosition
     real(double) :: dds, dv, rayDeltaV(:)
-    integer :: ns 
+    integer :: ns
     real(double) :: inu
     integer :: i
     real(double) :: weight(:)
@@ -1097,10 +1097,10 @@ contains
 
           thisPosition = position(iray)
           endPosition = thisPosition + (ds(iray)/1.d10)*direction(iray)
-          startVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = thisOctal, actualSubcell = subcell) 
+          startVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = thisOctal, actualSubcell = subcell)
 
           endVel = amrGridVelocity(grid%octreeRoot, endPosition, startOctal = thisOctal, &
-               actualSubcell = subcell) 
+               actualSubcell = subcell)
           dv = rayDeltaV(iray)
 
           alphanu = (hCgs*thisAtom%transFreq(iTrans)/fourPi)
@@ -1124,7 +1124,7 @@ contains
 
              do i = 1, ns
                 thisPosition = thisPosition + dds * direction(iray)
-                !             thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = thisOctal, actualSubcell = subcell) 
+                !             thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = thisOctal, actualSubcell = subcell)
 
                 thisVel = startVel + (currentS/ds(iray)) * (endVel - startVel)
                 thisVel= thisVel - startVel
@@ -1189,7 +1189,7 @@ contains
 
           inuAv = inuAv + inu * weight(iray)
 
-          sumWeight = sumWeight + weight(iRay) 
+          sumWeight = sumWeight + weight(iRay)
 
 
        enddo
@@ -1353,8 +1353,8 @@ contains
     integer :: nRay
     type(OCTAL), pointer :: thisOctal
     integer, parameter :: maxIter = 100, maxRay = 200000
-    logical :: popsConverged, gridConverged 
-    integer :: iRay, iTrans, iter,i 
+    logical :: popsConverged, gridConverged
+    integer :: iRay, iTrans, iter,i
     integer :: iStage
     real(double), allocatable :: oldpops(:,:), newPops(:,:), dPops(:,:), mainoldpops(:,:)
     real(double) :: newNe
@@ -1422,11 +1422,11 @@ contains
 
 
 
-    !    blockHandout = .false. 
+    !    blockHandout = .false.
 
 #ifdef MPI
     ! FOR MPI IMPLEMENTATION=======================================================
-    !  Get my process rank # 
+    !  Get my process rank #
     call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
 
     ! Find the total # of precessor being used in this run
@@ -1513,7 +1513,7 @@ contains
 
     !    do iAtom = 1, nAtom
     !       do iTrans = 1, thisAtom(iAtom)%nTrans
-    !          if (thisAtom(iAtom)%transType(iTrans) == "RBB") then 
+    !          if (thisAtom(iAtom)%transType(iTrans) == "RBB") then
     !             if (thisAtom(iatom)%name == "HI") then
     !                if ((thisAtom(iAtom)%iLower(iTrans) == 1).and.(thisAtom(iatom)%iUpper(itrans)==2)) then
     !                   thisAtom(iAtom)%inDetailedBalance(iTrans) = .true.
@@ -1638,7 +1638,7 @@ contains
 
           ! default loop indecies
           ioctal_beg = 1
-          ioctal_end = SIZE(octalArray)       
+          ioctal_end = SIZE(octalArray)
 
           write(*,*) myrankGlobal, " size of octal Array ",ioctal_end
 
@@ -1669,7 +1669,7 @@ contains
                call MPI_SEND(-1, 1, MPI_INTEGER, i, tag, MPI_COMM_WORLD,  ierr)
             enddo
          else
-            
+
             do
                call MPI_SEND(myrankGlobal, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, ierr)
                call MPI_RECV(iOctal, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD, status, ierr)
@@ -1699,7 +1699,7 @@ contains
           allocate(mainoldPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
           allocate(newPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
           allocate(dPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
-          allocate(jnuCont(1:nFreq)) 
+          allocate(jnuCont(1:nFreq))
           allocate(ds(1:nRay))
           allocate(phi(1:nRay))
           allocate(rayDeltaV(1:nRay))
@@ -1763,7 +1763,7 @@ contains
 
 
 
-                   if (thisOctal%inflow(subcell).and.(thisOctal%temperature(subcell) > 3000.)) then 
+                   if (thisOctal%inflow(subcell).and.(thisOctal%temperature(subcell) > 3000.)) then
 
 
                       write(*,*) myrankGlobal, nt, subcell, " doing octal ",iOctal, " of ",nOctals
@@ -1841,7 +1841,7 @@ contains
                               thisOctal%rho(subcell),&
                               jnuCont, freq, dfreq, nfreq, sobolevApprox)
 
-                         dPops = newPops - thisOctal%newAtomLevel(subcell,1:nAtom,:) 
+                         dPops = newPops - thisOctal%newAtomLevel(subcell,1:nAtom,:)
 
 
                          thisOctal%newAtomLevel(subcell,1:nAtom,:)  = &
@@ -1861,7 +1861,7 @@ contains
                             oldpops2 = oldpops3
                             oldpops3 = oldpops4
                             oldpops4(1:nAtom,:) = thisOctal%newAtomLevel(subcell,1:nAtom,:)
-                            
+
                             if (mod(iter, iNgStep) == 0) then
                                !                               if (writeoutput) write(*,*) "Doing Ng acceleration step"
                                do iAtom = 1, nAtom
@@ -2055,7 +2055,7 @@ contains
                               log10(SUM(thisOctal%newAtomLevel(subcell,3,1:thisAtom(3)%nlevels-1)) / ntot), &
                               log10(thisOctal%newAtomLevel(subcell,3,thisAtom(3)%nlevels) / ntot), &
                               log10(thisOctal%rho(subcell))
-                         close(69) 
+                         close(69)
                          itmp = itmp + 1
                          !                           write(tfilename,'(a,i2.2,a)') "jbar",itmp,".dat"
                          !                           open(69, file=tfilename, status="unknown",form="formatted")
@@ -2119,7 +2119,7 @@ contains
              endif
 
                 write(*,*) myrankGlobal, " now waiting at barrier"
-                call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+                call MPI_BARRIER(MPI_COMM_WORLD, ierr)
                 if(my_rank == 0) write(*,*) "Updating MPI grids"
 
                 call countVoxels(grid%octreeRoot,nOctal,nVoxels)
@@ -2225,11 +2225,11 @@ contains
 
   recursive  subroutine  swapPops(thisOctal, tolerance, nInuse, nConverged)
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child 
+    type(octal), pointer  :: child
     integer :: subcell, i, j, iAtom
     real(double) :: maxFrac, temp, tolerance
     integer :: nInUse, nConverged
-  
+
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -2246,7 +2246,7 @@ contains
              allocate(thisOctal%adot(1:thisOctal%maxChildren))
              thisOctal%adot = 0.d0
           endif
-          
+
           if (thisOctal%inflow(subcell).and.(thisOctal%temperature(subcell) > 3000.)) then
              nInuse = nInuse + 1
              maxFrac = -1.d30
@@ -2275,11 +2275,11 @@ contains
   recursive  subroutine checkVelocityInterp(thisOctal, grid)
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child 
+    type(octal), pointer  :: child
     integer :: subcell, i
     type(VECTOR) :: interpVel, rVec
     real(double) :: diff
-  
+
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -2292,7 +2292,7 @@ contains
           end do
        else
           rVec = subcellCentre(thisOctal, subcell)
-          interpVel = amrGridVelocity(grid%octreeRoot, rVec, startOctal = thisOctal, actualSubcell = subcell) 
+          interpVel = amrGridVelocity(grid%octreeRoot, rVec, startOctal = thisOctal, actualSubcell = subcell)
           if (modulus(thisOctal%velocity(subcell)) /= 0.d0) then
              diff = modulus(thisOctal%velocity(subcell) - interpVel)/modulus(thisOctal%velocity(subcell))
              if (diff > 0.1d0) then
@@ -2311,7 +2311,7 @@ contains
     integer :: nsource
     type(SOURCETYPE) :: source(:)
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child 
+    type(octal), pointer  :: child
     integer :: subcell, i
 
     do subcell = 1, thisOctal%maxChildren
@@ -2336,7 +2336,7 @@ contains
     integer :: nAtom
     integer :: iTrans
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child 
+    type(octal), pointer  :: child
     integer :: subcell, i, iUpper, iAtom
     real(double) :: a, bul, blu
     real(double) :: etaLine
@@ -2368,7 +2368,7 @@ contains
 
   recursive  subroutine  removeInnerEtaChi(thisOctal, radius)
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child 
+    type(octal), pointer  :: child
     real(double) :: radius
     integer :: subcell, i
 
@@ -2401,7 +2401,7 @@ contains
     integer :: nAtom
     integer :: iTrans
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child 
+    type(octal), pointer  :: child
     integer :: subcell, i, iUpper, iAtom
     real(double) :: a, bul, blu
     real(double) :: alphaNu
@@ -2426,15 +2426,15 @@ contains
              iLower = thisAtom(iatom)%iLower(iTrans)
              nLower = thisOctal%atomLevel(subcell,iAtom, iLower)
              nUpper = thisOctal%atomLevel(subcell,iAtom, iUpper)
-             
-             alphanu = (hCgs*thisAtom(iAtom)%transFreq(iTrans)/fourPi) 
+
+             alphanu = (hCgs*thisAtom(iAtom)%transFreq(iTrans)/fourPi)
              call returnEinsteinCoeffs(thisAtom(iatom), iTrans, a, Bul, Blu)
-             
+
              alphanu = alphanu * (nLower * Blu - nUpper * Bul)
              thisOctal%chiLine(subcell) = alphanu * 1.d10
           endif
 !          write(45,*) modulus(subcellCentre(thisOctal,subcell)), thisOctal%chiline(subcell)
-          
+
        endif
     enddo
   end subroutine calcChiLine
@@ -2442,7 +2442,7 @@ contains
   recursive  subroutine  calcNe(thisOctal, thisAtom)
     type(MODELATOM) :: thisAtom(:)
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child 
+    type(octal), pointer  :: child
     integer :: subcell, i
 
     do subcell = 1, thisOctal%maxChildren
@@ -2471,7 +2471,7 @@ contains
     real(double) :: nstar(10,50)
     integer :: nAtom
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child 
+    type(octal), pointer  :: child
     integer :: subcell, i, iAtom, iLevel
 
     do subcell = 1, thisOctal%maxChildren
@@ -2520,7 +2520,7 @@ contains
     type(GRIDTYPE) :: grid
     type(MODELATOM) :: thisAtom(:)
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child 
+    type(octal), pointer  :: child
     typE(VECTOR) :: rvec
     real(double) :: ne, n_h, ntot, phit, t
     real(double), parameter  :: CI = 2.07d-16   ! in cgs units
@@ -2571,16 +2571,16 @@ contains
        rVec = subcellCentre(thisOctal, subcell)
        !       write(*,*) " t ",t , " r ",modulus(rVec)/grid%rcore
        N_H = thisOctal%rho(subcell)/mHydrogen  ! number density of HI plus number density of HII
-       if (real(hydE0eV,kind=double)/(kev*T) < 60.d0) then 
+       if (real(hydE0eV,kind=double)/(kev*T) < 60.d0) then
           phiT = CI*Z_HI(10,T)*(T**(-1.5))*EXP(real(hydE0eV,kind=double)/(kev*T))
 
           ! Solving for phi(T)*ne^2 + 2ne -nTot =0 and ne+N_H = nTot for ne where
           ! nTot is the number density of particles includeing all species.
           ! ==> phi(T)*ne^2 + ne - N_H =0
-          ! Th physical solution  is chosen out of two ...  
+          ! Th physical solution  is chosen out of two ...
           !    Ne = (sqrt(nTot*phiT+1.0_db) -1.0_db)/phiT
           Ne = (sqrt(4.0_db*N_H*phiT+1.0_db) -1.0_db)/(2.0_db*phiT)
-       else 
+       else
           ne = tiny(ne)
        endif
        !       nTot = Ne + N_H
@@ -2606,13 +2606,13 @@ contains
                   thisOctal%ne(subcell), dble(thisOctal%temperature(subcell))))
           enddo
           thisOctal%ne(subcell) = returnNe(thisOctal%atomLevel(subcell,:,:),thisAtom)
-          
+
        enddo
     enddo
     thisOctal%newAtomLevel = thisOctal%atomLevel
 
   end subroutine allocateLevels
-  
+
 
   subroutine randomRayDirection(probTowardsSource, point, source, nSource, direction, weight, fracRay)
     type(VECTOR) :: point, direction, toStar
@@ -2638,7 +2638,7 @@ contains
     chanceSource = omegaSubtendedBySource / fourPi
 
     weight = 1.d0
- 
+
     if (PRESENT(fracRay)) then
        r = fracRay
     else
@@ -2798,8 +2798,8 @@ contains
 !!$    iLower = thisAtom(iAtom)%iLower(iTrans)
 !!$
 !!$    currentPosition = position + (distToGrid + 1.d-3*grid%halfSmallestSubcell) * direction
-!!$ 
-!!$ 
+!!$
+!!$
 !!$
 !!$    if (.not.inOctal(grid%octreeRoot, currentPosition)) then
 !!$       write(*,*) "initial position not in grid"
@@ -2843,7 +2843,7 @@ contains
 !!$
 !!$       do while(inOctal(grid%octreeRoot, currentPosition).and. &
 !!$            (.not.endloopAtPhotosphere).and.(tau < 20.d0))
-!!$          icount = icount + 1 
+!!$          icount = icount + 1
 !!$          call findSubcellLocal(currentPosition, thisOctal, subcell)
 !!$
 !!$!          fac = 0.d0
@@ -2869,7 +2869,7 @@ contains
 !!$          ntau = 4
 !!$
 !!$          if (.not.lineOff) then
-!!$             startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
+!!$             startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell)
 !!$
 !!$             endPosition = currentPosition + tval * direction
 !!$             endVel = amrGridVelocity(grid%octreeRoot, endPosition)
@@ -2911,38 +2911,38 @@ contains
 !!$
 !!$                startOctal => thisOctal
 !!$                thisPosition = currentPosition + distArray(i)*direction
-!!$                
+!!$
 !!$                if (.not.lineoff) then
-!!$                   thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
+!!$                   thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell)
 !!$                   thisVel= thisVel - rayVel
 !!$                   dv = (thisVel .dot. direction) + deltaV
 !!$
 !!$                   call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
-!!$                   
+!!$
 !!$                   iUpper = thisAtom(iAtom)%iUpper(iTrans)
 !!$                   iLower = thisAtom(iAtom)%iLower(iTrans)
 !!$                   nLower = thisOctal%atomLevel(subcell,iAtom, iLower)
 !!$                   nUpper = thisOctal%atomLevel(subcell,iAtom, iUpper)
 !!$                   gLower = thisAtom(iatom)%g(iLower)
 !!$                   gUpper = thisAtom(iatom)%g(iUpper)
-!!$                   
+!!$
 !!$                   alphanu = ( (pi*eCharge**2) / (mElectron*cSpeed) ) * thisAtom(iatom)%fmatrix(iLower,iUpper)
 !!$                   alphanu = alphanu * (nLower - ((gLower / gUpper) * nUpper) )  * &
 !!$                        phiProf(dv, thisOctal, subcell, &
 !!$                        thisAtom(iatom)%transfreq(itrans), thisAtom(iatom))/thisAtom(iatom)%transFreq(iTrans)
-!!$                   
+!!$
 !!$                   if (nLower > 0.d0) then
 !!$                      fac=(((nLower* gUpper) / (nUpper*gLower))-1.e0_db)
 !!$                   else
 !!$                      fac = 1.d30
 !!$                   endif
 !!$                   jnu = alphanu * (2.d0*hcgs*transitionfreq**3)/(cSpeed*cSpeed)/fac
-!!$                   
+!!$
 !!$                else
 !!$                   alphanu = 0.d0
 !!$                endif
-!!$                
-!!$                
+!!$
+!!$
 !!$                if (i == 2) then
 !!$                   do k = 1, nAtom
 !!$                      do j = 1, thisAtom(k)%nLevels - 1
@@ -2965,15 +2965,15 @@ contains
 !!$                      dustEmiss = dustEmiss + kappaSca * thisOctal%meanIntensity(subcell)/1.d10
 !!$                   endif
 !!$                endif
-!!$                
-!!$                
+!!$
+!!$
 !!$                if (associated(thisOctal%fixedTemperature)) then
 !!$                   if (.not.thisOctal%fixedTemperature(subcell)) then
 !!$                      jnu = 0.d0
 !!$                      etaline = 0.d0
 !!$                   endif
 !!$                endif
-!!$                
+!!$
 !!$                if (thisOctal%rho(subcell) > 0.1d0) then ! opaque disc
 !!$                   bfOpac = 1.d30
 !!$                   bfEmiss = 0.d0
@@ -2984,38 +2984,38 @@ contains
 !!$                   deallocate(distArray)
 !!$                   goto 666
 !!$                endif
-!!$                
+!!$
 !!$                alphanu = alphanu + bfOpac + dustOpac
-!!$                
+!!$
 !!$                ! add continuous bf and ff emissivity of hydrogen
-!!$                
+!!$
 !!$                jnu = jnu !+ bfEmiss + dustEmiss
-!!$                
+!!$
 !!$                if (alphanu /= 0.d0) then
-!!$                   snu = jnu/alphanu                
+!!$                   snu = jnu/alphanu
 !!$                else
 !!$                   snu = tiny(snu)
 !!$                endif
-!!$                
-!!$                
+!!$
+!!$
 !!$                dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
-!!$                
+!!$
 !!$                if ((dtau > 0.2d0).and.(tau < 20.d0)) then
 !!$                   ntau = ntau * 2
 !!$                   ok = .false.
 !!$                   exit
 !!$                endif
-!!$                
-!!$                
+!!$
+!!$
 !!$                if (thisOctal%inflow(subcell)) then
 !!$                   if (dtau > 0.1d0) then
 !!$                      fac = (1.d0-exp(-dtau))
 !!$                   else
 !!$                      fac = (dtau - dtau**2/2.d0)
 !!$                   endif
-!!$                   
-!!$                   
-!!$                   
+!!$
+!!$
+!!$
 !!$                   istep = istep + jnu * exp(-tautmp) *  (distArray(i)-distArray(i-1)) * 1.d10
 !!$                   tauStep = tauStep + dtau
 !!$                   tautmp = tautmp + dtau
@@ -3050,7 +3050,7 @@ contains
 !!$       iElement = getElement(source(sourcenumber)%surface, photoDirection)
 !!$       i0 = i0 + i_nu(source(sourceNumber), transitionFreq, iElement, cosTheta)*exp(-tau)
 !!$    endif
-!!$666 continue 
+!!$666 continue
 !!$
 !!$  end function intensityAlongRay
 
@@ -3101,7 +3101,7 @@ contains
     real(double) :: dustOpac, dustEmiss
     integer :: ilambda, iomp
     real(double) :: transitionLambda, kappaSca, kappaAbs, kappaExt
-    
+
     real(double) :: tauStep, tauTmp, iStep
     logical :: passThroughResonance, ok, closeToResonance, hitgrid
 #ifdef _OPENMP
@@ -3122,7 +3122,7 @@ contains
 
 
 
-    transitionLambda = lamLine 
+    transitionLambda = lamLine
 
     transitionFreq = cSpeed / (lamLine * angstromtocm)
     if (PRESENT(forceFreq)) then
@@ -3173,8 +3173,8 @@ contains
     endif
 
     currentPosition = position + (distToGrid + 1.d-6*grid%halfSmallestSubcell) * direction
- 
- 
+
+
 
     if (.not.inOctal(grid%octreeRoot, currentPosition)) then
        write(*,*) "initial position not in grid"
@@ -3220,7 +3220,7 @@ contains
 
 
        do while(inOctal(grid%octreeRoot, currentPosition).and.(.not.endloopAtPhotosphere).and.(tau < 20.d0))
-          icount = icount + 1 
+          icount = icount + 1
           call findSubcellLocal(currentPosition, thisOctal, subcell)
 
           !       rVec = subcellCentre(thisOctal,subcell)
@@ -3243,7 +3243,7 @@ contains
 
           if (.not.lineOff) then
              startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell, &
-                  linearInterp=.false.) 
+                  linearInterp=.false.)
 
              endPosition = currentPosition + tval * direction
              endVel = amrGridVelocity(grid%octreeRoot, endPosition, &
@@ -3296,7 +3296,7 @@ contains
 
              if (.not.lineoff) then
                 thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell, &
-                     linearInterp=.false.) 
+                     linearInterp=.false.)
 
                 thisVel= thisVel - rayVel
                 dv = (thisVel .dot. direction) + deltaV
@@ -3374,7 +3374,7 @@ contains
 
 
              if (thisOctal%inflow(subcell)) then
-   
+
                 istep = istep + jnu * exp(-tautmp) *  (distArray(i)-distArray(i-1))
                 tauStep = tauStep + dtau
                 tautmp = tautmp + dtau
@@ -3417,11 +3417,11 @@ contains
 
        i0 = i0 + i_nu(source(sourceNumber), transitionFreq, iElement, cosTheta)*exp(-tau)
     endif
-666 continue 
+666 continue
 
   end function intensityAlongRayGeneric
 
-  
+
   subroutine calculateAtomSpectrum(grid, thisAtom, nAtom, iAtom, iTrans, viewVec, distance, source, nsource, &
        totalFlux, prefix, forceLambda, occultingDisc)
     use inputs_mod, only : vturb, lineoff, nv, calcDataCube, lamLine, cmf, calcPhotometry, calcSpectrum
@@ -3479,9 +3479,9 @@ contains
 
 
     ! FOR MPI IMPLEMENTATION=======================================================
-    !  Get my process rank # 
+    !  Get my process rank #
     call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-  
+
     ! Find the total # of precessor being used in this run
     call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 #endif
@@ -3534,11 +3534,11 @@ contains
     if (myRankIsZero.and.(.not.PRESENT(forcelambda))) &
          write(*,*) "Calculating spectrum for: ",lamLine
 
-    
+
     if (doCube) then
 #ifdef USECFITSIO
        call createDataCube(cube, grid, viewVec, nSource, source, thisAtom(iAtom), iTrans)
-       
+
 #ifdef MPI
        write(*,*) "Process ",my_rank, " create data cube done"
 #endif
@@ -3553,7 +3553,7 @@ contains
 
        endif
 !       write(tempFilename,'(a,i3.3)') "vis",nFile
-! Import gridDistance from inputs_mod if this line needs to be reinstated. 
+! Import gridDistance from inputs_mod if this line needs to be reinstated.
 !       call dumpCubeToVisibilityCurves(cube, tempFilename, cspeed/transitionFreq, gridDistance)
        call torus_mpi_barrier
        call freeDataCube(cube)
@@ -3576,7 +3576,7 @@ contains
 
     iv1 = 1
     iv2 = nv
- 
+
 
     allocate(spec(1:nv), vArray(1:nv))
     spec = 0.d0
@@ -3609,7 +3609,7 @@ contains
 !$OMP PRIVATE (iray, i0) &
 !$OMP SHARED (iray1, iray2, iv, occultingDisc, rayposition, viewvec, grid, thisAtom, nAtom, iatom) &
 !$OMP SHARED ( itrans, deltaV, source, nsource) &
-!$OMP SHARED (nFreqArray, freqArray, broadbandFreq, spec, domega, totalOmega, calcPhotometry) 
+!$OMP SHARED (nFreqArray, freqArray, broadbandFreq, spec, domega, totalOmega, calcPhotometry)
 !$OMP DO SCHEDULE(DYNAMIC)
        do iRay = iray1, iray2
           if (PRESENT(occultingDisc)) then
@@ -3637,7 +3637,7 @@ contains
 
           endif
 !$OMP CRITICAL
-          spec(iv) = spec(iv) + i0 * domega(iRay) 
+          spec(iv) = spec(iv) + i0 * domega(iRay)
           totalOmega = totalOmega + domega(iray)
 !$OMP END CRITICAL
        enddo
@@ -3648,7 +3648,7 @@ contains
     enddo
 
 #ifdef MPI
-     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
      allocate(tempArray(1:nv))
      call MPI_ALLREDUCE(spec,tempArray,nv,MPI_DOUBLE_PRECISION,&
           MPI_SUM,MPI_COMM_WORLD,ierr)
@@ -3660,7 +3660,7 @@ contains
           MPI_SUM,MPI_COMM_WORLD,ierr)
      totalOmega=temparray(1)
      deallocate(tempArray)
-     
+
 
 #endif
      if (myrankiszero) then
@@ -3715,7 +3715,7 @@ contains
 
     allocate(rGrid(1:nr), dr(1:nr), phiGrid(1:nPhi), dphi(1:nPhi))
     rmin = 0.d0
-    rMax = globalSourceArray(1)%radius 
+    rMax = globalSourceArray(1)%radius
 
     do ir = 1, nr1
        r1 = rMin + (rmax-rMin) * (dble(ir-1)/dble(nr1))
@@ -3725,11 +3725,11 @@ contains
        dr(i) = r2 - r1
 !       write(*,*) 1.d10*rGrid(i)/(20.d0*rSol)
     enddo
-    
+
     if (nr2 > 0) then
-       rmin = globalSourceArray(1)%radius 
+       rmin = globalSourceArray(1)%radius
        rMax = max(rMin*10.d0,ttaurirOuter/1.d10)
-    
+
 
        do ir = 1, nr2
           r1 = rMin + (rmax-rMin) * (dble(ir-1)/dble(nr2))**3
@@ -3743,7 +3743,7 @@ contains
 
 
     if (nr3 > 0) then
-       rmin = ttauriRouter/1.d10 
+       rmin = ttauriRouter/1.d10
        rMax = grid%octreeRoot%subcellsize*2.d0
        do ir = 1, nr3
           r1 = rMin + (rmax-rMin) * (dble(ir-1)/dble(nr3))**3
@@ -3772,7 +3772,7 @@ contains
 
 
     call sort(nr, rgrid)
-       
+
        do iphi = 1, nPhi
           phi1 = twoPi * dble(iphi-1)/dble(nPhi)
           phi2 = twoPi * dble(iphi)/dble(nPhi)
@@ -3864,7 +3864,7 @@ contains
     real(double), allocatable :: tempArray(:)
 
     ! FOR MPI IMPLEMENTATION=======================================================
-    !  Get my process rank # 
+    !  Get my process rank #
     status = 0
     call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
 
@@ -3951,7 +3951,7 @@ contains
     endif
     do iv = iv1, iv2
        deltaV = cube%vAxis(iv-iv1+1)*1.d5/cSpeed
-    
+
        do ix = 1, cube%nx
 
 
@@ -3960,7 +3960,7 @@ contains
        !$OMP SHARED (cube, viewVec, grid, ix,  xPoints, yPoints, nPoints) &
        !$OMP SHARED (deltaV, source, nSource, myrankGlobal) &
        !$OMP SHARED (iv, iv1, xproj, yproj, nMonte, dx, dy, thisAtom, itrans)
-       
+
        iomp = 0
 #ifdef _OPENMP
        iomp = omp_get_thread_num()
@@ -3989,7 +3989,7 @@ contains
              thisIntensity = thisIntensity / real(SUM(area(1:nray)))
              cube%intensity(ix,iy,iv-iv1+1) = real(thisIntensity)
 
-             
+
           enddo
           !$OMP END DO
 
@@ -4007,7 +4007,7 @@ contains
 
 #ifdef MPI
  write(*,*) "Rank ",my_rank, " waiting at barrier"
-    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
 
     n = (cube%nx * cube%ny)
@@ -4015,7 +4015,7 @@ contains
     do iThread = 1, min(nv-1,nThreadsGlobal-1)
        if (my_rank == iThread) then
           call MPI_SEND(iv2-iv1+1, 1, MPI_INTEGER, 0, tag, MPI_COMM_WORLD,  ierr)
-          do iv = 1, nv                
+          do iv = 1, nv
              if ((iv >= iv1).and.(iv <= iv2)) then
                 allocate(tempArray(1:n))
                 tempArray = reshape(cube%intensity(:,:,iv-iv1+1), (/  n /))
@@ -4050,7 +4050,7 @@ contains
   subroutine findRaysInPixel(xcen, yCen, dx, dy, xPoints, yPoints, nPoints, &
                   nRay, xRay, yRay, area)
     use utils_mod, only : voron2
-    
+
     logical :: ok
     real(double) :: xCen, yCen, dx, dy
     real(double) :: xPoints(:), yPoints(:)
@@ -4101,8 +4101,8 @@ contains
        deallocate(xTmp, yTmp)
     endif
   end subroutine findRaysInPixel
-          
-          
+
+
 
 
 #ifdef MPI
@@ -4124,13 +4124,13 @@ contains
 
           thisOctal => octalArray(iOctal)%content
 
-          
+
           do iSubcell = 1, thisOctal%maxChildren
               if (.not.thisOctal%hasChild(iSubcell)) then
                  nTemps = nTemps + 1
                  if (doneByThisThread(iOctal)) then
                    tArray(nTemps) = thisOctal%newAtomLevel(isubcell, iAtom, iLevel)
-                 else 
+                 else
                    tArray(nTemps) = 0.d0
                  endif
               endif
@@ -4154,11 +4154,11 @@ contains
        do iOctal = 1, SIZE(octalArray)
 
           thisOctal => octalArray(iOctal)%content
-          
+
           do iSubcell = 1, thisOctal%maxChildren
               if (.not.thisOctal%hasChild(iSubcell)) then
                  nTemps = nTemps + 1
-                 thisOctal%newAtomLevel(isubcell, iAtom, iLevel) = tArray(nTemps) 
+                 thisOctal%newAtomLevel(isubcell, iAtom, iLevel) = tArray(nTemps)
               endif
           end do
        end do
@@ -4179,13 +4179,13 @@ contains
        do iOctal = 1, SIZE(octalArray)
 
           thisOctal => octalArray(iOctal)%content
-          
+
           do iSubcell = 1, thisOctal%maxChildren
               if (.not.thisOctal%hasChild(iSubcell)) then
                  nTemps = nTemps + 1
                  if (doneByThisThread(iOctal)) then
                    tArray(nTemps) = thisOctal%jnuCont(isubcell, ifreq)
-                 else 
+                 else
                    tArray(nTemps) = 0.d0
                  endif
               endif
@@ -4209,13 +4209,13 @@ contains
        do iOctal = 1, SIZE(octalArray)
 
           thisOctal => octalArray(iOctal)%content
-          
+
           do iSubcell = 1, thisOctal%maxChildren
               if (.not.thisOctal%hasChild(iSubcell)) then
                  nTemps = nTemps + 1
                  if (DoneByThisThread(iOctal)) then
                    tArray(nTemps) = thisOctal%biasLine3d(isubcell)
-                 else 
+                 else
                    tArray(nTemps) = 0.d0
                  endif
               endif
@@ -4238,11 +4238,11 @@ contains
        do iOctal = 1, SIZE(octalArray)
 
           thisOctal => octalArray(iOctal)%content
-          
+
           do iSubcell = 1, thisOctal%maxChildren
               if (.not.thisOctal%hasChild(iSubcell)) then
                  nTemps = nTemps + 1
-                 thisOctal%jnuCont(isubcell, iFreq) = tArray(nTemps) 
+                 thisOctal%jnuCont(isubcell, iFreq) = tArray(nTemps)
               endif
           end do
        end do
@@ -4263,11 +4263,11 @@ contains
        do iOctal = 1, SIZE(octalArray)
 
           thisOctal => octalArray(iOctal)%content
-          
+
           do iSubcell = 1, thisOctal%maxChildren
               if (.not.thisOctal%hasChild(iSubcell)) then
                  nTemps = nTemps + 1
-                 thisOctal%biasLine3d(isubcell) = tArray(nTemps) 
+                 thisOctal%biasLine3d(isubcell) = tArray(nTemps)
               endif
           end do
        end do
@@ -4276,10 +4276,10 @@ contains
 
   recursive  subroutine  setMicroturb(thisOctal, microTurb)
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child 
+    type(octal), pointer  :: child
     integer :: subcell, i
     real(double) :: microTurb
-  
+
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -4308,7 +4308,7 @@ contains
 !!$    integer :: sourceNumber, i, j, nray, iElement
 !!$    real(double) :: i0, distTosource, cosTheta, freq
 !!$    logical :: hitSource
-!!$    
+!!$
 !!$    freq  = cSpeed / (6562.8d0 * 1.d-8)
 !!$    position = VECTOR(0.d0 , 0.d0 , source(1)%radius*5.d0)
 !!$
@@ -4320,7 +4320,7 @@ contains
 !!$       i0 = 0.d0
 !!$       do j = 1, nray
 !!$          call randomRayDirection(0.8d0, position, source, nSource, direction, weight)
-!!$          
+!!$
 !!$          call distanceToSource(source, nSource, position, direction, hitSource, disttoSource, sourcenumber)
 !!$          if (hitSource) then
 !!$             pVec = (position + (direction * distToSource) - source(sourceNumber)%position)
@@ -4394,7 +4394,7 @@ contains
     enddo
 
     if (ttauriMagnetosphere) then
-       rmin = sourceArray(1)%radius 
+       rmin = sourceArray(1)%radius
        rMax = ttauriRouter/1.d10
 
        do i = 1, nr2
@@ -4570,7 +4570,7 @@ contains
 !!$    use inputs_mod, only : smallestCellSize
 !!$    type(octal), pointer   :: thisOctal
 !!$    type(GRIDTYPE) :: grid
-!!$    type(octal), pointer  :: child 
+!!$    type(octal), pointer  :: child
 !!$    logical, optional :: count
 !!$    integer :: subcell, i,j
 !!$    integer :: nPoints
@@ -4578,7 +4578,7 @@ contains
 !!$    real(double) :: xPoints(:), yPoints(:), phi, dphi
 !!$    logical :: addPoint
 !!$    logical :: converged
-!!$  
+!!$
 !!$    addPoint = .true.
 !!$    if (PRESENT(count)) then
 !!$       addPoint = .not.count
@@ -4743,7 +4743,7 @@ contains
 
     chiline = (pi * eCharge**2 * fij)/(mElectron * cSpeed)
     chiLine = chiLine *  gLower * (Nlower/gLower - nUpper/gUpper)
- 
+
     betamn = 0.d0
 
     position = subcellCentre(thisoctal,subcell)
@@ -4761,7 +4761,7 @@ contains
           domega = sin(theta)*dtheta*dphi
           totomega = totomega + domega
           grad =  abs(amrGridDirectionalDeriv(grid, position, uHat, startOctal=thisOctal)/1.d10)
-          tauij = chiLine / grad 
+          tauij = chiLine / grad
           tauij =  tauij / transitionFreq
           tauij = max(1.d-20,tauij)
           if (tauij < 0.1d0) then
@@ -4771,7 +4771,7 @@ contains
           else
              escProb = 1.d0/tauij
           end if
-          
+
 
           tauav = tauav + dOmega*tauij
           betamn = betamn + domega*escProb
@@ -4820,12 +4820,12 @@ contains
           iElement = getElement(source%surface, photoDirection)
           inu = i_nu(source, transitionFreq, iElement, 1.d0)
           grad =  abs(amrGridDirectionalDeriv(grid, position, direction, startOctal=thisOctal)/1.d10)
-          tauij = chiLine / grad 
+          tauij = chiLine / grad
           tauij =  tauij / transitionFreq
           tauij = max(1.d-20,tauij)
 
 
-             
+
           if (tauij < 0.1d0) then
              escProb = 1.0-tauij*0.5*(1.0 - tauij/3.0*(1. - tauij*0.25*(1.0 - 0.20*tauij)))
           else if (tauij < 15.d0) then
@@ -4867,18 +4867,18 @@ contains
 !
 !  end subroutine getSurfacePoints
 
-  RECURSIVE SUBROUTINE getOctalArrayLocal(thisOctal,array,counter, docountOnly) 
+  RECURSIVE SUBROUTINE getOctalArrayLocal(thisOctal,array,counter, docountOnly)
     ! returns an array of pointers to all of the subcells in the grid.
     ! NB because fortran cannot create arrays of pointers, the output
-    !   array is actually of a derived type which *contains* the 
+    !   array is actually of a derived type which *contains* the
     !   pointer to an octal.
     ! counter should be set to 0 before this routine is called
 
     IMPLICIT NONE
 
     TYPE(octal), POINTER                            :: thisOctal
-    TYPE(octalWrapper), DIMENSION(:), INTENT(INOUT) :: array 
-    INTEGER, INTENT(INOUT)                          :: counter 
+    TYPE(octalWrapper), DIMENSION(:), INTENT(INOUT) :: array
+    INTEGER, INTENT(INOUT)                          :: counter
     logical :: docountOnly
     INTEGER              :: i
     TYPE(octal), POINTER :: child
@@ -4886,23 +4886,23 @@ contains
 
     ! if this is the root of the tree, we initialize the counter
     IF (.NOT. ASSOCIATED(thisOctal%parent)) counter = 0
-    
-    counter = counter + 1 
+
+    counter = counter + 1
     if (.not.doCountOnly) then
        array(counter)%content => thisOctal
-       !array(counter)%inUse = .TRUE. 
-       array(counter)%inUse = .NOT. thisOctal%hasChild 
+       !array(counter)%inUse = .TRUE.
+       array(counter)%inUse = .NOT. thisOctal%hasChild
     endif
 
 
-    
+
     IF ( thisOctal%nChildren > 0 ) THEN
       DO i = 1, thisOctal%nChildren, 1
-        
+
         ! call this subroutine recursively on each of its children
         child => thisOctal%child(i)
         CALL getOctalArrayLocal(child,array,counter, docountOnly)
-        
+
       END DO
     END IF
 

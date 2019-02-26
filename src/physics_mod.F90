@@ -1,5 +1,5 @@
 module physics_mod
-  
+
   use constants_mod
   use messages_mod
   use mpi_global_mod
@@ -41,14 +41,14 @@ contains
     use phasematrix_mod, only : phasematrix
     use dust_mod
     type(GRIDTYPE) :: grid
-    
+
 !#ifdef MOLECULAR
 !    integer :: i
 !    real(double) :: thisTemp, ncrit
 !#endif
 
 !    call dustComparison(grid, miePhase, 100)
-    
+
 
 #ifdef MOLECULAR
     if (molecularPhysics) then
@@ -59,7 +59,7 @@ contains
 !          call findcriticalDensity(ncrit, globalMolecule,iTrans,thisTemp)
 !          if (writeoutput) write(*,*) "Transition freq (GHz): ",globalMolecule%transfreq(itrans)/1.d9
 !          if (writeoutput) write(*,'(a,i6,a,1p,e12.3)') "Critical density at ",nint(thisTemp), " K = ", ncrit
-!               
+!
 !       enddo
     endif
 #endif
@@ -170,8 +170,8 @@ contains
                 source(iSource)%pointSource = pointSourceArray(iSource)
                 source(isource)%time = 0.d0
                 source(isource)%outsideGrid = .false.
-                source(isource)%onEdge      = .false. 
-                source(isource)%onCorner    = .false. 
+                source(isource)%onEdge      = .false.
+                source(isource)%onCorner    = .false.
                 !       distToEdge = abs(source(iSource)%position%z) - abs((grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize))
                 !       if (.not.inOctal(grid%octreeRoot, source(iSource)%position)) then
                 !          source(isource)%outsideGrid = .true.
@@ -206,7 +206,7 @@ contains
                 distToEdge = abs(abs((grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize))-abs(source(iSource)%position%z))
                 !       print *, "distToEdge ", distToEdge
                 !       print *, "smallestSubcell", grid%halfSmallestSubcell
-                !       print *, "abs(source(iSource)%position%z)", abs(source(iSource)%position%z)       
+                !       print *, "abs(source(iSource)%position%z)", abs(source(iSource)%position%z)
                 !       print *, "grid%octreeRoot%centre%z", grid%octreeRoot%centre%z
 
 
@@ -227,7 +227,7 @@ contains
 
                    !source(isource)%luminosity = source(isource)%luminosity * (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 / &
                    !     (fourPi*source(isource)%distance**2)
-                else if ( distToEdge < grid%halfSmallestSubcell) then          
+                else if ( distToEdge < grid%halfSmallestSubcell) then
                    source(iSource)%onEdge = .true.
                    source(iSource)%onCorner = .false.
                    !Thaw - accomodating corner sources
@@ -237,7 +237,7 @@ contains
                            -abs(source(iSource)%position%x))
                       !             distToEdge = abs(abs(source(iSource)%position%x) - abs((grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize)))
 
-                      if ( grid%octreeRoot%cylindrical ) then 
+                      if ( grid%octreeRoot%cylindrical ) then
                          source(iSource)%onCorner = .false.
                       else if(grid%octreeRoot%twoD) then
                          distToEdge = abs(source(iSource)%position%x) &
@@ -289,7 +289,7 @@ contains
                 select case(inputContFluxFile(isource))
                 case("blackbody")
                    !          if(biasToLyman) then
-                   !!             call fillSpectrumBB(source(isource)%spectrum, source(isource)%teff, 10.d0, 1000.d4, & 
+                   !!             call fillSpectrumBB(source(isource)%spectrum, source(isource)%teff, 10.d0, 1000.d4, &
                    !                  1000)
                    !          else
                    call fillSpectrumBB(source(isource)%spectrum, source(isource)%teff, 100.d0, 2000.d4,10000)
@@ -309,7 +309,7 @@ contains
                 !       lamEnd = 1000.d4
                 !       nlambda = 1000
                 call buildSphere(source(isource)%position, dble(source(isource)%radius), &
-                     source(isource)%surface, nSphereSurface, source(isource)%teff, & 
+                     source(isource)%surface, nSphereSurface, source(isource)%teff, &
                      source(isource)%spectrum)
 
                  if (pulsatingStar) then
@@ -467,7 +467,7 @@ contains
 #endif
     nLower = 2
     nUpper = 3
-    
+
     if (usePAH) then
        call readPAHEmissivityTable()
        do u = 1, 8
@@ -518,7 +518,7 @@ contains
         call setupXarray(grid, xarray, nLambda, dustRadeq=.true.)
         if (globalnSource > 0) then
            call randomSource(globalsourcearray, globalnSource, &
-                i, packetWeight, grid%lamArray, grid%nLambda, initialize=.true.)  
+                i, packetWeight, grid%lamArray, grid%nLambda, initialize=.true.)
         endif
         call setupDust(grid, xArray, nLambda, miePhase, nMumie, filestart="dust")
 
@@ -534,7 +534,7 @@ contains
 !        call fillDustUniform(grid, grid%octreeRoot)
         if (.not.variableDustSublimation) call doSmoothOnTau(grid)
 
-        
+
 !        scatteredlightWavelength = 2.2d4 ! 2.2 microns
 !        storeScattered = .true.
 #ifdef MPI
@@ -625,7 +625,7 @@ contains
         else
 #ifdef MPI
            call setupevenuparray(grid, evenuparray)
-           
+
 !           if(.not. startFromNeutral) then
 !           print *, "ionizing grid"
            call ionizeGrid(grid%octreeRoot)
@@ -643,24 +643,24 @@ contains
 
 #ifdef PDR
      if(pdrcalc) then
-        call PDR_MAIN(grid, globalsourceArray, globalnSource)     
+        call PDR_MAIN(grid, globalsourceArray, globalnSource)
      end if
 #endif
 
 #ifdef HYDRO
      if (hydrodynamics) then
         if (.not.photoionPhysics) then
-#ifdef MPI 
+#ifdef MPI
         call dohydrodynamics(grid)
 #else
         call writeFatal("hydrodynamics not available in single processor version")
         stop
 #endif
-     else 
+     else
         call setupXarray(grid, xArray, nLambda,photoion=.true.)
         if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
 #ifdef PHOTOION
-#ifdef MPI 
+#ifdef MPI
         call radiationHydro(grid, globalSourceArray, globalNSource, nLambda, xArray, miePhase, nMuMie)
 #else
         call writeFatal("hydrodynamics not available in single processor version")
@@ -717,11 +717,11 @@ contains
         allocate(xarray(1:nLambda))
         xArray(1) = real(polarWavelength)
      endif
-     
+
      if (PRESENT(dustRadEq)) then
         if (dustRadEq) then
-              
-           if ( present(numLam) ) then 
+
+           if ( present(numLam) ) then
               nLambda = numLam
            else
               nLambda = 200
@@ -732,20 +732,20 @@ contains
            else
               allocate(xarray(1:nLambda+40))
            endif
-           
-           if ( present(lamMin) ) then 
+
+           if ( present(lamMin) ) then
               lamStart = lamMin
            else
               lamStart = 1200.d0
            end if
-           if ( present(lamMax) ) then 
+           if ( present(lamMax) ) then
               lamEnd = lamMax
            else
               lamEnd = 1.d7
            end if
-           
-           if ( present(wavLin) ) then 
-              if (wavLin) then 
+
+           if ( present(wavLin) ) then
+              if (wavLin) then
                  call setupLinSpacing
               else
                  call setupLogSpacing
@@ -753,11 +753,11 @@ contains
            else
               call setupLogSpacing
            end if
-           
+
            if ((lamFile).and.(nLambda /= 1))  then
               call setupLamFile
            endif
-           
+
            if (resolveSilicateFeature) then
               nt = 20
               do i = 1, nt
@@ -773,7 +773,7 @@ contains
 
         endif
      endif
-     
+
      if (PRESENT(atomicDataCube)) then
         if (atomicDataCube) then
            nLambda = nv
@@ -841,7 +841,7 @@ contains
             fac = 10.**fac
             xArray(i) =real(fac)
         enddo
-        
+
        end subroutine setupLogSpacing
 
        subroutine setupLamfile
@@ -868,7 +868,7 @@ contains
             read(77,*) xArray(i)
          enddo
          close(77)
-         xArray = xArray * 1e4 
+         xArray = xArray * 1e4
 
        end subroutine setupLamfile
 
@@ -878,20 +878,21 @@ contains
             do i = 1, nlambda
                xArray(i) = real(LamStart + real(i-1)/real(nLambda-1)*(LamEnd - LamStart))
             enddo
-         else 
+         else
             xArray(1) = real(lamStart)
          endif
        end subroutine setupLinSpacing
 
    end subroutine setupXarray
 
-   subroutine setupGlobalSources(grid)     
+   subroutine setupGlobalSources(grid)
      use parallel_mod
      use surface_mod
 #ifdef SPH
      use sph_data_class
 #endif
      use starburst_mod
+     !is this ifdef MPI needed? -19/02/19 tjgw
 #ifdef MPI
 #ifdef HYDRO
      use hydrodynamics_mod, only : gatherSinks
@@ -949,14 +950,14 @@ contains
               globalnSource = get_nptmass()
 
               !        print *, "using ", globalnsource, "sources"
-              if ( globalnSource > size(globalSourceArray)) then 
+              if ( globalnSource > size(globalSourceArray)) then
                  write(message,*) "Number of sources exceeds size of source array", globalnSource, size(globalSourceArray)
                  call writeFatal(message)
               endif
               do i = 1, globalnSource
                  globalSourceArray(i)%stellar = .true.
                  globalSourceArray(i)%mass = get_pt_mass(i) * get_umass()
-                 
+
                  if (abs((sourceMass(i) - globalSourceArray(i)%mass)/sourceMass(i)) > 0.01d0) then
                     call writeFatal("Source mass differs by more than 1% from that in sph file")
                     call torus_abort
@@ -983,14 +984,14 @@ contains
                  globalSourceArray(i)%pointSource = pointSourceArray(i)
                  globalSourceArray(i)%time = 0.d0
                  globalSourceArray(i)%outsideGrid = .false.
-                 globalSourceArray(i)%onEdge      = .false. 
-                 globalSourceArray(i)%onCorner    = .false. 
+                 globalSourceArray(i)%onEdge      = .false.
+                 globalSourceArray(i)%onCorner    = .false.
 
 
                  select case(inputContFluxFile(i))
                  case("blackbody")
                     !          if(biasToLyman) then
-                    !!             call fillSpectrumBB(source(isource)%spectrum, source(isource)%teff, 10.d0, 1000.d4, & 
+                    !!             call fillSpectrumBB(source(isource)%spectrum, source(isource)%teff, 10.d0, 1000.d4, &
                     !                  1000)
                     !          else
                     call fillSpectrumBB(globalsourceArray(i)%spectrum, globalsourceArray(i)%teff, 100.d0, 2000.d4,10000)
@@ -1004,13 +1005,13 @@ contains
                  case DEFAULT
                     call readSpectrum(globalsourceArray(i)%spectrum, inputcontfluxfile(i), ok)
                  end select
-                 
+
                  call normalizedSpectrum(globalsourceArray(i)%spectrum)
                  !       lamStart = 10.d0
                  !       lamEnd = 1000.d4
                  !       nlambda = 1000
                  call buildSphere(globalsourceArray(i)%position, globalSourceArray(i)%radius, &
-                      globalsourceArray(i)%surface, nSphereSurface, globalsourceArray(i)%teff, & 
+                      globalsourceArray(i)%surface, nSphereSurface, globalsourceArray(i)%teff, &
                       globalsourceArray(i)%spectrum)
 
                  if (pulsatingStar) then
@@ -1029,7 +1030,7 @@ contains
                  write(message,*) "Setting source luminosity to luminosity from spectrum: ",sumSurfaceLuminosity/lsol, " lsol"
                  call writeInfo(message, TRIVIAL)
                  globalsourceArray(i)%luminosity = sumSurfaceLuminosity
-                 
+
               enddo
            endif
 #else
@@ -1038,7 +1039,7 @@ contains
 #ifdef MPI
 #ifdef HYDRO
            if (splitOverMPI) call gatherSinks()
-#endif 
+#endif
 #endif
            !        print *, "setting up source array properties"
            if (nbodyPhysics.and.hosokawaTracks)  then
@@ -1048,9 +1049,9 @@ contains
 #ifdef MPI
               !        call MPI_BARRIER(MPI_COMM_WORLD, ier)
               if(myrankglobal == 0) then
-              !           print *, " " 
+              !           print *, " "
                  call writeIonizingFLuxes(globalsourceArray, globalnSource)
-           
+
                  !           call MPI_BARRIER(MPI_COMM_WORLD, ier)
               endif
 #endif
@@ -1060,7 +1061,7 @@ contains
 
      if (starburst.and.(.not.readSources).and.(burstTime == 0.d0)) then
 #ifdef MPI
-        call randomNumberGenerator(randomSeed = .true.)
+        call randomNumberGenerator(randomSeed =.true.)
         call randomNumberGenerator(syncIseed=.true.)
 #endif
         call randomNumberGenerator(getIseed=itest)
@@ -1070,7 +1071,7 @@ contains
         call createSources(globalnSource,globalsourcearray, burstType, burstAge, mStarburst, 1.d0)
         call randomNumberGenerator(randomSeed = .true.)
     endif
-    
+
 
     if (grid%geometry(1:6) == "ttauri") then
        coreContinuumFlux = 0.d0
@@ -1085,7 +1086,7 @@ contains
        call buildSphere(globalsourceArray(1)%position, globalSourceArray(1)%radius, &
             globalsourcearray(1)%surface, nSphereSurface, &
             globalsourcearray(1)%teff, globalsourceArray(1)%spectrum)
-       call genericAccretionSurface(globalsourcearray(1)%surface, 1.e16, coreContinuumFlux,fAccretion, lAccretion) 
+       call genericAccretionSurface(globalsourcearray(1)%surface, 1.e16, coreContinuumFlux,fAccretion, lAccretion)
        call writeVTKfileSource(1, globalSourceArray(1:1), "source.vtk")
        if (writeoutput) write(*,*) "Added accretion luminosity of ",lAccretion/lsol, " lsol"
        if (writeoutput) write(*,*) "Accretion luminosity in stellar units ",lAccretion/globalsourceArray(1)%luminosity
@@ -1106,7 +1107,7 @@ contains
        call buildSphere(globalsourceArray(1)%position, globalSourceArray(1)%radius, &
             globalsourcearray(1)%surface, nSphereSurface, &
             globalsourcearray(1)%teff, globalsourceArray(1)%spectrum)
-       call magstreamAccretionSurface(grid, globalsourcearray(1)%surface, 1.e16, coreContinuumFlux,fAccretion, lAccretion) 
+       call magstreamAccretionSurface(grid, globalsourcearray(1)%surface, 1.e16, coreContinuumFlux,fAccretion, lAccretion)
        call writeVTKfileSource(1, globalSourceArray(1:1), "source.vtk")
        if (writeoutput) write(*,*) "Added accretion luminosity of ",lAccretion/lsol, " lsol"
        if (writeoutput) write(*,*) "Accretion luminosity in stellar units ",lAccretion/globalsourceArray(1)%luminosity
@@ -1121,7 +1122,7 @@ contains
        call buildSphere(globalsourceArray(1)%position, globalSourceArray(1)%radius, &
             globalsourcearray(1)%surface, nSphereSurface, &
             globalsourcearray(1)%teff, globalsourceArray(1)%spectrum)
-       call hotSpotSurface(globalsourcearray(1)%surface, real(cspeed/(6562.8d-8)), coreContinuumFlux,fAccretion, lAccretion) 
+       call hotSpotSurface(globalsourcearray(1)%surface, real(cspeed/(6562.8d-8)), coreContinuumFlux,fAccretion, lAccretion)
        call writeVTKfileSource(1, globalSourceArray(1:1), "source.vtk")
        if (writeoutput) write(*,*) "Added accretion luminosity of ",lAccretion/lsol, " lsol"
        if (writeoutput) write(*,*) "Accretion luminosity in stellar units ",lAccretion/globalsourceArray(1)%luminosity
@@ -1206,7 +1207,7 @@ subroutine testSuiteRandom()
   write(message,*) "Random number seed is initialized from clock with ",iseed
   call writeInfo(message)
   if (writeoutput) write(*,*) "Sequence of 10 random numbers (real , double)"
-  
+
   do i = 1, 10
      call randomNumberGenerator(getReal=r)
      call randomNumberGenerator(getIseed=iseed)

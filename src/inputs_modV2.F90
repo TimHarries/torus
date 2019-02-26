@@ -14,13 +14,13 @@ module inputs_mod
 
   include "input_variables.f90"
 
-! Maximum line length in parameters file 
+! Maximum line length in parameters file
     integer, parameter, private :: lencLine=200
 ! Corresponding format specifier in read statement
     character(len=*), parameter, private :: clineFormat="(a200)"
 
 contains
-  
+
   subroutine  inputs()
 
 #ifdef MPI
@@ -31,12 +31,12 @@ contains
     integer :: nLines
 #ifdef MPI
     integer :: ierr
-#endif 
+#endif
     logical :: ok
 #ifdef USEZLIB
     logical :: compresseddumpfiles
 #endif
-    character(len=lencLine), allocatable :: cLine(:) 
+    character(len=lencLine), allocatable :: cLine(:)
     character(len=lencLine) :: thisLine
     character(len=80) :: message
     logical :: done
@@ -78,18 +78,18 @@ contains
 !   call get_environment_variable("TORUS_JOB_DIR",absolutePath)
 
 ! Parse command line arguments. Currently these will be either the name of the parameters file
-! and/or the 'check' argument to run in parameter checking mode. 
+! and/or the 'check' argument to run in parameter checking mode.
     parameterCheckMode = .false.
     if (command_argument_count() == 1) then
        call get_command_argument(1, paramFile)
-       if ( paramFile == "check" ) then 
+       if ( paramFile == "check" ) then
           parameterCheckMode = .true.
           paramFile = trim(absolutePath)//"parameters.dat"
        endif
     else if (command_argument_count() == 2) then
        call get_command_argument(1, arg1)
        call get_command_argument(2, paramFile)
-       if (trim(arg1) == "check") then 
+       if (trim(arg1) == "check") then
           parameterCheckMode = .true.
        else
           call writeWarning("Unrecognised argument "//trim(arg1))
@@ -107,7 +107,7 @@ contains
     ! nLines+1 element of cline is used in loop which reads parameter file
     ! Needs to be +2 in case the last line doesn't have a newline at the end
     allocate ( cLine(nLines+2) )
-    nLines = 0 
+    nLines = 0
 
     open(unit=32, file=paramfile, status='old', iostat=error)
     if (error /=0) then
@@ -132,7 +132,7 @@ contains
     call writeInfo(message,TRIVIAL)
 
     allocate(Fline(1:nLines))
-    fLine = .false. 
+    fLine = .false.
 
     call getInteger("verbosity", verbosityLevel, cLine, fLine, nLines, &
          "Verbosity level: ", "(a,i8,1x,a)", 3, ok, .false.)
@@ -215,14 +215,14 @@ contains
 
     call getLogical("rhofromtable", rhoFromTable, cLine, fLine, nLines, &
          "Interpolate the density distribution from a table: ","(a,1l,1x,a)", .false., ok, .false.)
-    
+
     if (rhoFromTable) call getString("rhofile", rhofile, cLine, fLine, nLines, &
          "Grid input filename: ","(a,a,1x,a)","none", ok, .true.)
 
     if(rhofromtable)        call getInteger("nrholines", nrhoLines, cLine, fLine, nLines, &
             "Number of lines in rhofile: ","(a,i7,a)", 1, ok, .true.)
 
-    
+
     call getLogical("singlemegaphoto", singleMegaPhoto, cLine, fLine, nLines, &
          "Do a long photoionization calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -240,7 +240,7 @@ contains
 
     if (readgrid) call getString("inputfile", gridInputFilename, cLine, fLine, nLines, &
                   "Grid input filename: ","(a,a,1x,a)","none", ok, .true.)
-    
+
 !    if (multimodels.and.(index(gridInputFilename, "*") == 0)) then
 !       write(message,*) "Multiple models but input filename has no asterixes"
 !       call writeFatal(message)
@@ -454,7 +454,7 @@ contains
     call getLogical("xrayonly", xrayonly, cLine, fLine, nLines, &
          "Only use xrays: ","(a,1l,1x,a)", .false., ok, .false.)
 !    end if
-   
+
 
     call getLogical("pdr", pdrcalc, cLine, fLine, nLines, &
          "Include pdr treatment with healpix: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -490,7 +490,7 @@ contains
     if (MChistories) then
        call getDouble("radiationtimescale", radiationTimeScale, 1.d0, cLine, fLine, nLines, &
             "ratio of radiation to hydro timescales: ", "(a,f7.1,1x,a)", 1.0d0, ok, .true.)
-       
+
        call getInteger("shotnoiseweight", ShotNoiseWeight, cLine, fLine, nLines, &
             "#crossings for rad history weighted<current: ","(a,i8,a)", 400, ok, .true.)
     endif
@@ -510,7 +510,7 @@ contains
     call getLogical("accretionfeedback", AccretionFeedback, cLine, fLine, nLines, &
          "re-inject some of the accreted material into the domain: ","(a,1l,1x,a)", .false., ok, .false.)
 
-    call getInteger("accfeedbackcells", AccFeedbackCells, cLine, fLine, nLines, &  
+    call getInteger("accfeedbackcells", AccFeedbackCells, cLine, fLine, nLines, &
          "number of cells to inject into : ","(a,i8,a)", 4, ok, .false.)
 
     call getDouble("feedbackopenangle", FeedbackTheta0, 1.d0, cLine, fLine, nLines, &
@@ -520,10 +520,10 @@ contains
          "f_w in feedback distribution: ", "(a,f7.1,1x,a)", 0.27d0, ok, .false.)
 
     call getDouble("feedbackfv", Feedbackfv, 1.d0, cLine, fLine, nLines, &
-         "f_v in feedback distribution: ", "(a,f7.1,1x,a)", 0.333d0, ok, .false.)  
+         "f_v in feedback distribution: ", "(a,f7.1,1x,a)", 0.333d0, ok, .false.)
 
     call getDouble("feedbackstartmass", FeedbackStartMass, msol, cLine, fLine, nLines, &
-         "Mass that stellar feedback starts: ", "(a,f7.1,1x,a)", 1.0d0, ok, .false.)  
+         "Mass that stellar feedback starts: ", "(a,f7.1,1x,a)", 1.0d0, ok, .false.)
 
     call getInteger("nhydroperphoto", nHydroPerPhoto, cLine, fLine, nLines, &
          "Number of hydro steps per photoionisation loop: ","(a,i4,a)", 1, ok, .false.)
@@ -555,7 +555,7 @@ contains
 
     call getLogical("dumpradial", dumpRadial, cLine, fLine, nLines, &
          "Dump a radial slice: ","(a,1l,1x,a)", .false., ok, .false.)
-    
+
     call getDouble("zetacutoff", zetacutoff, 1.d0, cLine, fLine, nLines, &
             "Dimensionless cutoff radius for BES: ", "(a,es9.3,1x,a)", 3.0d0, ok, .false.)
 
@@ -593,7 +593,7 @@ contains
     if(logspacegrid) then
        call getInteger("npoints", npoints, cLine, fLine, nLines, &
             "Number of points on grid : ","(a,i8,a)", 100, ok, .false.)
-       
+
        call getInteger("nmag", nMag, cLine, fLine, nLines, &
             "number of orders of magnitude spanned : ","(a,i8,a)", 10, ok, .false.)
     endif
@@ -609,7 +609,7 @@ contains
     if (radiativeEquilibrium) call readRadiativeEquilibriumParameters(cLine, fLine, nLines)
     if (photoionEquilibrium) call readPhotoionEquilibriumParameters(cLine, fLine, nLines)
     if (hydrodynamics) call readHydrodynamicsParameters(cLine, fLine, nLines)
-   
+
 ! now do we dump the output grid
 
     call writeBanner("Output file details","*",TRIVIAL)
@@ -662,7 +662,7 @@ contains
             "Data units for column image:", "(a,a,1x,a)", "g/cm2", ok, .false.)
 
       call readFitsParameters(cLine, fLine, nLines)
-      
+
       call getLogical("plotavgtemp", plotAvgTemp, cLine, fLine, nLines, &
             "Plot average temperature pixel-by-pixel: ","(a,1l,1x,a)", .false., ok, .false.)
       call getLogical("globalavgtemp", calculateGlobalAvgTemp, cLine, fLine, nLines, &
@@ -736,7 +736,7 @@ contains
 
     call sanityCheck()
 
-    if ( parameterCheckMode ) then 
+    if ( parameterCheckMode ) then
        call writeBanner("Parameter check mode: inputs read OK","-",IMPORTANT)
 #ifdef MPI
        call mpi_abort(MPI_COMM_WORLD, 1, ierr)
@@ -772,7 +772,7 @@ contains
     integer :: nLines
     integer :: i,k
     character(len=80) :: message
-    
+
     if (ANY(.not.fLine(1:nLines))) then
        call writeBanner("Unused keywords found in parameters file","!")
        do i = 1, nLines
@@ -838,18 +838,18 @@ contains
                "Line emission wavelength: ","(a,f6.1,1x,a)", 850., ok, .true.)
 
        call getDouble("CMFGEN_Rmin", CMFGEN_Rmin, 1.d0, cLine, fLine, nLines, &
-            "radius of central star  [10^10cm] : ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.) 
+            "radius of central star  [10^10cm] : ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.)
        rcore = real(CMFGEN_Rmin)      ! [10^10cm]
 
 
        call getDouble("CMFGEN_Rmax", CMFGEN_Rmax, 1.d0, cLine, fLine, nLines, &
-            "max radius of cmfgen data  [rStar] : ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.) 
+            "max radius of cmfgen data  [rStar] : ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.)
        CMFGEN_rmax = CMFGEN_Rmin * CMFGEN_Rmax
 
 
 !       call getString("contflux", contFluxFile, cLine, fLine, nLines, &
 !            "Continuum flux filename (primary): ","(a,a,1x,a)","none", ok, .true.)
-       
+
 
        call getReal("omega", bigOmega, 1., cLine, fLine, nLines, &
             "Ratio of w/w_c: ","(a,f7.2,1x,a)", 0.0, ok, .true.)
@@ -870,13 +870,13 @@ contains
 
     case("triangle", "arbitrary")
        call getDouble("ncol", nCol, 1.d0, cLine, fLine, nLines, &
-            "Column density of H_2 (cm^-2): ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.) 
+            "Column density of H_2 (cm^-2): ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.)
 
        call getDouble("tkinetic", tKinetic, 1.d0, cLine, fLine, nLines, &
-            "Kinetic temperature: ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.) 
+            "Kinetic temperature: ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.)
 
        call getDouble("n2max", n2max, 1.d0, cLine, fLine, nLines, &
-            "Maximum N_2 density (cm^-3): ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.) 
+            "Maximum N_2 density (cm^-3): ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.)
 
        if(geometry == "triangle") then
           if (n2max < 0.d0) then
@@ -885,15 +885,15 @@ contains
           else
              amrGridSize = real((2.d0*ncol/n2max)/1.d10)
              amrGridCentreX = amrGridSize/2.0
-             amrGridCentreY = 0.d0 
+             amrGridCentreY = 0.d0
              amrGridCentreZ = 0.d0
           endif
        else
              amrGridCentreX = amrGridSize/2.0
-             amrGridCentreY = 0.d0 
+             amrGridCentreY = 0.d0
              amrGridCentreZ = 0.d0
        end if
-       
+
 
 
 
@@ -1082,7 +1082,7 @@ contains
                "Use isothermal temperature :","(a,1l,1x,a)", .false., ok, .false.)
           call getReal("isothermtemp", isoThermTemp, 1., cLine, fLine, nLines, &
                "Isothermal temperature (K): ","(a,f7.1,1x,a)", 6500.0, ok, .false.)
-          if (.not.(useHartmannTemp .or. isoTherm)) then 
+          if (.not.(useHartmannTemp .or. isoTherm)) then
              if (writeoutput)  write(*,'(a)') "WARNING: neither useHartmannTemp nor isoTherm specified!"
              call torus_stop
           end if
@@ -1123,7 +1123,7 @@ contains
                "Inner Radius (stellar radii): ","(a,f7.3,a)", 12., ok, .true.)
           call getReal("router", rOuter, real(autocm/1.e10), cLine, fLine, nLines, &
                "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
-          
+
           call getReal("rsub", rSublimation, ttauriRstar/1.e10, cLine, fLine, nLines, &
                "Sublimation radius (rstar): ","(a,f5.1,a)", 20., ok, .true.)
 
@@ -1162,11 +1162,11 @@ contains
        call getReal("curtainsphi2e", curtainsPhi2e, 1., cLine, fLine, nLines, &
             "Curtains 2: Phi end: (degrees): ","(a,f7.1,1x,a)", 330.0, ok, .false.)
 
-       !  converting the angles in radians  (RK) 
-       curtainsPhi1s =    curtainsPhi1s * real(pi/180.0) 
-       curtainsPhi1e =    curtainsPhi1e * real(pi/180.0) 
-       curtainsPhi2s =    curtainsPhi2s * real(pi/180.0) 
-       curtainsPhi2e =    curtainsPhi2e * real(pi/180.0) 
+       !  converting the angles in radians  (RK)
+       curtainsPhi1s =    curtainsPhi1s * real(pi/180.0)
+       curtainsPhi1e =    curtainsPhi1e * real(pi/180.0)
+       curtainsPhi2s =    curtainsPhi2s * real(pi/180.0)
+       curtainsPhi2e =    curtainsPhi2e * real(pi/180.0)
 
 
        ! The following two are used for "constantcurtans" geometry  (RK)
@@ -1226,108 +1226,108 @@ contains
              ! --- parameters for ttauri wind
              call getReal("ttaurirouter", TTauriRouter, TTaurirStar, cLine, fLine, nLines, &
                   "T Tauri outer flow radius (in R_star): ","(a,f7.1,1x,a)", 3.0, ok, .true.)
-             
+
              call getDouble("DW_Rmin", DW_Rmin, ttaurirOuter/1.d10, cLine, fLine, nLines, &
                "Disc wind:: Inner radius of the wind [magnetospheric radii]: ", &
-               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.)
              call getDouble("DW_Rmax", DW_rMax, ttaurirOuter/1.d10, cLine, fLine, nLines, &
                   "Disc wind:: Outer radius of the disc [magnetospheric radii]: ", &
-                  "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.) 
+                  "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.)
              call getDouble("DW_d", DW_d, DW_rMin, cLine, fLine, nLines, &
                   "Disc wind:: Wind source displacement [inner wind radii]: ", &
-                  "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.) 
+                  "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.)
              call getDouble("DW_Tmax", DW_Tmax,  1.d0, cLine, fLine, nLines, &
                   "Disc wind:: Temperature of disc at inner radius [K]: ", &
-                  "(a,1p,e9.3,1x,a)", 2000.0d0, ok, .true.) 
+                  "(a,1p,e9.3,1x,a)", 2000.0d0, ok, .true.)
              call getDouble("DW_gamma", DW_gamma,  1.d0, cLine, fLine, nLines, &
                   "Disc wind:: Exponent in the disc temperature power law [-]: ", &
-                  "(a,f8.3,1x,a)", -0.5d0, ok, .true.) 
+                  "(a,f8.3,1x,a)", -0.5d0, ok, .true.)
              call getDouble("DW_Mdot", DW_Mdot,  1.d0, cLine, fLine, nLines, &
                   "Disc wind:: Total mass-loss rate from disc [Msun/yr]: ", &
-                  "(a,1p,e9.3,1x,a)", 1.0d-8, ok, .true.) 
+                  "(a,1p,e9.3,1x,a)", 1.0d-8, ok, .true.)
              call getDouble("DW_alpha", DW_alpha,  1.d0, cLine, fLine, nLines, &
                   "Disc wind:: Exponent in the mass-loss rate per unit area [-]: ", &
-                  "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.) 
+                  "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.)
              call getDouble("DW_beta", DW_beta,  1.d0, cLine, fLine, nLines, &
                   "Disc wind:: Exponent in the modefied beta-velocity law [-]: ", &
-                  "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.) 
+                  "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.)
              call getDouble("DW_Rs", DW_Rs,  DW_rMin, cLine, fLine, nLines, &
                   "Disc wind:: Effective acceleration length [inner wind radii]: ", &
-                  "(a,1p,e9.3,1x,a)", 50.0d0, ok, .true.) 
+                  "(a,1p,e9.3,1x,a)", 50.0d0, ok, .true.)
              call getDouble("DW_f", DW_f,  1.d0, cLine, fLine, nLines, &
                   "Disc wind:: Scaling on the terminal velocity [-]: ", &
-                  "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.) 
+                  "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.)
              call getDouble("DW_Twind", DW_Twind,  1.d0, cLine, fLine, nLines, &
                   "Disc wind:: Isothermal temperature of disc wind [K]: ", &
-                  "(a,1p,e9.3,1x,a)", 5000.0d0, ok, .true.) 
+                  "(a,1p,e9.3,1x,a)", 5000.0d0, ok, .true.)
           else
              ! --- parameters for ttauri wind
              call getDouble("DW_Rmin", DW_Rmin, ttaurirstar/1.d10, cLine, fLine, nLines, &
                "Disc wind:: Inner radius of the wind [stellar radii]: ", &
-               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.)
              call getDouble("DW_Rmax", DW_rMax, ttaurirstar/1.d10, cLine, fLine, nLines, &
                   "Disc wind:: Outer radius of the disc [stellar radii]: ", &
-                  "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.) 
+                  "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.)
              call getDouble("DW_d", DW_d, ttaurirstar/1.d10, cLine, fLine, nLines, &
                   "Disc wind:: Wind source displacement [stellar radii]: ", &
-                  "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.) 
+                  "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.)
              call getDouble("DW_Tmax", DW_Tmax,  1.d0, cLine, fLine, nLines, &
                   "Disc wind:: Temperature of disc at inner radius [K]: ", &
-                  "(a,1p,e9.3,1x,a)", 2000.0d0, ok, .true.) 
+                  "(a,1p,e9.3,1x,a)", 2000.0d0, ok, .true.)
              call getDouble("DW_gamma", DW_gamma,  1.d0, cLine, fLine, nLines, &
                   "Disc wind:: Exponent in the disc temperature power law [-]: ", &
-                  "(a,f8.3,1x,a)", -0.5d0, ok, .true.) 
+                  "(a,f8.3,1x,a)", -0.5d0, ok, .true.)
              call getDouble("DW_Mdot", DW_Mdot,  1.d0, cLine, fLine, nLines, &
                   "Disc wind:: Total mass-loss rate from disc [Msun/yr]: ", &
-                  "(a,1p,e9.3,1x,a)", 1.0d-8, ok, .true.) 
+                  "(a,1p,e9.3,1x,a)", 1.0d-8, ok, .true.)
              call getDouble("DW_alpha", DW_alpha,  1.d0, cLine, fLine, nLines, &
                   "Disc wind:: Exponent in the mass-loss rate per unit area [-]: ", &
-                  "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.) 
+                  "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.)
              call getDouble("DW_beta", DW_beta,  1.d0, cLine, fLine, nLines, &
                   "Disc wind:: Exponent in the modefied beta-velocity law [-]: ", &
-                  "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.) 
+                  "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.)
              call getDouble("DW_Rs", DW_Rs,  DW_rmin, cLine, fLine, nLines, &
                   "Disc wind:: Effective acceleration length [inner wind radii]: ", &
-                  "(a,1p,e9.3,1x,a)", 50.0d0, ok, .true.) 
+                  "(a,1p,e9.3,1x,a)", 50.0d0, ok, .true.)
              call getDouble("DW_f", DW_f,  1.d0, cLine, fLine, nLines, &
                   "Disc wind:: Scaling on the terminal velocity [-]: ", &
-                  "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.) 
+                  "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.)
              call getDouble("DW_Twind", DW_Twind,  1.d0, cLine, fLine, nLines, &
                   "Disc wind:: Isothermal temperature of disc wind [K]: ", &
-                  "(a,1p,e9.3,1x,a)", 5000.0d0, ok, .true.) 
+                  "(a,1p,e9.3,1x,a)", 5000.0d0, ok, .true.)
           endif
 
        endif
-       
+
        if (TTauristellarWind) then
           ! --- parameters for ttauri wind
           call getDouble("SW_Rmin", SW_Rmin, ttaurirstar/1.d10, cLine, fLine, nLines, &
                "Stellar wind:: Inner radius of the wind [stellar radii]: ", &
-               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.)
 
           call getDouble("SW_Rmax", SW_rMax, ttaurirstar/1.d10, cLine, fLine, nLines, &
                "Stellar wind:: Outer radius of the wind [stellar radii]: ", &
-               "(a,1p,e9.3,1x,a)", 100.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 100.0d0, ok, .true.)
 
           call getDouble("SW_Vmin", SW_vMin, 1.d5, cLine, fLine, nLines, &
                "Stellar wind:: Wind base velocity [km/s]: ", &
-               "(a,1p,e9.3,1x,a)", 10.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 10.0d0, ok, .true.)
 
           call getDouble("SW_Vmax", SW_Vmax, 1.d0, cLine, fLine, nLines, &
                "Stellar wind:: Wind max velocity [Vesc]: ", &
-               "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.)
 
           call getDouble("SW_beta", SW_beta, 1.d0, cLine, fLine, nLines, &
                "Stellar wind:: beta-velocity index []: ", &
-               "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.)
 
           call getDouble("SW_Mdot", SW_mdot, 1.d0, cLine, fLine, nLines, &
                "Stellar wind:: mass-loss rate [Msol/yr]: ", &
-               "(a,1p,e9.3,1x,a)", 1.0d-7, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 1.0d-7, ok, .true.)
 
           call getDouble("SW_temp", SW_temperature, 1.d0, cLine, fLine, nLines, &
                "Stellar wind:: temperature [K]: ", &
-               "(a,1p,e9.3,1x,a)", 10000.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 10000.0d0, ok, .true.)
 
           call getDouble("SW_Veq", SW_veq, 1.d5, cLine, fLine, nLines, &
                "Stellar wind:: stellar equatorial rotation velocity [km/s]: ", &
@@ -1348,7 +1348,7 @@ contains
        endif
 
 
-       if (useHartmannTemp .and. isoTherm) then 
+       if (useHartmannTemp .and. isoTherm) then
           if (writeoutput)  write(*,'(a)') "WARNING: useHartmannTemp and isoTherm both specified!"
           call torus_stop
        end if
@@ -1362,72 +1362,72 @@ contains
           ! --- parameters for ttauri wind
           call getDouble("DW_d", DW_d, 1.d0, cLine, fLine, nLines, &
                "Disc wind:: Wind soudce displacement [10^10cm]: ", &
-               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.)
           call getDouble("DW_Rmin", DW_Rmin,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Inner radius of the disc [magnetosphere radii]: ", &
-               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.)
           call getDouble("DW_Rmax", DW_Rmax,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Outer radius of the disc [magnetosphere radii]: ", &
-               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.)
           call getDouble("DW_Tmax", DW_Tmax,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Temperature of disc at inner radius [K]: ", &
-               "(a,1p,e9.3,1x,a)", 2000.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 2000.0d0, ok, .true.)
           call getDouble("DW_gamma", DW_gamma,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Exponent in the disc temperature power law [-]: ", &
-               "(a,1p,e9.3,1x,a)", -0.5d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", -0.5d0, ok, .true.)
           call getDouble("DW_Mdot", DW_Mdot,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Total mass-loss rate from disc [Msun/yr]: ", &
-               "(a,1p,e9.3,1x,a)", 1.0d-8, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 1.0d-8, ok, .true.)
           call getDouble("DW_alpha", DW_alpha,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Exponent in the mass-loss rate per unit area [-]: ", &
-               "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.)
           call getDouble("DW_beta", DW_beta,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Exponent in the modefied beta-velocity law [-]: ", &
-               "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.)
           call getDouble("DW_Rs", DW_Rs,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Effective accerelation length [10^10cm]: ", &
-               "(a,1p,e9.3,1x,a)", 50.0d0*DW_Rmin, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 50.0d0*DW_Rmin, ok, .true.)
           call getDouble("DW_f", DW_f,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Scaling on the terminal velocity [-]: ", &
-               "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.)
           call getDouble("DW_Twind", DW_Twind,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Isotherma temperature of disc wind [K]: ", &
-               "(a,1p,e9.3,1x,a)", 5000.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 5000.0d0, ok, .true.)
        endif
        if (ttau_jet_on) then  ! commented out here to make ttaur_turn_off_jet to work
           ! --- parameters for ttauri wind
           call getDouble("JET_Rmin", JET_Rmin,  1.d0, cLine, fLine, nLines, &
                "Minmium radius of Jet [10^10 cm]: ", &
-               "(a,1p,e9.3,1x,a)", TTauriRouter/1.0d10, ok, .false.) 
+               "(a,1p,e9.3,1x,a)", TTauriRouter/1.0d10, ok, .false.)
           call getDouble("JET_theta_j", JET_theta_j,  1.d0, cLine, fLine, nLines, &
                "TTauri jets:: [deg]  jet opening angle: ", &
-               "(a,1p,e9.3,1x,a)", 80.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 80.0d0, ok, .true.)
           JET_theta_j = JET_theta_j * (Pi/180.0)  ! converting [deg] to [radians]
 
           call getDouble("JET_Mdot", JET_Mdot,  1.d0, cLine, fLine, nLines, &
                "TTauri jets:: [Msun/yr] mass loss rate in the jets: ", &
-               "(a,1p,e9.3,1x,a)", 1.0d-9, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 1.0d-9, ok, .true.)
           call getDouble("JET_a_param", JET_a_param,  1.d0, cLine, fLine, nLines, &
                "TTauri jets:: [-] a parameter in density function: ", &
-               "(a,1p,e9.3,1x,a)", 0.8d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 0.8d0, ok, .true.)
           call getDouble("JET_b_param", JET_b_param,  1.d0, cLine, fLine, nLines, &
                "TTauri jets:: [-] b parameter in density function: ", &
-               "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.)
           call getDouble("JET_Vbase", JET_Vbase,  1.d0, cLine, fLine, nLines, &
                "TTauri jets:: [km/s] Base velocity of jets: ", &
-               "(a,1p,e9.3,1x,a)", 20.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 20.0d0, ok, .true.)
           call getDouble("JET_Vinf", JET_Vinf,  1.d0, cLine, fLine, nLines, &
                "TTauri jets:: [km/s] Terminal velocity of jets: ", &
-               "(a,1p,e9.3,1x,a)", 200.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 200.0d0, ok, .true.)
           call getDouble("JET_beta", JET_beta,  1.d0, cLine, fLine, nLines, &
                "TTauri jets:: [-] a parameter in velocity function: ", &
-               "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.)
           call getDouble("JET_gamma", JET_gamma,  1.d0, cLine, fLine, nLines, &
                "TTauri jets:: [-] a parameter in velocity function: ", &
-               "(a,1p,e9.3,1x,a)", 0.05d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 0.05d0, ok, .true.)
           call getDouble("JET_T", JET_T,  1.d0, cLine, fLine, nLines, &
                "TTauri jets:: [K]  Isothermal temperature of jets: ", &
-               "(a,1p,e9.3,1x,a)", 1.0d4, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 1.0d4, ok, .true.)
        endif
 
        case("wind")
@@ -1458,16 +1458,16 @@ contains
             "Output ascii file for abundance data: ","(a,a,a)","none", ok, .true.)
        case("clumpyagb")
           call getReal("rinner", rinner, real(rsol/1.e10), cLine, fLine, nLines, &
-               "Inner radius (solar radii): ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 
+               "Inner radius (solar radii): ","(a,1pe8.1,1x,a)", 1000., ok, .true.)
 
           call getReal("router", router, rinner, cLine, fLine, nLines, &
-               "Outer radius (solar radii): ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 
+               "Outer radius (solar radii): ","(a,1pe8.1,1x,a)", 1000., ok, .true.)
 
           call getReal("vterm", vterm, 1.e5, cLine, fLine, nLines, &
-               "Terminal velocity (km/s): ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 
+               "Terminal velocity (km/s): ","(a,1pe8.1,1x,a)", 1000., ok, .true.)
 
           call getReal("mdot", mdot, real(mSol) /( 365.25 * 24. * 3600.),  cLine, fLine, nLines, &
-               "Mass-loss rate (solar masses per year): ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 
+               "Mass-loss rate (solar masses per year): ","(a,1pe8.1,1x,a)", 1000., ok, .true.)
 
        case("lexington")
           call getReal("rinner", rInner, 1.e7, cLine, fLine, nLines, &
@@ -1502,7 +1502,7 @@ contains
        case("molebench")
           call getReal("rinner", rInner, 1., cLine, fLine, nLines, &
                "Inner Radius for dumpresults (10^10cm): ","(a,1pe8.2,a)", 1e4, ok, .true.)
-          
+
           call getReal("router", rOuter, 1., cLine, fLine, nLines, &
                "Outer Radius (10^10cm): ","(a,1pe8.2,a)", 1e6, ok, .true.)
 
@@ -1510,7 +1510,7 @@ contains
        case("sphfile","molcluster", "theGalaxy", "cluster", "wr104")
 
           call writeBanner("SPH parameters","#",TRIVIAL)
-          
+
           call getString("sphdatafilename", sphdatafilename, cLine, fLine, nLines, &
                "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
 
@@ -1576,42 +1576,42 @@ contains
                      "Column containing CO fraction: ","(a,1x,i2,a)", 15, ok, .false.)
              end if
           end if
-          
-! These parameters allow SPH particles within a box to be selected. Particles 
+
+! These parameters allow SPH particles within a box to be selected. Particles
 ! outside the box are discarded
     call getLogical("sphboxcut", sphboxcut, cLine, fLine, nLines, &
          "Select SPH particles within a box: ","(a,1l,1x,a)",.false., ok, .false.)
     call getDouble("sphboxxmin", sphboxxmin, 1.0_db, cLine, fLine, nLines, &
-         "SPH box min x: ","(a,1pe8.1,1x,a)", -9.99e99_db, ok, .false.) 
+         "SPH box min x: ","(a,1pe8.1,1x,a)", -9.99e99_db, ok, .false.)
     call getDouble("sphboxxmax", sphboxxmax, 1.0_db, cLine, fLine, nLines, &
-         "SPH box max x: ","(a,1pe8.1,1x,a)",  9.99e99_db, ok, .false.) 
+         "SPH box max x: ","(a,1pe8.1,1x,a)",  9.99e99_db, ok, .false.)
     call getDouble("sphboxymin", sphboxymin, 1.0_db, cLine, fLine, nLines, &
-         "SPH box min y: ","(a,1pe8.1,1x,a)", -9.99e99_db, ok, .false.) 
+         "SPH box min y: ","(a,1pe8.1,1x,a)", -9.99e99_db, ok, .false.)
     call getDouble("sphboxymax", sphboxymax, 1.0_db, cLine, fLine, nLines, &
-         "SPH box max y: ","(a,1pe8.1,1x,a)",  9.99e99_db, ok, .false.) 
+         "SPH box max y: ","(a,1pe8.1,1x,a)",  9.99e99_db, ok, .false.)
     call getDouble("sphboxzmin", sphboxzmin, 1.0_db, cLine, fLine, nLines, &
-         "SPH box min z: ","(a,1pe8.1,1x,a)", -9.99e99_db, ok, .false.) 
+         "SPH box min z: ","(a,1pe8.1,1x,a)", -9.99e99_db, ok, .false.)
     call getDouble("sphboxzmax", sphboxzmax, 1.0_db, cLine, fLine, nLines, &
-         "SPH box max z: ","(a,1pe8.1,1x,a)",  9.99e99_db, ok, .false.) 
+         "SPH box max z: ","(a,1pe8.1,1x,a)",  9.99e99_db, ok, .false.)
 
-! These parameters allow SPH particles within a sphere to be selected. Particles 
+! These parameters allow SPH particles within a sphere to be selected. Particles
 ! outside the sphere are discarded
     call getLogical("sphspherecut", sphspherecut, cLine, fLine, nLines, &
          "Select SPH particles within a sphere: ","(a,1l,1x,a)",.false., ok, .false.)
     call getDouble("sphspherex", sphspherex, 1.0_db, cLine, fLine, nLines, &
-         "SPH sphere x: ","(a,1pe8.1,1x,a)", amrgridcentrex, ok, .false.) 
+         "SPH sphere x: ","(a,1pe8.1,1x,a)", amrgridcentrex, ok, .false.)
     call getDouble("sphspherey", sphspherey, 1.0_db, cLine, fLine, nLines, &
-         "SPH sphere y: ","(a,1pe8.1,1x,a)", amrgridcentrey, ok, .false.) 
+         "SPH sphere y: ","(a,1pe8.1,1x,a)", amrgridcentrey, ok, .false.)
     call getDouble("sphspherez", sphspherez, 1.0_db, cLine, fLine, nLines, &
-         "SPH sphere z: ","(a,1pe8.1,1x,a)", amrgridcentrez, ok, .false.) 
+         "SPH sphere z: ","(a,1pe8.1,1x,a)", amrgridcentrez, ok, .false.)
     call getDouble("sphsphereradius", sphsphereradius, 1.0_db, cLine, fLine, nLines, &
-         "SPH sphere radius: ","(a,1pe8.1,1x,a)", real(0.5*amrgridsize,db), ok, .false.) 
+         "SPH sphere radius: ","(a,1pe8.1,1x,a)", real(0.5*amrgridsize,db), ok, .false.)
 
 ! Select SPH particles above a minimum density threshold
         call getDouble("sphdensitycut", sphdensitycut, 1.0_db, cLine, fLine, nLines, &
              "SPH density cut: ","(a,1pe8.1,1x,a)", -1.0_db, ok, .false.)
-        
-          if ( geometry == "cluster" ) then 
+
+          if ( geometry == "cluster" ) then
              call getReal("removeradius", rCore, 1.0, cLine, fLine, nLines, &
                   "Clearing radius (Torus units): ","(a,f7.3,a)", 2000.0, ok, .false.)
              call getDouble("dphiref", dphiRefine, 1.d0, cLine, fLine, nLines, &
@@ -1619,7 +1619,7 @@ contains
           end if
 
           if (geometry == "wr104") then
-             
+
              call getReal("distance", gridDistance, 1., cLine, fLine, nLines, &
                   "Grid distance (pc): ","(a,f8.1,1x,a)", 100., ok, .true.)
              call getReal("massenv", massEnvelope, real(mMoon), cLine, fLine,  nLines, &
@@ -1649,13 +1649,13 @@ contains
        call getReal("router", rOuter, real(autocm)/1.e10, cLine, fLine, nLines, &
             "Outer radius (AU): ","(a,f7.1,a)", 20., ok, .true.)
        call getDouble("n2max", n2max, 1.d0, cLine, fLine, nLines, &
-            "Maximum N_2 density (cm^-3): ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.) 
+            "Maximum N_2 density (cm^-3): ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.)
        call getReal("beta", beta, 1., cLine, fLine, nLines, &
             "Power law index: ","(a,f7.0,a)", 1., ok, .true.)
 
 !       call getReal("massenv", massEnvelope, real(mSol), cLine, fLine,  nLines, &
 !            "Envelope dust mass (solar masses): ","(a,1pe12.3,a)", 10., ok, .true.)
-       
+
 
     case("cassandra")
 
@@ -1676,13 +1676,13 @@ contains
             "Level of azimuthal refinement (degrees): ","(a,f5.1,a)", 30.d0, ok, .false.)
        !Cass change
        call getReal("Q_irr", Q_irr, 1.0, cLine, fLine, nLines, &
-            "Irradiation at fixed Q_irr: ","(a,f5.1,a)", 1., ok, .true.)       
+            "Irradiation at fixed Q_irr: ","(a,f5.1,a)", 1., ok, .true.)
        call getReal("T_irr", T_irr, 1.0, cLine, fLine, nLines, &
             "Irradiation at fixed Q_irr: ","(a,f5.1,a)", 1., ok, .true.)
        !call getReal("SpiralA", spiralA, 1.0, cLine, fLine, nLines, &
        !     "A in spiral equation: ","(a,f5.1,a)", 1., ok, .true.)
        !call getReal("SpiralB", spiralB, 1.0, cLine, fLine, nLines, &
-       !     "B in spiral equation ","(a,f5.1,a)", 1., ok, .true.)       
+       !     "B in spiral equation ","(a,f5.1,a)", 1., ok, .true.)
        call getInteger("irrchoice", irrchoice, cLine, fLine, nLines, &
             "irradiation choice","(a,i8,a)", 1, ok, .true.)
        call getInteger("nspiralarms", nspiralarms, cLine, fLine, nLines, &
@@ -1876,37 +1876,37 @@ contains
           ! --- parameters for ttauri wind
           call getDouble("DW_Rmin", DW_Rmin, autocm/1.d10, cLine, fLine, nLines, &
                "Disc wind:: Inner radius of the wind [magnetospheric radii]: ", &
-               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.)
           call getDouble("DW_Rmax", DW_rMax, autocm/1.d10, cLine, fLine, nLines, &
                "Disc wind:: Outer radius of the disc [magnetospheric radii]: ", &
-               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.)
           call getDouble("DW_d", DW_d, DW_rMin, cLine, fLine, nLines, &
                "Disc wind:: Wind source displacement [inner wind radii]: ", &
-               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.)
           call getDouble("DW_Tmax", DW_Tmax,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Temperature of disc at inner radius [K]: ", &
-               "(a,1p,e9.3,1x,a)", 2000.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 2000.0d0, ok, .true.)
           call getDouble("DW_gamma", DW_gamma,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Exponent in the disc temperature power law [-]: ", &
-               "(a,f8.3,1x,a)", -0.5d0, ok, .true.) 
+               "(a,f8.3,1x,a)", -0.5d0, ok, .true.)
           call getDouble("DW_Mdot", DW_Mdot,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Total mass-loss rate from disc [Msun/yr]: ", &
-               "(a,1p,e9.3,1x,a)", 1.0d-8, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 1.0d-8, ok, .true.)
           call getDouble("DW_alpha", DW_alpha,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Exponent in the mass-loss rate per unit area [-]: ", &
-               "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.)
           call getDouble("DW_beta", DW_beta,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Exponent in the modefied beta-velocity law [-]: ", &
-               "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.)
           call getDouble("DW_Rs", DW_Rs,  DW_rMin, cLine, fLine, nLines, &
                "Disc wind:: Effective acceleration length [inner wind radii]: ", &
-               "(a,1p,e9.3,1x,a)", 50.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 50.0d0, ok, .true.)
           call getDouble("DW_f", DW_f,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Scaling on the terminal velocity [-]: ", &
-               "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.)
           call getDouble("DW_Twind", DW_Twind,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Isothermal temperature of disc wind [K]: ", &
-               "(a,1p,e9.3,1x,a)", 5000.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 5000.0d0, ok, .true.)
        endif
 
 
@@ -1928,7 +1928,7 @@ contains
           write(heightLabel, '(a,i1.1)') "dustheight",i
           call getDouble(heightLabel, dustHeight(i), autocm/1.d10, cLine, fLine, nLines, &
                "Dust scale height at 100 AU (AU): ","(a,f10.5,1x,a)", dble(height)*1.d10/autocm, ok, .false.)
-       
+
           write(betaLabel, '(a,i1.1)') "dustbeta",i
           call getDouble(betaLabel, dustBeta(i), 1.d0, cLine, fLine, nLines, &
                "Dust beta law (AU): ","(a,f10.5,1x,a)", dble(betaDisc), ok, .false.)
@@ -2113,13 +2113,13 @@ contains
        if (discWind) then
           call getDouble("DW_Rmin", DW_Rmin, autocm/1.d10, cLine, fLine, nLines, &
                "Disc wind:: Inner radius of the wind [AU]: ", &
-               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.)
           call getDouble("DW_Rmax", DW_rMax, autocm/1.d10, cLine, fLine, nLines, &
                "Disc wind:: Outer radius of the disc [AU]: ", &
-               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.)
           call getDouble("DW_Mdot", DW_Mdot,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Total mass-loss rate from disc [Msun/yr]: ", &
-               "(a,1p,e9.3,1x,a)", 1.0d-8, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 1.0d-8, ok, .true.)
        endif
 
 
@@ -2135,7 +2135,7 @@ contains
           write(heightLabel, '(a,i1.1)') "dustheight",i
           call getDouble(heightLabel, dustHeight(i), autocm/1.d10, cLine, fLine, nLines, &
                "Dust scale height at 100 AU (AU): ","(a,f10.5,1x,a)", dble(height)*1.d10/autocm, ok, .false.)
-       
+
           write(betaLabel, '(a,i1.1)') "dustbeta",i
           call getDouble(betaLabel, dustBeta(i), 1.d0, cLine, fLine, nLines, &
                "Dust beta law (AU): ","(a,f10.5,1x,a)", dble(betaDisc), ok, .false.)
@@ -2302,13 +2302,13 @@ contains
        if (discWind) then
           call getDouble("DW_Rmin", DW_Rmin, autocm/1.d10, cLine, fLine, nLines, &
                "Disc wind:: Inner radius of the wind [AU]: ", &
-               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.)
           call getDouble("DW_Rmax", DW_rMax, autocm/1.d10, cLine, fLine, nLines, &
                "Disc wind:: Outer radius of the disc [AU]: ", &
-               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.)
           call getDouble("DW_Mdot", DW_Mdot,  1.d0, cLine, fLine, nLines, &
                "Disc wind:: Total mass-loss rate from disc [Msun/yr]: ", &
-               "(a,1p,e9.3,1x,a)", 1.0d-8, ok, .true.) 
+               "(a,1p,e9.3,1x,a)", 1.0d-8, ok, .true.)
        endif
 
 
@@ -2324,7 +2324,7 @@ contains
           write(heightLabel, '(a,i1.1)') "dustheight",i
           call getDouble(heightLabel, dustHeight(i), autocm/1.d10, cLine, fLine, nLines, &
                "Dust scale height at 100 AU (AU): ","(a,f10.5,1x,a)", dble(height)*1.d10/autocm, ok, .false.)
-       
+
           write(betaLabel, '(a,i1.1)') "dustbeta",i
           call getDouble(betaLabel, dustBeta(i), 1.d0, cLine, fLine, nLines, &
                "Dust beta law (AU): ","(a,f10.5,1x,a)", dble(betaDisc), ok, .false.)
@@ -2423,7 +2423,7 @@ contains
              call getDouble(dustFracLabel, dustFracMod(i,j), 1.d0, cLine, fLine, nLines, &
                   "Fraction of dust species in disc module :","(a,f10.5,1x,a)", dble(0.01), ok, .true.)
 !            fraction of each dust species in each modular section of the disc
-          
+
              write(betaLabel, '(a,i1.1,i1.1)') "settlebeta",i,j
              call getDouble(betaLabel, dustBetaMod(i,j), 1.d0, cLine, fLine, nLines, &
                   "Dust beta parameter for disc module: ","(a,f10.5,1x,a)", betaMod(i), ok, .false.)
@@ -2431,7 +2431,7 @@ contains
 
              write(heightLabel, '(a,i1.1,i1.1)') "settleheight",i,j
              call getDouble(heightLabel, dustHeightMod(i,j), autocm/1.d10, cLine, fLine, nLines, &
-                  "Dust scale height at inner radius of disc module (au): ","(a,f10.5,1x,a)", & 
+                  "Dust scale height at inner radius of disc module (au): ","(a,f10.5,1x,a)", &
                   heightMod(i), ok, .false.)
 !            scale height for each dust prescription (default is that of the gas in that disc module)
 
@@ -2439,7 +2439,7 @@ contains
        if (writeoutput) write(*,*)
        enddo
 !      Calculate the density normalisation assuming that the midplane density at r_out,i which is prescribed by disk
-!      module 'i' is the same as that at r_in,i+1 which is prescribed by the next adjacent disk module, 'i+1'. 
+!      module 'i' is the same as that at r_in,i+1 which is prescribed by the next adjacent disk module, 'i+1'.
        prod(1) = 1.d0
        if (nDiscModule > 1) then
           do i = 2, nDiscModule
@@ -2448,7 +2448,7 @@ contains
        endif
        do i = 1, nDiscModule
           rhoNought(i) = heightMod(i)*1.d10*(rInnerMod(i)*1.d10)**(betaMod(i)*(-1.d0))*prod(i)* &
-                         ( ((rOuterMod(i)*1.d10)**(betaMod(i)-alphaMod(i)+2.d0) - & 
+                         ( ((rOuterMod(i)*1.d10)**(betaMod(i)-alphaMod(i)+2.d0) - &
                          (rInnerMod(i)*1.d10)**(betaMod(i)-alphaMod(i)+2.d0) ) / &
                          (betaMod(i)-alphaMod(i)+2.d0) )
 !         density integration constant for each module of the disc
@@ -2460,7 +2460,7 @@ contains
 
     end select
   end subroutine readGeometrySpecificParameters
-         
+
 
 
 
@@ -2543,7 +2543,7 @@ contains
          "Refine on density gradient?: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getDouble("densitygradient", maxDensityGradient, 1.d0 , cLine, fLine, nLines, &
-         "Maximum density gradient allowed before AMR grid refines: ","(a,1p,e9.3,1x,a)", 0.1d0, ok, .false.) 
+         "Maximum density gradient allowed before AMR grid refines: ","(a,1p,e9.3,1x,a)", 0.1d0, ok, .false.)
 
     call getLogical("refineonjeans", refineonJeans, cLine, fLine, nLines, &
          "Refine grid using local jeans mass?: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -2567,10 +2567,10 @@ contains
          "Captue shocks?: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getDouble("amrtolerance", amrtolerance, 1.d0 , cLine, fLine, nLines, &
-         "Maximum gradient allowed before AMR grid refines: ","(a,1p,e9.3,1x,a)", 5.d-2, ok, .false.) 
+         "Maximum gradient allowed before AMR grid refines: ","(a,1p,e9.3,1x,a)", 5.d-2, ok, .false.)
 
     call getDouble("unreftol", amrUnrefinetolerance, 1.d0 , cLine, fLine, nLines, &
-         "Minimum gradient allowed before AMR grid unrefines: ","(a,1p,e9.3,1x,a)", 1.d-2, ok, .false.) 
+         "Minimum gradient allowed before AMR grid unrefines: ","(a,1p,e9.3,1x,a)", 1.d-2, ok, .false.)
 
     if(refineontemperature) then
        call getDouble("amrtemperaturetol", amrTemperatureTol, 1.d0 , cLine, fLine, nLines, &
@@ -2581,7 +2581,7 @@ contains
        call getDouble("amrspeedtol", amrSpeedTol, 1.d0 , cLine, fLine, nLines, &
             "Maximum speed gradient allowed before AMR grid refines: ","(a,1p,e9.3,1x,a)", 1.d-1, ok, .false.)
     end if
-    
+
     if(refineonionization) then
        call getDouble("amrionfractol", amrIonFracTol, 1.d0 , cLine, fLine, nLines, &
             "Maximum ionization fraction gradient allowed before AMR grid refines: ","(a,1p,e9.3,1x,a)", 1.d-1, ok, .false.)
@@ -2591,16 +2591,16 @@ contains
        call getDouble("amrrhoetol", amrRhoeTol, 1.d0 , cLine, fLine, nLines, &
             "Maximum rhoe gradient allowed before AMR grid refines: ","(a,1p,e9.3,1x,a)", 1.d-1, ok, .false.)
     end if
-  
+
 
     call getReal("amrgridsize", amrGridSize, 1.0, cLine, fLine, nLines, &
-         "Size of adaptive mesh grid: ","(a,1pe8.1,1x,a)", 1000.0, ok, .false.) 
+         "Size of adaptive mesh grid: ","(a,1pe8.1,1x,a)", 1000.0, ok, .false.)
     call getUnitDouble("amrgridcentrex", amrGridCentreX, "distance" , cLine, fLine, nLines, &
-         "Grid centre X-coordinate: ","(a,1p,e10.3,1x,a)", 0.0d0, ok, .false.) 
+         "Grid centre X-coordinate: ","(a,1p,e10.3,1x,a)", 0.0d0, ok, .false.)
     call getUnitDouble("amrgridcentrey", amrGridCentreY, "distance" , cLine, fLine, nLines, &
-         "Grid centre Y-coordinate: ","(a,1p,e10.3,1x,a)", 0.0d0, ok, .false.) 
+         "Grid centre Y-coordinate: ","(a,1p,e10.3,1x,a)", 0.0d0, ok, .false.)
     call getUnitDouble("amrgridcentrez", amrGridCentreZ, "distance", cLine, fLine, nLines, &
-         "Grid centre Z-coordinate: ","(a,1p,e10.3,1x,a)", 0.0d0, ok, .false.) 
+         "Grid centre Z-coordinate: ","(a,1p,e10.3,1x,a)", 0.0d0, ok, .false.)
 
     if (amr2d.and.(.not.checkPresent("amrgridcentrex", cline, nlines))) &
          amrGridCentrex = dble(amrGridSize)/2.d0
@@ -2612,10 +2612,10 @@ contains
          amrGridCentrex = amrGridSize/2.d0
 
     call getDouble("limitscalar", limitScalar, 1.d0, cLine, fLine, nLines, &
-         "Scalar limit for subcell division: ","(a,1p,e9.3,1x,a)", 1000._db, ok, .false.) 
+         "Scalar limit for subcell division: ","(a,1p,e9.3,1x,a)", 1000._db, ok, .false.)
 
     call getDouble("limittwo", limitScalar2, 1.d0, cLine, fLine, nLines, &
-         "Second scalar limit for subcell division: ","(a,1p,e9.3,1x,a)", 0._db, ok, .false.) 
+         "Second scalar limit for subcell division: ","(a,1p,e9.3,1x,a)", 0._db, ok, .false.)
 
     call getLogical("doVelocitySplit", doVelocitySplit, cLine, fLine, nLines, &
          "Use velocity splitting condition for SPH to grid: ","(a,1l,1x,a)",.false., ok, .false.)
@@ -2646,12 +2646,12 @@ contains
 
       call getString("flashfilename", flashfilename, cLine, fLine, nLines, &
            "Flash file name: ","(a,a,a)","default",ok,.true.)
-       
+
       call getInteger("flashnumblocks", numblocks, cLine, fLine, nLines, &
            "Number of blocks in flash file: ", "(a,i7,a)",1000,ok,.true.)
 
       call getDouble("flashslice", slice, 1.d0, cLine, fLine, nLines, &
-           "Position of slice for 2D cut ","(a,1p,e9.3,1x,a)", 0.8e8_db, ok, .false.) 
+           "Position of slice for 2D cut ","(a,1p,e9.3,1x,a)", 0.8e8_db, ok, .false.)
 
       call getLogical("flashreflecty", doReflectY, cLine, fLine, nLines, &
            "Reflect y=axis: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -2670,10 +2670,10 @@ contains
            "VH1: file name: ","(a,a,a)","default",ok, .true.)
 
       call getDouble("vh1xoffset", vh1xoffset, 1.d0, cLine, fLine, nLines, &
-           "VH1: offset applied to x-axis: ","(a,1p,e10.3,1x,a)", 0.0e0_db, ok, .false.) 
-      
+           "VH1: offset applied to x-axis: ","(a,1p,e10.3,1x,a)", 0.0e0_db, ok, .false.)
+
       call getDouble("vh1yoffset", vh1yoffset, 1.d0, cLine, fLine, nLines, &
-           "VH1: offset applied to y-axis: ","(a,1p,e10.3,1x,a)", 0.0e0_db, ok, .false.) 
+           "VH1: offset applied to y-axis: ","(a,1p,e10.3,1x,a)", 0.0e0_db, ok, .false.)
 
       call setGridFromVh1Parameters(vh1filename, vh1xoffset, vh1yoffset)
 
@@ -2730,13 +2730,13 @@ contains
           call getDouble("pahscale", PAHscale, 1.d0, cLine, fLine, nLines, &
                "Scaling factor for PAH emissivities and opacities: ","(a,f7.3,a)",1.d0, ok, .false.)
        endif
-             
+
        call getInteger("ndusttype", nDustType, cLine, fLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)
        if (nDustType .gt. maxDustTypes) then
           if (writeoutput) write (*,*) "Max dust types exceeded: ", maxDustTypes
           call torus_stop
        end if
-       
+
        call getLogical("readdust", readDustFromFile, cLine, fLine, nLines, &
          "Read dust opacities and phase matrices from file: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -2775,7 +2775,7 @@ contains
 
 
 
-             
+
           !       if (writeoutput) write(*,'(a,i1.1)') "Dust properties for grain ",i
              !       if (writeoutput) write(*,'(a,i1.1)') "-------------------------------"
              !       if (writeoutput) write(*,*)
@@ -2820,20 +2820,20 @@ contains
              if (.not. readDustFromFile) &
                   call getReal(aminLabel, aMin(i), 1., cLine, fLine, nLines, &
                   "Min grain size (microns): ","(a,f8.5,1x,a)", 0.005, ok,  .true.)
-             
+
              if (.not. readDustFromFile) &
                   call getReal(amaxLabel, aMax(i), 1., cLine, fLine, nLines, &
                   "Max grain size (microns): ","(a,f10.5,1x,a)", 0.25, ok, .true.)
-             
+
              if (.not. readDustFromFile) &
                   call getReal(qDistLabel, qdist(i), 1., cLine, fLine, nLines, &
                   "Grain power law: ","(a,f4.1,1x,a)", 3.5, ok, .true. )
-             
+
              if (.not. readDustFromFile) &
                   call getReal(a0Label, a0(i), 1., cLine, fLine, nLines, &
                   "Scale length of grain size (microns): ","(a,f8.5,1x,a)", 1.0e20, ok, .false.)
-             
-             
+
+
              if (.not. readDustFromFile) &
           call getReal(pdistLabel, pdist(i), 1., cLine, fLine, nLines, &
           "Exponent for exponential cut off: ","(a,f4.1,1x,a)", 1.0, ok, .false. )
@@ -2843,7 +2843,7 @@ contains
           write(heightLabel, '(a,i1.1)') "dustheight",i
           call getDouble(heightLabel, dustHeight(i), autocm/1.d10, cLine, fLine, nLines, &
                "Dust scale height at 100 AU (AU): ","(a,f10.5,1x,a)", dble(height)*1.d10/autocm, ok, .false.)
-       
+
           write(betaLabel, '(a,i1.1)') "dustbeta",i
           call getDouble(betaLabel, dustBeta(i), 1.d0, cLine, fLine, nLines, &
                "Dust beta law (AU): ","(a,f10.5,1x,a)", dble(betaDisc), ok, .false.)
@@ -2881,7 +2881,7 @@ contains
     character(len=lencLine) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
-    integer :: i 
+    integer :: i
     character(len=20) :: keyword
     logical :: ok
     real :: C_rad, C_vdw, C_stark
@@ -2914,7 +2914,7 @@ contains
             "Helium abundance (by number): ","(a,f7.3,a)",1.d0, ok, .true.)
 
     call getReal("lamline", lamLine, 1.,cLine, fLine, nLines, &
-               "Line emission wavelength: ","(a,f8.1,1x,a)", 850., ok, .true.)          
+               "Line emission wavelength: ","(a,f8.1,1x,a)", 850., ok, .true.)
 
     call getReal("vturb", vturb, real(kmstoc), cLine, fLine, nLines, &
                "Turbulent velocity (km/s):","(a,f6.1,1x,a)", 0., ok, .true.)
@@ -2936,7 +2936,7 @@ contains
     character(len=80) :: message
     logical :: fLine(:)
     integer :: nLines
-    integer :: i 
+    integer :: i
     character(len=20) :: keyword
     logical :: ok
     logical :: teffPresent, radiusPresent, lumPresent
@@ -2981,7 +2981,7 @@ contains
 
        else
 
-          if (stellarSource(i)) then             
+          if (stellarSource(i)) then
              write(keyword, '(a,i1)') "radius",i
              radiusPresent = checkPresent(keyword, cline, nlines)
              write(keyword, '(a,i1)') "teff",i
@@ -3031,7 +3031,7 @@ contains
                 call writeFatal("Source underspecified - need two of radius, teff and lum")
                 call torus_stop
              endif
-             
+
              write(keyword, '(a,i1)') "mass",i
              call getDouble(keyword, sourceMass(i), mSol, cLine, fLine, nLines, &
                   "Source mass (solar masses) : ","(a,f7.2,a)",1.d0, ok, .true.)
@@ -3122,7 +3122,7 @@ contains
     logical :: ok
 
        call getLogical("ALMA", ALMA, cLine, fLine, nLines, &
-            "Generate a datacube with ALMA (casa)-friendly headers: ","(a,1l,1x,a)", .false., ok, .false.)   
+            "Generate a datacube with ALMA (casa)-friendly headers: ","(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("lte", lte, cLine, fLine, nLines, &
             "Read in LTE grid: ","(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("restart", restart, cLine, fLine, nLines, &
@@ -3132,7 +3132,7 @@ contains
        call getLogical("densitysubsample", densitysubsample, cLine, fLine, nLines, &
                "Use density interpolation: ","(a,1l,a)", .false., ok, .false.)
        call getLogical("suppresswarnings", suppressWarnings, cLine, fLine, nLines, &
-            "Suppress Warnings: ","(a,l,1x,a)",.false., ok, .false.) 
+            "Suppress Warnings: ","(a,l,1x,a)",.false., ok, .false.)
 ! Not currenlty used
 !       call getLogical("addnewmoldata", addnewmoldata, cLine, fLine, nLines, &
 !            "Add new molecular data to non-molecular grid: ","(a,l,1x,a)",.false., ok, .false.)
@@ -3160,13 +3160,13 @@ contains
 
        call getLogical("renewinputrays", renewinputrays, cLine, fLine, nLines, &
             "Restart with 1000 rays: ","(a,1l,a)", .false., ok, .false.)
-  
+
        call getLogical("forceiniray", forceIniRay, cLine, fLine, nLines, &
                "Force the first ray towards star in stateq calculations: ","(a,1l,a)", .false., ok, .false.)
        if(forceIniRay) then
           call readSourceParameters(cLine, fLine, nLines)
        end if
-!-     
+!-
        call getReal("tolerance", tolerance, 1., cLine, fLine, nLines, &
             "Maximum Fractional Change in level populations:","(a,f4.1,1x,a)", 0.01, ok, .false.)
        call getReal("vturb", vturb, 1., cLine, fLine, nLines, &
@@ -3228,7 +3228,7 @@ contains
 
           call getReal("fracCOnormal", x_0, 1., cLine, fLine, nLines, &
                "Fraction of CO normal level", "(a,f5.3,a)", 0.1, ok, .true.)
-          
+
        endif
 
 ! Do some sanity checks
@@ -3254,7 +3254,7 @@ contains
     use krome_user
     character(len=lencLine) :: cLine(:)
     logical :: fLine(:)
-    integer :: nLines,i 
+    integer :: nLines,i
     character(len=20) :: keyword
     character(len=16) :: kromeNames(1:krome_nmols)
     character(len=50) :: outputString
@@ -3274,7 +3274,7 @@ contains
             trim(outputString),"(a,1p,e12.3,1x,a)", 1.d-20, ok, .false.)
     enddo
   end subroutine readChemistryParameters
-#endif  
+#endif
 
 #ifdef PHOTOION
   subroutine readPhotoionPhysicsParameters(cLine, fLine, nLines)
@@ -3285,7 +3285,7 @@ contains
     character(len=4)  :: iChar
     character(len=20) :: keyword
     logical :: ok
-    real :: h_abund, he_abund, c_abund, n_abund, o_abund, ne_abund, s_abund  
+    real :: h_abund, he_abund, c_abund, n_abund, o_abund, ne_abund, s_abund
 
     call getLogical("timedep", timeDependentRT, cLine, fLine, nLines, &
          "Time-dependent RT: ", "(a,1l,1x,a)", .false., ok, .false.)
@@ -3401,7 +3401,7 @@ contains
 
        call getInteger("stacklimit", stacklimit, cLine, fLine, nLines, &
             "Maximum number of photons in a stack","(a,i8,a)", 10, ok, .false.)
-       
+
        call getInteger("dstack", dstack, cLine, fLine, nLines, &
             "Optimization tweak level","(a,i8,a)", 100, ok, .false.)
 
@@ -3426,7 +3426,7 @@ contains
              write(keyword,'(a)') "stacklimarray"//iChar
              call getInteger(keyword, thisStackLim, cLine, fLine, nLines, &
                   "Stack limit array element size","(a,i8,a)", stackLimit, ok, .false.)
-             
+
              stackLimitArray(i+1) = thisStackLim
           end do
        end if
@@ -3439,7 +3439,7 @@ contains
             "Use periodic photon boundary conditions in z direction:", "(a,1l,1x,a)", .false., ok, .false.)
        call getInteger("bufferCap", bufferCap, cLine, fLine, nLines, &
 !            "Number of photon stacks allowed in the buffer ","(a,i8,a)", 40000, ok, .false.)
-            "Number of photon stacks allowed in the buffer ","(a,i8,a)", & 
+            "Number of photon stacks allowed in the buffer ","(a,i8,a)", &
             max(40000,nint(dble(inputnmonte)/dble(stacklimit))), ok, .false.)
     end if
 
@@ -3684,7 +3684,7 @@ contains
          "Impose fixed regions on the hydro models: ","(a,1l,1x,a)", .false., ok, .false.)
 
 
-    
+
     if (cylindricalHydro) then
        !       if(.not. useionparam) then
        amrGridCentreX = amrgridsize/2.
@@ -3744,7 +3744,7 @@ contains
        call getReal("virialalpha", virialAlpha, 1.0, cLine, fLine, nLines, &
             "Virial parameter alpha: ","(a,f7.2,a)", 2.0, ok, .true.)
      endif
-    
+
     call getLogical("useviscosity", useViscosity, cLine, fLine, nLines, &
          "Use viscosity?: ","(a,1l,1x,a)", .true., ok, .false.)
 
@@ -3801,7 +3801,7 @@ contains
 
     call getDouble("inflowtemp", inflowtemp, 1.d0, cLine, fLine, nLines, &
          "Temperature for inflow boundary conditions: ","(a,e12.3,1x,a)", 10.d0, ok, .false.)
-    
+
     inflowPressure = (inflowrho / (2.33d0 * mHydrogen)) * kerg * inflowTemp
     cs = sqrt(inflowPressure/inflowRho)
 
@@ -3828,15 +3828,15 @@ contains
          "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
     call getReal("distance", gridDistance, real(pcToCm), cLine, fLine, nLines, &
          "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)
-    
-    call getDouble("limbaB", sourcelimbaB, 1.d0, cLine, fLine, nLines, &                                         
-         "Limb darkening a coefficient (B): ","(a,e9.3,a)",0.d0, ok, .false.)                                      
-    call getDouble("limbbB", sourcelimbbB, 1.d0, cLine, fLine, nLines, &                                         
-         "Limb darkening b coefficient (B): ","(a,e9.3,a)",0.d0, ok, .false.)                                      
-    call getDouble("limbaV", sourcelimbaV, 1.d0, cLine, fLine, nLines, &                                         
-         "Limb darkening a coefficient (V): ","(a,e9.3,a)",0.d0, ok, .false.)                                      
-    call getDouble("limbbV", sourcelimbbV, 1.d0, cLine, fLine, nLines, &                                         
-         "Limb darkening b coefficient (V): ","(a,e9.3,a)",0.d0, ok, .false.)               
+
+    call getDouble("limbaB", sourcelimbaB, 1.d0, cLine, fLine, nLines, &
+         "Limb darkening a coefficient (B): ","(a,e9.3,a)",0.d0, ok, .false.)
+    call getDouble("limbbB", sourcelimbbB, 1.d0, cLine, fLine, nLines, &
+         "Limb darkening b coefficient (B): ","(a,e9.3,a)",0.d0, ok, .false.)
+    call getDouble("limbaV", sourcelimbaV, 1.d0, cLine, fLine, nLines, &
+         "Limb darkening a coefficient (V): ","(a,e9.3,a)",0.d0, ok, .false.)
+    call getDouble("limbbV", sourcelimbbV, 1.d0, cLine, fLine, nLines, &
+         "Limb darkening b coefficient (V): ","(a,e9.3,a)",0.d0, ok, .false.)
 
   end subroutine readPhotometryParameters
 
@@ -3889,56 +3889,56 @@ contains
        call getReal("positionangle", cubePositionAngle, real(degtorad), cLine, fLine, nLines, &
             "Position angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
        call getInteger("ninc", nDataCubeInclinations,cLine, fLine, nLines, &
-            "Number of inclinations: ","(a,i2,1x,a)", 1, ok, .true.)          
+            "Number of inclinations: ","(a,i2,1x,a)", 1, ok, .true.)
        allocate(datacubeInclinations(nDataCubeInclinations))
        call getRealArray("inclinations", datacubeInclinations, real(degtorad), cLine, fLine, nLines, &
             "Inclinations (deg): ",90., ok, .true.)
        call  getInteger("nlamline", nlamLine,cLine, fLine, nLines, &
-            "Number of line emission wavelength: ","(a,i2,1x,a)", 1, ok, .true.)          
+            "Number of line emission wavelength: ","(a,i2,1x,a)", 1, ok, .true.)
        allocate(lamLineArray(1:nLamLine))
        call getRealArray("lamline", lamLineArray, 1.,cLine, fLine, nLines, &
             "Line emission wavelengths: ", 850., ok, .true.)
-       
+
        call getReal("vturb", vturb, real(kmstoc), cLine, fLine, nLines, &
             "Turbulent velocity (km/s):","(a,f6.1,1x,a)", 50., ok, .true.)
-       
+
        call  getInteger("nr1", nr1,cLine, fLine, nLines, &
-            "Number of radial rays to capture stellar photosphere: ","(a,i2,1x,a)", 200, ok, .false.)          
+            "Number of radial rays to capture stellar photosphere: ","(a,i2,1x,a)", 200, ok, .false.)
        call  getInteger("nphi1", nphi1,cLine, fLine, nLines, &
-            "Number of azimuthal rays to capture stellar photosphere: ","(a,i2,1x,a)", 100, ok, .false.)          
-       nr2 = 0 
+            "Number of azimuthal rays to capture stellar photosphere: ","(a,i2,1x,a)", 100, ok, .false.)
+       nr2 = 0
        nphi2 = 0
        if (ttauriMagnetosphere) then
           call  getInteger("nr2", nr2,cLine, fLine, nLines, &
-               "Number of radial rays to capture stellar magnetosphere: ","(a,i2,1x,a)", 200, ok, .false.)          
+               "Number of radial rays to capture stellar magnetosphere: ","(a,i2,1x,a)", 200, ok, .false.)
           call  getInteger("nphi2", nphi2,cLine, fLine, nLines, &
-               "Number of azimuthal rays to capture stellar magnetosphere: ","(a,i2,1x,a)", 100, ok, .false.)          
+               "Number of azimuthal rays to capture stellar magnetosphere: ","(a,i2,1x,a)", 100, ok, .false.)
        endif
-       nr3 = 0 
+       nr3 = 0
        nphi3 = 0
        if (ttauriWind) then
           call  getInteger("nr3", nr3,cLine, fLine, nLines, &
-               "Number of radial rays to capture disc wind: ","(a,i2,1x,a)", 200, ok, .false.)          
+               "Number of radial rays to capture disc wind: ","(a,i2,1x,a)", 200, ok, .false.)
           call  getInteger("nphi3", nphi3,cLine, fLine, nLines, &
-               "Number of azimuthal rays to capture disc wind: ","(a,i2,1x,a)", 100, ok, .false.)          
+               "Number of azimuthal rays to capture disc wind: ","(a,i2,1x,a)", 100, ok, .false.)
        endif
-       nr4 = 0 
+       nr4 = 0
        nphi4 = 0
-       
+
        if (ttauristellarWind) then
           call  getInteger("nr4", nr4,cLine, fLine, nLines, &
-               "Number of radial rays to capture stellar wind: ","(a,i2,1x,a)", 200, ok, .false.)          
+               "Number of radial rays to capture stellar wind: ","(a,i2,1x,a)", 200, ok, .false.)
           call  getInteger("nphi4", nphi4,cLine, fLine, nLines, &
-               "Number of azimuthal rays to capture stellar wind: ","(a,i2,1x,a)", 100, ok, .false.) 
+               "Number of azimuthal rays to capture stellar wind: ","(a,i2,1x,a)", 100, ok, .false.)
        endif
-       
+
     endif
 
     call getLogical("internalView", internalView, cLine, fLine, nLines, &
          "View as our Galaxy:", "(a,1l,1x,a)", .false., ok, .false.)
 
-    ! Read parameters used by galactic plane survey 
-    if ( internalView ) then 
+    ! Read parameters used by galactic plane survey
+    if ( internalView ) then
 
        call getReal("imageside", imageside, 1., cLine, fLine, nLines, &
             "Image size (degrees):","(a,1p,f7.2,1x,a)", amrGridSize, ok, .false.)
@@ -3958,7 +3958,7 @@ contains
             "(a,e10.4,1x,a)", 2.2e12_db, ok, .false.)
        call getDouble("intPosZ", intPosZ, 1.0_db,  cLine, fLine, nLines, "Observer z position (x10^10cm):", &
             "(a,e10.4,1x,a)", 0.d0, ok, .false.)
-          
+
        call getDouble("intDeltaVx", intDeltaVx, 1.0_db,  cLine, fLine, nLines, "Observer x velocity boost (km/s):", &
             "(a,f8.2,1x,a)", 0.d0, ok, .false.)
        call getDouble("intDeltaVy", intDeltaVy, 1.0_db,  cLine, fLine, nLines, "Observer y velocity boost (km/s):", &
@@ -3969,18 +3969,18 @@ contains
        call getReal("vturb", vturb, 1., cLine, fLine, nLines, &
             "Subsonic turbulent velocity (km/s):","(a,f4.1,1x,a)", 0.0, ok, .false.)
 
-       ! This is only implemented in angularImage_mod 
+       ! This is only implemented in angularImage_mod
        call getInteger("dssminsample", dssminsample, cLine, fLine, nLines, &
             "Minimum number of density subsamples: ","(a,i4,a)", 5, ok, .false.)
 
-       ! For the internal case use these parameters to rotate the galaxy so we are not looking along cell boundaries. 
+       ! For the internal case use these parameters to rotate the galaxy so we are not looking along cell boundaries.
        ! Rotation about y-axis
        call getDouble("galaxyInclination", galaxyInclination, 1.0_db,  cLine, fLine, nLines, &
             "Galaxy Inclination:", "(a,f4.1,1x,a)", 45.d0, ok, .false.)
        ! Rotation about z-axis
        call getDouble("galaxyPositionAngle", galaxyPositionAngle, 1.0_db, cLine, fLine, nLines, &
             "Galaxy position angle:", "(a,f4.1,1x,a)", 0.d0, ok, .false.)
-       
+
        ! Rotate the centre of the grid so it covers the required domain
        gridCentre     = VECTOR(amrGridCentreX, amrGridCentreY, amrGridCentreZ)
        write(message,'(a,3(ES12.3,2x),a)') "Grid centre is ", gridCentre
@@ -3992,18 +3992,18 @@ contains
        amrGridCentreX = gridCentre%x
        amrGridCentreY = gridCentre%y
        amrGridCentreZ = gridCentre%z
-          
-       if ( readgrid ) then 
+
+       if ( readgrid ) then
        ! When restarting particles are required for map_dI_to_particles
           call getString("sphdatafilename", sphdatafilename, cLine, fLine, nLines, &
                "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
-          
+
           call getString("inputFileFormat", inputFileFormat, cLine, fLine, nLines, &
                "Input file format: ","(a,a,1x,a)","binary", ok, .false.)
        end if
 
     else
-       ! Switchable units are only in molecular mod 
+       ! Switchable units are only in molecular mod
        call getString("datacubeunits", datacubeunits, cLine, fLine, nLines, &
             "Output datacube units: ","(a,a,1x,a)","intensity", ok, .false.)
        call getString("datacubeaxisunits", datacubeaxisunits, cLine, fLine, nLines, &
@@ -4032,7 +4032,7 @@ contains
 
     end if
 
-    if ( h21cm ) then 
+    if ( h21cm ) then
 
        call getReal("tminglobal", TMinGlobal, 1., cLine, fLine, nLines, &
             "Minimum Temperature (K): ","(a,f4.1,1x,a)", 10., ok, .false.)
@@ -4063,9 +4063,9 @@ contains
        call getLogical("wanttau", wanttau, cLine, fLine, nLines, &
             "Write Tau information to datacube: ","(a,1l,1x,a)", .false., ok, .false.)
        itrans = 1 ! always 1 for the 21cm line
-       
+
     end if
- 
+
    if (molecularPhysics) then
        call getInteger("nSubpixels", nSubpixels, cLine, fLine, nLines, &
             "Subpixel splitting (0 denotes adaptive)","(a,i4,a)", 1, ok, .false.)
@@ -4077,7 +4077,7 @@ contains
           call getReal("lamline", lamLine, 1.e4,cLine, fLine, nLines, &
                "Line emission wavelength (um): ","(a,f6.1,1x,a)", 850., ok, .true.)
        endif
-       
+
        call getLogical("rgbcube", rgbCube, cLine, fLine, nLines, &
          "Create an RGB data cube (reverses velocity axis): ","(a,1l,a)", .false., ok, .false.)
        call getInteger("itrans", itrans, cLine, fLine, nLines, &
@@ -4096,7 +4096,7 @@ contains
           call getDouble("centrevecy", centrevecy, 1.d0, cLine, fLine, nLines, &
                "Image Centre Coordinate (lat): ","(a,f7.2,1x,a)", 0.d0, ok, .true.)
        else
-          
+
           if (amr3d) then
           call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
                "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", amrGridCentreX, ok, .false.)
@@ -4114,10 +4114,10 @@ contains
        call getLogical("wanttau", wanttau, cLine, fLine, nLines, &
             "Write Tau information to datacube: ","(a,1l,1x,a)", .false., ok, .false.)
     endif
-       
+
 ! Set observer orientation for molecular_mod. This is only required for the far field case
-! when using molecular or 21cm physics. 
-molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm)) then 
+! when using molecular or 21cm physics.
+molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm)) then
 
 ! We should have either rotateViewAbout? parameters galaxy* parameters but not a mixture.
        if ((checkPresent("rotateViewAboutX", cLine, nlines).or. &
@@ -4178,13 +4178,13 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
        case("ccd")
           call getDouble("detectorxsize", detectorXsize, 1.d0, cLine, fLine, nLines, &
                   "Detector X size: ","(a,f6.1,a)",0.d0, ok, .true.)
-          
+
           call getDouble("detectorysize", detectorYsize, 1.d0, cLine, fLine, nLines, &
                "Detector Y size: ","(a,f6.1,a)",0.d0, ok, .true.)
-          
+
           call getInteger("detectornx", detectornx, cLine, fLine, nLines, &
                "Detector X pixels ","(a,i4,a)",0, ok, .true.)
-          
+
           call getInteger("detectorny", detectorny, cLine, fLine, nLines, &
                   "Detector Y pixels ","(a,i4,a)",0, ok, .true.)
        case("fibre")
@@ -4196,11 +4196,11 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
 
     end select
 
-          
+
     call getString("detfilename", detFilename, cLine, fLine, nLines,&
          "Filename for detector output:", "(a,a,1x,a)", "au", ok, .true.)
   end subroutine readDetectorParameters
-    
+
   subroutine readColumnImageParameters(cLine, fLine, nLines)
     use constants_mod
     use image_utils_mod
@@ -4218,7 +4218,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     call getString("columnaxisunits", columnAxisUnits, cLine, fLine, nLines,&
          "Axis units for column image:", "(a,a,1x,a)", "pc", ok, .false.)
   end subroutine readColumnImageParameters
-  
+
   subroutine readImageParameters(cLine, fLine, nLines)
     use constants_mod
     use image_utils_mod
@@ -4266,7 +4266,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     call getInteger("nimage", nimage, cLine, fLine, nLines, &
          "Number of images to calculate: ","(a,i4,a)", 1, ok, .false.)
     if (nimage > 9999) call writeWarning("Too many images. Need nimage <= 9999.")
-    
+
     call setNumImages(nimage)
 
     call getString("imageaxisunits", axisUnits, cLine, fLine, nLines,&
@@ -4312,7 +4312,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
          "Dump a file of pixel values in a cut across the image: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getString("cutType", cutType, cLine, fLine, nLines, &
-         "Direction of cut: ","(a,a,1x,a)","horizontal", ok, .false.)       
+         "Direction of cut: ","(a,a,1x,a)","horizontal", ok, .false.)
 
 
     call getInteger("sliceIndex", sliceIndex, cLine, fLine, nLines, &
@@ -4329,7 +4329,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     call getInteger("npixels", npixels, cLine, fLine, nLines, &
          "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
 
-    call getReal("imageaspect", aspectRatio, 1.0, cLine, fLine, nLines, & 
+    call getReal("imageaspect", aspectRatio, 1.0, cLine, fLine, nLines, &
          "Image aspect ratio: ", "(a,f4.1,1x,a)", 1.0, ok, .false.)
 
 ! Inclination and position angle for single image, also used as default value for multiple images
@@ -4387,7 +4387,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
           outputimageType(1:10) = "stokes    "
           call writeInfo("Type of output image: Stokes image (default for atomic physics)")
        endif
-              
+
        call setImageParams(1, lambdaImage, outputimageType, imageFilename, npixels, axisUnits, globalfluxUnits, &
             imageSize, aspectRatio, inclination, positionAngle, offsetx, offsety, gridDistance)
     else
@@ -4418,7 +4418,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
           ! no wavelength has been specified in the parameters file
              write(keyword,'(a)') "lambdaimage"//iChar
              if ( outputimagetype == "freefree" .and. &
-                  .not. checkPresent(keyword, cline, nlines) .and. & 
+                  .not. checkPresent(keyword, cline, nlines) .and. &
                   .not. checkPresent("lambdaimage", cline, nlines)) then
                 thisLambdaImage = 20.0e8 ! 20cm in Anstroms
                 call writeInfo("Setting default wavelength to 20cm for free-free image")
@@ -4437,14 +4437,14 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
                "Number of pixels per side in image","(a,i8,a)", npixels, ok, .false.)
 
           ! Size of this image
-          write(keyword,'(a)') "imagesize"//iChar 
-          write(message,*) "Image size ("//trim(axisUnits)//"): "        
+          write(keyword,'(a)') "imagesize"//iChar
+          write(message,*) "Image size ("//trim(axisUnits)//"): "
           call getReal(keyword, thisImageSize, 1.0, cLine, fLine, nLines, &
             trim(message), "(a,1pe10.2,1x,a)", imageSize, ok, .false.)
 
           ! Aspect ratio
           write(keyword,'(a)') "imageaspect"//iChar
-          call getReal(keyword, thisAspectRatio, 1.0, cLine, fLine, nLines, & 
+          call getReal(keyword, thisAspectRatio, 1.0, cLine, fLine, nLines, &
                "Image aspect ratio: ", "(a,f4.1,1x,a)", aspectRatio, ok, .false.)
 
           write(keyword,'(a)') "imagefluxunits"//iChar
@@ -4485,7 +4485,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
        call writeInfo(" ")
 
     end if
-   
+
   end subroutine readImageParameters
 
   subroutine readMovieParameters(cLine, fLine, nLines)
@@ -4529,7 +4529,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     call getInteger("nimage", nimage, cLine, fLine, nLines, &
          "Number of images to calculate: ","(a,i4,a)", 1, ok, .false.)
     if (nimage > 9999) call writeWarning("Too many images. Need nimage <= 9999.")
-    
+
     call setNumImages(nimage)
 
     call getString("imageaxisunits", axisUnits, cLine, fLine, nLines,&
@@ -4564,7 +4564,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     call getInteger("npixels", npixels, cLine, fLine, nLines, &
          "Number of pixels per side in image","(a,i8,a)", 200, ok, .false.)
 
-    call getReal("imageaspect", aspectRatio, 1.0, cLine, fLine, nLines, & 
+    call getReal("imageaspect", aspectRatio, 1.0, cLine, fLine, nLines, &
          "Image aspect ratio: ", "(a,f4.1,1x,a)", 1.0, ok, .false.)
 
 ! Inclination and position angle for single image, also used as default value for multiple images
@@ -4611,18 +4611,18 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     endif
     call getInteger("npixels", thisnpixels, cLine, fLine, nLines, &
          "Number of pixels per side in image","(a,i8,a)", npixels, ok, .false.)
-    
+
     ! Size of this image
     write(keyword,'(a)') "imagesize"
-    write(message,*) "Image size ("//trim(axisUnits)//"): "        
+    write(message,*) "Image size ("//trim(axisUnits)//"): "
     call getReal(keyword, thisImageSize, 1.0, cLine, fLine, nLines, &
          trim(message), "(a,1pe10.2,1x,a)", imageSize, ok, .false.)
-    
+
     ! Aspect ratio
     write(keyword,'(a)') "imageaspect"
-    call getReal(keyword, thisAspectRatio, 1.0, cLine, fLine, nLines, & 
+    call getReal(keyword, thisAspectRatio, 1.0, cLine, fLine, nLines, &
          "Image aspect ratio: ", "(a,f4.1,1x,a)", aspectRatio, ok, .false.)
-    
+
     ! Inclination and position angle
     write(keyword,'(a)') "inclination"
     call getReal(keyword, thisInc, real(degtorad), cLine, fLine, nLines, &
@@ -4630,7 +4630,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     write(keyword,'(a)') "positionangle"
     call getReal(keyword, thisPA, real(degtorad), cLine, fLine, nLines, &
          "Position angle (deg): ","(a,f6.1,1x,a)", positionAngle*real(radtodeg), ok, .false.)
-    
+
     ! Position of image centre
     write(keyword,'(a)') "imagecentrex"
     call getReal(keyword, thisOffsetx, 1.0, cLine, fLine, nLines, &
@@ -4638,9 +4638,9 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     write(keyword,'(a)') "imagecentrey"
     call getReal(keyword, thisOffsety, 1.0, cLine, fLine, nLines, &
          "Image centre y position (10^10 cm): ", "(a,e10.1,1x,a)", offsety, ok, .false.)
-    
+
     do i = 1, nImage
-       
+
        write(imageFilename,'(a,i4.4,a)') "movie",i,".fits"
 
        thisTime = 0.d0
@@ -4654,7 +4654,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     enddo
 
     call writeInfo(" ")
-   
+
   end subroutine readMovieParameters
 
 
@@ -4744,7 +4744,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     real    :: firstInclination, firstPA=0.0
     real    :: lastInclination=80.0, lastPA=0.0
     real, allocatable :: inclinations(:), posangs(:)
-    character(len=80) :: outFile 
+    character(len=80) :: outFile
 
 
     call getBigInteger("nphotons", nPhotons, cLine, fLine, nLines, &
@@ -4763,16 +4763,16 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
 incStyle: if (checkPresent("inclinations", cline, nlines)) then
 ! Inclinations and postion angles range style
        call parameterDefinesRange("inclinations", firstInclination, lastInclination, isRange, cLine, fLine, nLines)
-       if (isRange) then 
+       if (isRange) then
           write(message,'(a,f6.2,a,f6.2,a)') &
                "SED inclination range is from ", firstInclination, " to ", lastInclination, " degrees"
           call writeInfo(message,TRIVIAL)
           firstInclination = firstInclination * real(degToRad)
           lastInclination = lastInclination * real(degToRad)
 
-          if (checkPresent("posangs", cline, nlines)) then 
+          if (checkPresent("posangs", cline, nlines)) then
              call parameterDefinesRange("posangs", firstPA, lastPA, isRange, cLine, fLine, nLines)
-             if (isRange) then 
+             if (isRange) then
                 write(message,'(a,f6.2,a,f6.2,a)') &
                      "SED PA range is from ", firstPA, " to ", lastPA, " degrees"
                 call writeInfo(message,TRIVIAL)
@@ -4914,7 +4914,7 @@ incStyle: if (checkPresent("inclinations", cline, nlines)) then
     call getLogical("sedcosspaced", UniformInCos, cLine, fLine, nLines, &
          "SED inclinations are uniform in cos(inc): ","(a,1l,1x,a)", .true., ok, .false.)
 
-    if (allocated(inclinations)) then 
+    if (allocated(inclinations)) then
        call setSedParameters(outFile,jansky,SIsed,sed, lambdaInMicrons, firstPA, lastPA, incList=inclinations, PAlist=posangs)
        deallocate(inclinations)
        deallocate(posangs)
@@ -4993,7 +4993,7 @@ end do
  character(len=*) :: name
  real(double) :: value
  character(len=lencLine) :: cLine(:)
- character(len=*) :: unit 
+ character(len=*) :: unit
  logical :: fLine(:)
  integer :: nLines
  logical :: ok
@@ -5375,7 +5375,7 @@ end subroutine getBigInteger
    character(len=*) :: keyword
    character(len=lencLine) :: cLine(:)
    integer :: nLines
-   integer :: i, j 
+   integer :: i, j
    checkPresent = .false.
 
    j = len(trim(keyword))
@@ -5649,9 +5649,9 @@ end subroutine getVector
 end subroutine getIntegerArray
 
 !Return boundary code for input boundary strings
- integer function getBoundaryCode(boundaryString)         
+ integer function getBoundaryCode(boundaryString)
    character(len=20) :: boundaryString
-   
+
    select case (boundaryString)
       case("reflecting")
          getBoundaryCode = 1
@@ -5665,11 +5665,11 @@ end subroutine getIntegerArray
          getBoundaryCode = 5
       case("inflow")
          getBoundaryCode = 6
-      case("inflowGrad") 
+      case("inflowGrad")
          getBoundaryCode = 7
-      case("gasmix") 
+      case("gasmix")
          getBoundaryCode = 9
-      case("slip-wall") 
+      case("slip-wall")
          getBoundaryCode = 10
       case DEFAULT
          print *, "Unrecognised boundary string:", boundaryString
@@ -5680,21 +5680,21 @@ end subroutine getIntegerArray
 
  end function getBoundaryCode
 
-! Count the number of lines in a file. 
+! Count the number of lines in a file.
 ! Should return the same answer as wc -l i.e. includes blank lines in the total
 ! D. Acreman, June 2010
   integer function file_line_count(filename)
 
     character(len=*) :: filename
     character(len=1) :: dummy
-    integer :: status 
+    integer :: status
 
     file_line_count = 0
     open(unit=30, status="old", file=filename)
     do
        read(30,'(a1)',iostat=status) dummy
        if ( status /= 0 ) exit
-       file_line_count = file_line_count + 1 
+       file_line_count = file_line_count + 1
     end do
     close(30)
 
@@ -5715,7 +5715,7 @@ end subroutine getIntegerArray
 
   subroutine parameterDefinesRange(name, firstVal, lastVal, isRange, cLine, fLine, nLines)
 
-    character(len=*), intent(in)  :: name 
+    character(len=*), intent(in)  :: name
     real, intent(out)             :: firstVal
     real, intent(out)             :: lastVal
     logical, intent(out)          :: isRange
@@ -5724,23 +5724,23 @@ end subroutine getIntegerArray
     integer, intent(in)           :: nLines
 
     character(len=lencline) :: thisString
-    logical           :: ok 
+    logical           :: ok
     integer           :: i, j
 
     call findLine(name, thisString, cLine, fLine, nLines, ok)
 
-! Look for .. to determine if this is a range of values 
+! Look for .. to determine if this is a range of values
 ! The parameters file is lencLine in length
-    isRange = .false. 
-    do i=1, lencLine-4 
-       if (thisString(i:i+1) == "..") then 
+    isRange = .false.
+    do i=1, lencLine-4
+       if (thisString(i:i+1) == "..") then
           isRange = .true.
           thisString(i:i+1) = "  "
           exit
        end if
     end do
 
-    if (isRange) then 
+    if (isRange) then
        j = len_trim(name)
        read(thisString(j+1:lencLine),*) firstVal, lastVal
     else
@@ -5752,4 +5752,3 @@ end subroutine getIntegerArray
   end subroutine parameterDefinesRange
 
 end module inputs_mod
-
