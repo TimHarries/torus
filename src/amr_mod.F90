@@ -16352,34 +16352,34 @@ end function readparameterfrom2dmap
 
 
 
-  recursive subroutine outputTemp(grid, thisOctal,fp)
-    integer, intent(in) :: fp
-    integer :: subcell, i
-    type(VECTOR) :: cellCentre
-    type(GRIDTYPE) :: grid
-    type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child
-    real(double) :: thisR
-
-    do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child =>thisOctal%child(i)
-                call outputTemp(grid, child,fp)
-                exit
-             end if
-          end do
-       else
-         if (thisOCtal%inFlow(subcell)) then
-           cellCentre = subcellCentre(thisOctal, subcell)
-           thisR = modulus(cellCentre)*1.d10
-           write(fp,*) thisR, thisOCtal%temperature(subcell)
-         end if
-       end if
-    end do
-  end subroutine outputTemp
+  ! recursive subroutine outputTemp(grid, thisOctal,fp)
+  !   integer, intent(in) :: fp
+  !   integer :: subcell, i
+  !   type(VECTOR) :: cellCentre
+  !   type(GRIDTYPE) :: grid
+  !   type(octal), pointer   :: thisOctal
+  !   type(octal), pointer  :: child
+  !   real(double) :: thisR
+  !
+  !   do subcell = 1, thisOctal%maxChildren
+  !      if (thisOctal%hasChild(subcell)) then
+  !         ! find the child
+  !         do i = 1, thisOctal%nChildren, 1
+  !            if (thisOctal%indexChild(i) == subcell) then
+  !               child =>thisOctal%child(i)
+  !               call outputTemp(grid, child,fp)
+  !               exit
+  !            end if
+  !         end do
+  !      else
+  !        if (thisOCtal%inFlow(subcell)) then
+  !          cellCentre = subcellCentre(thisOctal, subcell)
+  !          thisR = modulus(cellCentre)*1.d10
+  !          write(fp,*) thisR, thisOCtal%temperature(subcell)
+  !        end if
+  !      end if
+  !   end do
+  ! end subroutine outputTemp
 
 
 

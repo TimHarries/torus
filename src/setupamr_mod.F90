@@ -91,7 +91,7 @@ contains
     real, pointer :: zVel(:,:,:) => null()
     type(vector), pointer :: posArray(:) => null(), velArray(:) => null()
     real(double), pointer :: rhoArray(:) => null()
-    integer :: npoints,fp
+    integer :: npoints!,fp
 #ifdef SPH
     type(cluster) :: young_cluster
     real(double)  ::  removedMass
@@ -375,11 +375,10 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
                   minRCubedRhoSquared)
              call assignTemperaturesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
                      minRCubedRhoSquared)
-             fp = 10
-             print*,grid%nOctals
-             open (UNIT=fp, FILE="temperature_tjgw.dat",ACTION="WRITE") !!writes out temperature distribution into data file
-             call outputTemp(grid, grid%octreeRoot, fp)
-             close(fp)
+             ! fp = 10
+             ! open (UNIT=fp, FILE="temperature_tjgw.dat",ACTION="WRITE") !!writes out temperature distribution into data file
+             ! call outputTemp(grid, grid%octreeRoot, fp)
+             ! close(fp)
           endif
 
        call writeVtkFile(grid, "temp1.vtk",  valueTypeString=(/"temperature"/))
