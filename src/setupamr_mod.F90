@@ -19,7 +19,7 @@ module setupamr_mod
   implicit none
 
 contains
-    
+
   subroutine setupamrgrid(grid)
 
     use gridio_mod
@@ -50,7 +50,7 @@ contains
     use cluster_class
     use sph_data_class, only: read_sph_data_wrapper
 #endif
-#ifdef MPI 
+#ifdef MPI
     use mpi_amr_mod
     use inputs_mod, only : photoionPhysics, rho0
 #ifdef PHOTOION
@@ -91,13 +91,13 @@ contains
     real, pointer :: zVel(:,:,:) => null()
     type(vector), pointer :: posArray(:) => null(), velArray(:) => null()
     real(double), pointer :: rhoArray(:) => null()
-    integer :: npoints
+    integer :: npoints,fp
 #ifdef SPH
     type(cluster) :: young_cluster
     real(double)  ::  removedMass
     real(double) :: objectDistance
 #endif
-#ifdef MPI 
+#ifdef MPI
     integer :: i !, ierr
 #endif
 
@@ -282,7 +282,7 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           grid%octreeRoot%rho = 100.*mhydrogen
           grid%octreeRoot%temperature = 10.
           call randomNumberGenerator(randomSeed = .true.)
-          do while(.not.gridconverged) 
+          do while(.not.gridconverged)
              gridConverged = .true.
              call splitGridFractal(grid%octreeRoot, real(rho0), 0.3, grid, gridconverged)
           enddo
@@ -317,7 +317,7 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           if (vh1FileRequired())   call read_vh1
           if (flashFileRequired()) call read_flash_hdf
 
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d,  romData=romData) 
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d,  romData=romData)
           call writeInfo("First octal initialized.", TRIVIAL)
 !          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false., romData=romData)
@@ -337,7 +337,7 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           endif
 
        case("magstream")
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, romData=romData) 
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, romData=romData)
           call writeInfo("First octal initialized.", TRIVIAL)
 
 
@@ -348,7 +348,7 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           deallocate(posArray, velArray, rhoArray)
 
        case("ttauri")
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, romData=romData) 
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, romData=romData)
           call writeInfo("First octal initialized.", TRIVIAL)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false., romData=romData)
           if (doSmoothGrid) then
@@ -364,7 +364,7 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           call fixParentPointers(grid%octreeRoot)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
-           ! This section is getting rather long. Maybe this should be done in 
+           ! This section is getting rather long. Maybe this should be done in
            ! wrapper subroutine in amr_mod.f90.
           call zeroDensity(grid%octreeRoot)
           astar = accretingAreaMahdavi()
@@ -375,8 +375,13 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
                   minRCubedRhoSquared)
              call assignTemperaturesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
                      minRCubedRhoSquared)
+             fp = 10
+             print*,grid%nOctals
+             open (UNIT=fp, FILE="temperature_tjgw.dat",ACTION="WRITE") !!writes out temperature distribution into data file
+             call outputTemp(grid, grid%octreeRoot, fp)
+             close(fp)
           endif
-             
+
        call writeVtkFile(grid, "temp1.vtk",  valueTypeString=(/"temperature"/))
           call checkAMRgrid(grid, .false.)
 #ifdef ATOMIC
@@ -403,7 +408,7 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
 
 
        case DEFAULT
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, romData=romData) 
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, romData=romData)
           call writeInfo("First octal initialized.", TRIVIAL)
 !          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
           call writeInfo("Doing first grid split.", TRIVIAL)
@@ -447,10 +452,10 @@ doGridshuffle: if(gridShuffle) then
            nTimes = maxDepthAMR - minDepthAMR + 2
            if(logspacegrid) nTimes = nmag*10
            do counter = 1, nTimes
-              call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .true., romData=romData)     
+              call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .true., romData=romData)
               call fixParentPointers(grid%octreeRoot)
            end do
-           
+
            if (doSmoothGrid) then
               call writeInfo("Smoothing adaptive grid structure 2...", TRIVIAL)
               do
@@ -463,11 +468,11 @@ doGridshuffle: if(gridShuffle) then
               end do
               call writeInfo("...grid smoothing complete", TRIVIAL)
            endif
-           
+
            call countVoxels(grid%octreeRoot,nOctals,nVoxels)
            grid%nOctals = nOctals
            call howmanysplits()
-           call writeInfo("Grid shuffle phase of initiation completed", TRIVIAL)          
+           call writeInfo("Grid shuffle phase of initiation completed", TRIVIAL)
            call finishGrid(grid%octreeRoot, grid, romData=romData)
 #ifdef MPI
 #ifdef HYDRO
@@ -480,7 +485,7 @@ doGridshuffle: if(gridShuffle) then
 #endif
 
         end if doGridshuffle
-        
+
 
 
        select case (geometry)
@@ -510,7 +515,7 @@ doGridshuffle: if(gridShuffle) then
 !                     minRCubedRhoSquared)
 !             endif
 !             call testVelocity(grid%octreeRoot,grid)
-!       
+!
 !             if (ttauriwind)  call addDiscWind(grid)
 !             if (ttauridisc) call assignDensitiesAlphaDisc(grid, grid%octreeRoot)
 !             if (ttauriwarp) call addWarpedDisc(grid%octreeRoot)
@@ -601,9 +606,9 @@ doGridshuffle: if(gridShuffle) then
 #endif
 !                gpe = (3.d0/5.d0)*bigG * sphereMass**2/(sphereRadius*1.d10)
                 gpe = 0.43d0 * bigG * sphereMass**2/(sphereRadius*1.d10) ! for beta = -1.5
-                requiredKE = 0.5d0 * virialAlpha * gpe  
+                requiredKE = 0.5d0 * virialAlpha * gpe
                 if (writeoutput) write(*,*) "Gravitational potential ", gpe
-                if (ke /= 0.d0) then 
+                if (ke /= 0.d0) then
                     vScaleFac = sqrt(requiredKe / ke)
                 else
                     vscaleFac = 1.d0
@@ -627,9 +632,9 @@ doGridshuffle: if(gridShuffle) then
                 call findkeOverAllThreads(grid, ke)
 #endif
                 gpe = (3.d0/5.d0)*bigG * sphereMass**2/(sphereRadius*1.d10)
-                requiredKE = 0.5d0 * virialAlpha * gpe  
+                requiredKE = 0.5d0 * virialAlpha * gpe
                 if (writeoutput) write(*,*) "Gravitational potential ", gpe
-                if (ke /= 0.d0) then 
+                if (ke /= 0.d0) then
                     vScaleFac = sqrt(requiredKe / ke)
                 else
                     vscaleFac = 1.d0
@@ -674,7 +679,7 @@ doGridshuffle: if(gridShuffle) then
               do i = 1, 8
                  grid%octreeRoot%mpiThread(i) = i
               enddo
-              
+
               !label each cell with its appropriate MPI thread
 !              write(*,*) "Distributing MPI Labels"
               call distributeMPIthreadLabels(grid%octreeRoot)
@@ -704,15 +709,15 @@ doGridshuffle: if(gridShuffle) then
 !        call bigarraytest(grid%octreeRoot)
 !    call findTotalMemory(grid, i)
 !    call reportMemory(i)
-!        if (myrankGlobal == 1) then 
+!        if (myrankGlobal == 1) then
 !           call freeGrid(grid)
 !           do;enddo
 !           else
 !              do; enddo
 !              endif
 
-! Free allocatable arrays used in the grid set up which are no longer required. 
-! These subroutines should check that the arrays they are deallocating have actually 
+! Free allocatable arrays used in the grid set up which are no longer required.
+! These subroutines should check that the arrays they are deallocating have actually
 ! been allocated, that way it is always safe to call the subroutine.
 #ifdef USECFITSIO
         call deallocate_gridFromFitsFile
@@ -727,7 +732,7 @@ doGridshuffle: if(gridShuffle) then
   subroutine doSmoothOnTau(grid)
 
     use inputs_mod, only: doSmoothGridTau, dustPhysics, lambdaSmooth!, cylindrical
-    use inputs_mod, only: dosmoothgrid, smoothfactor !,  photoionPhysics, variableDustSublimation, 
+    use inputs_mod, only: dosmoothgrid, smoothfactor !,  photoionPhysics, variableDustSublimation,
     use utils_mod, only: locate
     use lucy_mod, only: putTau
     use grid_mod, only: grid_info
@@ -808,7 +813,7 @@ doGridshuffle: if(gridShuffle) then
           call writeInfo("...grid smoothing complete", TRIVIAL)
        endif
        call writeVtkFile(grid, "aftersmooth.vtk")
-             
+
        if ( myRankIsZero ) call grid_info(grid, "info_grid_aftersmooth.dat")
 
     end if
@@ -851,12 +856,12 @@ doGridshuffle: if(gridShuffle) then
        case DEFAULT
           call writeFatal("setupFogel: unknown species")
     end select
-    
+
 
     open(20, file=filename, status="old", form="formatted")
     read(20,'(A)') cJunk
     read(20,'(A)') cJunk
-    
+
     nr = 1
     nz(1) = 0
 
@@ -950,7 +955,7 @@ doGridshuffle: if(gridShuffle) then
     write(21,'(A)') trim(cjunk)
     read(20,'(A)') cJunk
     write(21,'(A)') trim(cjunk)
-    
+
     nr = 1
     nz(1) = 0
 
@@ -1104,7 +1109,7 @@ doGridshuffle: if(gridShuffle) then
           use inputs_mod, only : mcore, vturb, atomicPhysics, molecularPhysics,sourcemass
           type(GRIDTYPE) :: grid
           type(octal), pointer   :: thisOctal
-          type(octal), pointer  :: child 
+          type(octal), pointer  :: child
           type(VECTOR) :: rVec
           real(double) :: thisR, thisZ,fac1,fac2,fac3,s
           integer :: subcell, i, j, k1,k2
@@ -1156,7 +1161,7 @@ doGridshuffle: if(gridShuffle) then
                    thisOctal%rho(subcell) = (1.d0-fac1)*(1.d0-fac2)* rho(j,k1) + &
                         (     fac1)*(1.d0-fac3)* rho(j+1,k2) + &
                         (1.d0-fac1)*(     fac2)* rho(j,k1+1) + &
-                        (     fac1)*(     fac3)* rho(j+1,k2+1)  
+                        (     fac1)*(     fac3)* rho(j+1,k2+1)
 
 
                    thisOctal%temperature(subcell) = real(max(3.d0,(1.d0-fac1)*(1.d0-fac2)* t(j,k1) + &
@@ -1171,7 +1176,7 @@ doGridshuffle: if(gridShuffle) then
                            (1.d0-fac1)*(     fac2)* abundance(j,k1+1) + &
                            (     fac1)*(     fac3)* abundance(j+1,k2+1)  )
 
-                      thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.d0 * mHydrogen) 
+                      thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.d0 * mHydrogen)
 
                       thisOctal%molAbundance(subcell) = real(thisOctal%molAbundance(subcell) * 2.d0)
                    endif
@@ -1180,8 +1185,8 @@ doGridshuffle: if(gridShuffle) then
                    thisOctal%microturb(subcell) = max(vturb/(1.d-5*cspeed),sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) &
                         / (28.0 * amu)) + vturb**2) &
                         / (cspeed * 1e-5)) ! mu is 0.3km/s subsonic turbulence
-                   
-                   thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.d0 * mHydrogen) 
+
+                   thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.d0 * mHydrogen)
                 endif
              endif
           enddo
@@ -1207,7 +1212,7 @@ doGridshuffle: if(gridShuffle) then
 !      integer, parameter :: ibl=16, ibr=48, jbl=16, jbr=48, kbl=16, kbr=48
 
 ! *** conversion factors from computational units to cgs units.
-      real(double), parameter :: rho0=1.104d-17, l0=6.3728748d15 
+      real(double), parameter :: rho0=1.104d-17, l0=6.3728748d15
 
 ! *** input/output variables
       integer levmin,levmax
@@ -1498,7 +1503,7 @@ doGridshuffle: if(gridShuffle) then
                 child%temperature(j) = 10.d0
                 child%velocity(j) = VECTOR(0.d0, 0.d0, 0.d0)
                 !Thaw - will probably want to change this to use returnMu
-                
+
                 ethermal = (1.d0/(mHydrogen))*kerg*child%temperature(j)
 
                 if (hydrodynamics) then
@@ -1517,7 +1522,7 @@ doGridshuffle: if(gridShuffle) then
                    child%ne(j) = child%nh(j)
                    child%nhi(j) = 1.e-5
                    child%nhii(j) = child%ne(j)
-                   child%nHeI(j) = 0.d0 !0.1d0 *  child%nH(j)    
+                   child%nHeI(j) = 0.d0 !0.1d0 *  child%nH(j)
                    child%ionFrac(j,1) = 1.               !HI
                    child%ionFrac(j,2) = 1.e-10           !HII
                 endif
@@ -1529,7 +1534,7 @@ doGridshuffle: if(gridShuffle) then
              converged = .false.
              exit
           endif
-          
+
        endif
     end do
   end subroutine splitGridFractal
@@ -1571,7 +1576,7 @@ doGridshuffle: if(gridShuffle) then
        call writeInfo(message, TRIVIAL)
        write(message,*) "Mass of envelope (TRAP): ",totalMasstrap/mSol, " solar masses"
        call writeInfo(message, TRIVIAL)
-       if (sphwithchem) then 
+       if (sphwithchem) then
           write(message,*) "Molecular mass of envelope: ",totalMassMol/mSol, " solar masses"
           call writeInfo(message, TRIVIAL)
        endif
@@ -1583,7 +1588,7 @@ doGridshuffle: if(gridShuffle) then
        call writeInfo(message, TRIVIAL)
 
 ! Write a VTK file so we can check the SPH to grid conversion
-       if ( sphWithChem ) then 
+       if ( sphWithChem ) then
           call writeVTKfile(grid, "gridFromSph.vtk", valueTypeString=(/"rho         ",&
          "temperature ", "velocity    ", "molabundance", "numh2       "/))
        else
@@ -1611,7 +1616,7 @@ doGridshuffle: if(gridShuffle) then
     type(GRIDTYPE) :: grid
     real(double) :: massWanted, actualMass, fac
     character(len=80) :: message
-    
+
     actualMass = 0.d0
     call findTotalMass(grid%octreeRoot, actualMass)
 
@@ -1642,7 +1647,7 @@ doGridshuffle: if(gridShuffle) then
        deallocate(thisOctal%child)
     endif
 
-       
+
   end subroutine myFreeGrid
 
   recursive subroutine bigArraytest(thisOctal)
@@ -1701,7 +1706,7 @@ doGridshuffle: if(gridShuffle) then
                phi2 = atan2(centre%y, centre%x)
                if (phi2 < 0.d0) phi2 = phi2 + twoPi
 
-               inc = thisOctal%subcellSize / 2.0               
+               inc = thisOctal%subcellSize / 2.0
 
                t1 = MAX(0.0_oc, (r1 - (r2 - inc)) / thisOctal%subcellSize)
                t2 = (phi1 - (phi2 - thisOctal%dPhi/4.d0))/(thisOctal%dPhi/2.d0)
@@ -1716,7 +1721,7 @@ doGridshuffle: if(gridShuffle) then
              z2 = thisOctal%centre%z
              z3 = thisOctal%centre%z + thisOctal%subcellSize
              phi1 = thisOctal%phiMin
-             phi2 = thisOctal%phi 
+             phi2 = thisOctal%phi
              phi3 = thisOctal%phiMax
              r1 = thisOctal%r - thisOctal%subcellSize
              r2 = thisOctal%r
@@ -1750,7 +1755,7 @@ doGridshuffle: if(gridShuffle) then
                write(*,*) thisOctal%cornerVelocity(14)
                write(*,*) "corner ",vector(r2*cos(phi2),r2*sin(phi2),z2), &
                     inflowMahdavi(1.d10*vector(r2*cos(phi2),r2*sin(phi2),z2)), phi2*radtodeg
-               
+
             CASE(2)
                write(*,*) thisOctal%cornerVelocity( 2)
                write(*,*) "corner ",vector(r1*cos(phi2),r1*sin(phi2),z1), &
@@ -1776,7 +1781,7 @@ doGridshuffle: if(gridShuffle) then
                write(*,*) thisOctal%cornerVelocity(15)
                write(*,*) "corner ",vector(r2*cos(phi3),r2*sin(phi3),z2), &
                     inflowMahdavi(1.d10*vector(r2*cos(phi3),r2*sin(phi3),z2)), phi3*radtodeg
-               
+
             CASE(3)
                write(*,*) thisOctal%cornerVelocity( 4)
                write(*,*) "corner ",vector(r2*cos(phi1),r2*sin(phi1),z1), &
@@ -1802,7 +1807,7 @@ doGridshuffle: if(gridShuffle) then
                write(*,*) thisOctal%cornerVelocity(17)
                write(*,*) "corner ",vector(r3*cos(phi2),r3*sin(phi2),z2), &
                     inflowMahdavi(1.d10*vector(r3*cos(phi2),r3*sin(phi2),z2)), phi2*radtodeg
-               
+
             CASE(4)
                write(*,*) thisOctal%cornerVelocity( 5)
                write(*,*) "corner ",vector(r2*cos(phi2),r2*sin(phi2),z1), &
@@ -1828,7 +1833,7 @@ doGridshuffle: if(gridShuffle) then
                write(*,*) thisOctal%cornerVelocity(18)
                write(*,*) "corner ",vector(r3*cos(phi3),r3*sin(phi3),z2), &
                     inflowMahdavi(1.d10*vector(r3*cos(phi3),r3*sin(phi3),z2)), phi3*radtodeg
-               
+
             CASE(5)
                write(*,*) thisOctal%cornerVelocity(10)
                write(*,*) "corner ",vector(r1*cos(phi1),r1*sin(phi1),z2), &
@@ -1854,7 +1859,7 @@ doGridshuffle: if(gridShuffle) then
                write(*,*) thisOctal%cornerVelocity(23)
                write(*,*) "corner ",vector(r2*cos(phi2),r2*sin(phi2),z3), &
                     inflowMahdavi(1.d10*vector(r2*cos(phi2),r2*sin(phi2),z3)), phi2*radtodeg
-               
+
             CASE(6)
                write(*,*) thisOctal%cornerVelocity(11)
                write(*,*) "corner ",vector(r1*cos(phi2),r1*sin(phi2),z2), &
@@ -1880,7 +1885,7 @@ doGridshuffle: if(gridShuffle) then
                write(*,*) thisOctal%cornerVelocity(24)
                write(*,*) "corner ",vector(r2*cos(phi3),r2*sin(phi3),z3), &
                     inflowMahdavi(1.d10*vector(r2*cos(phi3),r2*sin(phi3),z3)), phi3*radtodeg
-            
+
             CASE(7)
                write(*,*) thisOctal%cornerVelocity(13)
                write(*,*) "corner ",vector(r2*cos(phi1),r2*sin(phi1),z2), &
@@ -1906,7 +1911,7 @@ doGridshuffle: if(gridShuffle) then
                write(*,*) thisOctal%cornerVelocity(26)
                write(*,*) "corner ",vector(r3*cos(phi2),r3*sin(phi2),z3), &
                     inflowMahdavi(1.d10*vector(r3*cos(phi2),r3*sin(phi2),z3)), phi2*radtodeg
-               
+
             CASE(8)
                write(*,*) thisOctal%cornerVelocity(14)
                write(*,*) "corner ",vector(r2*cos(phi2),r2*sin(phi2),z2), &
@@ -1969,13 +1974,13 @@ doGridshuffle: if(gridShuffle) then
   recursive subroutine set_bias_cmfgen(thisOctal, grid, lambda0)
   type(gridtype) :: grid
   type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
+  type(octal), pointer  :: child
   real, intent(in)          :: lambda0                ! rest wavelength of line
   integer :: subcell, i
   real(double) :: d, dV, r, tauSob, escProb
   type(vector)  :: rvec, rhat, direction
   real(double):: nu0, dr, dA, tau
-  
+
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -1989,7 +1994,7 @@ doGridshuffle: if(gridShuffle) then
 
        else
           if (thisOctal%inflow(subcell)) then
-             d = thisOctal%subcellsize 
+             d = thisOctal%subcellsize
 
              rVec = subcellCentre(thisOctal,subcell)
              r = modulus(rvec)
@@ -2012,7 +2017,7 @@ doGridshuffle: if(gridShuffle) then
              tauSob = thisOctal%chiline(subcell)  / nu0
              tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, rhat, &
                   startOctal=thisOctal)
-           
+
              if (tauSob < 0.01) then
                 escProb = 1.0d0-tauSob*0.5d0*(1.0d0 -   &
                      tauSob/3.0d0*(1. - tauSob*0.25d0*(1.0d0 - 0.20d0*tauSob)))
@@ -2066,10 +2071,10 @@ doGridshuffle: if(gridShuffle) then
                 vel = vMag * randomUnitVector()
                 xmin = 2.d0 * grid%octreeRoot%subcellSize * dble(i-1)/dble(iAcross) - grid%octreeRoot%subcellSize
                 xmax = 2.d0 * grid%octreeRoot%subcellSize * dble(i)/dble(iAcross) - grid%octreeRoot%subcellSize
-                
+
                 ymin = 2.d0 * grid%octreeRoot%subcellSize * dble(j-1)/dble(iAcross) - grid%octreeRoot%subcellSize
                 ymax = 2.d0 * grid%octreeRoot%subcellSize * dble(j)/dble(iAcross) - grid%octreeRoot%subcellSize
-                
+
                 zmin = 2.d0 * grid%octreeRoot%subcellSize * dble(k-1)/dble(iAcross) - grid%octreeRoot%subcellSize
                 zmax = 2.d0 * grid%octreeRoot%subcellSize * dble(k)/dble(iAcross) - grid%octreeRoot%subcellSize
                 call applyVOverRange(grid%octreeRoot, vel, xmin, xmax, ymin, ymax, zmin, zmax)
@@ -2208,9 +2213,9 @@ recursive subroutine quickSublimate(thisOctal)
   use inputs_mod, only: grainFrac, nDustType
 
   type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
+  type(octal), pointer  :: child
   integer :: subcell, i
-  
+
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -2223,7 +2228,7 @@ recursive subroutine quickSublimate(thisOctal)
           end do
        else
 
-          if (associated(thisOctal%dustTypeFraction)) then 
+          if (associated(thisOctal%dustTypeFraction)) then
              if (thisOctal%temperature(subcell) > 1500.) then
                 thisOctal%dustTypeFraction(subcell,:) = 1.d-20
              else
@@ -2301,7 +2306,7 @@ recursive subroutine quickSublimate(thisOctal)
 !!$  real(double) :: alpha, beta, heightDouble !, rhoDouble
 !!$  real(double) :: rInnerDouble, rOuterDouble!, chisq, minChisq
 !!$!  integer :: n, i1,i2,i3,i4
-!!$  
+!!$
 !!$  rInnerDouble = 750d0
 !!$  rOuterDouble = 23d3
 !!$
@@ -2351,10 +2356,10 @@ recursive subroutine quickSublimate(thisOctal)
 recursive subroutine chisqAlphaDisc(thisOctal, alpha, beta, rho0, height, rInner, rOuter, chisq, n)
   real(double) :: alpha, beta, rho0, rinner, router, chisq, r, h, height, fac, rho
   type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
+  type(octal), pointer  :: child
   type(VECTOR) :: rVec
   integer :: subcell, i, n
-  
+
   do subcell = 1, thisOctal%maxChildren
      if (thisOctal%hasChild(subcell)) then
         ! find the child
@@ -2365,7 +2370,7 @@ recursive subroutine chisqAlphaDisc(thisOctal, alpha, beta, rho0, height, rInner
               exit
            end if
         end do
-     else 
+     else
         rVec = subcellCentre(thisOctal, subcell)
         r = sqrt(rVec%x**2 + rVec%y**2)
         if ((r > rInner).and.(r < rOuter).and.(thisOctal%rho(subcell) < 1.d-10).and.&
@@ -2408,7 +2413,7 @@ subroutine addSpiralWake(grid)
      r  = rinner + (rOuter - rInner)*dble(i-1)/dble(nr-1)
 
      if (abs(r-r0) > 0.3*hillRadius) then
-     
+
      r = r/r0
      if (r > 1.d0) then
         phi = (2.d0/(3.d0*epsilon)) * ( r**1.5d0 - 1.5d0*log(r) - 1.d0)
@@ -2460,11 +2465,11 @@ recursive subroutine assignTurbVelocity(thisOctal, xvel, yvel, zvel, n)
   integer, intent(in) :: n
   type(octal), pointer   :: thisOctal
   real, pointer :: xVel(:,:,:), yVel(:,:,:), zVel(:,:,:)
-  type(octal), pointer  :: child 
+  type(octal), pointer  :: child
   real(double) :: vx, vy, vz, u, v, w, xArray(64), fac1, fac2, fac3, boxsize
   type(VECTOR) :: rVec
   integer :: subcell, i, i1, j1, k1
-  
+
   do subcell = 1, thisOctal%maxChildren
      if (thisOctal%hasChild(subcell)) then
         ! find the child
@@ -2475,7 +2480,7 @@ recursive subroutine assignTurbVelocity(thisOctal, xvel, yvel, zvel, n)
               exit
            end if
         end do
-     else 
+     else
         if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
 
         do i1 = 1, 64
@@ -2494,15 +2499,15 @@ recursive subroutine assignTurbVelocity(thisOctal, xvel, yvel, zvel, n)
 
         if (modulus(rVec) .lt. sphereRadius) then
           ! calculate normalised distances
-          fac1 = (rVec%x + boxsize/2.d0) / boxsize 
+          fac1 = (rVec%x + boxsize/2.d0) / boxsize
           fac2 = (rVec%y + boxsize/2.d0) / boxsize
           fac3 = (rVec%z + boxsize/2.d0) / boxsize
-         
-          ! find the relevant element in the 64^3 reference grid  
+
+          ! find the relevant element in the 64^3 reference grid
           call locate(xArray, 64, fac1, i1)
           call locate(xArray, 64, fac2, j1)
           call locate(xArray, 64, fac3, k1)
-       
+
           ! calculate velocity using trilinear interpolation
           u = (fac1 - xArray(i1))/(xArray(i1+1) - xArray(i1))
           v = (fac2 - xArray(j1))/(xArray(j1+1) - xArray(j1))
@@ -2515,7 +2520,7 @@ recursive subroutine assignTurbVelocity(thisOctal, xvel, yvel, zvel, n)
                (       u) * (1.d0 - v) * (1.d0 - w) * xVel(i1+1, j1, k1) + &
                (       u) * (1.d0 - v) * (       w) * xVel(i1+1, j1, k1+1) + &
                (       u) * (       v) * (1.d0 - w) * xVel(i1+1, j1+1, k1) + &
-               (       u) * (       v) * (       w) * xVel(i1+1, j1+1, k1+1) 
+               (       u) * (       v) * (       w) * xVel(i1+1, j1+1, k1+1)
 
           vy = (1.d0 - u) * (1.d0 - v) * (1.d0 - w) * yVel(i1, j1, k1) + &
                (1.d0 - u) * (1.d0 - v) * (       w) * yVel(i1, j1, k1+1) + &
@@ -2524,7 +2529,7 @@ recursive subroutine assignTurbVelocity(thisOctal, xvel, yvel, zvel, n)
                (       u) * (1.d0 - v) * (1.d0 - w) * yVel(i1+1, j1, k1) + &
                (       u) * (1.d0 - v) * (       w) * yVel(i1+1, j1, k1+1) + &
                (       u) * (       v) * (1.d0 - w) * yVel(i1+1, j1+1, k1) + &
-               (       u) * (       v) * (       w) * yVel(i1+1, j1+1, k1+1) 
+               (       u) * (       v) * (       w) * yVel(i1+1, j1+1, k1+1)
 
           vz = (1.d0 - u) * (1.d0 - v) * (1.d0 - w) * zVel(i1, j1, k1) + &
                (1.d0 - u) * (1.d0 - v) * (       w) * zVel(i1, j1, k1+1) + &
@@ -2533,7 +2538,7 @@ recursive subroutine assignTurbVelocity(thisOctal, xvel, yvel, zvel, n)
                (       u) * (1.d0 - v) * (1.d0 - w) * zVel(i1+1, j1, k1) + &
                (       u) * (1.d0 - v) * (       w) * zVel(i1+1, j1, k1+1) + &
                (       u) * (       v) * (1.d0 - w) * zVel(i1+1, j1+1, k1) + &
-               (       u) * (       v) * (       w) * zVel(i1+1, j1+1, k1+1) 
+               (       u) * (       v) * (       w) * zVel(i1+1, j1+1, k1+1)
 
           thisOctal%velocity(subcell) = VECTOR(vx, vy, vz)
         endif
@@ -2573,7 +2578,7 @@ recursive subroutine splitGridMagstream(thisOctal, grid, npoints, posArray, rhoA
            tempVelArray(nInOctal) = velArray(k)
         endif
      enddo
-     
+
 
   DO iSubcell = 1, thisOctal%maxChildren
 
@@ -2625,7 +2630,7 @@ recursive subroutine splitGridMagstream(thisOctal, grid, npoints, posArray, rhoA
 
 
      END IF
-     
+
   END DO
 
   do i = 1, thisOctal%nChildren
@@ -2818,8 +2823,8 @@ recursive subroutine splitGridMagstream(thisOctal, grid, npoints, posArray, rhoA
               point = VECTOR( r(j)*sin(theta(k))*cos(phi(i)), &
                    r(j)*sin(theta(k))*sin(phi(i)), &
                    r(j)*cos(theta(k)))
-              
-              
+
+
               call findSubcellLocal(point,thisOctal,subcell)
               thisOctal%rho(subcell) = rho(i,j,k)
 
@@ -2833,7 +2838,7 @@ recursive subroutine splitGridMagstream(thisOctal, grid, npoints, posArray, rhoA
 
 
    end subroutine readJaehan
-     
+
 
 
 recursive subroutine populateJaehan(thisOctal, nTheta, nr, nphi, rho, rArray, phiArray, thetaArray)
@@ -2841,11 +2846,11 @@ recursive subroutine populateJaehan(thisOctal, nTheta, nr, nphi, rho, rArray, ph
   integer :: nTheta, nr, nphi
   real(double) :: r, phi, theta
   type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
+  type(octal), pointer  :: child
   type(VECTOR) :: rVec
   integer :: iTheta, iPhi, ir
   integer :: subcell, i
-  
+
   do subcell = 1, thisOctal%maxChildren
      if (thisOctal%hasChild(subcell)) then
         ! find the child
@@ -2856,7 +2861,7 @@ recursive subroutine populateJaehan(thisOctal, nTheta, nr, nphi, rho, rArray, ph
               exit
            end if
         end do
-     else 
+     else
         rVec = subcellCentre(thisOctal, subcell)
         r = modulus(rVec)
         if ( (r > rArray(1)).and.(r < rArray(nr))) then
