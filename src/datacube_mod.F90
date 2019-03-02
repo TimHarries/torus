@@ -872,7 +872,6 @@ contains
        dv = (vMax - vMin) / dble(cube%nv-1)
 
        write(message, '(a,f9.4,a)') "Velocity pixel resolution: ", dv, " km/s"
-       print*,"it works! tjgw201"
        call writeinfo(message,TRIVIAL)
 
        do i = 1, cube%nv
