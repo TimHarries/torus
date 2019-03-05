@@ -60,6 +60,10 @@ contains
             prob(i) = (massArray(i)**alpha) * dMass(i)
          enddo
 
+      ! todo
+!     case("chabrier")      
+!     case("kroupa")      
+
       case DEFAULT
          write(message,'(a,a)') "IMF not recognised: ", trim(imfType)
          call writefatal(message)
@@ -79,20 +83,39 @@ contains
     mass = 10.d0**mass
   end function randomMassFromIMF
 
-  subroutine createSubsources(cluster) 
+  subroutine populateCluster(cluster) 
+    type(SOURCETYPE) :: cluster
     real(double) :: totalCreatedMass 
 
-    call createSources(cluster%nSubsource, cluster%subsourceArray, "instantaneous", 0.d0, cluster%reservoirMass, 0.d0, &
-          totalCreatedMass)
-    ! FIXME need to add the new stars to the array, not overwrite them
+    call createSources(cluster%nSubsource, cluster%subsourceArray, "instantaneous", 0.d0, clusterReservoir(cluster), 0.d0, &
+          totalCreatedMass, zeroNsource=.false.)
 
-    !todo cluster SED/luminosity
+    cluster%subsourceArray(1:cluster%nSubsource)%position = cluster%position
+    cluster%subsourceArray(1:cluster%nSubsource)%velocity = cluster%velocity
+  end subroutine populateCluster
 
-    do i = 1, cluster%nSubsource
-       cluster%subsourceArray(i)%position = cluster%position
-       cluster%subsourceArray(i)%velocity = cluster%velocity
-    enddo
-  end subroutine createSubsources
+  
+  subroutine setClusterSpectrum(cluster)
+    type(SOURCETYPE) :: cluster
+    integer :: j
+
+    if (cluster%nSubsource > 0) then
+       call freeSpectrum(cluster%spectrum)
+       call copySpectrum(cluster%spectrum, cluster%subsourceArray(1)%spectrum)
+       if (cluster%nSubsource > 1) then
+          do j = 2, cluster%nSubsource
+             call addSpectrum(cluster%spectrum, cluster%subsourceArray(j)%spectrum)
+          enddo
+       endif
+       call normalizedSpectrum(cluster%spectrum)
+
+       cluster%luminosity = sum(cluster%subsourceArray(1:cluster%nsubsource)%luminosity)
+    elseif (cluster%nSubsource == 0) then
+       call freeSpectrum(cluster%spectrum)
+       call newSpectrum(cluster%spectrum, 100.d0, 1.d7, 1000)
+       cluster%luminosity = 0.d0
+    endif
+  end subroutine setClusterSpectrum
 
   real(double) function clusterReservoir(cluster)
     real(double) :: totalStellarMass
@@ -104,9 +127,11 @@ contains
     clusterReservoir = cluster%mass - totalStellarMass
   end function clusterReservoir
 
-  subroutine createSources(nSource, source, burstType, burstAge, burstMass, sfRate, totMass)
-    integer :: nSource
+  subroutine createSources(nSource, source, burstType, burstAge, burstMass, sfRate, totMass,zeroNsource)
+    use inputs_mod, only : imfType, clusterSinks
+    integer :: nSource, thisNsource, initialNsource
     type(SOURCETYPE) :: source(:)
+    type(SOURCETYPE), allocatable :: tempSourceArray(:)
     type(TRACKTABLE) :: thisTable
     character(len=80) :: message
     character(len=*) :: burstType
@@ -114,6 +139,7 @@ contains
     real(double) :: burstMass, totMass
     real(double) :: sfRate
     real(double), allocatable :: initialMasses(:), temp(:)
+    logical, optional :: zeroNsource
     integer :: i, j
     integer :: nDead, nSupernova, nOB
 !    integer, parameter :: nKurucz=69 !nKurucz = 410
@@ -126,7 +152,18 @@ contains
 !    call  readKuruczGrid(klabel, kspectrum, nKurucz)
 !    call  readTlustyGrid(klabel, kspectrum, nKurucz)
 
-    nSource = 0
+    if (present(zeroNsource)) then
+       ! may want to keep nsource as it is (e.g. if creating more subsources in a cluster)
+       if (zeroNsource) then
+          nSource = 0
+       endif
+    else
+       nSource = 0
+    endif
+
+    thisNsource = 0
+    initialNsource = nSource
+
 
     ! set up the initial number of stars and their masses and ages
 
@@ -139,7 +176,7 @@ contains
              nSource = nSource + 1
              call randomNumberGenerator(getDouble=source(nSource)%age)
              source(nSource)%age = source(nSource)%age * burstAge
-             source(nSource)%initialmass = randomMassFromIMF("salpeter", 0.8d0, 120.d0, -2.35d0)
+             source(nSource)%initialmass = randomMassFromIMF(imfType, 0.8d0, 120.d0, -2.35d0)
              totMass = totMass + source(nSource)%initialmass
           enddo
 
@@ -149,25 +186,37 @@ contains
           do while(.not.thirtyFound)
              initialMasses = 0.d0
              totMass = 0.d0
-             nSource = 0
+             thisNsource = 0
              do while (totMass < burstMass)
-                nSource = nSource + 1
-                initialMasses(nSource) =  randomMassFromIMF("salpeter", 0.8d0, 120.d0, -2.35d0)
-                if (initialMasses(nSource) >= 30.d0) thirtyFound = .true.
-                totMass = totMass + initialMasses(nSource)
+                thisNsource = thisNsource + 1
+                initialMasses(thisNsource) =  randomMassFromIMF(imfType, 0.8d0, 120.d0, -2.35d0)
+                if (initialMasses(thisNsource) >= 30.d0) thirtyFound = .true.
+                totMass = totMass + initialMasses(thisNsource)
              enddo
           enddo
-          allocate(temp(1:nSource))
+          allocate(temp(1:thisNsource))
           temp = pack(initialMasses, initialMasses /= 0.d0) ! pick out non-zero elements (i.e. actual masses) 
-          call sort(nSource, temp) ! sort in ascending order
-          temp = temp(nSource:1:-1) ! reverse, i.e. sort in descending order
+          call sort(thisNsource, temp) ! sort in ascending order
+          temp = temp(thisNsource:1:-1) ! reverse, i.e. sort in descending order
+
           if (.not.associated(source)) then
-             allocate(source(1:nSource))
+             allocate(source(1:thisNsource))
           endif
-          do i = 1, nSource
+          ! extend source array if necessary
+          if ((nSource+thisNsource) > size(source)) then
+             allocate(tempSourceArray(1:nSource))
+             tempSourceArray(1:nSource) = source(1:nSource)
+             deallocate(source)
+             allocate(source(1:nSource+thisNsource))
+             deallocate(tempSourceArray)
+          endif
+          nSource = nSource + thisNsource
+
+          ! add to actual source array
+          do i = initialNsource+1, nSource
              source(i)%initialMass = temp(i)
+             source(i)%age = burstAge
           enddo
-          source(1:nSource)%age = burstAge
           deallocate(initialMasses)
           deallocate(temp)
           
@@ -188,43 +237,47 @@ contains
          call writefatal(message)
              
       end select
+      
+      source(initialnSource+1:)%nSubsource = 0
 
       if (Writeoutput) then
-         write(*,*) "number of sources in burst", nSource
-         write(*,*) "burst mass",totMass
+         write(*,*) "number of sources in this burst ", thisnSource
+         write(*,*) "burst mass ",totMass
+         write(*,*) "using ", imfType, " imf"
       endif
 
       ! now get actual masses, temps, and luminosities, and radii for age from evolution tracks
 
-      ! todo save tracks
       call readinTracks("schaller", thisTable)
       call writeInfo("Schaller tracks successfully read", FORINFO)
-      i = 1
+      i = initialnSource+1
       nDead = 0
       nSupernova = 0
       do while (i <= nSource)
-         if (.not.isSourceDead(source(i), thisTable)) then
-            write(message, '(a,i4)') "Setting properties of source ", i
-            call writeInfo(message, TRIVIAL)
-            ! TODO clustersinks
-            call setSourceProperties(source(i))
-            i = i + 1
-         else
-            nDead = nDead + 1
-            if (source(i)%initialMass > 8.d0) then
-               nSupernova = nSupernova + 1
+         if (source(i)%nSubsource <= 0) then
+            if (.not.isSourceDead(source(i), thisTable)) then
+               write(message, '(a,i4)') "Setting properties of source ", i
+               call writeInfo(message, TRIVIAL)
+               call setSourceProperties(source(i))
+               i = i + 1
+            else
+               nDead = nDead + 1
+               if (source(i)%initialMass > 8.d0) then
+                  nSupernova = nSupernova + 1
+               endif
+               ! todo adapt for clustersink 
+               call removeSource(source, nSource, i)
             endif
-            call removeSource(source, nSource, i)
          endif
       enddo
       if (Writeoutput) then
          write(*,*) "Number of dead sources",  nDead
          write(*,*) "Number of supernova",  nSupernova
-         write(*,*) "Burst luminosity",SUM(source(1:nSource)%luminosity)/lsol
+         write(*,*) "Burst luminosity",SUM(source(initialnSource+1:nSource)%luminosity)/lsol
       endif
 
       nOB = 0
-      do i = 1, nSource
+      do i = initialnSource+1, nSource
          if (source(i)%mass > 15.*msol) then
             nOB = nOB + 1
          endif
@@ -237,31 +290,32 @@ contains
 !         call fillSpectrumTlusty(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)
 !      enddo
 
-      if (writeoutput) then
-         ! todo clustersinks
-         do i = 1, nSource
-            write(filename,'(a, i3.3, a)') "spectrum_source", i,".dat"
-            open(67,file=filename,status="replace",form="formatted")
-            do j = 1, source(i)%spectrum%nlambda
-               write(67,'(2es12.5)') source(i)%spectrum%lambda(j), source(i)%spectrum%flux(j)
+      if (.not. clusterSinks) then
+         if (writeoutput) then
+            do i = initialnSource+1, nSource
+               write(filename,'(a, i3.3, a)') "spectrum_source", i,".dat"
+               open(67,file=filename,status="replace",form="formatted")
+               do j = 1, source(i)%spectrum%nlambda
+                  write(67,'(2es12.5)') source(i)%spectrum%lambda(j), source(i)%spectrum%flux(j)
+               enddo
+               close(67)
             enddo
-            close(67)
-         enddo
+         endif
       endif
 
-      do i = 1, nSource
-         if (source(i)%mass/msol > 15.d0) then
-            source(i)%mDot = 1.d-6 * msol / (365.25d0 * 24.d0 * 3600.d0)
-         else
-            source(i)%mdot = 0.d0
-         endif
-      enddo
+!      do i = initialnSource+1, nSource
+!         if (source(i)%mass/msol > 15.d0) then
+!            source(i)%mDotWind = 1.d-6 * msol / (365.25d0 * 24.d0 * 3600.d0)
+!         else
+!            source(i)%mdotWind = 0.d0
+!         endif
+!      enddo
 
-      source(:)%stellar = .true.
-      source(:)%viscosity = .false.
-      source(:)%diffuse = .false.
-      source(:)%outsideGrid = .false.
-      source(:)%prob = 0.d0 ! 1.d0/dble(nsource)
+      source(initialnSource+1:)%stellar = .true.
+      source(initialnSource+1:)%viscosity = .false.
+      source(initialnSource+1:)%diffuse = .false.
+      source(initialnSource+1:)%outsideGrid = .false.
+      source(initialnSource+1:)%prob = 0.d0 ! 1.d0/dble(nsource)
       call writeInfo("Photons will be sampled according to source luminosity", TRIVIAL)
     end subroutine createSources
 
@@ -454,6 +508,7 @@ contains
     end subroutine setSourceProperties
 
     subroutine updateSourceProperties(source)
+      use inputs_mod, only : clustersinks
       type(SOURCETYPE) :: source
       type(TRACKTABLE),save :: thisTable
       logical,save :: firstTime = .true.
@@ -511,8 +566,13 @@ contains
          source%mDotWind = source%mDotWind * msol/(365.25*24.d0*3600.d0)
       endif
 
-      ! update spectrum. If tlusty spectrum is not found for a source, kurucz spectrum is used instead
-      call fillSpectrumTlusty(source%spectrum, source%teff, source%mass, source%radius*1.d10)
+      if (clustersinks) then
+         ! TODO use tlusty/kurucz spectra (but currently easier to add BB spectra together)
+         call fillSpectrumBB(source%spectrum, source%teff, 100.d0, 1.d7, 1000)
+      else
+         ! update spectrum. If tlusty spectrum is not found for a source, kurucz spectrum is used instead
+         call fillSpectrumTlusty(source%spectrum, source%teff, source%mass, source%radius*1.d10)
+      endif
       
       call emptySurface(source%surface)
       call buildSphereNBody(source%position, source%accretionRadius/1.d10, source%surface, 20)
@@ -723,6 +783,7 @@ contains
        endif
 
        nSource = nSource - 1
+       ! todo clustersinks
        do i = 1, nSource
           call buildSphereNBody(source(i)%position, 2.5d0*smallestCellSize, source(i)%surface, 20)
 !          call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)

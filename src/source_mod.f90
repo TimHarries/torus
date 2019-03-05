@@ -42,7 +42,7 @@
      real(double) :: accretionRadius
      real(double) :: time
      real(double) :: habingFlux ! units of 1e-10 Habing 
-     integer :: nSubsource=0 ! if source is a cluster, individual stars are subsources
+     integer :: nSubsource ! if source is a cluster, the subsourceArray has the individual stars
      type(SOURCETYPE), pointer :: subSourceArray(:) => null()
   end type SOURCETYPE
 
@@ -222,9 +222,10 @@
       close(lunit)
     end subroutine readSourceArray
 
-    subroutine writeSource(source, lunit)
+    recursive subroutine writeSource(source, lunit)
+      use inputs_mod, only : clusterSinks
       type(SOURCETYPE) :: source
-      integer :: lunit
+      integer :: lunit, i
 
       write(lunit) source%position
       write(lunit) source%velocity
@@ -248,11 +249,21 @@
       write(lunit) source%mdotwind
       call writeSpectrumToDump(source%spectrum,lunit)
       call writeSurface(source%surface, lunit)
+
+      if (clusterSinks) then
+         write(lunit) source%nSubsource
+         if (source%nSubsource > 0) then
+            do i = 1, source%nSubsource
+               call writeSource(source%subsourceArray(i), lunit)
+            enddo
+         endif
+      endif
     end subroutine writeSource
 
-    subroutine readSource(source, lunit)
+    recursive subroutine readSource(source, lunit)
+      use inputs_mod, only : clusterSinks
       type(SOURCETYPE) :: source
-      integer :: lunit
+      integer :: lunit, i
 
       read(lunit) source%position
       read(lunit) source%velocity
@@ -274,9 +285,22 @@
       read(lunit) source%accretionRadius
       read(lunit) source%time
       read(lunit) source%mdotwind
+
       call freeSpectrum(source%spectrum)
       call readSpectrumFromDump(source%spectrum,lunit)
       call readSurface(source%surface, lunit)
+
+      if (clusterSinks) then
+         read(lunit) source%nSubsource
+         if (source%nSubsource > 0) then
+            allocate(source%subsourceArray(1:source%nSubsource))
+            do i = 1, source%nSubsource
+               call readSource(source%subsourceArray(i), lunit)
+            enddo
+         endif
+      else
+         source%nSubsource = 0
+      endif
     end subroutine readSource
 
 
@@ -292,9 +316,18 @@
 
     subroutine freeSource(source)
       type(SOURCETYPE) :: source
+      integer :: i
       call freeSpectrum(source%spectrum)
       call emptySurface(source%surface)
+      call freeSubsources(source)
     end subroutine freeSource
+
+    subroutine freeSubsources(source)
+      type(SOURCETYPE) :: source
+      if (associated(source%subsourceArray)) deallocate(source%subsourceArray)
+      source%subsourceArray => null()
+      source%nSubsource = 0
+    end subroutine freeSubsources
 
     function ionizingFlux(source) result(flux)
       type(sourcetype) :: source

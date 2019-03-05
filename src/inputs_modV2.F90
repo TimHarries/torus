@@ -344,6 +344,9 @@ contains
                "Star position (10^10 cm): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .false.)
        endif
 
+       call getString("imf", imfType, cLine, fLine, nLines, &
+            "Initial mass function: ","(a,a,1x,a)","salpeter", ok, .false.)
+
     endif
 
 #ifdef CHEMISTRY
@@ -384,6 +387,8 @@ contains
        if (clusterSinks) then
           call getDouble("criticalmass", criticalMass, 1.d0, cLine, fLine, nLines, &
                "Critical mass for creating subsources: ","(a,f6.1,a)", 120.d0, ok, .true.)
+          call getString("imf", imfType, cLine, fLine, nLines, &
+               "Initial mass function: ","(a,a,1x,a)","salpeter", ok, .false.)
        endif
 
     endif

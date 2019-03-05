@@ -231,8 +231,10 @@ contains
     enddo
     if (clusterSinks) then
        do i = 1, nSource
-          source(i)%subsourceArray(1:source(i)%nSubsource)%position = source(i)%position
-          source(i)%subsourceArray(1:source(i)%nSubsource)%velocity = source(i)%velocity
+          if (source(i)%nSubsource > 0) then
+             source(i)%subsourceArray(1:source(i)%nSubsource)%position = source(i)%position
+             source(i)%subsourceArray(1:source(i)%nSubsource)%velocity = source(i)%velocity
+          endif
        enddo
     endif
     deallocate(yStart,dydx)

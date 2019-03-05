@@ -7963,8 +7963,8 @@ end subroutine sumFluxes
        group, nGroup,doSelfGrav, perturbPressure)
     use mpi
     use inputs_mod, only : nBodyPhysics, severeDamping, dirichlet, doGasGravity, useTensorViscosity, &
-         moveSources, hydroSpeedLimit, nbodyTest, imposeFixing, clusterSinks, criticalMass
-    use starburst_mod, only : updateSourceProperties, clusterReservoir
+         moveSources, hydroSpeedLimit, nbodyTest, imposeFixing, clusterSinks
+    use starburst_mod, only : updateSourceProperties
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
     logical, optional :: doSelfGrav
@@ -7972,7 +7972,7 @@ end subroutine sumFluxes
     integer :: group(:), nGroup
     real(double) :: dt, timestep !, totalMass
     type(VECTOR) :: direction
-    integer :: iDir, thisBound, i
+    integer :: iDir, thisBound, i, j
 !    character(len=80) :: plotfile
     logical, optional :: perturbPressure
     character(len=80) :: message
@@ -8193,24 +8193,21 @@ end subroutine sumFluxes
 
    globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + timestep*secstoyears
 
-   if (nBodyPhysics .and. clusterSinks) then
-      ! if sink mass exceeds critical mass, sample IMF
+
+   if (nBodyPhysics .and. globalnSource > 0 .and..not.hosokawaTracks) then
+      write(message, '(a)') "Updating source properties."
+      call writeInfo(message, TRIVIAL)
       do i = 1, globalnSource
-         if (clusterReservoir(globalSourceArray(i)) >= criticalMass) then
-            if (writeoutput) write(*,*) "Creating subsources for source ", i
-            call createSubsources(globalSourceArray(i))
+         if (clusterSinks) then
+            do j = 1, globalsourceArray(i)%nSubsource
+               call updateSourceProperties(globalsourcearray(i)%subsourceArray(j))
+            enddo
+         else
+            call updateSourceProperties(globalsourcearray(i))
          endif
       enddo
    endif
 
-   if (nBodyPhysics .and..not.hosokawaTracks) then
-      write(message, '(a)') "Updating source properties."
-      call writeInfo(message, TRIVIAL)
-      do i = 1, globalnSource
-         ! TODO update clusterSink star properties?
-         call updateSourceProperties(globalsourcearray(i))
-      enddo
-   endif
    if ((globalnSource > 0).and.nBodyPhysics.and.moveSources) then
 
       if (writeoutput) then
@@ -20129,7 +20126,7 @@ end subroutine minMaxDepth
    end subroutine mergeSinksFF
 
    subroutine mergeSinks(grid, source, nSource)
-     use inputs_mod, only : mergeBoundSinks
+     use inputs_mod, only : mergeBoundSinks, clusterSinks
      type(GRIDTYPE) :: grid
      type(SOURCETYPE) :: source(:)
      type(SOURCETYPE), allocatable :: newSource(:)
@@ -20138,7 +20135,7 @@ end subroutine minMaxDepth
      integer :: nSource
      integer :: i, j
      real(double) :: sep, eGrav, eKinetic, dotProd
-     integer :: n
+     integer :: n, ni, nj
      integer :: newNSource
      logical :: converged
      logical :: merged(1000), bound
@@ -20182,6 +20179,14 @@ end subroutine minMaxDepth
                     newSource(newnSource)%stellar = .true.
                     newSource(newnSource)%diffuse = .false.
                     newSource(newnSource)%accretionRadius = source(i)%accretionRadius
+                    if (clusterSinks) then
+                        ni = source(i)%nSubsource
+                        nj = source(j)%nSubsource
+                        newSource(newNsource)%nSubsource = ni + nj 
+                        allocate(newSource(newNsource)%subsourceArray(1:newSource(newNsource)%nSubsource))
+                        newSource(newNsource)%subsourceArray(1:ni) = source(i)%subsourceArray
+                        newSource(newNsource)%subsourceArray(ni+1:ni+nj) = source(j)%subsourceArray
+                    endif
                     merged(i) = .true.
                     merged(j) = .true.
                     converged = .false.
@@ -20189,6 +20194,7 @@ end subroutine minMaxDepth
               endif
            enddo
         enddo
+        ! add the non-merging sinks into newSource
         do i = 1, nSource
            if (.not.merged(i)) then
               newNSource = newNSource + 1
@@ -20200,9 +20206,17 @@ end subroutine minMaxDepth
               newSource(newnSource)%stellar = .true.
               newSource(newnSource)%diffuse = .false.
               newSource(newnSource)%accretionRadius = source(i)%accretionRadius
+              if (clusterSinks) then
+                 newSource(newnSource)%nSubsource = source(i)%nSubsource
+                 allocate(newSource(newnSource)%subsourceArray(1:newSource(newnSource)%nSubsource))
+                 newSource(newnSource)%subsourceArray = source(i)%subsourceArray
+              else 
+                 newSource(newnSource)%nSubsource = 0
+              endif
            endif
         enddo
         
+        ! overwrite source with newSource
         nSource = newnSource
         source(1:nSource)%mass = newSource(1:nSource)%mass
         source(1:nSource)%velocity = newSource(1:nSource)%velocity
@@ -20212,6 +20226,17 @@ end subroutine minMaxDepth
         source(1:nSource)%stellar = newSource(1:nSource)%stellar
         source(1:nSource)%diffuse = newSource(1:nSource)%diffuse
         source(1:nSource)%angMomentum = newSource(1:nSource)%angMomentum
+        source(1:nSource)%nSubsource = newSource(1:nSource)%nSubsource
+        if (clusterSinks) then
+           do i = 1, nSource
+              if (associated(source(i)%subsourceArray)) deallocate(source(i)%subsourceArray)
+              source(i)%subsourceArray => null()
+              if (source(i)%nSubsource > 0) then
+                 allocate(source(i)%subsourceArray(1:source(i)%nSubsource))
+                 source(i)%subsourceArray = newSource(i)%subsourceArray
+              endif
+           enddo
+        endif
         
         do j = 1, nSource
            call emptySurface(source(j)%surface)
@@ -20259,7 +20284,7 @@ end subroutine minMaxDepth
     type(VECTOR) :: centre
     real(double) :: bigJ, e, rhomax
     real(double), allocatable :: eGrav(:), eKinetic(:), eThermal(:)
-    real(double) :: temp(13), racc
+    real(double) :: temp(15), racc
     integer :: nSource
     integer :: i, subcell, ierr, ithread, tag
     logical :: createSink
@@ -20401,6 +20426,7 @@ end subroutine minMaxDepth
              source(nSource)%accretionRadius = accretionRadius * smallestCellSize * 1.d10
              source(nSource)%age = 0.d0
              source(nSource)%angMomentum = VECTOR(0.d0, 0.d0, 0.d0)
+             source(nSource)%nSubsource = 0
              call buildSphereNbody(source(nsource)%position, grid%halfSmallestSubcell, source(nsource)%surface, 20)
 
              thisvel = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
@@ -20425,10 +20451,12 @@ end subroutine minMaxDepth
              temp(11) = source(nsource)%angMomentum%x
              temp(12) = source(nsource)%angMomentum%y
              temp(13) = source(nsource)%angMomentum%z
+             temp(14) = source(nsource)%age
+             temp(15) = dble(source(nsource)%nsubsource)
              
              do iThread = 1, nHydroThreadsGlobal
                 if (iThread /= myRankGlobal) then
-                   call mpi_send(temp, 13, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+                   call mpi_send(temp, 15, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
                 endif
              enddo
              
@@ -20438,61 +20466,83 @@ end subroutine minMaxDepth
     enddo
   end subroutine recursaddSinks
 
-  subroutine broadcastSinks
+  recursive subroutine broadcastSinks(nSource, source)
     use mpi
+    use inputs_mod, only : clusterSinks
+    integer :: nSource, nSubsource
+    type(SOURCETYPE) :: source(:)
     integer :: ierr
-     call MPI_BCAST(globalnSource, 1, MPI_INTEGER, 0, localWorldCommunicator, ierr)
-     if (globalnSource > 0) then
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%position%x, globalnSource, MPI_DOUBLE_PRECISION, 0, &
+     call MPI_BCAST(nSource, 1, MPI_INTEGER, 0, localWorldCommunicator, ierr)
+     if (nSource > 0) then
+        call MPI_BCAST(source(1:nSource)%position%x, nSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%position%y, globalnSource, MPI_DOUBLE_PRECISION, 0, &
+        call MPI_BCAST(source(1:nSource)%position%y, nSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%position%z, globalnSource, MPI_DOUBLE_PRECISION, 0, &
+        call MPI_BCAST(source(1:nSource)%position%z, nSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%velocity%x, globalnSource, MPI_DOUBLE_PRECISION, 0, &
+        call MPI_BCAST(source(1:nSource)%velocity%x, nSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%velocity%y, globalnSource, MPI_DOUBLE_PRECISION, 0, &
+        call MPI_BCAST(source(1:nSource)%velocity%y, nSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%velocity%z, globalnSource, MPI_DOUBLE_PRECISION, 0, &
+        call MPI_BCAST(source(1:nSource)%velocity%z, nSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%mass     , globalnSource, MPI_DOUBLE_PRECISION, 0, &
+        call MPI_BCAST(source(1:nSource)%mass     , nSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%luminosity, globalnSource, MPI_DOUBLE_PRECISION, 0, &
+        call MPI_BCAST(source(1:nSource)%luminosity, nSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%age       , globalnSource, MPI_DOUBLE_PRECISION, 0, &
+        call MPI_BCAST(source(1:nSource)%age       , nSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%radius   , globalnSource, MPI_DOUBLE_PRECISION, 0, &
+        call MPI_BCAST(source(1:nSource)%radius   , nSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%mdot     , globalnSource, MPI_DOUBLE_PRECISION, 0, &
+        call MPI_BCAST(source(1:nSource)%mdot     , nSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%habingFlux, globalnSource, MPI_DOUBLE_PRECISION, 0, &
+        call MPI_BCAST(source(1:nSource)%habingFlux, nSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%accretionradius     , globalnSource, MPI_DOUBLE_PRECISION, 0, &
+        call MPI_BCAST(source(1:nSource)%accretionradius     , nSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%angMomentum%x     , globalnSource, MPI_DOUBLE_PRECISION, 0, &
+        call MPI_BCAST(source(1:nSource)%angMomentum%x     , nSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%angMomentum%y     , globalnSource, MPI_DOUBLE_PRECISION, 0, &
+        call MPI_BCAST(source(1:nSource)%angMomentum%y     , nSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%angMomentum%z     , globalnSource, MPI_DOUBLE_PRECISION, 0, &
+        call MPI_BCAST(source(1:nSource)%angMomentum%z     , nSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%stellar     , globalnSource, MPI_LOGICAL, 0, &
+        call MPI_BCAST(source(1:nSource)%stellar     , nSource, MPI_LOGICAL, 0, &
              localWorldCommunicator, ierr)
-        call MPI_BCAST(globalsourceArray(1:globalnSource)%diffuse     , globalnSource, MPI_LOGICAL, 0, &
+        call MPI_BCAST(source(1:nSource)%diffuse     , nSource, MPI_LOGICAL, 0, &
              localWorldCommunicator, ierr)
+        if (clusterSinks) then
+           call MPI_BCAST(source(1:nSource)%nSubsource  , nSource, MPI_INTEGER, 0, &
+                localWorldCommunicator, ierr)
+        endif
+     endif
+
+     ! sink sub sources
+     if (clusterSinks) then
+        do i = 1, nSource
+           nSubsource = source(i)%nSubsource
+           if (nSubsource > 0) then
+              if (.not.associated(source(i)%subsourceArray)) then
+                 allocate(source(i)%subsourceArray(1:nSubsource))
+              endif
+              call broadcastSinks(nSubsource, source(i)%subsourceArray(1:nSubsource))
+           endif
+        enddo
      endif
 end subroutine broadcastSinks
-  
-  subroutine sendSinksToZerothThread(nSource, source)
+
+  recursive subroutine sendSinksToZerothThread(nSource, source)
     use mpi
-    integer :: nSource, iSource, ierr
+    use inputs_mod, only : clusterSinks
+    integer :: nSource, ierr, nSubsource !, iSource
     type(SOURCETYPE) :: source(:)
     integer :: status(MPI_STATUS_SIZE)
     integer, parameter :: tag = 32
+
     if (myrankGlobal == 0) then
  
      call mpi_recv(nSource, 1, MPI_INTEGER, 1, tag, localWorldCommunicator, status, ierr)
  
-       do iSource = 1, nSource
+!       do iSource = 1, nSource
           call mpi_recv(source(1:nSource)%position%x, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%position%y, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%position%z, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
@@ -20515,7 +20565,10 @@ end subroutine broadcastSinks
                ierr)
           call mpi_recv(source(1:nSource)%stellar, nSource, MPI_LOGICAL, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%diffuse, nSource, MPI_LOGICAL, 1, tag, localWorldCommunicator, status, ierr)
-       enddo
+          if (clusterSinks) then
+             call mpi_recv(source(1:nSource)%nSubsource, nSource, MPI_INTEGER, 1, tag, localWorldCommunicator, status, ierr)
+          endif
+!       enddo
   
     endif
 
@@ -20523,7 +20576,7 @@ end subroutine broadcastSinks
 
        call mpi_send(nSource, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, ierr)
   
-       do iSource = 1, nSource
+!       do iSource = 1, nSource
           call mpi_send(source(1:nSource)%position%x, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%position%y, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%position%z, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
@@ -20542,7 +20595,25 @@ end subroutine broadcastSinks
           call mpi_send(source(1:nSource)%angMomentum%z, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%stellar, nSource, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%diffuse, nSource, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
-       enddo
+          if (clusterSinks) then
+             call mpi_send(source(1:nSource)%nSubsource, nSource, MPI_INTEGER, 0, tag, localWorldCommunicator, ierr)
+          endif
+!       enddo
+    endif
+
+    ! sink sub sources
+    if (clusterSinks) then
+       if (myrankGlobal == 0 .or. myrankGlobal == 1) then
+          do i = 1, nSource
+             nSubsource = source(i)%nSubsource
+             if (nSubsource > 0) then
+                if (.not.associated(source(i)%subsourceArray)) then
+                   allocate(source(i)%subsourceArray(1:nSubsource))
+                endif
+                call sendSinksToZerothThread(nSubsource, source(i)%subsourceArray(1:nSubsource))
+             endif
+          enddo
+       endif
     endif
   end subroutine sendSinksToZerothThread
 
@@ -21946,9 +22017,10 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
 
   subroutine getPointsInAccretionRadiusServer(grid, nSource, source)
     use mpi
+    use inputs_mod, only : clustersinks
     integer :: nSource
     type(sourcetype) :: source(:)
-    real(double) :: temp(13)
+    real(double) :: temp(15)
     type(GRIDTYPE) :: grid
     integer :: nPoints
     integer :: ierr
@@ -21966,7 +22038,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     stillServing = .true.
 
     do while(stillServing) 
-       call MPI_RECV(temp, 13, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, localWorldCommunicator, status, ierr)
+       call MPI_RECV(temp, 15, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, localWorldCommunicator, status, ierr)
 
        iSignal = int(temp(1))
        select case(isignal)
@@ -21986,8 +22058,11 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
              source(nSource)%angMomentum%x = temp(11)
              source(nSource)%angMomentum%y = temp(12)
              source(nSource)%angMomentum%z = temp(13)
-             call fillSpectrumBB(source(nsource)%spectrum, 1000.d0, &
-                  100.d0, 1.d7, 1000)
+             source(nSource)%age = temp(14)
+             source(nSource)%nsubsource = int(temp(15))
+! AA removed 03/2019 - setSourceArrayProperties/setSourceProperties create spectra
+!             call fillSpectrumBB(source(nsource)%spectrum, 1000.d0, &
+!                  100.d0, 1.d7, 1000)
              call buildSphereNbody(source(nsource)%position, grid%halfSmallestSubcell, source(nsource)%surface, 20)
           case(2) ! want points in radius
 

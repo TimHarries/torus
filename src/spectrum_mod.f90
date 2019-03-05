@@ -339,6 +339,18 @@ module spectrum_mod
       call probSpectrum(spectrum)
     end subroutine addToSpectrumBB
 
+    subroutine addSpectrum(spectrum, addition)
+      type(SPECTRUMTYPE) :: spectrum, addition
+      integer :: i
+
+      do i = 1, spectrum%nLambda
+         spectrum%flux(i) = spectrum%flux(i) + addition%flux(i) 
+      enddo
+      where(spectrum%flux(1:spectrum%nLambda) == 0.d0) spectrum%flux = 1.d-100
+
+      call probSpectrum(spectrum)
+    end subroutine addSpectrum
+
     subroutine addXray(spectrum, frac)
       type(SPECTRUMTYPE) :: spectrum
       real(double) :: frac, totalFlux, xRayFlux, xRayFluxPerAngs
