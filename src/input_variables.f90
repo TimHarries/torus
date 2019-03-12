@@ -2,10 +2,10 @@
   !   program by the inputs subroutine. they are all collected
   !   here so that they only need to be defined once.  nhs
   !
-  !   These now are inlcuded in inputs_mod and can be declared as 
+  !   These now are inlcuded in inputs_mod and can be declared as
   !   'protected'. This is a F2003 feature which means that only
   !   the module containing the variable can change it - other modules
-  !   have read-only access (i.e. it is like intent(in)). D. Acreman 
+  !   have read-only access (i.e. it is like intent(in)). D. Acreman
 
 !----------------------------------
 ! Physical ingredients of the model
@@ -24,7 +24,7 @@
 ! Type of model calculation
 !--------------------------
 
-  logical :: radiationHydrodynamics 
+  logical :: radiationHydrodynamics
   logical :: radiativeEquilibrium
   logical :: statisticalEquilibrium
   logical :: photoionEquilibrium
@@ -89,18 +89,18 @@
   logical :: calculateEmissionMeasure, calculateLymanFlux, findHabing
   integer :: nClusterIonLoops
   real(double) :: edgeRadius
-  
+
   logical :: dowriteRadialFile
   character(len=200) :: radialFilename
   character(len=80) :: columnImageFilename
   type(VECTOR) :: columnImageDirection
   character(len=10) :: columnAxisUnits
-  character(len=10) :: columnDataUnits 
+  character(len=10) :: columnDataUnits
 
 !-----------------------------------
 ! Write/read a grid for a warm start
 !-----------------------------------
- 
+
   logical :: readGrid, writeGrid  ! Do we read/write the AMR grid from/to a file
   logical :: doSetupAMRgrid       ! sometimes (rarely) we don't want a grid at all
   logical :: multimodels          ! perform calculation on multiple models
@@ -124,7 +124,7 @@
   real(double) :: massUnit, timeUnit, lengthUnit !Code units
 
 !-----------------
-! Photoionisation 
+! Photoionisation
 !-----------------
 
   logical :: photoionization   !Perform a photoionization calculation
@@ -151,18 +151,18 @@
   logical :: stellarWinds      ! include stellar winds in hydro calc
   logical :: supernovae        ! include supernovae in hydro calc
   logical :: starburst         ! set sources from starburst
-  real(double) :: stellarWindRadius ! radius for stellar wind/SNe momentum input 
+  real(double) :: stellarWindRadius ! radius for stellar wind/SNe momentum input
   real(double) :: burstAge
   real(double) :: burstTime
   real(double) :: feedbackDelay ! after starburst, delay feedback mechanisms by this fraction of free-fall time
   character(len=20) :: burstType
   type(VECTOR) :: burstPosition ! pos of star for burstType 'singlestartest'
   logical :: dumpregularVTUS   !dump vtu after every photo step
-  ! Parameters  specific to domain decomposed photoionisation 
+  ! Parameters  specific to domain decomposed photoionisation
 
   !Stack optimization
   logical :: optimizeStack     !Perform run-time photon stack size optimization
-  integer :: dStack            !Stack increment for run-time photon stack size optimization 
+  integer :: dStack            !Stack increment for run-time photon stack size optimization
   integer :: stackLimit        !Maximum stack size for run-time photon stack size optimization
   integer, allocatable :: stackLimitArray(:)   !Maximum stack size for run-time photon stack size optimization
   logical :: bufferedSend      !use mpi_bsend for photon stacks on photoionAMR_mod
@@ -213,7 +213,7 @@
   real(double) :: FeedbackTheta0      !Opening angle of feedback (see Cuningham11 for details)
   real(double) :: FeedbackFw
   real(double) :: FeedbackFv
-  real(double) :: FeedbackStartMass   !Do not apply feedback till the star reaches this mass 
+  real(double) :: FeedbackStartMass   !Do not apply feedback till the star reaches this mass
   real :: cflNumber                   !Courant-Friedrichs-Lewy constant
   integer :: nHydroPerPhoto           !number of hydroSteps per photoionization loop
   logical :: forcegascourant          !use the gas condition only
@@ -225,7 +225,7 @@
   real(double) :: tStart, tEnd, tDump !Start, end and dump interval times
   real(double) :: rhoThreshold        ! threshold density for sink creation
   real(double) :: hydroSpeedLimit     ! fudge to limit hydrodynamic advection speed
-  logical :: hydrovelocityConv        !Convert input velocity vector into simulation velocities 
+  logical :: hydrovelocityConv        !Convert input velocity vector into simulation velocities
   logical :: doRefine, doUnrefine     !Allow the AMR grid to refine/unrefine
   logical :: useViscosity             !Use artificial viscosity
   logical :: fluxinterp               !Interpolate fluxes at fine to coarse cell advections
@@ -237,7 +237,7 @@
   real(double) :: gridDistanceScale   !Scale of grid
   integer :: CD_version               !Which version of contact discontinuity test to run? (1,2,3 or 4, StarBench)
   logical :: imposeFixing             !Impose fixed regions on the hydro model
-  
+
   logical :: readTurb !read in a turbulent velocity grid
   character(len=20) :: turbvelfilex    !file for tubrulent velocty field (x)
   character(len=20) :: turbvelfiley    !file for tubrulent velocty field (y)
@@ -272,20 +272,20 @@
   character(len=20) :: xplusboundString, yplusboundString, zplusboundString
 
   !Boundary conditions (integer codes)
-  integer :: xminusbound, yminusbound, zminusbound 
-  integer :: xplusbound, yplusbound, zplusbound 
+  integer :: xminusbound, yminusbound, zminusbound
+  integer :: xplusbound, yplusbound, zplusbound
 
 !---------------------------------------
 ! Atomic physics (co-moving frame, CMF)
 !---------------------------------------
 
   logical :: cmf, sobolev
-  logical :: opticallyThickContinuum     
-  logical :: lineOff               
+  logical :: opticallyThickContinuum
+  logical :: lineOff
   logical :: statEq2d       ! whether statEq can be run in 2-D
-  integer :: nAtom      
+  integer :: nAtom
   character(len=20) :: atomFilename(10)
-  real(double) :: xAbundance, yAbundance 
+  real(double) :: xAbundance, yAbundance
   integer :: iTransLine, iTransAtom ! Not set !!!
   logical :: statEq1stOctant ! T if do stateqAMR routine for the octals in first octant
                              ! then later values are mapped to other octants. Not Set !!!
@@ -314,7 +314,7 @@
   logical, protected :: zeroghosts
   logical :: ALMA      !use casa friendly fits headers
   logical, protected :: renewinputrays
-  logical, protected :: plotlevels   
+  logical, protected :: plotlevels
   logical, protected :: writetempfits
   logical, protected :: doCOchemistry
   logical :: isinlte ! assume grid is in LTE
@@ -329,7 +329,7 @@
   logical :: lineimage
   logical :: maxrhocalc
   logical, protected :: quasi ! use quasirandom numbers
-  logical, protected :: rgbCube ! reverse velocity axis 
+  logical, protected :: rgbCube ! reverse velocity axis
   logical, protected :: densitysubsample ! do you want to subsample density in your images?
   logical, protected :: wanttau ! Output tau cube? (also used in angularImage_mod)
   real(double), protected :: centrevecx, centrevecy, centrevecz ! cube centre (also in AngularImage_mod)
@@ -358,7 +358,7 @@
   real(double) :: mStar
   real(double) :: metallicity
 
-!----------------------------  
+!----------------------------
 ! Lucy radiative equilibrium
 !----------------------------
 
@@ -372,7 +372,7 @@
   integer :: maxIterLucy
   integer :: maxGaussIter
   logical :: narrowBandImage
-  real    :: lucy_undersampled  
+  real    :: lucy_undersampled
   logical :: convergeOnUndersampled
   integer :: minCrossings
   logical :: forceLucyConv
@@ -391,16 +391,16 @@
 
   integer :: nLambda
   logical :: oneKappa
-  logical :: lamfile              ! Read in wavelengths from a file? 
+  logical :: lamfile              ! Read in wavelengths from a file?
   character(len=80):: lamfilename ! File to use if lamfile=T
 
-!------------------- 
+!-------------------
 ! Source parameters
 !-------------------
 
   logical :: readSources
   logical :: moveSources
-  logical :: evolveSources 
+  logical :: evolveSources
   logical :: hotspot
   logical :: pulsatingStar
   integer :: nModes
@@ -439,7 +439,7 @@
 !-----------------
 
   integer, parameter :: maxDustTypes = 10
-  character(len=80) :: grainType(maxDustTypes) ! sil_ow, sil_oc, sil_dl, amc_hn, sic_pg, gr1_dl, gr2_dl  
+  character(len=80) :: grainType(maxDustTypes) ! sil_ow, sil_oc, sil_dl, amc_hn, sic_pg, gr1_dl, gr2_dl
   real :: grainFrac(maxDustTypes)
   real :: grainDensity(maxDustTypes)
   logical :: mie
@@ -468,17 +468,17 @@
   integer :: nDustType
   logical :: readDustFromFile, writeDustToFile
   logical :: useDust
-  ! abundances of different types of dust grains. These will be used when 
+  ! abundances of different types of dust grains. These will be used when
   ! the graintype assigned is "mixed."
-  integer :: ngrain 
-  real :: X_grain(10)    ! abundaunce 
+  integer :: ngrain
+  real :: X_grain(10)    ! abundaunce
   character(LEN=30) :: grainname(10)
   !
-  ! size distribution of dust grain is now assumed to have 
+  ! size distribution of dust grain is now assumed to have
   ! the following form:
-  !  
+  !
   !   n(a) =  const * a^-q * e^((-a/a0)^p)
-  real :: aMin(maxDustTypes)    !  The maximun size in microns. 
+  real :: aMin(maxDustTypes)    !  The maximun size in microns.
   real :: aMax(maxDustTypes)    !  The minimum size in microns.
   real :: qDist(maxDustTypes)   !  q exponet in the equation above.
   real :: a0(maxDustTypes)      !  scale length in the equation above.
@@ -489,7 +489,7 @@
   real :: porousFillingFactor(maxDustTypes)
 
 !------------------------------
-! Inclinations for SEDs/images 
+! Inclinations for SEDs/images
 ! Now held in sed_mod
 !------------------------------
 
@@ -509,7 +509,7 @@
   integer, protected :: sliceIndex !pixel through which the cut runs (x or y depends on cutType)
 
 !--------------------------------
-! Image and data cube parameters 
+! Image and data cube parameters
 !--------------------------------
 
   logical :: monteCarloRT
@@ -519,10 +519,10 @@
   integer :: ncubes ! number of data cubes
   integer :: nv ! number of velocity channels
   real :: vMinSpec, vMaxSpec ! For atomicDataCube option
-  real :: gridDistance ! distance of observer for images, SEDs etc. 
+  real :: gridDistance ! distance of observer for images, SEDs etc.
   character(LEN=30) :: filter_set_name  ! name of filter set used for images (phaseloop_mod)
   character(len=80) :: lambdaFilename ! wavelength file for dust cube
-  character(len=10), protected :: dataCubeUnits 
+  character(len=10), protected :: dataCubeUnits
   character(len=10), protected :: dataCubeAxisUnits
 
 !----------------------------------------------------------
@@ -548,7 +548,7 @@
 
   ! uniformden geometry
   real(double) :: gridDensity
-   
+
   ! arthur06 geometry (arthur & hoare 2006)
   real(double) :: arthurScaleHeight, arthurN0
 
@@ -605,8 +605,8 @@
   real :: v0
   logical :: useHartmannTemp ! use T Tauri accretion stream temperatures
                              !   from Hartmann paper
-  real :: maxHartTemp        ! maximum temperature of hartmann distribution                             
-  logical :: isoTherm        ! use isothermal T Tauri accretion stream 
+  real :: maxHartTemp        ! maximum temperature of hartmann distribution
+  logical :: isoTherm        ! use isothermal T Tauri accretion stream
 
 !limb darkening:
   real(double) :: sourcelimbaB, sourcelimbbB, sourcelimbaV, sourcelimbbV
@@ -667,7 +667,7 @@
   real :: TTauriDiskRin    ! (in R_star units)
   real(double) :: hOverR
   real :: ThinDiskRin      ! (in R_star units)
-  real :: curtainsPhi1s ! accretion curtains from (s)tart... 
+  real :: curtainsPhi1s ! accretion curtains from (s)tart...
   real(double) :: phiRefine, dphiRefine, minPhiResolution
   integer :: nr1, nr2, nr3, nr4, nphi1, nphi2, nphi3, nphi4
   real :: curtainsPhi1e ! ... to (e)nd angle
@@ -676,6 +676,7 @@
   ! The following two are used for constantcurtain geometry (RK)
   integer :: curtain_number ! nuumber of curtains
   real    :: curtain_width  ! Width of curtain in degrees.
+  logical :: starkBroaden   !use stark broadening or not. 
 
   ! suboption for ttauri geometry
   logical :: ttau_acc_on        ! T to include magnetosphere
@@ -694,7 +695,7 @@
   !--------------------------------------------------------------------
 
   ! Use this parameter to turn off the alpha disc, jets and magnetosphere accretion
-  logical :: ttau_turn_off_disc  
+  logical :: ttau_turn_off_disc
   logical :: ttau_turn_off_jet
   logical :: ttau_turn_off_acc  ! magenetoshere
 
@@ -711,7 +712,7 @@
   !               along the disc along the disc
   real(double) :: DW_Tmax        ! [K] Temperature at the inner edge of the disc
   real(double) :: DW_Temperature
-  real(double) :: DW_gamma       ! exponet in the temperature power low: 
+  real(double) :: DW_gamma       ! exponet in the temperature power low:
   !
   ! mass loss rate per unit area (from the disc)
   !                                       Mdot*R^delta
@@ -719,14 +720,14 @@
   !                         4Pi*(Rmax ^(delta+2) - Rmin^(delta+2))
   ! where delta = 4*alpha*gamma
   !
-  real(double) :: DW_Mdot        ! [Msun/yr] total mass-loss rate 
+  real(double) :: DW_Mdot        ! [Msun/yr] total mass-loss rate
   real(double) :: DW_alpha       ! [-] exponent in the mass-loss rate per unit area
   !
   ! modefied  beta-velocity low
   !                                                  Rs
   !  V(r) = Cs(R) + ( f*Vesc(R) - Cs(R) ) * ( 1 - ------- )^beta
   !                                                s - Rs
-  ! 
+  !
   !  Cs -- speed of sound
   !  f  -- scaling of the asymptotic terminal velocity
   !  Vesc(R) -- escape velocity from R.
@@ -736,7 +737,7 @@
   real(double) :: DW_Rs    ! [10^10 cm]  usually 50 times of Rmin
   real(double) :: DW_f     ! [-]  usually 2.0
   !
-  ! temperature of the disc wind 
+  ! temperature of the disc wind
   !  -- set to be isothermal for now.
   real(double) :: DW_Twind     ! [Kelvin] Isothermal temperature of the wind
   !
@@ -761,7 +762,7 @@
   real(double) :: JET_theta_j !  [radian]  jet opening angle
   !
   real(double) :: JET_Mdot    ! [Msun/yr] mass loss rate in the jets
-  real(double) :: JET_a_param ! [-] a parameter in density function 
+  real(double) :: JET_a_param ! [-] a parameter in density function
   real(double) :: JET_b_param ! [-] a parameter in density function
   real(double) :: JET_Vbase   ! [km/s] Base velocity of jets
   real(double) :: JET_Vinf    ! [km/s] Terminal velocity of jets
@@ -787,10 +788,10 @@
   real(double)    :: CMFGEN_Rmin       ! radius of central star  [10^10cm]
   real(double)    :: CMFGEN_Rmax        ! max radius
   !---------------------------------------------------------------------------------
-  
+
 
   ! For "romanova" geometry --------------------------------------------------------
-  real(double)      :: ROM_Rs          ! radius of central star  [Rsun]. 
+  real(double)      :: ROM_Rs          ! radius of central star  [Rsun].
   real(double)      :: ROM_Mass        ! [Msun]  Mass of the star
   logical           :: ROM_isoT        ! if T isothermal othewise use data
   real(double)      :: ROM_T_flow      ! [K]  Isothemal temperature of the flow
@@ -798,8 +799,8 @@
   real(double)      :: ROM_r_ref       ! [cm] Reference length value
   real(double)      :: ROM_rho_ref     ! [g/cm^3]  Reference density value
   real(double)      :: ROM_T_ref       ! [T]       Reference temperature value
-  real(double)      :: ROM_v_ref       ! [cm/s]    Reference speed 
-  ! The tile angle of the magnetic axis 
+  real(double)      :: ROM_v_ref       ! [cm/s]    Reference speed
+  ! The tile angle of the magnetic axis
   real(double)      :: ROM_tilt        ! [degrees]  will be changed to [rad].
   real(double)      :: ROM_Period      ! [day]  will be changed to [sec].
   !
@@ -833,33 +834,33 @@
   !                Rmin
   !    T = Tcore*(------)^e6
   !                  R
-  !  
-  !===============================================================  
+  !
+  !===============================================================
   real :: Rmin_bp    ! radius of central star  [10^10cm]
   real :: Rmax_bp    ! cutoff radius in [10^10 cm]
   real :: Vo_bp      ! a small offset in V in  [km/s]
-     
+
   ! For jets
   real :: Vinf_jets    ! terminal velocity in  [kms]
   real :: beta_jets    ! beta in the beta-belocity law [-]
   real :: Mdot_jets    ! mass loss rate in jets [M_solar/yr]
-  real :: theta_o_jets ! half opening angle [degrees]     
+  real :: theta_o_jets ! half opening angle [degrees]
   real :: Tcore_jets   ! temperature at the core at Rmin in [10^4 K]
   real :: e6_jets      ! an exponet of in tempereture eq. [-]
-  
+
   ! For disk wind
   real :: Vinf_disk    ! terminal velocity in  [kms]
   real :: beta_disk    ! beta in the beta-belocity law [-]
   real :: Mdot_disk    ! mass loss rate in jets [M_solar/yr]
-  real :: theta_o_disk ! half opening angle [degrees]     
+  real :: theta_o_disk ! half opening angle [degrees]
   real :: Tcore_disk   ! temperature at the core at Rmin in [10^4 K]
   real :: e6_disk      ! an exponet of in tempereture eq. [-]
-  
+
   ! For equatorial disk
   real :: Rdisk_min  ! The minimum radius of the disk. in 10^10 cm.
   real :: Rdisk_max  ! The minimum  of the disk in 10^10 cm.
   real :: h_disk     ! Thickness of the disk in 10^10 cm.
-  real :: rho_scale  ! The density in the units of rho max for disk wind.     
+  real :: rho_scale  ! The density in the units of rho max for disk wind.
 
   real :: tauExtra   ! foreground optical depth
   real :: tauExtra2  ! foreground optical depth
@@ -879,10 +880,10 @@
   !--------------------------------------------------------------------
 
   ! Dimensionless cutoff radius for Bonnor-Ebert Sphere
-  real(double) :: zetacutoff 
+  real(double) :: zetacutoff
 
   ! empty geometry
-  real(double) :: centralMass 
+  real(double) :: centralMass
 
   ! "modular" geometry parameters: -------------------------------------------------------
   integer, parameter :: maxDiscMods = 9
@@ -900,29 +901,29 @@
   ! --------------------------------------------------------------------------------------
 
 !----------------------
-! adaptive mesh stuff 
+! adaptive mesh stuff
 !----------------------
 
   logical :: gridUsesAMR    ! true if grid is adaptive
-  logical :: splitOverMPI   ! true if grid is domain decomposed 
+  logical :: splitOverMPI   ! true if grid is domain decomposed
   logical :: amr1d, amr2d, amr3d
   logical :: gridshuffle    !repeatedly reset the starting grid to achieve better refinement
   integer :: minDepthAMR, maxDepthAMR
-  real(double) :: limitScalar  ! value for controlling grid subdivision 
-  real(double) :: limitScalar2 ! value for controlling grid subdivision 
-  real(double) :: vturbmultiplier ! value for controlling grid subdivision  
-  real :: amrGridSize          ! length of each side of the (cubic) grid 
+  real(double) :: limitScalar  ! value for controlling grid subdivision
+  real(double) :: limitScalar2 ! value for controlling grid subdivision
+  real(double) :: vturbmultiplier ! value for controlling grid subdivision
+  real :: amrGridSize          ! length of each side of the (cubic) grid
   real(double) :: smallestCellSize     ! size of smallest cell
-  real(double) :: amrGridCentreX       ! x-coordinate of grid centre 
-  real(double) :: amrGridCentreY       ! y-coordinate of grid centre 
-  real(double) :: amrGridCentreZ       ! z-coordinate of grid centre 
+  real(double) :: amrGridCentreX       ! x-coordinate of grid centre
+  real(double) :: amrGridCentreY       ! y-coordinate of grid centre
+  real(double) :: amrGridCentreZ       ! z-coordinate of grid centre
   logical :: doSmoothGrid   ! whether to correct large differences in the size
   logical :: logSpaceGrid   ! try to set up a log space grid (x-dir only atm)
   integer :: npoints
   integer :: nmag
   logical :: doSmoothGridTau! smooth according to chris's algorithm
   real :: smoothFactor      ! maximum ratio between adjacent cell sizes before
-                            !   smoothing is applied 
+                            !   smoothing is applied
   real :: sampleFreq        ! maximum number of samples made per subcell
   logical :: amr2dOnly      ! only use cells in 2D plane through grid
   logical :: cylindrical    ! 3d grid is cylindrical
@@ -940,7 +941,7 @@
   logical :: refineOnIonization !refine grid using ionization gradient
   real(double) :: amrTolerance !maximum gradient before AMR grid refines
   real(double) :: amrUnrefineTolerance !minimum gradient before AMR grid unrefines
-  real(double) :: amrTemperatureTol !maximum temperature gradient before AMR grid refines 
+  real(double) :: amrTemperatureTol !maximum temperature gradient before AMR grid refines
   real(double) :: amrSpeedTol !maximum speed grad before AMR grid refines
   real(double) :: amrIonFracTol !maximum ion frac grad before AMR grid refines
   real(double) :: amrRhoeTol !Maximum rhoe grad before AMR grid refines
@@ -954,7 +955,7 @@
 !---------------------------------------------------
 
   character(len=80), protected :: sphdataFilename
-  character(len=80), protected :: inputFileFormat 
+  character(len=80), protected :: inputFileFormat
   logical, protected :: sphToGridSimple
   real, protected    :: hcritPercentile
   real, protected    :: hmaxPercentile
@@ -962,9 +963,9 @@
   integer, protected :: kerneltype
   logical, protected :: variableEta
   logical, protected :: dragon
-  logical, protected :: refineCentre  ! switch on extra grid refinement for SPH-Torus discs 
+  logical, protected :: refineCentre  ! switch on extra grid refinement for SPH-Torus discs
   logical, protected :: SphOnePerCell ! Split to one particle per cell for galactic plane survey
-  logical            :: doVelocitySplit ! Should grid be split based on velocity values of SPH particles? 
+  logical            :: doVelocitySplit ! Should grid be split based on velocity values of SPH particles?
   logical, protected :: convertRhoToHI ! Convert density to HI
   integer, protected :: sphh2col       ! column of SPH file which contains H2 fraction
   integer, protected :: sphmolcol      ! column of SPH file from which molecular abundances will be read
@@ -972,7 +973,7 @@
   logical, protected :: discardSinks   ! Don't store sink particles
   logical :: guessNe                   !guess the electron number density based on temperature
 
-! Select SPH particles within a box 
+! Select SPH particles within a box
   logical, protected      :: sphboxcut
   real(double), protected :: sphboxxmin ! Minimum x value
   real(double), protected :: sphboxxmax ! Maximum x value
@@ -990,29 +991,29 @@
   real(double), protected :: sphdensitycut
   real(double) :: rCut
   logical :: doDiscSplit
-  
+
 !------------------
-! Other parameters 
+! Other parameters
 !------------------
 
 ! Parameters specific to phaseloop_mod
   real :: lambdatau  ! Wavelength at which testing optical depth computed [A]
-  logical :: fastIntegrate 
+  logical :: fastIntegrate
   logical :: noScattering
   logical :: forceFirstScat
   integer :: nPhase
   integer :: nStartPhase, nEndPhase
   real    :: phaseTime ! time of each phase of simulation (seconds)
-  real(double) :: tauSlab 
+  real(double) :: tauSlab
 
   type(VECTOR) :: bondiCentre
-  
+
 
 ! Parameters which control Torus behaviour
   logical           :: debug
   logical           :: suppressWarnings
   logical           :: useBinaryXMLVTKfiles
-  logical           :: noVtkGrid        ! Don't write out VTK files of the grid 
+  logical           :: noVtkGrid        ! Don't write out VTK files of the grid
   logical           :: vtkIncludeGhosts ! include ghosts in VTK output
   logical           :: parallelVTUFiles
   character(len=80) :: absolutePath
@@ -1032,7 +1033,7 @@
   real    :: TMinGlobal   ! globally applied minimum temperature
   real    :: TMaxGlobal   ! globally applied maximum temperature
 
-! Some other parameters   
+! Some other parameters
   character(len=10) :: object
   integer :: nr, nphi
   logical :: lineEmission
@@ -1043,7 +1044,7 @@
   logical :: pencilBeam
   logical :: useBias
   logical :: thinLine
-  logical :: doRaman ! raman scattering model 
+  logical :: doRaman ! raman scattering model
   real    :: lamLine
   integer :: nLamLine
   integer :: nDatacubeInclinations
@@ -1076,4 +1077,3 @@
   character(len=80) :: detType
   character(len=80) :: wavefrontFile
   character(len=80) :: fibreSpectrum
-

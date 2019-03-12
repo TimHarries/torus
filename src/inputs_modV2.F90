@@ -1066,6 +1066,10 @@ contains
           call getReal("ttauririnner", TTauriRinner, TTaurirStar, cLine, fLine, nLines, &
             "T Tauri inner flow radius (in R_star): ","(a,f7.1,1x,a)", 2.2, ok, .false.)
 
+          call getLogical("starkbroaden",starkBroaden, cline, fline, nlines, &
+                "Use Stark Broadening", "(a,1l,1x,a)", .true., ok, .false.)
+
+
        if (ttauriMagnetosphere) then
           call getReal("ttaurirouter", TTauriRouter, TTaurirStar, cLine, fLine, nLines, &
                "T Tauri outer flow radius (in R_star): ","(a,f7.1,1x,a)", 3.0, ok, .true.)

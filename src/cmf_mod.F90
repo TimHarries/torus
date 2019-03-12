@@ -1019,6 +1019,7 @@ contains
   real(double) function  phiProfStark(dv, thisOctal, subcell, nu, thisAtom)
     use utils_mod, only : voigtn
     use atom_mod, only: bigGamma
+    use inputs_mod, only : starkBroaden
     type(MODELATOM) :: thisAtom
     real(double) :: dv
     type(OCTAL), pointer :: thisOctal
@@ -1030,7 +1031,14 @@ contains
     DopplerWidth = nu/cSpeed * V_th !eq 7  [Hz]
 
     N_HI = thisoctal%atomlevel(subcell, 1, 1)
-    a = bigGamma(N_HI, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), nu) / (fourPi * DopplerWidth) ! [-]
+
+    if(starkBroaden) then
+      a = bigGamma(N_HI, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), nu) / (fourPi * DopplerWidth) ! [-]
+   else
+     print*,"not stark Broadening"
+     a = 0.d0
+   endif
+
     Hay = voigtn(a,dv*cspeed/v_th)
     phiProfStark = nu * Hay / (sqrtPi*DopplerWidth)
 !    write(*,*) "stark ",dv*cspeed/1.d5, phiProfStark,a/1.d5, n_hi
@@ -2221,7 +2229,7 @@ contains
 666       continue
 
           call writeInfo( "ATOM loop done.")
-        end subroutine atomLoop
+  end subroutine atomLoop
 
   recursive  subroutine  swapPops(thisOctal, tolerance, nInuse, nConverged)
     type(octal), pointer   :: thisOctal
