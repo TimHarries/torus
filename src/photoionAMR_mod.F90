@@ -97,7 +97,7 @@ contains
     use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral
     use inputs_mod, only: densitySpectrum, cflNumber, useionparam, xrayonly, isothermal, supernovae, &
           burstType, burstAge, mstarburst, burstTime, starburst, inputseed, doSelfGrav, redoGravOnRead, nHydroperPhoto,mchistories 
-    use inputs_mod, only: clusterSinks, criticalMass
+    use inputs_mod, only: clusterSinks
     use parallel_mod, only: torus_abort
     use mpi
     integer :: nMuMie
@@ -1294,19 +1294,11 @@ contains
           if (hosokawaTracks) then
              call setSourceArrayProperties(globalsourceArray, globalnSource, fractionOfAccretionLum)
           elseif (clusterSinks) then
-             if (globalnSource > 0) then
-                call randomNumberGenerator(randomSeed=.true.)
-                call randomNumberGenerator(syncIseed=.true.)
-                do i = 1, globalnSource
-                   if (clusterReservoir(globalSourceArray(i)) >= criticalMass) then
-                      if (writeoutput) write(*,*) "Creating subsources for cluster ", i
-                      call populateCluster(globalSourceArray(i))
-                   endif
-                   ! subsources have evolved, new subsources may have been created, so recalculate cluster SED
-                   call setClusterSpectrum(globalSourceArray(i))
-                enddo
-                call randomNumberGenerator(randomSeed=.true.)
-             endif
+             call randomNumberGenerator(randomSeed=.true.)
+             call randomNumberGenerator(syncIseed=.true.)
+             call populateClusters(globalSourceArray, globalnSource) ! after addSinks and accretion
+             call randomNumberGenerator(randomSeed=.true.)
+             call setClusterSpectra(globalSourceArray, globalnSource) 
           endif
        endif
 

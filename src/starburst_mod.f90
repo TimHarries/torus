@@ -83,41 +83,57 @@ contains
     mass = 10.d0**mass
   end function randomMassFromIMF
 
-  subroutine populateCluster(cluster) 
-    type(SOURCETYPE) :: cluster
-    real(double) :: totalCreatedMass 
+  subroutine populateClusters(clusters, nClusters) 
+    use inputs_mod, only : criticalMass
+    type(SOURCETYPE), pointer :: clusters(:), cluster
+    real(double) :: totalCreatedMass, reservoir 
+    integer :: nClusters, i
 
-    call createSources(cluster%nSubsource, cluster%subsourceArray, "instantaneous", 0.d0, clusterReservoir(cluster), 0.d0, &
-          totalCreatedMass, zeroNsource=.false.)
+    do i = 1, nClusters
+       cluster => clusters(i)
+       reservoir = clusterReservoir(cluster)
+       if (reservoir >= criticalMass) then
+          if (writeoutput) write(*,*) "Creating subsources for cluster ", i
+          call createSources(cluster%nSubsource, cluster%subsourceArray, "instantaneous", 0.d0, reservoir, 0.d0, &
+                totalCreatedMass, zeroNsource=.false.)
 
-    cluster%subsourceArray(1:cluster%nSubsource)%position = cluster%position
-    cluster%subsourceArray(1:cluster%nSubsource)%velocity = cluster%velocity
-  end subroutine populateCluster
+          cluster%subsourceArray(1:cluster%nSubsource)%position = cluster%position
+          cluster%subsourceArray(1:cluster%nSubsource)%velocity = cluster%velocity
+       endif
+    enddo
+
+  end subroutine populateClusters
 
   
-  subroutine setClusterSpectrum(cluster)
-    type(SOURCETYPE) :: cluster
-    integer :: j
+  ! calculate cluster spectrum from already calculated subsource spectra
+  subroutine setClusterSpectra(clusters, nClusters)
+    type(SOURCETYPE), pointer :: clusters(:), cluster
+    integer :: i, j, nClusters
 
-    if (cluster%nSubsource > 0) then
-       call freeSpectrum(cluster%spectrum)
-       call copySpectrum(cluster%spectrum, cluster%subsourceArray(1)%spectrum)
-       if (cluster%nSubsource > 1) then
-          do j = 2, cluster%nSubsource
-             call addSpectrum(cluster%spectrum, cluster%subsourceArray(j)%spectrum)
-          enddo
+    do i = 1, nClusters
+       cluster => clusters(i)
+       if (cluster%nSubsource > 0) then
+          call freeSpectrum(cluster%spectrum)
+          call copySpectrum(cluster%spectrum, cluster%subsourceArray(1)%spectrum)
+          if (cluster%nSubsource > 1) then
+             do j = 2, cluster%nSubsource
+                call addSpectrum(cluster%spectrum, cluster%subsourceArray(j)%spectrum)
+             enddo
+          endif
+          call normalizedSpectrum(cluster%spectrum)
+
+          cluster%luminosity = sum(cluster%subsourceArray(1:cluster%nsubsource)%luminosity)
+       elseif (cluster%nSubsource == 0) then
+          ! zero flux
+          call freeSpectrum(cluster%spectrum)
+          call newSpectrum(cluster%spectrum, 100.d0, 1.d7, 1000)
+          cluster%luminosity = 0.d0
        endif
-       call normalizedSpectrum(cluster%spectrum)
-
-       cluster%luminosity = sum(cluster%subsourceArray(1:cluster%nsubsource)%luminosity)
-    elseif (cluster%nSubsource == 0) then
-       call freeSpectrum(cluster%spectrum)
-       call newSpectrum(cluster%spectrum, 100.d0, 1.d7, 1000)
-       cluster%luminosity = 0.d0
-    endif
-  end subroutine setClusterSpectrum
+    enddo
+  end subroutine setClusterSpectra
 
   real(double) function clusterReservoir(cluster)
+    type(SOURCETYPE) :: cluster
     real(double) :: totalStellarMass
     integer :: i
     totalStellarMass = 0.d0
@@ -130,7 +146,7 @@ contains
   subroutine createSources(nSource, source, burstType, burstAge, burstMass, sfRate, totMass,zeroNsource)
     use inputs_mod, only : imfType, clusterSinks
     integer :: nSource, thisNsource, initialNsource
-    type(SOURCETYPE) :: source(:)
+    type(SOURCETYPE), pointer :: source(:)
     type(SOURCETYPE), allocatable :: tempSourceArray(:)
     type(TRACKTABLE) :: thisTable
     character(len=80) :: message

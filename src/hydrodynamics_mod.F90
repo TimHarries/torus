@@ -20469,7 +20469,7 @@ end subroutine minMaxDepth
   recursive subroutine broadcastSinks(nSource, source)
     use mpi
     use inputs_mod, only : clusterSinks
-    integer :: nSource, nSubsource
+    integer :: nSource, nSubsource, i
     type(SOURCETYPE) :: source(:)
     integer :: ierr
      call MPI_BCAST(nSource, 1, MPI_INTEGER, 0, localWorldCommunicator, ierr)
@@ -20510,20 +20510,24 @@ end subroutine minMaxDepth
              localWorldCommunicator, ierr)
         call MPI_BCAST(source(1:nSource)%diffuse     , nSource, MPI_LOGICAL, 0, &
              localWorldCommunicator, ierr)
-        if (clusterSinks) then
-           call MPI_BCAST(source(1:nSource)%nSubsource  , nSource, MPI_INTEGER, 0, &
-                localWorldCommunicator, ierr)
-        endif
+        call MPI_BCAST(source(1:nSource)%nSubsource  , nSource, MPI_INTEGER, 0, &
+             localWorldCommunicator, ierr)
      endif
 
      ! sink sub sources
      if (clusterSinks) then
+        if (myrankGlobal /= 0) then
+           do i = 1, nSource
+              if (associated(source(i)%subsourceArray)) deallocate(source(i)%subsourceArray)
+              source(i)%subsourceArray => null()
+              if (source(i)%nSubsource > 0) then
+                 allocate(source(i)%subsourceArray(1:source(i)%nSubsource))
+              endif
+           enddo
+        endif
         do i = 1, nSource
            nSubsource = source(i)%nSubsource
            if (nSubsource > 0) then
-              if (.not.associated(source(i)%subsourceArray)) then
-                 allocate(source(i)%subsourceArray(1:nSubsource))
-              endif
               call broadcastSinks(nSubsource, source(i)%subsourceArray(1:nSubsource))
            endif
         enddo
@@ -20533,7 +20537,7 @@ end subroutine broadcastSinks
   recursive subroutine sendSinksToZerothThread(nSource, source)
     use mpi
     use inputs_mod, only : clusterSinks
-    integer :: nSource, ierr, nSubsource !, iSource
+    integer :: nSource, ierr, nSubsource, i !, iSource
     type(SOURCETYPE) :: source(:)
     integer :: status(MPI_STATUS_SIZE)
     integer, parameter :: tag = 32
@@ -20565,9 +20569,7 @@ end subroutine broadcastSinks
                ierr)
           call mpi_recv(source(1:nSource)%stellar, nSource, MPI_LOGICAL, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%diffuse, nSource, MPI_LOGICAL, 1, tag, localWorldCommunicator, status, ierr)
-          if (clusterSinks) then
-             call mpi_recv(source(1:nSource)%nSubsource, nSource, MPI_INTEGER, 1, tag, localWorldCommunicator, status, ierr)
-          endif
+          call mpi_recv(source(1:nSource)%nSubsource, nSource, MPI_INTEGER, 1, tag, localWorldCommunicator, status, ierr)
 !       enddo
   
     endif
@@ -20595,20 +20597,23 @@ end subroutine broadcastSinks
           call mpi_send(source(1:nSource)%angMomentum%z, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%stellar, nSource, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%diffuse, nSource, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
-          if (clusterSinks) then
-             call mpi_send(source(1:nSource)%nSubsource, nSource, MPI_INTEGER, 0, tag, localWorldCommunicator, ierr)
-          endif
+          call mpi_send(source(1:nSource)%nSubsource, nSource, MPI_INTEGER, 0, tag, localWorldCommunicator, ierr)
 !       enddo
     endif
 
     ! sink sub sources
+    ! TODO clean up logic
     if (clusterSinks) then
        if (myrankGlobal == 0 .or. myrankGlobal == 1) then
           do i = 1, nSource
              nSubsource = source(i)%nSubsource
              if (nSubsource > 0) then
-                if (.not.associated(source(i)%subsourceArray)) then
-                   allocate(source(i)%subsourceArray(1:nSubsource))
+                if (myrankGlobal == 0) then
+                   if (associated(source(i)%subsourceArray)) deallocate(source(i)%subsourceArray)
+                   source(i)%subsourceArray => null()
+                   if (source(i)%nSubsource > 0) then
+                      allocate(source(i)%subsourceArray(1:source(i)%nSubsource))
+                   endif
                 endif
                 call sendSinksToZerothThread(nSubsource, source(i)%subsourceArray(1:nSubsource))
              endif

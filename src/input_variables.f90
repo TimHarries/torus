@@ -156,7 +156,7 @@
   real(double) :: burstTime
   real(double) :: feedbackDelay ! after starburst, delay feedback mechanisms by this fraction of free-fall time
   character(len=20) :: burstType
-  character(len=20) :: imfType
+  character(len=20) :: imfType  !Initial mass function sampled by cluster sink particles
   type(VECTOR) :: burstPosition ! pos of star for burstType 'singlestartest'
   logical :: dumpregularVTUS   !dump vtu after every photo step
   ! Parameters  specific to domain decomposed photoionisation 
@@ -225,6 +225,7 @@
   logical :: cylindricalHydro         ! perform the hydrodynamics in cylindrical coordinates
   real(double) :: tStart, tEnd, tDump !Start, end and dump interval times
   real(double) :: rhoThreshold        ! threshold density for sink creation
+  real(double) :: criticalMass        ! critical reservoir mass above which cluster sink particles sample IMF 
   real(double) :: hydroSpeedLimit     ! fudge to limit hydrodynamic advection speed
   logical :: hydrovelocityConv        !Convert input velocity vector into simulation velocities 
   logical :: doRefine, doUnrefine     !Allow the AMR grid to refine/unrefine
@@ -402,6 +403,7 @@
   logical :: readSources
   logical :: moveSources
   logical :: evolveSources 
+  logical :: clusterSinks
   logical :: hotspot
   logical :: pulsatingStar
   integer :: nModes

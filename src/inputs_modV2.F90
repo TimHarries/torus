@@ -386,7 +386,7 @@ contains
 
        if (clusterSinks) then
           call getDouble("criticalmass", criticalMass, 1.d0, cLine, fLine, nLines, &
-               "Critical mass for creating subsources: ","(a,f6.1,a)", 120.d0, ok, .true.)
+               "Critical mass for creating subsources: ","(a,f6.1,a)", 300.d0, ok, .true.)
           call getString("imf", imfType, cLine, fLine, nLines, &
                "Initial mass function: ","(a,a,1x,a)","salpeter", ok, .false.)
        endif
@@ -1046,11 +1046,6 @@ contains
        call getDouble("omega", omega, 1.d0, cLine, fLine, nLines, &
             "Angular frequency of rotation: ","(a,f7.2,a)",1.d-13, ok, .true.)
 
-     case("mgascii")
-       call getString("mgasciifile", mgasciifile, cLine, fLine, nLines, &
-            "3D ascii file: ","(a,a,1x,a)","constant", ok, .true.)
-       call getReal("isothermtemp", isoThermTemp, 1., cLine, fLine, nLines, &
-            "Isothermal temperature (K): ","(a,f7.1,1x,a)", 10.0, ok, .false.)
 
      case("magstream")
        call getString("magstreamfile", magStreamFile, cLine, fLine, nLines, &
