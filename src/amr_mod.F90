@@ -16307,10 +16307,15 @@ end function readparameterfrom2dmap
     use inputs_mod, only : SW_Mdot, SW_Rmin, SW_rmax, SW_temperature
     type(GRIDTYPE) :: grid
     real(double) :: thisRho, r,  v
+    real(double) :: theta
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
-    type(VECTOR) :: cellCentre
+    type(VECTOR) :: cellCentre, magAxis
     integer :: subcell, i
+
+    magAxis%x = 0.d0
+    magAxis%y = 0.d0
+    magAxis%z = 1.d0
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -16326,7 +16331,8 @@ end function readparameterfrom2dmap
 
           cellCentre = subcellCentre(thisOctal, subcell) ! find the centre of the cell
           r = modulus(cellCentre)
-
+          theta =  ACOS(dotProd(cellCentre,magAxis) / (modulus(magAxis)*modulus(cellCentre)))
+          print*,theta
           v = modulus(TTauriStellarWindVelocity(cellCentre))*cSpeed
           thisRho = 0.d0
           if (v > 0.d0) then
@@ -16335,7 +16341,7 @@ end function readparameterfrom2dmap
 
 
 
-          if ( (r > SW_Rmin).and.(r < SW_Rmax).and.(thisRho > thisOctal%rho(subcell))) then
+          if ( (r > SW_Rmin).and.(r < SW_Rmax).and.(thisRho > thisOctal%rho(subcell)).and.(theta .LT. 0.2618d0)) then
              thisOctal%velocity(subcell) = TTauriStellarWindvelocity(cellcentre)
              thisOctal%inflow(subcell) = .true.
              CALL fillVelocityCorners(thisOctal,ttauriStellarWindvelocity)
@@ -16350,6 +16356,53 @@ end function readparameterfrom2dmap
     enddo
   end subroutine assignDensitiesStellarWind
 
+  ! recursive subroutine assignDensitiesStellarWind(grid, thisOctal)
+  !   use analytical_velocity_mod
+  !   use inputs_mod, only : SW_Mdot, SW_Rmin, SW_rmax, SW_temperature
+  !   type(GRIDTYPE) :: grid
+  !   real(double) :: thisRho, r,  v
+  !   type(octal), pointer   :: thisOctal
+  !   type(octal), pointer  :: child
+  !   type(VECTOR) :: cellCentre
+  !   integer :: subcell, i
+  !
+  !   do subcell = 1, thisOctal%maxChildren
+  !      if (thisOctal%hasChild(subcell)) then
+  !         ! find the child
+  !         do i = 1, thisOctal%nChildren, 1
+  !            if (thisOctal%indexChild(i) == subcell) then
+  !               child => thisOctal%child(i)
+  !               call assignDensitiesStellarWind(grid, child)
+  !               exit
+  !            end if
+  !         end do
+  !      else
+  !
+  !         cellCentre = subcellCentre(thisOctal, subcell) ! find the centre of the cell
+  !         r = modulus(cellCentre)
+  !
+  !         v = modulus(TTauriStellarWindVelocity(cellCentre))*cSpeed
+  !         thisRho = 0.d0
+  !         if (v > 0.d0) then
+  !            thisRho = (SW_Mdot * mSol / yearsToSecs)/(fourPi * r**2 * v * 1.d20)
+  !         endif
+  !
+  !
+  !
+  !         if ( (r > SW_Rmin).and.(r < SW_Rmax).and.(thisRho > thisOctal%rho(subcell))) then
+  !            thisOctal%velocity(subcell) = TTauriStellarWindvelocity(cellcentre)
+  !            thisOctal%inflow(subcell) = .true.
+  !            CALL fillVelocityCorners(thisOctal,ttauriStellarWindvelocity)
+  !            thisOctal%iAnalyticalVelocity(subcell) = 3
+  !            thisOCtal%rho(subcell) = thisRho
+  !            thisOCtal%fixedTemperature(subcell) = .true.
+  !            thisOctal%temperature(subcell) = real(SW_temperature)
+  !            thisOctal%fixedTemperature(subcell) = .true.
+  !         endif
+  !
+  !      endif
+  !   enddo
+  ! end subroutine assignDensitiesStellarWind
 
 
   recursive subroutine outputTemp(grid, thisOctal,fp)

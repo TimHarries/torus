@@ -1057,17 +1057,16 @@ contains
        call getReal("ttaurimstar", TTauriMstar, real(msol), cLine, fLine, nLines, &
             "T Tauri stellar mass (in M_sol): ","(a,f7.1,1x,a)", 0.8, ok, .true.)
 
-
        call getLogical("ttaurimag", ttauriMagnetosphere, cLine, fLine, nLines, &
             "Include a T Tauri magnetosphere: ","(a,1l,1x,a)", .false., ok, .true.)
 
-          call getReal("ttaurirouter", TTauriRouter, TTaurirStar, cLine, fLine, nLines, &
-               "T Tauri outer flow radius (in R_star): ","(a,f7.1,1x,a)", 3.0, ok, .false.)
-          call getReal("ttauririnner", TTauriRinner, TTaurirStar, cLine, fLine, nLines, &
-            "T Tauri inner flow radius (in R_star): ","(a,f7.1,1x,a)", 2.2, ok, .false.)
+        call getReal("ttaurirouter", TTauriRouter, TTaurirStar, cLine, fLine, nLines, &
+             "T Tauri outer flow radius (in R_star): ","(a,f7.1,1x,a)", 3.0, ok, .false.)
 
-          call getLogical("starkbroaden",starkBroaden, cline, fline, nlines, &
-                "Use Stark Broadening", "(a,1l,1x,a)", .true., ok, .false.)
+        call getReal("ttauririnner", TTauriRinner, TTaurirStar, cLine, fLine, nLines, &
+          "T Tauri inner flow radius (in R_star): ","(a,f7.1,1x,a)", 2.2, ok, .false.)
+
+
 
 
        if (ttauriMagnetosphere) then
@@ -2932,6 +2931,9 @@ contains
     call getReal("C_stark", C_stark, 1., cLine, fLine, nLines, &
          "Damping constant (Stark)         in [A]: ","(a,1PE10.3,1x,a)", 1.47e-2, ok, .false.)
     call setVoigtParams(C_rad, C_vdw, C_stark)
+
+    call getLogical("starkbroaden",starkBroaden, cline, fline, nlines, &
+      "Use Stark Broadening", "(a,1l,1x,a)", .true., ok, .false.)
 
   end subroutine readAtomicPhysicsParameters
 

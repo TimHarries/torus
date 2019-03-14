@@ -1034,10 +1034,9 @@ contains
 
     if(starkBroaden) then
       a = bigGamma(N_HI, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), nu) / (fourPi * DopplerWidth) ! [-]
-   else
-     print*,"not stark Broadening"
-     a = 0.d0
-   endif
+    else
+      a = 0.d0
+    endif
 
     Hay = voigtn(a,dv*cspeed/v_th)
     phiProfStark = nu * Hay / (sqrtPi*DopplerWidth)
