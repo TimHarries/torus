@@ -16306,16 +16306,11 @@ end function readparameterfrom2dmap
     use analytical_velocity_mod
     use inputs_mod, only : SW_Mdot, SW_Rmin, SW_rmax, SW_temperature
     type(GRIDTYPE) :: grid
-    real(double) :: thisRho, r,  v
-    real(double) :: theta
+    real(double) :: thisRho, r,  v, theta
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
-    type(VECTOR) :: cellCentre, magAxis
+    type(VECTOR) :: cellCentre
     integer :: subcell, i
-
-    magAxis%x = 0.d0
-    magAxis%y = 0.d0
-    magAxis%z = 1.d0
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -16331,17 +16326,14 @@ end function readparameterfrom2dmap
 
           cellCentre = subcellCentre(thisOctal, subcell) ! find the centre of the cell
           r = modulus(cellCentre)
-          theta =  ACOS(dotProd(cellCentre,magAxis) / (modulus(magAxis)*modulus(cellCentre)))
-          print*,theta
           v = modulus(TTauriStellarWindVelocity(cellCentre))*cSpeed
+          theta = capHalfAngle()
           thisRho = 0.d0
           if (v > 0.d0) then
-             thisRho = (SW_Mdot * mSol / yearsToSecs)/(fourPi * r**2 * v * 1.d20)
+             thisRho = (SW_Mdot * mSol / yearsToSecs)/(twoPi * r**2 * (1-cos(theta)) * v * 1.d20)
           endif
 
-
-
-          if ( (r > SW_Rmin).and.(r < SW_Rmax).and.(thisRho > thisOctal%rho(subcell)).and.(theta .LT. 0.2618d0)) then
+          if ((r > SW_Rmin).and.(r < SW_Rmax).and.(thisRho > thisOctal%rho(subcell)).and.(outflow(cellCentre))) then
              thisOctal%velocity(subcell) = TTauriStellarWindvelocity(cellcentre)
              thisOctal%inflow(subcell) = .true.
              CALL fillVelocityCorners(thisOctal,ttauriStellarWindvelocity)
@@ -16349,7 +16341,7 @@ end function readparameterfrom2dmap
              thisOCtal%rho(subcell) = thisRho
              thisOCtal%fixedTemperature(subcell) = .true.
              thisOctal%temperature(subcell) = real(SW_temperature)
-             thisOctal%fixedTemperature(subcell) = .true.
+             !thisOctal%fixedTemperature(subcell) = .true.
           endif
 
        endif

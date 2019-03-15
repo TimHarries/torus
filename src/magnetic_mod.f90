@@ -65,6 +65,70 @@ contains
   end function pMahdavi
 
 
+  !!Functon determines if there is stellar outflow from poles (ttauri) at the position given by rVec
+  !!tjgw201 14/03/19 based on function: inFlowMahdaviSingle(rVec)
+  logical function outFlow(rVec)
+    use inputs_mod, only : ttauriRouter, dipoleOffset, ttauriRstar
+    type(VECTOR) :: rVec
+    real(double) :: r, theta, phi, beta, xi
+    real(double) :: thisr, thisTheta
+    real(double) :: thetaDash, phiDash, thisThetaFinal
+    real(double) :: thetaFinal
+
+    beta = dipoleOffset
+    r = modulus(rVec)
+    xi = ttauriRstar / ttauriRouter
+    if (r == 0.d0) then
+       outFlow = .false.
+       goto 666
+    endif
+
+    thisTheta = acos(rVec%z/r)
+    phi = atan2(rVec%y,rVec%x)+1.d-3
+
+    !theta_0 = pi/2 therefore can remove all theta terms
+    phiDash = atan2(sin(phi),(cos(phi)*cos(beta)))
+    if (phiDash == 0.d0) phiDash = 1.d-20
+
+    thetaDash = acos(cos(phi)*sin(beta))
+    thetaFinal = asin(sqrt(xi*sin(thetaDash)**2.))
+
+    thisThetaFinal = asin(max(-1.d0,min(1.d0,sin(phi)*sin(thisTheta)/sin(phidash))))
+    if(thisThetaFinal .LE. thetaFinal) then
+      outflow = .True.
+    else
+      outflow = .False.
+    endif
+    !
+    ! if (beta /= 0.d0) then
+    !    if (cos(theta) > 0.d0) then
+    !       if (cos(phidash) < 0.d0) outFlow = .false.
+    !    else
+    !       if (cos(phidash) > 0.d0) outFlow = .false.
+    !    endif
+    ! endif
+
+    666 continue
+  end function outFlow
+
+
+
+  function capHalfAngle()
+    use inputs_mod, only : ttauriRouter, dipoleOffset, ttauriRstar
+    real(double) :: theta0dash, xi
+    real(double) :: capHalfAngle
+
+    xi = ttauriRstar / ttauriRouter
+
+    theta0dash = acos(sin(dipoleOffset))
+    capHalfAngle = asin(sqrt(xi*sin(theta0Dash)**2.))
+    return
+  end function capHalfAngle
+
+
+
+
+
   logical function inFlowMahdaviSingle(rVec)
     use inputs_mod, only : ttauriRinner, ttauriRouter, dipoleOffset, ttauriRstar, &
          TTauriDiskHeight
