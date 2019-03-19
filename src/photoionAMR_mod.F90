@@ -125,7 +125,7 @@ contains
     real(double) :: deltaTforDump, timeOfNextDump, loopLimitTime
     integer :: iRefine, nUnrefine
     logical :: photoLoop, photoLoopGlobal=.false.
-    integer :: i, status(MPI_STATUS_SIZE), tag=30, sign
+    integer :: i, j, k, status(MPI_STATUS_SIZE), tag=30, sign
     integer :: stageCounter=1,  nPhase, nstep, nPhotoIter
     real(double) :: timeSinceLastRecomb=0.d0
     real(double) :: radDt, pressureDt, gravityDt, sourcesourceDt, gasSourceDt, gasDt, tempDouble, viscDt
@@ -140,6 +140,7 @@ contains
     real(double) :: epsoverdeltat, totalMass, tauSca, tauAbs, tff, rhosphere, feedbackStartTime
     real(double) :: ionizedVolume, ionizedMass, ke, jeansUnstableMass, maxRho, totalCreatedMass
     logical :: sourcesCreated, doFeedback
+    real(double) :: totFlux ! fixme delete after clustersink tests
     nPhotoIter = 1
 !    real :: gridToVtu_value
 !    integer :: gridVtuCounter
@@ -1174,7 +1175,7 @@ contains
 
           if (severeDamping) call cutVacuum(grid%octreeRoot)
 
-          if (writeoutput) write(*,*) "starburst ",starburst," burst time ",burstTime, &
+          if (writeoutput .and. starburst) write(*,*) "starburst ",starburst," burst time ",burstTime, &
              " time till burst ", burstTime-grid%currentTime, " nSource ",globalnSource
           if (starburst.and.(grid%currentTime >= burstTime).and.(globalnSource == 0).and.(.not.sourcesCreated)) then
              if (writeoutput) call writeInfo("Starting setting up sources.")
@@ -1287,22 +1288,98 @@ contains
           enddo
 
        endif
+
+       if (myRankWorldGlobal == 1) call tune(6,"Syncing sources")
        call sendSinksToZerothThread(globalnSource, globalsourceArray)
        call broadcastSinks(globalnSource, globalsourceArray)
+       if (myRankWorldGlobal == 1) call tune(6,"Syncing sources")
+
+
+       ! FIXME
+!       if (myrankglobal == 0 .or. myrankglobal == 1 .or. myrankglobal == 2 .or. myrankglobal == 65) then
+!          write(*,*) "AFTER BROADCAST, BEFORE POPULATE"
+!          write(*,'(a2,1x,a3,5x,a9,1x,a4,1x,a12,1x,a9)') "r", "i", "Mcl", "n*", "Mres", "age"
+!          do i = 1, globalnSource
+!             write(*,'(i2.2,1x,i3.3,5x,f9.2,1x,i4,1x,f12.5,1x,es9.2)') myrankglobal, i, globalSourceArray(i)%mass/msol, &
+!             globalSourceArray(i)%nSubsource, clusterReservoir(globalSourceArray(i))/msol, globalsourceArray(i)%age
+!             if (globalSourceArray(i)%nSubsource > 0) then
+!                j = maxloc(globalsourceArray(i)%subsourceArray(1:globalsourceArray(i)%nsubsource)%mass,dim=1)
+!                write(*,'(i2.2, 1x,i3.3, a5, f9.2,1x,i4,a14,es9.2)') myrankglobal, i, "_max ", &
+!                   globalsourceArray(i)%subsourceArray(j)%mass/msol,globalSourceArray(i)%subsourceArray(j)%nSubsource," ",&
+!                   globalSourceArray(i)%subsourceArray(j)%age
+!                j = minloc(globalsourceArray(i)%subsourceArray(1:globalsourceArray(i)%nsubsource)%mass,dim=1)
+!                write(*,'(i2.2, 1x,i3.3, a5, f9.2,1x,i4,a14,es9.2)') myrankglobal, i, "_min ", &
+!                   globalsourceArray(i)%subsourceArray(j)%mass/msol,globalSourceArray(i)%subsourceArray(j)%nSubsource," ",&
+!                   globalSourceArray(i)%subsourceArray(j)%age
+!             endif
+!          enddo
+!       endif
 
        if (nbodyPhysics) then
           if (hosokawaTracks) then
              call setSourceArrayProperties(globalsourceArray, globalnSource, fractionOfAccretionLum)
           elseif (clusterSinks) then
+             ! after addSinks and accretion (new sink masses)
+             if (myrankWorldglobal == 1) call tune(6, "Setting cluster properties")
              call randomNumberGenerator(randomSeed=.true.)
              call randomNumberGenerator(syncIseed=.true.)
-             call populateClusters(globalSourceArray, globalnSource) ! after addSinks and accretion
+             call populateClusters(globalSourceArray, globalnSource, 0.d0) 
              call randomNumberGenerator(randomSeed=.true.)
              call setClusterSpectra(globalSourceArray, globalnSource) 
+             if (myrankWorldglobal == 1) call tune(6, "Setting cluster properties")
+          else
+             ! sources have new M, Teff, L from updateSourceProperties -> recalculate spectra (rank 0 in particular)
+             call setSourceSpectra(globalSourceArray, globalnSource) 
           endif
        endif
 
+!       write(*,*) myrankglobal, " SUBSOURCE MASSES",&
+!          globalsourceArray(3)%subsourceArray(:)%mass/msol
 
+       ! FIXME
+       if (myrankglobal == 0) then!.or. myrankglobal == 1 .or. myrankglobal == 2 .or. myrankglobal == 65) then
+          write(*,*) "AFTER POPULATE" 
+          write(*,'(a2,1x,a3,5x,a9,1x,a4,1x,a12,1x,a9,1x,a9)') "r", "i", "Mcl", "n*", "Mres", "age", "teff"
+          do i = 1, globalnSource
+             write(*,'(i2.2,1x,i3.3,5x,f9.2,1x,i4,1x,f12.5,1x,es9.2)') myrankglobal, i, globalSourceArray(i)%mass/msol, &
+             globalSourceArray(i)%nSubsource, clusterReservoir(globalSourceArray(i))/msol, globalsourceArray(i)%age
+             if (globalSourceArray(i)%nSubsource > 0) then
+                j = maxloc(globalsourceArray(i)%subsourceArray(1:globalsourceArray(i)%nsubsource)%mass,dim=1)
+                write(*,'(i2.2, 1x,i3.3, a5, f9.2,1x,i4,a14,es9.2,1x,es9.2)') myrankglobal, i, "_max ", &
+                   globalsourceArray(i)%subsourceArray(j)%mass/msol,globalSourceArray(i)%subsourceArray(j)%nSubsource," ",&
+                   globalSourceArray(i)%subsourceArray(j)%age, globalSourceArray(i)%subsourceArray(j)%teff
+
+                if ((myrankglobal==0)) then
+                   totFlux = 0.d0
+                   do j = 1, globalSourceArray(i)%nSubsource
+                      totflux = totflux + ionizingFlux(globalSourceArray(i)%subsourceArray(j))
+                   enddo
+                   write(*,'(a,i4.4,a,i4.4,2(1x,es9.2))') "IONIZING FLUX ", i,"_",j, ionizingFlux(globalSourceArray(i)), totFlux
+!                      write(mpiFilename, '(a,i3.3,a,i3.3,a)') "lamspectrum_", i, "_", j, ".dat"
+!                      open(68,file=mpiFilename,status="replace",form="formatted")
+!                      do k = 1, globalSourceArray(i)%subsourceArray(j)%spectrum%nlambda
+!                         write(68,*) (globalSourceArray(i)%subsourceArray(j)%spectrum%lambda(k)),&
+!                          globalSourceArray(i)%subsourceArray(j)%spectrum%flux(k)
+!                      enddo
+!                   enddo 
+!                   write(mpiFilename, '(a,i3.3,a)') "lamspectrum_", i, ".dat"
+!                   open(68,file=mpiFilename,status="replace",form="formatted")
+!                   do k = 1, globalSourceArray(i)%spectrum%nlambda
+!                      write(68,*) (globalSourceArray(i)%spectrum%lambda(k)),&
+!                       globalSourceArray(i)%spectrum%flux(k)
+!                   enddo
+!                   close(68)
+                endif
+
+                j = minloc(globalsourceArray(i)%subsourceArray(1:globalsourceArray(i)%nsubsource)%mass,dim=1)
+                write(*,'(i2.2, 1x,i3.3, a5, f9.2,1x,i4,a14,es9.2,1x,es9.2)') myrankglobal, i, "_min ", &
+                   globalsourceArray(i)%subsourceArray(j)%mass/msol,globalSourceArray(i)%subsourceArray(j)%nSubsource," ",&
+                   globalSourceArray(i)%subsourceArray(j)%age, globalSourceArray(i)%subsourceArray(j)%teff
+             endif
+          enddo
+       endif
+
+       if (myRankWorldGlobal == 1) call tune(6,"Hydrodynamics step")
        
 
 !       write(mpiFilename,'(a, i4.4, a)') "postStep.vtk"
@@ -1310,7 +1387,6 @@ contains
 !            valueTypeString=(/"rho          ","logRho       ", "HI           " , "temperature  ", &
 !            "hydrovelocity","sourceCont   ","pressure     "/))
 
-       if (myRankWorldGlobal == 1) call tune(6,"Hydrodynamics step")
        if ((myrankGlobal /= 0).and.(.not.loadBalancingThreadGlobal)) & 
             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        if (myrankGlobal /= 0) call resetNh(grid%octreeRoot)
@@ -1349,7 +1425,14 @@ contains
 
        grid%currentTime = grid%currentTime + dt
 
-       if (nbodyPhysics) globalSourceArray(1:globalnSource)%time = grid%currentTime
+       if (nbodyPhysics) then 
+          globalSourceArray(1:globalnSource)%time = grid%currentTime
+          do i = 1, globalnSource
+             if (globalSourceArray(i)%nSubsource > 0) then
+                globalSourceArray(i)%subsourceArray(1:globalSourceArray(i)%nSubsource)%time = grid%currentTime
+             endif
+          enddo
+       endif
 
        call findMassOverAllThreads(grid, totalMass, maxRho=maxRho)
        if (writeoutput) write(*,*) "Total mass on grid (msol) is ", totalmass/mSol

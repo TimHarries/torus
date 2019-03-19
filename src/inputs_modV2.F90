@@ -385,8 +385,8 @@ contains
             "Sinks represent clusters: ", "(a,1l,1x,a)", .false., ok, .false.)
 
        if (clusterSinks) then
-          call getDouble("criticalmass", criticalMass, 1.d0, cLine, fLine, nLines, &
-               "Critical mass for creating subsources: ","(a,f6.1,a)", 300.d0, ok, .true.)
+          call getDouble("criticalmass", criticalMass, mSol, cLine, fLine, nLines, &
+               "Critical mass for creating subsources (msol): ","(a,f6.1,a)", 300.d0, ok, .true.)
           call getString("imf", imfType, cLine, fLine, nLines, &
                "Initial mass function: ","(a,a,1x,a)","salpeter", ok, .false.)
        endif
@@ -818,6 +818,10 @@ contains
        case("protobin")
        call getReal("beta", beta, 1., cLine, fLine, nLines, &
             "Rotation energy to grav enery: ","(a,f7.0,a)", 1., ok, .true.)
+!       call getDouble("mass", sphereMass, msol, cLine, fLine, nLines, &
+!            "Sphere mass (in M_sol): ","(a,f7.1,1x,a)", 1.d-30, ok, .true.)
+!       call getDouble("radius", sphereRadius, pctocm/1.d10, cLine, fLine, nLines, &
+!            "Sphere radius (in pc): ","(a,e12.3,1x,a)", 1.d-30, ok, .true.)
 
 
        case("lighthouse")

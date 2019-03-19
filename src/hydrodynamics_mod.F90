@@ -8192,6 +8192,12 @@ end subroutine sumFluxes
 
 
    globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + timestep*secstoyears
+   do i = 1, globalnSource
+      if (globalSourceArray(i)%nSubsource > 0) then 
+         globalSourceArray(i)%subsourceArray(1:globalSourceArray(i)%nSubsource)%age = & 
+         globalSourceArray(i)%subsourceArray(1:globalSourceArray(i)%nSubsource)%age + timestep*secstoyears 
+      endif
+   enddo
 
 
    if (nBodyPhysics .and. globalnSource > 0 .and..not.hosokawaTracks) then
@@ -9304,12 +9310,13 @@ globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age 
                 endif
              endif
 
-             if (dt < 1.0d5) then 
-                write(*,*) myrankGlobal, " dt close to 0 ",thisOctal%rho(subcell),thisOctal%rhov(subcell), &
-                     thisoctal%pressure_i_plus_1(subcell), &
-                     thisOctal%pressure_i_minus_1(subcell),acc
-                write(*,*) rvec
-             endif
+!             if (dt < 1.0d5) then 
+!                rVec = subcellCentre(thisOctal, subcell)
+!                write(*,*) myrankGlobal, " dt close to 0 ",thisOctal%rho(subcell),thisOctal%rhov(subcell), &
+!                     thisoctal%pressure_i_plus_1(subcell), &
+!                     thisOctal%pressure_i_minus_1(subcell),acc, thisOctal%temperature(subcell), dt
+!                write(*,*) rvec
+!             endif
           endif
        endif
     enddo
@@ -18170,12 +18177,12 @@ end subroutine refineGridGeneric2
     residual = tempFracChange
     if (writeoutput) write(*,'(a,1pe9.2)') "Fractional residual at maxdepth ",residual
 
-    write(plotfile,'(a,i4.4,a)') "grav",0,".vtk"
-    call writeVtkFile(grid, plotfile, &
-         valueTypeString=(/"phigas    ", &
-         "rho       ", &
-         "chiline   ", &
-         "adot      "/))
+!    write(plotfile,'(a,i4.4,a)') "grav",0,".vtk"
+!    call writeVtkFile(grid, plotfile, &
+!         valueTypeString=(/"phigas    ", &
+!         "rho       ", &
+!         "chiline   ", &
+!         "adot      "/))
 
 
     call setCorrectionToZero(grid%octreeRoot, maxDepth)
@@ -18210,7 +18217,7 @@ end subroutine refineGridGeneric2
              call MPI_ALLREDUCE(residual, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
              residual = tempFracChange
 
-             if (myrankGlobal==1)write(*,*) i, residual
+!             if (myrankGlobal==1)write(*,*) i, residual
              i = i + 1
              if ((iDepth > minDepth).and.(i == 5)) exit
              if ((iDepth == minDepth).and.(residual < 1.d-6)) exit
@@ -18227,14 +18234,14 @@ end subroutine refineGridGeneric2
        enddo
 
        call setrhou(grid%octreeRoot, maxdepth-1)
-       write(plotfile,'(a,i4.4,a)') "afterdown",bigiter,".vtk"
-       call writeVtkFile(grid, plotfile, &
-            valueTypeString=(/"phigas    ", &
-                              "rho       ", &
-                              "chiline   ", &
-                              "adot      ", &
-                              "correction", &
-                              "rhou      "/))
+!       write(plotfile,'(a,i4.4,a)') "afterdown",bigiter,".vtk"
+!       call writeVtkFile(grid, plotfile, &
+!            valueTypeString=(/"phigas    ", &
+!                              "rho       ", &
+!                              "chiline   ", &
+!                              "adot      ", &
+!                              "correction", &
+!                              "rhou      "/))
 
        ! now the up part of the V-cycle
 !       call writeInfo("Beginning up part of V-cycle", TRIVIAL)
@@ -18297,14 +18304,14 @@ end subroutine refineGridGeneric2
 
 
 
-       write(plotfile,'(a,i4.4,a)') "afterup",bigiter,".vtk"
-       call writeVtkFile(grid, plotfile, &
-            valueTypeString=(/"phigas    ", &
-                              "rho       ", &
-                              "chiline   ", &
-                              "adot      ", &
-                              "correction", &
-                              "rhou      "/))
+!       write(plotfile,'(a,i4.4,a)') "afterup",bigiter,".vtk"
+!       call writeVtkFile(grid, plotfile, &
+!            valueTypeString=(/"phigas    ", &
+!                              "rho       ", &
+!                              "chiline   ", &
+!                              "adot      ", &
+!                              "correction", &
+!                              "rhou      "/))
 
 
        call setCorrectionToZero(grid%octreeRoot, maxDepth)
@@ -18312,12 +18319,12 @@ end subroutine refineGridGeneric2
 
 
 
-          write(plotfile,'(a,i4.4,a)') "grav",bigiter,".vtk"
-          call writeVtkFile(grid, plotfile, &
-               valueTypeString=(/"phigas    ", &
-                                 "rho       ", &
-                                 "chiline   ", &
-                                 "adot      "/))
+!          write(plotfile,'(a,i4.4,a)') "grav",bigiter,".vtk"
+!          call writeVtkFile(grid, plotfile, &
+!               valueTypeString=(/"phigas    ", &
+!                                 "rho       ", &
+!                                 "chiline   ", &
+!                                 "adot      "/))
 
 
        bigiter = bigiter+1
@@ -18598,8 +18605,8 @@ end subroutine refineGridGeneric2
     it =0 
 
     call gSweep2new(grid%octreeRoot, grid, fracChange(myrankGlobal), fracChange2(myrankGlobal),it,0.d0,doOnlyChanged)
-    call writeVtkFile(grid, "grav0000.vtk", &
-         valueTypeString=(/"phigas ", "rho    ","chiline","adot   "/))
+!    call writeVtkFile(grid, "grav0000.vtk", &
+!         valueTypeString=(/"phigas ", "rho    ","chiline","adot   "/))
 
 
     fracChange = 1.d30
@@ -18649,11 +18656,11 @@ end subroutine refineGridGeneric2
 !       if (myrankWorldGlobal == 1) write(*,*) "Full grid iteration ",it, " maximum fractional change ", &
 !            MAXVAL(fracChange(1:nHydroThreadsGlobal))
 
-       if (mod(it,10) == 0) then
-          write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
-          call writeVtkFile(grid, plotfile, &
-               valueTypeString=(/"phigas ", "rho    ","chiline","adot   "/))
-       endif
+!       if (mod(it,10) == 0) then
+!          write(plotfile,'(a,i4.4,a)') "grav",it,".vtk"
+!          call writeVtkFile(grid, plotfile, &
+!               valueTypeString=(/"phigas ", "rho    ","chiline","adot   "/))
+!       endif
 
        if (writeoutput) write(*,*) it," frac change ",maxval(fracChange(1:nHydroThreadsGlobal)), &
             tol2,maxval(fracChange2(1:nHydroThreadsGlobal))
@@ -20330,7 +20337,7 @@ end subroutine minMaxDepth
           endif
 
 
-          call getPointsInAccretionRadius(thisOctal, subcell, 2.5d0*smallestCellSize, grid, npoints, position, vel, mass, phi, cs)
+          call getPointsInAccretionRadius(thisOctal, subcell, accretionRadius*smallestCellSize, grid, npoints, position, vel, mass, phi, cs)
 
 !          if (createSink) write(*,*) "Source creating passed jeans test ",thisOctal%rho(subcell)/rhoThreshold
           rhomax = max(rhomax, thisOctal%rho(subcell)/rhoThreshold)
@@ -20494,7 +20501,11 @@ end subroutine minMaxDepth
              localWorldCommunicator, ierr)
         call MPI_BCAST(source(1:nSource)%radius   , nSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
+        call MPI_BCAST(source(1:nSource)%teff     , nSource, MPI_DOUBLE_PRECISION, 0, &
+             localWorldCommunicator, ierr)
         call MPI_BCAST(source(1:nSource)%mdot     , nSource, MPI_DOUBLE_PRECISION, 0, &
+             localWorldCommunicator, ierr)
+        call MPI_BCAST(source(1:nSource)%mdotWind , nSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
         call MPI_BCAST(source(1:nSource)%habingFlux, nSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
@@ -20509,6 +20520,8 @@ end subroutine minMaxDepth
         call MPI_BCAST(source(1:nSource)%stellar     , nSource, MPI_LOGICAL, 0, &
              localWorldCommunicator, ierr)
         call MPI_BCAST(source(1:nSource)%diffuse     , nSource, MPI_LOGICAL, 0, &
+             localWorldCommunicator, ierr)
+        call MPI_BCAST(source(1:nSource)%initialMass , nSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
         call MPI_BCAST(source(1:nSource)%nSubsource  , nSource, MPI_INTEGER, 0, &
              localWorldCommunicator, ierr)
@@ -20551,7 +20564,10 @@ end subroutine broadcastSinks
           call mpi_recv(source(1:nSource)%position%y, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%position%z, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%mass,       nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
+          call mpi_recv(source(1:nSource)%initialMass,nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%luminosity, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
+          call mpi_recv(source(1:nSource)%teff,       nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
+          call mpi_recv(source(1:nSource)%mdotWind,   nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%age,        nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%velocity%x, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%velocity%y, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
@@ -20583,7 +20599,10 @@ end subroutine broadcastSinks
           call mpi_send(source(1:nSource)%position%y, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%position%z, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%mass,       nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+          call mpi_send(source(1:nSource)%initialMass,nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%luminosity, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+          call mpi_send(source(1:nSource)%teff,       nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
+          call mpi_send(source(1:nSource)%mdotWind,   nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%age,        nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%velocity%x, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%velocity%y, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
@@ -21152,6 +21171,7 @@ end subroutine broadcastSinks
 
 
        if (myrankWorldGlobal == 1) then
+       write(*,*) "New mass of source ", iSource, sourceArray(iSource)%mass/msol
        if (accretedMass(iSource) > 0.d0) write(*,*) "Accretion rate for source ",isource, ": ", &
             (accretedMass(isource)/timestep)/msol * (365.25d0*24.d0*3600.d0)
 !          write(*,*)  "position ",sourceArray(isource)%position
@@ -22022,7 +22042,6 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
 
   subroutine getPointsInAccretionRadiusServer(grid, nSource, source)
     use mpi
-    use inputs_mod, only : clustersinks
     integer :: nSource
     type(sourcetype) :: source(:)
     real(double) :: temp(15)

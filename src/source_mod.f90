@@ -22,7 +22,7 @@
      real(double) :: luminosity ! [erg/s]
      real(double) :: teff       ! [K]
      real(double) :: initialMass ! [solar]
-     real(double) :: mass       ! [solar]
+     real(double) :: mass       ! [g]
      real(double) :: age        ! [years]
      real(double) :: mdot        ! [mDot g/s]
      real(double) :: mdotWind    ! [mDot g/s]
@@ -39,8 +39,8 @@
      logical :: viscosity
      logical :: diffuse ! isrf, cmb
      type(VECTOR) :: angMomentum
-     real(double) :: accretionRadius
-     real(double) :: time
+     real(double) :: accretionRadius ! [cm]
+     real(double) :: time ! [s]
      real(double) :: habingFlux ! units of 1e-10 Habing 
      integer :: nSubsource ! if source is a cluster, the subsourceArray has the individual stars
      type(SOURCETYPE), pointer :: subSourceArray(:) => null()
@@ -93,14 +93,14 @@
       type(SOURCETYPE) :: source(:)
       integer :: nSource
       real(double) :: fromSpec
-      real(double) :: tot
+!      real(double) :: tot
       integer :: i, j
 
 
       if ( nsource<1 ) return
 
       if (writeoutput) &
-           write(*,'(a4,a2,a8,a8,a12,a12,a12,a12,a12,a12,a12,a12,a12,a12)') &
+           write(*,'(4x,a4,a4,a8,a8,a12,a12,a12,a12,a12,a12,a12,a12,a12,a12)') &
            "Ran ","N","M","R","L","L(spec)","x","y","z","vx","vy","vz"
 
       
@@ -108,20 +108,38 @@
          fromSpec = sumSourceLuminosity(source(i:i), 1, 1.0, 1.e30)
          if (writeoutput) &
               write(*, &
-         '(i3.3,1x,i2.2, f8.3, f8.3, 1p, e12.3, e12.3, e12.3, e12.3,e12.3,e12.3,e12.3,e12.3,e12.3)') &
+         '(4x,i3.3,1x,i4.4, f8.3, f8.3, 1p, e12.3, e12.3, e12.3, e12.3,e12.3,e12.3,e12.3,e12.3,e12.3)') &
               myrankWorldGlobal, i,&
               source(i)%mass/msol, &
               source(i)%radius*1.d10/rsol, source(i)%luminosity/lsol, fromspec/lsol, source(i)%position%x, &
               source(i)%position%y,source(i)%position%z, source(i)%velocity%x/1.d5, source(i)%velocity%y/1.d5, &
               source(i)%velocity%z/1.d5
-         tot = 0.d0
-         do j = 1, source(i)%spectrum%nLambda
-            if (j < source(i)%spectrum%nlambda) then
-               tot = tot + source(i)%spectrum%flux(j) * source(i)%spectrum%dlambda(j)
-            endif
-         enddo
-         tot = tot * fourPi*source(i)%radius**2 * 1.d20
+!         tot = 0.d0
+!         do j = 1, source(i)%spectrum%nLambda
+!            if (j < source(i)%spectrum%nlambda) then
+!               tot = tot + source(i)%spectrum%flux(j) * source(i)%spectrum%dlambda(j)
+!            endif
+!         enddo
+!         tot = tot * fourPi*source(i)%radius**2 * 1.d20
 !         write(*,*) myrankWorldGlobal, " source lum ",tot/lsol
+         
+         if (source(i)%nSubsource > 0) then
+            do j = 1, source(i)%nSubsource
+               fromSpec = sumSourceLuminosity(source(i)%subsourceArray(j:j), 1, 1.0, 1.e30)
+               if (writeoutput) &
+                    write(*, &
+               '(a4,i3.3,1x,i4.4, f8.3, f8.3, 1p, e12.3, e12.3, e12.3, e12.3,e12.3,e12.3,e12.3,e12.3,e12.3)') &
+                    "sub ", myrankWorldGlobal, j,&
+                    source(i)%subsourceArray(j)%mass/msol, &
+                    source(i)%subsourceArray(j)%radius*1.d10/rsol, source(i)%subsourceArray(j)%luminosity/lsol, fromspec/lsol, &
+                    source(i)%subsourceArray(j)%position%x, &
+                    source(i)%subsourceArray(j)%position%y, &
+                    source(i)%subsourceArray(j)%position%z, &
+                    source(i)%subsourceArray(j)%velocity%x/1.d5, &
+                    source(i)%subsourceArray(j)%velocity%y/1.d5, &
+                    source(i)%subsourceArray(j)%velocity%z/1.d5
+            enddo
+         endif
       enddo
     end subroutine writeSourceList
 
@@ -316,7 +334,6 @@
 
     subroutine freeSource(source)
       type(SOURCETYPE) :: source
-      integer :: i
       call freeSpectrum(source%spectrum)
       call emptySurface(source%surface)
       call freeSubsources(source)
