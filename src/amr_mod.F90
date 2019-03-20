@@ -10663,7 +10663,7 @@ logical function insideCone(position, binarySep, momRatio)
 
   subroutine calcProtoBinDensity(thisOctal,subcell)
 
-    use inputs_mod, only : beta
+    use inputs_mod, only : beta, sphereMass, sphereRadius
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
@@ -10674,8 +10674,8 @@ logical function insideCone(position, binarySep, momRatio)
 !    mCloud = 1.d0 * msol
 !    rCloud = 5.d16
 
-    mCloud = 100.d0 * msol
-    rCloud = 0.1d0 * pctocm
+    mCloud = sphereMass !100.d0 * msol
+    rCloud = sphereRadius*1.d10 !0.1d0 * pctocm
 
 !    mCloud = mSol
 !    rCloud = 3.2d16

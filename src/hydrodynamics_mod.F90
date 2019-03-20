@@ -22372,7 +22372,6 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
                 dx = thisOctal%subcellSize*1.d10
                 tsound = dx / cs 
                 tff = 1.d0/sqrt(bigG * thisOctal%rho(subcell))
-                thisOctal%etaCont(subcell) = tff/tsound !fixme
                 if (tff < tsound) then
                    totalMass = totalMass + thisOctal%rho(subcell) * dv
                 endif
