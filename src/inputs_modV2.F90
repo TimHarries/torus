@@ -1217,7 +1217,7 @@ contains
        call getLogical("ttauriwind", ttauriWind, cLine, fLine, nLines, &
             "T Tauri disc wind present:","(a,1l,1x,a)", .false., ok, .false.)
 
-       call getLogical("ttauristellarwind", ttauriStellarWind, cLine, fLine, nLines, &
+       call getLogical("t", ttauriStellarWind, cLine, fLine, nLines, &
             "T Tauri stellar wind present:","(a,1l,1x,a)", .false., ok, .false.)
 
        if (ttauriwind) then

@@ -112,7 +112,7 @@ contains
   end function outFlow
 
 
-
+!!returns the half opening angle between accretion hot spots - tjgw201 15/03/19
   function capHalfAngle()
     use inputs_mod, only : ttauriRouter, dipoleOffset, ttauriRstar
     real(double) :: theta0dash, xi
@@ -124,9 +124,6 @@ contains
     capHalfAngle = asin(sqrt(xi*sin(theta0Dash)**2.))
     return
   end function capHalfAngle
-
-
-
 
 
   logical function inFlowMahdaviSingle(rVec)

@@ -376,8 +376,8 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
              call assignTemperaturesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
                      minRCubedRhoSquared)
              fp = 10
-             open (UNIT=fp, FILE="radial_temperature.dat",ACTION="WRITE") !!writes out radial temperature distribution into data file - tjgw201 27/02/19
-             call outputTemp(grid, grid%octreeRoot, fp)
+             open (UNIT=fp, FILE="radiusTempRhoVel.dat",ACTION="WRITE") !!writes out radial temperature, Desnity and
+             call outputTempRhoVel(grid, grid%octreeRoot, fp)           !!Velocity distribution into data file - tjgw201 27/02/19
              close(fp)
           endif
 

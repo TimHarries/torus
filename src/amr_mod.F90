@@ -16330,7 +16330,8 @@ end function readparameterfrom2dmap
           theta = capHalfAngle()
           thisRho = 0.d0
           if (v > 0.d0) then
-             thisRho = (SW_Mdot * mSol / yearsToSecs)/(twoPi * r**2 * (1-cos(theta)) * v * 1.d20)
+             thisRho = 0.5d0 * (SW_Mdot * mSol / yearsToSecs)/(twoPi * r**2.0d0 &
+             * (1.d0 - cos(theta)) * v * 1.d20)
           endif
 
           if ((r > SW_Rmin).and.(r < SW_Rmax).and.(thisRho > thisOctal%rho(subcell)).and.(outflow(cellCentre))) then
@@ -16347,7 +16348,7 @@ end function readparameterfrom2dmap
        endif
     enddo
   end subroutine assignDensitiesStellarWind
-
+ !!!routine removed in favour of polar stellar wind rather than spherically symmetric winds - tjgw201
   ! recursive subroutine assignDensitiesStellarWind(grid, thisOctal)
   !   use analytical_velocity_mod
   !   use inputs_mod, only : SW_Mdot, SW_Rmin, SW_rmax, SW_temperature
@@ -16397,14 +16398,14 @@ end function readparameterfrom2dmap
   ! end subroutine assignDensitiesStellarWind
 
 
-  recursive subroutine outputTemp(grid, thisOctal,fp)
+  recursive subroutine outputTempRhoVel(grid, thisOctal,fp)
     integer, intent(in) :: fp
     integer :: subcell, i
     type(VECTOR) :: cellCentre
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
-    real(double) :: thisR
+    real(double) :: thisR, theta
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -16412,7 +16413,7 @@ end function readparameterfrom2dmap
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child =>thisOctal%child(i)
-                call outputTemp(grid, child,fp)
+                call outputTempRhoVel(grid, child,fp)
                 exit
              end if
           end do
@@ -16420,13 +16421,13 @@ end function readparameterfrom2dmap
          if (thisOCtal%inFlow(subcell)) then
            cellCentre = subcellCentre(thisOctal, subcell)
            thisR = modulus(cellCentre)*1.d10
-           write(fp,*) thisR, thisOCtal%temperature(subcell)
+           theta = acos(cenllCentre%z / thisR)
+           write(fp,*) thisR, (thisR * sin(theta)), thisOCtal%temperature(subcell), &
+                thisOctal%rho(subcell), modulus(thisOctal%velocity(subcell))
          end if
        end if
     end do
-  end subroutine outputTemp
-
-
+  end subroutine outputTempRhoVel
 
 
   recursive subroutine assignDensitiesMahdavi(grid, thisOctal, astar, mdot, minrCubedRhoSquared)
