@@ -16421,7 +16421,7 @@ end function readparameterfrom2dmap
          if (thisOCtal%inFlow(subcell)) then
            cellCentre = subcellCentre(thisOctal, subcell)
            thisR = modulus(cellCentre)*1.d10
-           theta = acos(cenllCentre%z / thisR)
+           theta = acos(cellCentre%z / thisR)
            write(fp,*) thisR, (thisR * sin(theta)), thisOCtal%temperature(subcell), &
                 thisOctal%rho(subcell), modulus(thisOctal%velocity(subcell))
          end if
