@@ -16405,7 +16405,7 @@ end function readparameterfrom2dmap
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
-    real(double) :: thisR, theta
+    real(double) :: thisR, theta, cylR
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -16422,7 +16422,8 @@ end function readparameterfrom2dmap
            cellCentre = subcellCentre(thisOctal, subcell)
            thisR = modulus(cellCentre)*1.d10
            theta = acos(cellCentre%z / thisR)
-           write(fp,*) thisR, (thisR * sin(theta)), thisOCtal%temperature(subcell), &
+           cylR = sqrt((cellCentre%x*cellCentre%x) + (cellCentre%y*cellCentre%y))*1.d10
+           write(fp,*) thisR, cylR, thisOCtal%temperature(subcell), &
                 thisOctal%rho(subcell), modulus(thisOctal%velocity(subcell))
          end if
        end if
