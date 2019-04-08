@@ -168,7 +168,7 @@ contains
 
     if (doClusterAnalysis) then
 #ifdef PHOTOION
-       if (photoionPhysics) then
+       if (photoionPhysics.or.dustPhysics) then
           call setupXarray(grid, xArray, nLambda, photoion=.true.)
           if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
        endif

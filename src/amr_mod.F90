@@ -717,7 +717,8 @@ CONTAINS
     use gridFromFitsFile, only: assign_from_fitsfile
 #endif
     use angularImage_utils, only: calcAngImgTest
-
+    use ramses_mod, only: fillRamses
+    
     IMPLICIT NONE
 
     TYPE(octal), INTENT(INOUT)    :: thisOctal   ! the octal being changed
@@ -1088,6 +1089,10 @@ CONTAINS
        thisoctal%rho(subcell) = -9.9d99
        if (associated (thisoctal%cornervelocity)) thisoctal%cornervelocity = VECTOR(-9.9d99,-9.9d99,-9.9d99)
 
+    CASE("Gareth")
+       call fillRamses(thisOctal, subcell)
+       if (associated (thisoctal%cornervelocity)) thisoctal%cornervelocity = VECTOR(-9.9d99,-9.9d99,-9.9d99)
+       
     CASE ("benchmark")
        CALL benchmarkDisk(thisOctal, subcell)
 
@@ -1211,6 +1216,9 @@ CONTAINS
    CASE("fitsfile")
       call assign_from_fitsfile(thisOctal, subcell)
 #endif
+   CASE("mgascii")
+      thisOctal%rho = 1d-30
+      thisOctal%temperature = 10.
 
     CASE ("magstream")
 
@@ -2087,7 +2095,7 @@ CONTAINS
     !   and calculates all the other variables in the model.
     ! this should be called once the structure of the grid is complete.
 
-    USE inputs_mod, ONLY : modelwashydro, splitOverMPI, molecularPhysics !, useHartmannTemp
+    USE inputs_mod, ONLY : modelwashydro, splitOverMPI, molecularPhysics, densitySubSample !, useHartmannTemp
     USE luc_cir3d_class, ONLY:  calc_cir3d_temperature
     USE cmfgen_class, ONLY:     calc_cmfgen_temperature
     USE jets_mod, ONLY:         calcJetsTemperature
@@ -2154,7 +2162,7 @@ CONTAINS
        CASE ("sphfile","molcluster", "theGalaxy", "dale")
           if( .not. thisoctal%haschild(subcell)) then
 
-             if (molecularPhysics) then
+             if (molecularPhysics.or.h21cm) then
              if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
              if (.not. associated(thisoctal%cornervelocity)) then
                 allocate(thisoctal%cornervelocity(27))
@@ -2175,6 +2183,19 @@ CONTAINS
 !          CASE("molebench")
 !             CALL fillDensityCorners(thisOctal,grid, molebenchdensity, molebenchvelocity, thisOctal%threed)
 
+       case ("Gareth")
+          if (.not. associated(thisoctal%cornervelocity)) then
+             allocate(thisoctal%cornervelocity(27))
+             thisoctal%cornervelocity(:) = VECTOR(-9.9d99,-9.9d99,-9.9d99)
+          endif
+          if(thisoctal%cornervelocity(14)%x .eq. -9.9d99) then
+             call interpolateVelocityCorners(thisOctal)
+             if (densitySubSample) then
+                if(.not. associated(thisoctal%cornerrho)) allocate(thisOctal%cornerrho(27))
+                call interpolateDensityCorners(thisOctal)
+             end if
+          endif
+          
        CASE DEFAULT
           ! Nothing to be done for this geometry so just return.
           if(.not. (modelWasHydro.or.h21cm)) then
@@ -3596,7 +3617,8 @@ CONTAINS
 ! Currently commented out. Reinstate if required.
     use inputs_mod, only : smoothInnerEdge, variableDustSublimation, rCut, doDiscSplit
 !    use inputs_mod, only: ttauriwind, smoothinneredge, amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
-
+    use ramses_mod, only: splitRamses
+    
 #ifdef USECFITSIO
     use gridFromFitsFile, only : checkFitsSplit
 #endif
@@ -4508,6 +4530,10 @@ CONTAINS
 
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
+
+       case("mgascii")
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
+
        case("isosphere")
           if(thisOctal%nDepth < mindepthamr) split = .true.
 
@@ -5220,7 +5246,9 @@ CONTAINS
              splitinazimuth = .false.
           endif
 
-
+       case ("Gareth")
+          split = splitRamses(thisOctal%subcellSize,subcellCentre(thisOctal, subcell))
+          
        case ("wr104")
           ! Splits if the number of particle is more than a critical value (~3).
           limit = nint(amrLimitScalar)
@@ -6396,6 +6424,107 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 
   END SUBROUTINE fillVelocityCorners
 
+  subroutine interpolateVelocityCorners(thisOctal)
+    use vector_mod
+    implicit none
+    type(OCTAL) :: thisOctal
+    logical, parameter :: debug=.false.
+    integer :: i
+
+    ! Base level
+    thisOctal%cornerVelocity(1) =  thisOctal%velocity(1)
+    thisOctal%cornerVelocity(2) = (thisOctal%velocity(1) + thisOctal%velocity(2)) / 2.0_db
+    thisOctal%cornerVelocity(3) =  thisOctal%velocity(2)
+
+    thisOctal%cornerVelocity(4) = (thisOctal%velocity(1) + thisOctal%velocity(3)) / 2.0_db
+    thisOctal%cornerVelocity(5) = (thisOctal%velocity(1) + thisOctal%velocity(2) + &
+                                   thisOctal%velocity(3) + thisOctal%velocity(4)) / 4.0_db
+    thisOctal%cornerVelocity(6) = (thisOctal%velocity(2) + thisOctal%velocity(4)) / 2.0_db
+    
+    thisOctal%cornerVelocity(7) =  thisOctal%velocity(3)
+    thisOctal%cornerVelocity(8) = (thisOctal%velocity(3) + thisOctal%velocity(4)) / 2.0_db
+    thisOctal%cornerVelocity(9) =  thisOctal%velocity(4)
+
+    ! Top level
+    thisOctal%cornerVelocity(19) =  thisOctal%velocity(5)
+    thisOctal%cornerVelocity(20) = (thisOctal%velocity(5) + thisOctal%velocity(6)) / 2.0_db
+    thisOctal%cornerVelocity(21) =  thisOctal%velocity(6)
+
+    thisOctal%cornerVelocity(22) = (thisOctal%velocity(5) + thisOctal%velocity(7)) / 2.0_db
+    thisOctal%cornerVelocity(23) = (thisOctal%velocity(5) + thisOctal%velocity(6) + &
+                                   thisOctal%velocity(7) + thisOctal%velocity(8)) / 4.0_db
+    thisOctal%cornerVelocity(24) = (thisOctal%velocity(6) + thisOctal%velocity(8)) / 2.0_db
+    
+    thisOctal%cornerVelocity(25) =  thisOctal%velocity(7)
+    thisOctal%cornerVelocity(26) = (thisOctal%velocity(7) + thisOctal%velocity(8)) / 2.0_db
+    thisOctal%cornerVelocity(27) =  thisOctal%velocity(8)
+
+    ! Average base and top levels onto middle level
+    do i=1,9
+       thisOctal%cornerVelocity(i+9) = (thisOctal%cornerVelocity(i) + thisOctal%cornerVelocity(i+18)) / 2.0_db
+    end do
+    
+    if (debug) then
+       write(*,*) "DMA: subcell locations"
+       do i=1,8
+          write(*,*) i, subcellCentre(thisOctal,i)
+       end do
+       write(*,*) "DMA: subcell velocities"
+       do i=1,8
+          write(*,*) i, thisOctal%velocity(i)
+       end do
+       write(*,*) "DMA: corner velocities"
+       do i=1,27
+          write(*,*) i, thisOctal%cornerVelocity(i)
+       end do
+       write(*,*)
+       read(*,*)
+    end if
+
+    
+  end subroutine interpolateVelocityCorners
+
+  subroutine interpolateDensityCorners(thisOctal)
+    use vector_mod
+    implicit none
+    type(OCTAL) :: thisOctal
+    integer :: i
+
+    ! Base level
+    thisOctal%cornerRho(1) =  thisOctal%rho(1)
+    thisOctal%cornerRho(2) = (thisOctal%rho(1) + thisOctal%rho(2)) / 2.0_db
+    thisOctal%cornerRho(3) =  thisOctal%rho(2)
+
+    thisOctal%cornerRho(4) = (thisOctal%rho(1) + thisOctal%rho(3)) / 2.0_db
+    thisOctal%cornerRho(5) = (thisOctal%rho(1) + thisOctal%rho(2) + &
+                                   thisOctal%rho(3) + thisOctal%rho(4)) / 4.0_db
+    thisOctal%cornerRho(6) = (thisOctal%rho(2) + thisOctal%rho(4)) / 2.0_db
+
+    thisOctal%cornerRho(7) =  thisOctal%rho(3)
+    thisOctal%cornerRho(8) = (thisOctal%rho(3) + thisOctal%rho(4)) / 2.0_db
+    thisOctal%cornerRho(9) =  thisOctal%rho(4)
+
+    ! Top level
+    thisOctal%cornerRho(19) =  thisOctal%rho(5)
+    thisOctal%cornerRho(20) = (thisOctal%rho(5) + thisOctal%rho(6)) / 2.0_db
+    thisOctal%cornerRho(21) =  thisOctal%rho(6)
+
+    thisOctal%cornerRho(22) = (thisOctal%rho(5) + thisOctal%rho(7)) / 2.0_db
+    thisOctal%cornerRho(23) = (thisOctal%rho(5) + thisOctal%rho(6) + &
+                               thisOctal%rho(7) + thisOctal%rho(8)) / 4.0_db
+    thisOctal%cornerRho(24) = (thisOctal%rho(6) + thisOctal%rho(8)) / 2.0_db
+
+    thisOctal%cornerRho(25) =  thisOctal%rho(7)
+    thisOctal%cornerRho(26) = (thisOctal%rho(7) + thisOctal%rho(8)) / 2.0_db
+    thisOctal%cornerRho(27) =  thisOctal%rho(8)
+
+    ! Average base and top levels onto middle level
+    do i=1,9
+       thisOctal%cornerRho(i+9) = (thisOctal%cornerRho(i) + thisOctal%cornerRho(i+18)) / 2.0_db
+    end do
+
+  end subroutine interpolateDensityCorners
+  
   TYPE(vector) FUNCTION TTauriVelocity(point)
     ! calculates the velocity vector at a given point for a model
     !   of a T Tauri star with magnetospheric accretion

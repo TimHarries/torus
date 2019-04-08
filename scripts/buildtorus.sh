@@ -110,7 +110,8 @@ thisHost=`hostname -f`
 if [[ $thisHost == login*.cluster.local ]]; then
     echo "This looks like Isca"
     export SYSTEM=isca
-
+    torusFortranCompiler=ifort
+    
 else
 
 # Look for compiler for OpenMP/serial builds

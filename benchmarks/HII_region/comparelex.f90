@@ -83,11 +83,11 @@ lines:  do i = 1, nlines
   tav = tav / real(nt)
   write(*,'(a,f7.2)') "Average percentage difference in ions is ",100.*avcheck
   write(*,'(a,f7.2)') "Average percentage difference in temp is ",100.*tav
-  if (avcheck > tolerance_ion) then
+  if (avcheck > tolerance_ion .or. isnan(avcheck)) then
      failed =.true.
      write(*,*) "Failed on ions"
   endif
-  if (tav > tolerance_T) then
+  if (tav > tolerance_T .or. isnan(tav)) then
      failed =.true.
      write(*,*) "Failed on temperatures"
   endif

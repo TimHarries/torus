@@ -86,8 +86,8 @@
   ! cluster analysis tools
   logical :: doClusterAnalysis
   logical :: plotAvgTemp, calculateGlobalAvgTemp, writeLums, findNUndersampled, plotAvgTdust, calculateGlobalAvgTdust
-  logical :: calculateEmissionMeasure, calculateLymanFlux, findHabing
-  integer :: nClusterIonLoops
+  logical :: calculateEmissionMeasure, calculateLymanFlux, findHabing, calculateTauFUV
+  integer :: nClusterIonLoops, primarySource
   real(double) :: edgeRadius
 
   logical :: dowriteRadialFile

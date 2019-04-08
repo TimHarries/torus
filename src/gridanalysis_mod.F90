@@ -392,7 +392,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
 #ifdef USECFITSIO
     use image_mod, only : writeFitsColumnDensityImage 
 #endif
-    use inputs_mod, only : smallestCellSize, calculateLymanFlux
+    use inputs_mod, only : smallestCellSize, calculateLymanFlux, calculateTauFUV, primarySource
 
 ! Arguments
     type(GRIDTYPE)    :: grid
@@ -411,6 +411,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
     integer :: iSource
     real(double) :: nlyA, nlyB, nlyR
     character(len=80) :: thisFile
+    real(double) :: tauAbs, tauSca, tauExt, columnDensity
 #ifdef MPI
 #ifdef USECFITSIO
     real(double), pointer :: image(:,:), rmsImage(:,:)
@@ -742,11 +743,11 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
 ! average habing flux over accretionRadius of first source
     if (findHabing) then
        if (.not. splitOverMPI) then
-          write(thisFile, '(a)') "averageHabingFlux_allStars.dat"
+          write(thisFile, '(a,i3.3,a)') "averageHabingFlux_allStars_primarySource",primarySource,".dat"
           ! write header
           if (firstTime) then
              open(69, file=thisFile, status="unknown", form="formatted", position="append")
-                write(69, '(a6,a20,a5,a9,3(1x,a12))') "#dump", "t(s)", "i*", "M*(Msol)", "dToM*1(pc)", "G0inCell(H)", "avgG0(H)"
+                write(69, '(a6,a20,a5,a9,3(1x,a12))') "#dump", "t(s)", "i*", "M*(Msol)", "dToM*p(pc)", "G0inCell(H)", "avgG0(H)"
              close(69)
           endif
           open(69, file=thisFile, status="old", position="append", form="formatted")
@@ -756,9 +757,9 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
              call calculateAverageHabingFlux(grid%octreeRoot, globalSourceArray(iSource), 2.5d0*smallestCellSize, &
                      weightedFluxInRadius, massInRadius, g0inCell)
              meanG0 = weightedFluxInRadius/massInRadius
-             ! distance to most massive star
-             if (iSource > 1) then
-                distance = modulus(globalSourceArray(iSource)%position - globalSourceArray(1)%position)*1.d10/pctocm
+             ! distance to primary star
+             if (iSource /= primarySource) then
+                distance = modulus(globalSourceArray(iSource)%position - globalSourceArray(primarySource)%position)*1.d10/pctocm
              else
                 distance = 0.d0
              endif
@@ -818,6 +819,34 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
           open(69, file=thisFile, status="old", position="append", form="formatted")
               write(69, '(i6.4,f20.2, 3(1x,es12.5))') grid%idump, grid%currentTime, nlyA, nlyB, nlyR 
           close(69)
+       endif
+    endif
+
+    ! calculate tau in FUV band (due to dust) between star 1 and all other stars
+    if (calculateTauFUV) then
+       if (.not. splitOverMPI) then
+
+
+          write(thisFile, '(a,i3.3,a)') "tauFUVBetweenStars_primarySource",primarySource,".dat"
+          if (firstTime) then
+             open(69, file=thisFile, status="unknown", form="formatted", position="append")
+                write(69, '(a6,a20,a5,4(1x,a12))') "#dump", "t(s)", "i*", "tauAbs", "tauSca", "tauExt", "colDen(g/cm2)"
+             close(69)
+          endif
+          do iSource = 1, globalnSource
+             if (iSource /= primarySource) then
+
+                tauAbs = 0.d0; tauSca = 0.d0; tauExt = 0.d0; columnDensity = 0.d0
+                call meanTauBetweenPoints(912., 2400., grid, globalSourceArray(primarySource)%position, &
+                   globalSourceArray(iSource)%position, tauAbs, tauSca, tauExt, columnDensity)
+
+                open(69, file=thisFile, status="old", position="append", form="formatted")
+                   write(69, '(i6.4,f20.2, i5.3, 4(1x,es12.5))') grid%iDump, grid%currentTime, iSource, tauAbs, tauSca, &
+                     tauExt, columnDensity
+                close(69)
+
+             endif
+          enddo
        endif
     endif
 
@@ -987,5 +1016,96 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
     enddo
     
   end subroutine estimateLymanFlux 
+
+  subroutine meanTauBetweenPoints(startLambda, endLambda, grid, startVec, endVec, tauAbs, tauSca, tauExt, columnDensity)
+    use amr_mod, only : returnKappa
+    type(GRIDTYPE) :: grid
+    type(VECTOR) :: startVec, endVec, currentPosition, direction
+    real(double), intent(out) :: tauAbs, tauSca, tauExt, columnDensity
+    real(double) :: distToNextCell, totalDistance
+    real :: startLambda, endLambda
+    type(OCTAL), pointer :: thisOctal, sOctal
+    real(double) :: fudgeFac = 1.d-1
+    real(double) :: meankappaSca, meankappaAbs, meankappaExt !, rTot
+    real(double), allocatable :: kappaAbsArray(:), kappaScaArray(:), dLambda(:)
+    integer :: subcell
+    integer :: iLamStart, iLamEnd, i
+    logical :: endLoop
+    logical, save :: firstTime=.true.
+
+    tauAbs = 0.d0
+    tauSca = 0.d0
+    tauExt = 0.d0
+    columnDensity = 0.d0
+    totalDistance = 0.d0
+    allocate(kappaAbsArray(1:grid%nlambda), kappaScaArray(1:grid%nlambda),dLambda(1:grid%nLambda))
+    call locate(grid%lamArray, SIZE(grid%lamArray), startLambda, iLamStart)
+    call locate(grid%lamArray, SIZE(grid%lamArray), endLambda, iLamEnd)
+    iLamEnd=iLamEnd+1
+    do i = 2, grid%nLambda-1
+       dLambda(i) = (grid%lamArray(i+1)-grid%lamArray(i-1))/2.d0
+    enddo
+    dLambda(1) = 2.d0*(grid%lamArray(2)-grid%lamArray(1))
+    dLambda(grid%nlambda) = 2.d0*(grid%lamArray(grid%nLambda)-grid%lamArray(grid%nLambda-1))
+
+    currentPosition = startVec
+    direction = endVec - startVec 
+!    rTot = modulus(direction)
+    call normalize(direction)
+
+    CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
+
+    endLoop = .false.
+    do while (inOctal(grid%octreeRoot, currentPosition) .and. .not.endLoop)
+
+       call findSubcellLocal(currentPosition, thisOctal,subcell)
+
+       call returnKappa(grid, thisOctal, subcell, kappaAbsArray=kappaAbsArray, kappaScaArray=kappaScaArray)
+
+       meanKappaAbs = 0.d0; meanKappaSca=0.d0; meanKappaExt=0.d0
+       do i = iLamStart, iLamEnd
+          meanKappaAbs = meanKappaAbs + kappaAbsArray(i) * dLambda(i)
+          meanKappaSca = meanKappaSca + kappaScaArray(i) * dLambda(i)
+          meanKappaExt = meanKappaExt + (kappaAbsArray(i) + kappaScaArray(i)) * dLambda(i)
+       enddo
+
+       meanKappaAbs = meanKappaAbs / (grid%lamArray(iLamEnd) - grid%lamArray(iLamStart))
+       meanKappaSca = meanKappaSca / (grid%lamArray(iLamEnd) - grid%lamArray(iLamStart))
+       meanKappaExt = meanKappaExt / (grid%lamArray(iLamEnd) - grid%lamArray(iLamStart))
+
+       sOctal => thisOctal
+       call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
+
+!       if (modulus(currentPosition + distToNextCell*direction) >= modulus(endVec - currentPosition)) then
+       if (inSubcell(thisOctal, subcell, endVec)) then
+          distToNextCell = modulus(endVec - currentPosition) 
+          currentPosition = currentPosition + (distToNextCell)*direction
+          endLoop = .true.
+       else
+          currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
+       endif
+       totalDistance = totalDistance + distToNextCell
+
+       tauAbs = tauAbs + distToNextCell*meankappaAbs
+       tauSca = tauSca + distToNextCell*meankappaSca
+       tauExt = tauExt + distToNextCell*meankappaExt
+       columnDensity = columnDensity + distToNextCell*1.d10*thisOctal%rho(subcell)
+
+    end do
+    deallocate(kappaAbsArray, kappaScaArray)
+
+    if (firstTime) then
+       write(*,*) "lamstart, lamend ", grid%lamArray(iLamStart), grid%lamArray(iLamEnd)
+       write(*,*) "mean kappaAbs ", meanKappaAbs*1.d-10/thisOctal%rho(subcell)
+       write(*,*) "mean kappaSca ", meanKappaSca*1.d-10/thisOctal%rho(subcell)
+       write(*,*) "mean kappaExt ", meanKappaExt*1.d-10/thisOctal%rho(subcell)
+       firstTime = .false.
+    endif
+
+!    write(*,*) "did ", startVec, " to ", currentPosition
+    write(*,'(a,3(es12.3))') "Ended at ", currentPosition%x, currentPosition%y, currentPosition%z
+    write(*,'(a,es12.3)') "distance travelled ", modulus(currentPosition-startVec)
+    write(*,'(a,es12.3)') "distance betw star ", modulus(endVec-startVec)
+  end subroutine meanTauBetweenPoints
 
 end module gridanalysis_mod

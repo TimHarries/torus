@@ -233,7 +233,7 @@ contains
 
     type(OCTAL), pointer, optional :: currentOctal
     integer, optional :: currentSubcell
-    real(double) :: allSca(10)
+    real(double), allocatable :: allSca(:)
     type(GRIDTYPE) :: grid                       ! the opacity grid
     type(PHOTON) :: thisPhoton, outPhoton        ! current/output photon
     type(VECTOR) :: incoming, outgoing           ! directions
@@ -402,11 +402,12 @@ contains
              fac =1.
           endif
           
-
+          allocate(allSca(1:nDustType))
           call returnKappa(grid, currentOctal, currentSubcell, ilambda=i, allSca=allSca,&
                dir=thisPhoton%direction)
 
           k = randomIndex(allSca(1:nDustType), nDustType)
+          deallocate(allSca)
 
           miePhaseTemp = miePhase(k, i, j) + fac * &
                   (miePhase(k, i, j+1) - miePhase(k, i, j))

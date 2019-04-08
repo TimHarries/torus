@@ -266,6 +266,42 @@ ifeq ($(SYSTEM), complexity)
     ZLIBLIBS = -lz
     KNOWN_SYSTEM=yes
 endif
+# 
+# The Dirac 2.5 system at Leicester AKA DIaL (Data Intensive at Leicester) 
+# Default is an MPI build, use mpi=no for openmp/serial
+ifeq ($(SYSTEM), dial)
+    ifeq ($(mpi), no)
+       F95COMP= ifort
+       MPIFLAG=
+    else
+       F95COMP= mpif90
+       MPIFLAG= -DMPI
+    endif
+    OPENMPFLAG = -fopenmp
+    FASTFLAG= -O3 
+# For debugging with optimisations enabled use
+#    DEBUGFLAG= -O3 -g -debug extended
+    DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
+    STATICFLAG=
+    MATHTRAP=
+    EXE=torus.dial
+    STATICLIBS= -Bstatic
+#    CFITSIOLIBDIR= /home/dc-harr1/cfitsio
+#    CFITSIOLIBS = -L${CFITSTIOLIBDIR} -lcfitsio
+    CFITSIOLIBS = -L/home/dc-ali1/cfitsio -lcfitsio
+    ifeq ($(hdf), yes)
+       F95COMP+=-I/cm/shared/apps/hdf5-par/intel/1.6.10/lib
+       STARLIBS=-L/cm/shared/apps/hdf5-par/intel/1.6.10/lib
+    endif
+    KROMELIBS = -L${HOME}/krome/build -lkrome
+    ifeq ($(chemistry), yes)
+       F95COMP+=-I${HOME}/krome/build
+    endif
+
+    SPHNG_FLAGS = -mcmodel=medium -i-dynamic
+    ZLIBLIBS = -lz
+    KNOWN_SYSTEM=yes
+endif
 #
 # The Dirac cosma6 system at Durham 
 # Default is an MPI build, use mpi=no for openmp/serial
@@ -285,7 +321,8 @@ ifeq ($(SYSTEM), cosma)
     STATICFLAG=
     MATHTRAP=
     EXE=torus.cosma
-    CFITSIOLIBS = -lcfitsio
+#    CFITSIOLIBS = -lcfitsio
+    CFITSIOLIBS = -L/cosma/home/dp015/dc-ali1/cfitsio -lcfitsio
     STATICLIBS= -Bstatic
     KROMELIBS = -L${HOME}/krome/build -lkrome
     ifeq ($(chemistry), yes)
@@ -587,7 +624,7 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90 image_uti
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
             magnetic_mod.f90 units_mod.f90 interferometry_mod.f90 \
             qShep3D_mod.f90 qShep2D_mod.f90 turbulence_mod.f90 eos_mod.f90 citations_mod.f90 \
-            detector_mod.f90 interface_hierarchy_mod.f90 triangle_mesh_mod.f90 object_media_mod.f90 obj_io_mod.f90 \
+            detector_mod.f90 interface_hierarchy_mod.f90 triangle_mesh_mod.f90 object_media_mod.f90 obj_io_mod.f90 ramses_mod.f90 \
             $(VERSIONSOURCE)
             
 

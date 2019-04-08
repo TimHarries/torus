@@ -67,6 +67,7 @@ contains
     use gridFromFitsFile
 #endif
     use gridFromFlash
+    use ramses_mod, only: rd_gas
 
     implicit none
 
@@ -213,7 +214,14 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
           call writeVtkFile(grid, "tissue.vtk",  valueTypeString=(/"tissue"/))
 
-
+       case("mgascii")
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+          call readMgAsciiFile(posArray, rhoArray, npoints)
+          call writeInfo("Assigning grid values...", TRIVIAL)
+          call assignMgAsciiValues(grid, posArray, rhoArray, nPoints)
+          deallocate(posArray, rhoArray)
 
 #ifdef SPH
        case("cluster")
@@ -238,7 +246,12 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
-
+       case("Gareth")
+          call rd_gas
+          call writeInfo("Initialising adaptive grid...", TRIVIAL)
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
 
        case("wr104")
@@ -727,6 +740,58 @@ doGridshuffle: if(gridShuffle) then
 
 666 continue
   end subroutine setupamrgrid
+   subroutine readMgAsciiFile(posArray, rhoArray, npoints)
+     type(VECTOR), pointer :: posArray(:)
+     real(double), pointer :: rhoArray(:)
+     integer :: i, npoints
+     type(VECTOR) :: dir
+     character(len=80) :: fn
+     real(double), allocatable :: x(:), y(:), z(:)
+
+     npoints = 2097152 ! 128^3
+     allocate(posArray(1:nPoints), rhoArray(1:nPoints))
+     allocate(x(1:nPoints), y(1:nPoints), z(1:nPoints))
+
+     write(fn,*) "rosette-rho.txt"
+     open(11,file=fn,form='formatted')
+     do i=1,npoints
+        read(11,*) x(i), y(i), z(i), rhoArray(i)
+     enddo
+     close(11)
+
+     x = x * 50.d0 * pcToCm / 1.d10
+     y = y * 50.d0 * pcToCm / 1.d10
+     z = z * 50.d0 * pcToCm / 1.d10
+     rhoArray = rhoArray * mHydrogen
+
+     do i=1,npoints
+        posArray(i) = VECTOR(x(i), y(i), z(i))
+     enddo
+
+     if (Writeoutput) write(*,*) "Grid size is ",(x(npoints)-x(1))+(x(2)-x(1))
+   end subroutine readMgAsciiFile
+ 
+
+subroutine assignMgAsciiValues(grid, posArray, rhoArray, nPoints)
+  type(GRIDTYPE) :: grid
+  integer :: subcell, i, nPoints
+  type(OCTAL), pointer :: thisOctal
+  type(VECTOR) :: posArray(:)
+  real(double) :: rhoArray(:)
+
+  thisOctal => grid%octreeRoot
+  do i = 1, nPoints 
+     call findSubcellLocal(posArray(i),thisOctal,subcell)
+     if (octalOnThread(thisOctal, subcell, myrankGlobal)) then 
+        thisOctal%rho(subcell) = rhoArray(i)
+        thisOctal%temperature(subcell) = 10.
+        thisOctal%tdust(subcell) = 10.d0
+        thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+        thisOCtal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+     endif
+  enddo
+end subroutine assignMgAsciiValues
+
 
   subroutine doSmoothOnTau(grid)
 
@@ -1544,6 +1609,7 @@ doGridshuffle: if(gridShuffle) then
 #ifdef SPH
     use sph_data_class, only: sph_mass_within_grid, info_sph
 #endif
+    use ramses_mod, only: finishRamses
     use inputs_mod, only : mDisc, geometry, sphWithChem
     use memory_mod, only : findTotalMemory, reportMemory
     type(GRIDTYPE) :: grid
@@ -1551,6 +1617,11 @@ doGridshuffle: if(gridShuffle) then
 #ifdef SPH
     character(len=80) :: message
     real(double) :: minRho, maxRho, totalmasstrap, totalmass, totalMassMol
+#endif
+#ifdef MPI
+#ifdef CFITSIO
+    real(double), pointer :: columnDensityImage(:,:)
+#endif
 #endif
 
     call findTotalMemory(grid, i)
@@ -1602,10 +1673,26 @@ doGridshuffle: if(gridShuffle) then
 
 #endif
 
+    case("Gareth")
+       call finishRamses
+       
     case("fitsfile")
        call writeVTKfile(grid, "gridFromFitsFile.vtk",  &
             valueTypeString=(/"rho        ", "temperature", "dust1      ","velocity   "/))
 
+#ifdef MPI
+#ifdef CFITSIO
+    case("mgascii")
+       call createColumnDensityImage(grid, VECTOR(0.d0, 0.d0, 1.d0), columnDensityImage)
+       if (writeoutput) call writeFitsColumnDensityImage(columnDensityImage, trim("columnz.fits"))
+
+       call createColumnDensityImage(grid, VECTOR(0.d0, 1.d0, 0.d0), columnDensityImage)
+       if (writeoutput) call writeFitsColumnDensityImage(columnDensityImage, trim("columny.fits"))
+
+       call createColumnDensityImage(grid, VECTOR(1.d0, 0.d0, 0.d0), columnDensityImage)
+       if (writeoutput) call writeFitsColumnDensityImage(columnDensityImage, trim("columnx.fits"))
+#endif
+#endif
     case DEFAULT
     end select
   end subroutine postSetupChecks
