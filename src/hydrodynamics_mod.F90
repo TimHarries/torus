@@ -18161,12 +18161,12 @@ end subroutine refineGridGeneric2
     residual = tempFracChange
     if (writeoutput) write(*,'(a,1pe9.2)') "Fractional residual at maxdepth ",residual
 
-    write(plotfile,'(a,i4.4,a)') "grav",0,".vtk"
-    call writeVtkFile(grid, plotfile, &
-         valueTypeString=(/"phigas    ", &
-         "rho       ", &
-         "chiline   ", &
-         "adot      "/))
+!    write(plotfile,'(a,i4.4,a)') "grav",0,".vtk"
+!    call writeVtkFile(grid, plotfile, &
+!         valueTypeString=(/"phigas    ", &
+!         "rho       ", &
+!         "chiline   ", &
+!         "adot      "/))
 
 
     call setCorrectionToZero(grid%octreeRoot, maxDepth)
@@ -18182,7 +18182,7 @@ end subroutine refineGridGeneric2
 !       call writeInfo("Starting down part of V-cycle", TRIVIAL)
        
        do iDepth = maxDepth, minDepth, -1
-          if (writeoutput) write(*,*) "depth ",idepth
+!          if (writeoutput) write(*,*) "depth ",idepth
           call copyPhiGasToAdot(grid%octreeRoot, iDepth)
           call setCorrectionToZero(grid%octreeRoot, iDepth)
           call setCorrectionToZero(grid%octreeRoot, iDepth - 1)
@@ -18201,7 +18201,7 @@ end subroutine refineGridGeneric2
              call MPI_ALLREDUCE(residual, tempFracChange, 1, MPI_DOUBLE_PRECISION, MPI_MAX, amrCOMMUNICATOR, ierr)
              residual = tempFracChange
 
-             if (myrankGlobal==1)write(*,*) i, residual
+!             if (myrankGlobal==1)write(*,*) i, residual
              i = i + 1
              if ((iDepth > minDepth).and.(i == 5)) exit
              if ((iDepth == minDepth).and.(residual < 1.d-6)) exit
@@ -18217,15 +18217,15 @@ end subroutine refineGridGeneric2
           endif
        enddo
 
-       call setrhou(grid%octreeRoot, maxdepth-1)
-       write(plotfile,'(a,i4.4,a)') "afterdown",bigiter,".vtk"
-       call writeVtkFile(grid, plotfile, &
-            valueTypeString=(/"phigas    ", &
-                              "rho       ", &
-                              "chiline   ", &
-                              "adot      ", &
-                              "correction", &
-                              "rhou      "/))
+!       call setrhou(grid%octreeRoot, maxdepth-1)
+!       write(plotfile,'(a,i4.4,a)') "afterdown",bigiter,".vtk"
+!       call writeVtkFile(grid, plotfile, &
+!            valueTypeString=(/"phigas    ", &
+!                              "rho       ", &
+!                              "chiline   ", &
+!                              "adot      ", &
+!                              "correction", &
+!                              "rhou      "/))
 
        ! now the up part of the V-cycle
 !       call writeInfo("Beginning up part of V-cycle", TRIVIAL)
@@ -18288,14 +18288,14 @@ end subroutine refineGridGeneric2
 
 
 
-       write(plotfile,'(a,i4.4,a)') "afterup",bigiter,".vtk"
-       call writeVtkFile(grid, plotfile, &
-            valueTypeString=(/"phigas    ", &
-                              "rho       ", &
-                              "chiline   ", &
-                              "adot      ", &
-                              "correction", &
-                              "rhou      "/))
+!       write(plotfile,'(a,i4.4,a)') "afterup",bigiter,".vtk"
+!       call writeVtkFile(grid, plotfile, &
+!            valueTypeString=(/"phigas    ", &
+!                              "rho       ", &
+!                              "chiline   ", &
+!                              "adot      ", &
+!                              "correction", &
+!                              "rhou      "/))
 
 
        call setCorrectionToZero(grid%octreeRoot, maxDepth)
@@ -18303,12 +18303,12 @@ end subroutine refineGridGeneric2
 
 
 
-          write(plotfile,'(a,i4.4,a)') "grav",bigiter,".vtk"
-          call writeVtkFile(grid, plotfile, &
-               valueTypeString=(/"phigas    ", &
-                                 "rho       ", &
-                                 "chiline   ", &
-                                 "adot      "/))
+!          write(plotfile,'(a,i4.4,a)') "grav",bigiter,".vtk"
+!          call writeVtkFile(grid, plotfile, &
+!               valueTypeString=(/"phigas    ", &
+!                                 "rho       ", &
+!                                 "chiline   ", &
+!                                 "adot      "/))
 
 
        bigiter = bigiter+1
