@@ -718,7 +718,7 @@ CONTAINS
 #endif
     use angularImage_utils, only: calcAngImgTest
     use ramses_mod, only: fillRamses
-    
+
     IMPLICIT NONE
 
     TYPE(octal), INTENT(INOUT)    :: thisOctal   ! the octal being changed
@@ -1092,7 +1092,7 @@ CONTAINS
     CASE("Gareth")
        call fillRamses(thisOctal, subcell)
        if (associated (thisoctal%cornervelocity)) thisoctal%cornervelocity = VECTOR(-9.9d99,-9.9d99,-9.9d99)
-       
+
     CASE ("benchmark")
        CALL benchmarkDisk(thisOctal, subcell)
 
@@ -2195,7 +2195,7 @@ CONTAINS
                 call interpolateDensityCorners(thisOctal)
              end if
           endif
-          
+
        CASE DEFAULT
           ! Nothing to be done for this geometry so just return.
           if(.not. (modelWasHydro.or.h21cm)) then
@@ -3618,7 +3618,7 @@ CONTAINS
     use inputs_mod, only : smoothInnerEdge, variableDustSublimation, rCut, doDiscSplit
 !    use inputs_mod, only: ttauriwind, smoothinneredge, amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
     use ramses_mod, only: splitRamses
-    
+
 #ifdef USECFITSIO
     use gridFromFitsFile, only : checkFitsSplit
 #endif
@@ -5248,7 +5248,7 @@ CONTAINS
 
        case ("Gareth")
           split = splitRamses(thisOctal%subcellSize,subcellCentre(thisOctal, subcell))
-          
+
        case ("wr104")
           ! Splits if the number of particle is more than a critical value (~3).
           limit = nint(amrLimitScalar)
@@ -6440,7 +6440,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     thisOctal%cornerVelocity(5) = (thisOctal%velocity(1) + thisOctal%velocity(2) + &
                                    thisOctal%velocity(3) + thisOctal%velocity(4)) / 4.0_db
     thisOctal%cornerVelocity(6) = (thisOctal%velocity(2) + thisOctal%velocity(4)) / 2.0_db
-    
+
     thisOctal%cornerVelocity(7) =  thisOctal%velocity(3)
     thisOctal%cornerVelocity(8) = (thisOctal%velocity(3) + thisOctal%velocity(4)) / 2.0_db
     thisOctal%cornerVelocity(9) =  thisOctal%velocity(4)
@@ -6454,7 +6454,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     thisOctal%cornerVelocity(23) = (thisOctal%velocity(5) + thisOctal%velocity(6) + &
                                    thisOctal%velocity(7) + thisOctal%velocity(8)) / 4.0_db
     thisOctal%cornerVelocity(24) = (thisOctal%velocity(6) + thisOctal%velocity(8)) / 2.0_db
-    
+
     thisOctal%cornerVelocity(25) =  thisOctal%velocity(7)
     thisOctal%cornerVelocity(26) = (thisOctal%velocity(7) + thisOctal%velocity(8)) / 2.0_db
     thisOctal%cornerVelocity(27) =  thisOctal%velocity(8)
@@ -6463,7 +6463,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     do i=1,9
        thisOctal%cornerVelocity(i+9) = (thisOctal%cornerVelocity(i) + thisOctal%cornerVelocity(i+18)) / 2.0_db
     end do
-    
+
     if (debug) then
        write(*,*) "DMA: subcell locations"
        do i=1,8
@@ -6481,7 +6481,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
        read(*,*)
     end if
 
-    
+
   end subroutine interpolateVelocityCorners
 
   subroutine interpolateDensityCorners(thisOctal)
@@ -6524,7 +6524,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
     end do
 
   end subroutine interpolateDensityCorners
-  
+
   TYPE(vector) FUNCTION TTauriVelocity(point)
     ! calculates the velocity vector at a given point for a model
     !   of a T Tauri star with magnetospheric accretion
@@ -16563,7 +16563,7 @@ end function readparameterfrom2dmap
   recursive subroutine assignDensitiesMahdavi(grid, thisOctal, astar, mdot, minrCubedRhoSquared)
     use inputs_mod, only :  vturb, isothermTemp, ttauriRstar
     use inputs_mod, only : TTauriDiskHeight
-    use magnetic_mod, only : inflowMahdavi, velocityMahdavi
+    use magnetic_mod, only : inflowMahdavi, velocityMahdavi, densityMahdavi
     real(double) :: astar, mdot, thisR, thisRho, thisV, minRcubedRhoSquared
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
@@ -16603,7 +16603,8 @@ end function readparameterfrom2dmap
              thisOctal%fixedTemperature(subcell) = .true.
              thisV = modulus(thisOctal%velocity(subcell))*cSpeed
              if (thisV /= 0.d0) then
-                thisRho =  mdot /(aStar * thisV)  * (ttauriRstar/thisR)**3
+                ! thisRho =  mdot /(aStar * thisV)  * (ttauriRstar/thisR)**3
+                thisRho =  densityMahdavi(cellCentre,mdot)
                 thisOctal%inflow(subcell) = .true.
                 thisOctal%rho(Subcell) = thisRho
                 thisOctal%temperature(subcell) = isothermTemp

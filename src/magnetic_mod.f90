@@ -256,6 +256,28 @@ contains
 
   end function velocityMahdavi
 
+
+!Equation give in Hartmann et al. (1994) - tjgw201 10/04/19
+  real (double) function densityMahdavi(point, mdot)
+    use inputs_mod, only : dipoleOffset, ttauriRInner, ttauriRouter, ttauriMstar, &
+         ttaurirstar
+    type(VECTOR), intent(in) :: point
+    type(VECTOR) :: rVec
+    real(double) :: r, theta, mdot
+    real(double) :: y, rho
+
+    rVec = point * 1.d10
+    r = modulus(rVec)
+    theta = acos(rVec%z/r)
+    y = sin(theta)**2
+
+    trig = sqrt((4.d0 - (3.d0*y))/(1-y))
+    rho = mdot*sqrt(r**-5.d0)*sqrt((4.d0 - 3.d0*y)/ ((1-y)) * sqrt(2.d0*bigG*ttauriMstar))
+    densityMahdavi = rho / (fourpi*(1.d0/ttauriRInner - 1.d0/ttauriRouter))
+
+  end function densityMahdavi
+
+
   type (VECTOR) function velocityAlphadisc(point)
     type(VECTOR), intent(in) :: point
 
