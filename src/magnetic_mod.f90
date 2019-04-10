@@ -269,11 +269,10 @@ contains
     rVec = point * 1.d10
     r = modulus(rVec)
     theta = acos(rVec%z/r)
-    y = sin(theta)**2
+    y = sin(theta)**2.d0
 
-    trig = sqrt((4.d0 - (3.d0*y))/(1-y))
-    rho = mdot*sqrt(r**-5.d0)*sqrt((4.d0 - 3.d0*y)/ ((1-y)) * sqrt(2.d0*bigG*ttauriMstar))
-    densityMahdavi = rho / (fourpi*(1.d0/ttauriRInner - 1.d0/ttauriRouter))
+    rho = mdot*sqrt(r**(-5.d0))*sqrt((4.d0 - 3.d0*y)/ (1.d0-y)) / sqrt(2.d0*bigG*ttauriMstar)
+    densityMahdavi = rho / (fourpi*((1.d0/ttauriRInner) - (1.d0/ttauriRouter)))
 
   end function densityMahdavi
 
