@@ -1615,7 +1615,7 @@ end subroutine assignMgAsciiValues
     real(double) :: minRho, maxRho, totalmasstrap, totalmass, totalMassMol
 #endif
 #ifdef MPI
-#ifdef CFITSIO
+#ifdef USECFITSIO
     real(double), pointer :: columnDensityImage(:,:)
 #endif
 #endif
@@ -1677,7 +1677,7 @@ end subroutine assignMgAsciiValues
             valueTypeString=(/"rho        ", "temperature", "dust1      ","velocity   "/))
 
 #ifdef MPI
-#ifdef CFITSIO
+#ifdef USECFITSIO
     case("mgascii")
        call createColumnDensityImage(grid, VECTOR(0.d0, 0.d0, 1.d0), columnDensityImage)
        if (writeoutput) call writeFitsColumnDensityImage(columnDensityImage, trim("columnz.fits"))

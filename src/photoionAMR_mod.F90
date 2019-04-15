@@ -108,7 +108,7 @@ contains
     integer, parameter :: tagsne = 123
     real :: lamArray(:)
     character(len=80) :: mpiFilename, datFilename, mpifilenameB
-#ifdef CFITSIO
+#ifdef USECFITSIO
     real(double), pointer :: columnDensityImage(:,:)
 #endif
     real(double) :: dt, cfl, gamma, mu
@@ -1437,7 +1437,7 @@ contains
                "scatters     ","ioncross     ","tempconv     ","habing       ",&
                "fvisc1       ","fvisc2       ","fvisc3       ","crossings    ","mpithread    "/))
 
-#ifdef CFITSIO
+#ifdef USECFITSIO
           if (grid%octreeRoot%threeD) then
              write(mpiFilename,'(a, i4.4, a)') "columnz_", grid%iDump,".fits"
              call createColumnDensityImage(grid, VECTOR(0.d0, 0.d0, 1.d0), columnDensityImage)
