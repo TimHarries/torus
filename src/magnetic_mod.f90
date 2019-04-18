@@ -67,49 +67,75 @@ contains
 
   !!Functon determines if there is stellar outflow from poles (ttauri) at the position given by rVec
   !!tjgw201 14/03/19 based on function: inFlowMahdaviSingle(rVec)
-  logical function outFlow(rVec)
-    use inputs_mod, only : ttauriRouter, dipoleOffset, ttauriRstar
-    type(VECTOR) :: rVec
-    real(double) :: r, theta, phi, beta, xi
-    real(double) :: thisr, thisTheta
-    real(double) :: thetaDash, phiDash, thisThetaFinal
-    real(double) :: thetaFinal
+  logical function stellarWindOutflow(rVec)
+    use inputs_mod, only : ttauriRinner, ttauriRouter, dipoleOffset, ttauriRstar
+    type(VECTOR) :: rVec, rVecDash, vecRadMax, Vp, VpMax
+    real(double) :: r, theta, phi, beta, y, yMax
+    real(double) :: thisr, thisTheta, thisrMax, rMax
+    real(double) :: rDash, thetaDash, phiDash
+    real(double) :: rMaxMax, sin2theta0dash, openAngle, angle, angleMax
 
+    openAngle = 30.d0 * degToRad
     beta = dipoleOffset
     r = modulus(rVec)
-    xi = ttauriRstar / ttauriRouter
-    if (r == 0.d0) then
-       outFlow = .false.
+
+    if ((r*1.d10) .LE. tTauriRstar) then
+       stellarWindOutflow = .false.
        goto 666
     endif
 
-    thisTheta = acos(rVec%z/r)
-    phi = atan2(rVec%y,rVec%x)+1.d-3
+    theta = acos(rVec%z/r)
+    if (theta == 0.d0) theta = 1.d-20
+    phi = atan2(rVec%y,rVec%x)!!! not sure why this is added +1.d-3
+    if (phi == 0.d0) phi = 1.d-20
 
-    !theta_0 = pi/2 therefore can remove all theta terms
-    phiDash = atan2(sin(phi),(cos(phi)*cos(beta)))
+    rDash = r
+    rVecDash = rotateY(rVec, -beta)
+
+    thetaDash = acos(rVecDash%z/rDash)
+    if (thetaDash == 0.d0) thetaDash = 1.d-20
+    phiDash = atan2(rVecDash%y, rVecDash%x)
     if (phiDash == 0.d0) phiDash = 1.d-20
 
-    thetaDash = acos(cos(phi)*sin(beta))
-    thetaFinal = asin(sqrt(xi*sin(thetaDash)**2.))
+    thisrMax = rDash / sin(thetaDash)**2.d0
 
-    thisThetaFinal = asin(max(-1.d0,min(1.d0,sin(phi)*sin(thisTheta)/sin(phidash))))
-    if(thisThetaFinal .LE. thetaFinal) then
-      outflow = .True.
-    else
-      outflow = .False.
-    endif
-    !
-    ! if (beta /= 0.d0) then
-    !    if (cos(theta) > 0.d0) then
-    !       if (cos(phidash) < 0.d0) outFlow = .false.
-    !    else
-    !       if (cos(phidash) > 0.d0) outFlow = .false.
-    !    endif
-    ! endif
+
+
+    sin2theta0dash = (1.d0 + tan(beta)**2.d0 * cos(phiDash)**2.d0)**(-1.d0)
+    rMaxMax = ttauriRouter / sin2theta0dash
+
+
+    yMax = SIN(openAngle)**2.d0
+    VpMax = vector(3.d0 * SQRT(y) * SQRT(1.d0-y) / SQRT(4.d0 - (3.d0*y)), &
+         0.d0, &
+         (2.d0 - 3.d0 * y) / SQRT(4.d0 - 3.d0 * y))
+    call normalize(Vp)
+    vecRadMax = vector(sin(openAngle)*cos(phi),sin(openAngle)*sin(phi),cos(openAngle))
+    call normalize(vecRadMax)
+    angleMax = vecRadMax .dot. VpMax
+    rMax = rMaxMax*sin(openAngle)**2.d0
+
+
+    y = SIN(thetaDash)**2.d0
+    Vp = vector(3.d0 * SQRT(y) * SQRT(1.d0-y) / SQRT(4.d0 - (3.d0*y)), &
+         0.d0, &
+         (2.d0 - 3.d0 * y) / SQRT(4.d0 - 3.d0 * y))
+    call normalize(Vp)
+    angle = vecRadMax .dot. VpMax
+
+
+
+
+    stellarWindOutflow = .false.
+
+    if (angle <= angleMax .or. angle >= (pi-angleMax) .and. rDash <= rMax) then
+      stellarWindOutflow = .true.
+    ! else if (rDash > rmax .and. (thetaDash <= openAngle .or. thetaDash >= (pi-openAngle))) then
+    !   stellarWindOutflow = .true.
+    end if
 
     666 continue
-  end function outFlow
+  end function stellarWindOutflow
 
 
 !!returns the half opening angle between accretion hot spots - tjgw201 15/03/19
@@ -256,25 +282,36 @@ contains
 
   end function velocityMahdavi
 
-
-!Equation give in Hartmann et al. (1994) - tjgw201 10/04/19
-  real (double) function densityMahdavi(point, mdot)
+!Assigns the densiy of grid cells in the accretion funnel
+!Equation given in Hartmann et al.(1994) - tjgw201 10/04/19
+  real (double) function densityHartmann(point, mdot)
     use inputs_mod, only : dipoleOffset, ttauriRInner, ttauriRouter, ttauriMstar, &
          ttaurirstar
     type(VECTOR), intent(in) :: point
-    type(VECTOR) :: rVec
-    real(double) :: r, theta, mdot
-    real(double) :: y, rho
+    type(VECTOR) :: rVec, rVecDash
+
+    real(double) :: r, theta, mdot, rMaxMin, rMaxMax, rDash, beta
+    real(double) :: y, rho, thetaDash, phiDash, sin2theta0dash
 
     rVec = point * 1.d10
+    beta = dipoleOffset
     r = modulus(rVec)
     theta = acos(rVec%z/r)
-    y = sin(theta)**2.d0
 
-    rho = mdot*sqrt(r**(-5.d0))*sqrt((4.d0 - 3.d0*y)/ (1.d0-y)) / sqrt(2.d0*bigG*ttauriMstar)
-    densityMahdavi = rho / (fourpi*((1.d0/ttauriRInner) - (1.d0/ttauriRouter)))
+    rVecDash = rotateY(rVec, -beta)
+    rDash = modulus(rVecDash)
+    thetaDash = acos(rVecDash%z/rDash)
+    phiDash = atan2(rVecDash%y, rVecDash%x)
 
-  end function densityMahdavi
+    sin2theta0dash = (1.d0 + tan(beta)**2 * cos(phiDash)**2)**(-1.d0)
+    rMaxMin = ttauriRinner / sin2theta0dash
+    rMaxMax = ttauriRouter / sin2theta0dash
+    y = sin(thetaDash)**2.d0
+
+    rho = mdot*sqrt(rDash**(-5.d0))*sqrt((4.d0 - 3.d0*y)/ (1.d0-y)) / sqrt(2.d0*bigG*ttauriMstar)
+    densityHartmann = rho / (fourpi*((1.d0/rMaxMin) - (1.d0/rMaxMax)))
+
+  end function densityHartmann
 
 
   type (VECTOR) function velocityAlphadisc(point)

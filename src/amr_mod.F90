@@ -16463,7 +16463,7 @@ end function readparameterfrom2dmap
              * (1.d0 - cos(theta)) * v * 1.d20)
           endif
 
-          if ((r > SW_Rmin).and.(r < SW_Rmax).and.(thisRho > thisOctal%rho(subcell)).and.(outflow(cellCentre))) then
+          if ((r > SW_Rmin).and.(r < SW_Rmax).and.(thisRho > thisOctal%rho(subcell)).and.(stellarWindOutflow(cellCentre))) then
              thisOctal%velocity(subcell) = TTauriStellarWindvelocity(cellcentre)
              thisOctal%inflow(subcell) = .true.
              CALL fillVelocityCorners(thisOctal,ttauriStellarWindvelocity)
@@ -16477,6 +16477,7 @@ end function readparameterfrom2dmap
        endif
     enddo
   end subroutine assignDensitiesStellarWind
+
  !!!routine removed in favour of polar stellar wind rather than spherically symmetric winds - tjgw201
   ! recursive subroutine assignDensitiesStellarWind(grid, thisOctal)
   !   use analytical_velocity_mod
@@ -16563,7 +16564,7 @@ end function readparameterfrom2dmap
   recursive subroutine assignDensitiesMahdavi(grid, thisOctal, astar, mdot, minrCubedRhoSquared)
     use inputs_mod, only :  vturb, isothermTemp, ttauriRstar
     use inputs_mod, only : TTauriDiskHeight
-    use magnetic_mod, only : inflowMahdavi, velocityMahdavi, densityMahdavi
+    use magnetic_mod, only : inflowMahdavi, velocityMahdavi, densityHartmann
     real(double) :: astar, mdot, thisR, thisRho, thisV, minRcubedRhoSquared
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
@@ -16604,7 +16605,7 @@ end function readparameterfrom2dmap
              thisV = modulus(thisOctal%velocity(subcell))*cSpeed
              if (thisV /= 0.d0) then
                 ! thisRho =  mdot /(aStar * thisV)  * (ttauriRstar/thisR)**3
-                thisRho =  densityMahdavi(cellCentre,mdot)
+                thisRho =  densityHartmann(cellCentre,mdot)
                 thisOctal%inflow(subcell) = .true.
                 thisOctal%rho(Subcell) = thisRho
                 thisOctal%temperature(subcell) = isothermTemp

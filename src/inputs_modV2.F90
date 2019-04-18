@@ -1221,7 +1221,7 @@ contains
        call getLogical("ttauriwind", ttauriWind, cLine, fLine, nLines, &
             "T Tauri disc wind present:","(a,1l,1x,a)", .false., ok, .false.)
 
-       call getLogical("t", ttauriStellarWind, cLine, fLine, nLines, &
+       call getLogical("ttauristellarwind", ttauriStellarWind, cLine, fLine, nLines, &
             "T Tauri stellar wind present:","(a,1l,1x,a)", .false., ok, .false.)
 
        if (ttauriwind) then
@@ -2643,7 +2643,7 @@ contains
 
 ! For setting up a grid from a Ramses file
      if (checkPresent("ramsesfilename", cline, nlines)) call readRamsesParameters
-          
+
   contains
 
     subroutine readFlashParameters
@@ -2705,14 +2705,14 @@ contains
     subroutine readRamsesParameters
       use ramses_mod, only: setGridFromRamsesParameters
       character(len=80) :: ramsesfilename
-      
+
       call getString("ramsesfilename", ramsesfilename, cLine, fLine, nLines, &
            "Ramses file name: ","(a,a,a)","none",ok, .false.)
 
       call setGridFromRamsesParameters(ramsesfilename)
     end subroutine readRamsesParameters
 
-    
+
   end subroutine readGridInitParameters
 
   subroutine readDustPhysicsParameters(cLine, fLine, nLines)
