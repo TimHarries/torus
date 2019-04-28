@@ -68,18 +68,20 @@ contains
   !!Functon determines if there is stellar outflow from poles (ttauri) at the position given by rVec
   !!tjgw201 14/03/19 based on function: inFlowMahdaviSingle(rVec)
   logical function stellarWindOutflow(rVec)
-    use inputs_mod, only : ttauriRinner, ttauriRouter, dipoleOffset, ttauriRstar
-    type(VECTOR) :: rVec, rVecDash, vecRadMax, Vp, VpMax
-    real(double) :: r, theta, phi, beta, y, yMax
-    real(double) :: thisr, thisTheta, thisrMax, rMax
+    use inputs_mod, only : ttauriRinner, ttauriRouter, dipoleOffset, &
+    ttauriRstar, SW_openAngle
+    type(VECTOR) :: rVec, rVecDash
+    real(double) :: r, theta, phi, beta
+    real(double) :: thisr, thisTheta, thisrMax
     real(double) :: rDash, thetaDash, phiDash
-    real(double) :: rMaxMax, sin2theta0dash, openAngle, angle, angleMax
+    real(double) :: rMaxMax, sin2theta0dash
 
-    openAngle = 30.d0 * degToRad
+    rVec = rVec * 1.d10
+    SW_openAngle = 55.d0 * degToRad
     beta = dipoleOffset
     r = modulus(rVec)
 
-    if ((r*1.d10) .LE. tTauriRstar) then
+    if ((r*1.d10) .LE. ttauriRstar) then
        stellarWindOutflow = .false.
        goto 666
     endif
@@ -97,41 +99,23 @@ contains
     phiDash = atan2(rVecDash%y, rVecDash%x)
     if (phiDash == 0.d0) phiDash = 1.d-20
 
-    thisrMax = rDash / sin(thetaDash)**2.d0
-
-
-
     sin2theta0dash = (1.d0 + tan(beta)**2.d0 * cos(phiDash)**2.d0)**(-1.d0)
     rMaxMax = ttauriRouter / sin2theta0dash
 
 
-    yMax = SIN(openAngle)**2.d0
-    VpMax = vector(3.d0 * SQRT(y) * SQRT(1.d0-y) / SQRT(4.d0 - (3.d0*y)), &
-         0.d0, &
-         (2.d0 - 3.d0 * y) / SQRT(4.d0 - 3.d0 * y))
-    call normalize(Vp)
-    vecRadMax = vector(sin(openAngle)*cos(phi),sin(openAngle)*sin(phi),cos(openAngle))
-    call normalize(vecRadMax)
-    angleMax = vecRadMax .dot. VpMax
-    rMax = rMaxMax*sin(openAngle)**2.d0
-
-
-    y = SIN(thetaDash)**2.d0
-    Vp = vector(3.d0 * SQRT(y) * SQRT(1.d0-y) / SQRT(4.d0 - (3.d0*y)), &
-         0.d0, &
-         (2.d0 - 3.d0 * y) / SQRT(4.d0 - 3.d0 * y))
-    call normalize(Vp)
-    angle = vecRadMax .dot. VpMax
-
+    thisRMax = rDash / sin(thetaDash)**2.d0
+    ! maxRsin2thetaOpen = ttauriRouter * sin(SW_openAngle)**2.d0
 
 
 
     stellarWindOutflow = .false.
 
-    if (angle <= angleMax .or. angle >= (pi-angleMax) .and. rDash <= rMax) then
+    if (thisRmax >= rMaxMax .and. theta <= SW_openAngle) then
       stellarWindOutflow = .true.
-    ! else if (rDash > rmax .and. (thetaDash <= openAngle .or. thetaDash >= (pi-openAngle))) then
-    !   stellarWindOutflow = .true.
+    end if
+
+    if (thisRmax >= rMaxMax .and. theta >= (pi-SW_openAngle)) then
+      stellarWindOutflow = .true.
     end if
 
     666 continue

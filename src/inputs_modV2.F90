@@ -1308,6 +1308,10 @@ contains
 
        if (TTauristellarWind) then
           ! --- parameters for ttauri wind
+          call getDouble("SW_Openangle", SW_openAngle, degToRad, cLine, fLine, nLines, &
+               "Stellar wind:: Maximum opening angle of steller wind [deg]: ", &
+               "(a,1p,e9.3,1x,a)", 30.0d0, ok, .true.)
+
           call getDouble("SW_Rmin", SW_Rmin, ttaurirstar/1.d10, cLine, fLine, nLines, &
                "Stellar wind:: Inner radius of the wind [stellar radii]: ", &
                "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.)
