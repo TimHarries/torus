@@ -130,6 +130,8 @@ contains
     real(double) :: rMaxMax, sin2theta0dash
     real(double) :: y
 
+    stellarWindVector = vector(0.d0, 0.d0, 0.d0)
+    wind = vector(0.d0, 0.d0, 0.d0)
 
     beta = dipoleOffset
     openAngleDash = SW_openAngle - beta
@@ -147,19 +149,20 @@ contains
 
     rBoundary = 1.d10*rMaxMax * sin(SW_openAngle)**2.d0
     ! if (rDash <= rBoundary) then
-     if (rDash <= rBoundary) then
-       y = sin(thetaDash)**2.d0
-       wind = vector(3.d0 * SQRT(y) * SQRT(1.d0-y) / SQRT(4.d0 - (3.d0*y)), &
-          0.d0, &
-          (2.d0 - 3.d0 * y) / SQRT(4.d0 - 3.d0 * y))
+    if (rDash <= rBoundary) then
+      y = sin(thetaDash)**2.d0
+      wind = vector(3.d0 * SQRT(y) * SQRT(1.d0-y) / SQRT(4.d0 - (3.d0*y)), &
+        0.d0, &
+        (2.d0 - 3.d0 * y) / SQRT(4.d0 - 3.d0 * y))
 
-          ! if ((rVecDash%x/rDash) < 0.d0) wind%z = (-1.d0)*wind%z
-          ! if ((rVecDash%x/rDash) < 0.d0) wind = (-1.d0)*wind
-          ! if (rVecDash%z < 0.d0) wind = (-1.d0)*wind
+          if ((rVecDash%z/rDash) < 0.d0) wind%z = (-1.d0)*wind%z
+          if ((rVecDash%z/rDash) < 0.d0) wind = (-1.d0)*wind
+          if (rVecDash%z < 0.d0) wind = (-1.d0)*wind
 
-          if (rVecDash%z < 0.d0) wind%z = (-1.d0)*wind%z
-          if (rVecDash%x < 0.d0) wind%x = (-1.d0)*wind%x
-          if (rVecDash%y < 0.d0) wind%y = (-1.d0)*wind%y
+        ! if (rVecDash%z < 0.d0) wind%z = (-1.d0)*wind%z
+        ! if (rVecDash%x < 0.d0) wind%x = (-1.d0)*wind%x
+        ! if (rVecDash%y < 0.d0) wind%y = (-1.d0)*wind%y
+
     else
       wind = rVecDash
     endif
@@ -307,7 +310,6 @@ contains
     ! vSolid = rVec .cross. VECTOR(0.d0, 0.d0, 1.d0)
     ! call normalize(vSolid)
     ! vSolid = (modulus(rVec)/ttauriRouter*velMagAtCorotation) * vSolid
-
 
     velocityMahdavi = vp
 
