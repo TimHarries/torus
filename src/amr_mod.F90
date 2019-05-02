@@ -16455,23 +16455,25 @@ end function readparameterfrom2dmap
 
           cellCentre = subcellCentre(thisOctal, subcell) ! find the centre of the cell
           r = modulus(cellCentre)
-          v = modulus(TTauriStellarWindVelocity(cellCentre))*cSpeed
-          theta = capHalfAngle()
-          thisRho = 0.d0
-          if (v > 0.d0) then
-             thisRho = 0.5d0 * (SW_Mdot * mSol / yearsToSecs)/(twoPi * r**2.0d0 &
-             * (1.d0 - cos(theta)) * v * 1.d20)
-          endif
 
+          ! v = modulus(TTauriStellarWindVelocity(cellCentre))*cSpeed
+          ! theta = capHalfAngle()
+          ! thisRho = 0.d0
+          ! if (v > 0.d0) then
+          !    thisRho = 0.5d0 * (SW_Mdot * mSol / yearsToSecs)/(twoPi * r**2.0d0 &
+          !    * (1.d0 - cos(theta)) * v * 1.d20)
+          ! endif
+
+          thisRho = 1.d0
           if ((r > SW_Rmin).and.(r < SW_Rmax).and.(thisRho > thisOctal%rho(subcell)).and.(stellarWindOutflow(cellCentre))) then
-             thisOctal%velocity(subcell) = TTauriStellarWindvelocity(cellcentre)
+
+             thisOctal%velocity(subcell) = stellarWindVector(cellcentre)
              thisOctal%inflow(subcell) = .true.
-             CALL fillVelocityCorners(thisOctal,ttauriStellarWindvelocity)
+             CALL fillVelocityCorners(thisOctal,stellarWindVector)
              thisOctal%iAnalyticalVelocity(subcell) = 3
              thisOCtal%rho(subcell) = thisRho
              thisOCtal%fixedTemperature(subcell) = .true.
              thisOctal%temperature(subcell) = real(SW_temperature)
-             !thisOctal%fixedTemperature(subcell) = .true.
           endif
 
        endif

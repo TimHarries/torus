@@ -72,24 +72,21 @@ contains
     ttauriRstar, SW_openAngle
     type(VECTOR) :: rVec, rVecDash
     real(double) :: r, theta, phi, beta
-    real(double) :: thisr, thisTheta, thisrMax
+    real(double) :: thisrMax
     real(double) :: rDash, thetaDash, phiDash
     real(double) :: rMaxMax, sin2theta0dash
 
     rVec = rVec * 1.d10
-    SW_openAngle = 55.d0 * degToRad
     beta = dipoleOffset
     r = modulus(rVec)
 
-    if ((r*1.d10) .LE. ttauriRstar) then
+    if (r <= ttauriRstar) then
        stellarWindOutflow = .false.
        goto 666
     endif
 
     theta = acos(rVec%z/r)
     if (theta == 0.d0) theta = 1.d-20
-    phi = atan2(rVec%y,rVec%x)!!! not sure why this is added +1.d-3
-    if (phi == 0.d0) phi = 1.d-20
 
     rDash = r
     rVecDash = rotateY(rVec, -beta)
@@ -101,25 +98,79 @@ contains
 
     sin2theta0dash = (1.d0 + tan(beta)**2.d0 * cos(phiDash)**2.d0)**(-1.d0)
     rMaxMax = ttauriRouter / sin2theta0dash
-
-
     thisRMax = rDash / sin(thetaDash)**2.d0
-    ! maxRsin2thetaOpen = ttauriRouter * sin(SW_openAngle)**2.d0
-
 
 
     stellarWindOutflow = .false.
-
-    if (thisRmax >= rMaxMax .and. theta <= SW_openAngle) then
-      stellarWindOutflow = .true.
-    end if
-
-    if (thisRmax >= rMaxMax .and. theta >= (pi-SW_openAngle)) then
-      stellarWindOutflow = .true.
-    end if
+    if (thisRmax >= rMaxMax) then
+       if (theta <= SW_openAngle) then
+         stellarWindOutflow = .true.
+         goto 666
+       else if (theta >= (pi-SW_openAngle)) then
+         stellarWindOutflow = .true.
+       endif
+     endif
 
     666 continue
   end function stellarWindOutflow
+
+
+
+
+  type (VECTOR) function stellarWindVector(point)
+    use inputs_mod, only : ttauriRouter, dipoleOffset, &
+    ttauriRstar, SW_openAngle
+
+    type(VECTOR), intent(in) :: point
+    type(VECTOR) :: rVec, rVecDash, wind
+
+    real(double) :: theta, phi, beta
+    real(double) :: rBoundary, openAngleDash
+    real(double) :: rDash, thetaDash, phiDash
+    real(double) :: rMaxMax, sin2theta0dash
+    real(double) :: y
+
+
+    beta = dipoleOffset
+    openAngleDash = SW_openAngle - beta
+    rVec = point *1.d10
+    rVecDash = rotateY(rVec, -beta)
+    rDash = modulus(rVec)
+
+    thetaDash = acos(rVecDash%z/rDash)
+    if (thetaDash == 0.d0) thetaDash = 1.d-20
+    phiDash = atan2(rVecDash%y, rVecDash%x)
+    if (phiDash == 0.d0) phiDash = 1.d-20
+
+    sin2theta0dash = (1.d0 + tan(beta)**2.d0 * cos(phiDash)**2.d0)**(-1.d0)
+    rMaxMax = ttauriRouter / sin2theta0dash
+
+    rBoundary = 1.d10*rMaxMax * sin(SW_openAngle)**2.d0
+    ! if (rDash <= rBoundary) then
+     if (rDash <= rBoundary) then
+       y = sin(thetaDash)**2.d0
+       wind = vector(3.d0 * SQRT(y) * SQRT(1.d0-y) / SQRT(4.d0 - (3.d0*y)), &
+          0.d0, &
+          (2.d0 - 3.d0 * y) / SQRT(4.d0 - 3.d0 * y))
+
+          ! if ((rVecDash%x/rDash) < 0.d0) wind%z = (-1.d0)*wind%z
+          ! if ((rVecDash%x/rDash) < 0.d0) wind = (-1.d0)*wind
+          ! if (rVecDash%z < 0.d0) wind = (-1.d0)*wind
+
+          if (rVecDash%z < 0.d0) wind%z = (-1.d0)*wind%z
+          if (rVecDash%x < 0.d0) wind%x = (-1.d0)*wind%x
+          if (rVecDash%y < 0.d0) wind%y = (-1.d0)*wind%y
+    else
+      wind = rVecDash
+    endif
+
+    wind = rotateZ(wind, -phiDash)
+    wind = rotateY(wind, beta)
+
+    call normalize(wind)
+    stellarWindVector = wind
+  end function stellarWindVector
+
 
 
 !!returns the half opening angle between accretion hot spots - tjgw201 15/03/19
@@ -203,7 +254,7 @@ contains
     use inputs_mod, only : dipoleOffset, ttauriRInner, ttauriRouter, ttauriMstar, &
          ttaurirstar
     type(VECTOR), intent(in) :: point
-    type(VECTOR) :: rvec, vp, magneticAxis, rVecDash, vSolid
+    type(VECTOR) :: rvec, vp, rVecDash, vSolid
     real(double) :: r, rDash, phi, phiDash, theta,thetaDash,sin2theta0dash, beta
     real(double) :: deltaU, y, modVp, thisRmax, cosThetaDash, rTrunc, rMaxMin,rMaxMax
     real(double) :: velMagAtCorotation
@@ -247,24 +298,23 @@ contains
     IF (costhetaDash < 0.d0) vP = (-1.d0)*vp
 
     if (rVec%z < 0.d0) vP = (-1.d0)*vp
-    magneticAxis = VECTOR(0.d0, sin(beta), cos(beta))
     vp = rotateZ(vp, -phiDash)
 
     vp = rotateY(vp, beta)
 
-    velMagAtCorotation = sqrt(bigG*ttauriMstar/ttauriRouter)/cSpeed
-    rVec = VECTOR(point%x,point%y,0.d0)
-    vSolid = rVec .cross. VECTOR(0.d0, 0.d0, 1.d0)
-    call normalize(vSolid)
-    vSolid = (modulus(rVec)/ttauriRouter*velMagAtCorotation) * vSolid
+    ! velMagAtCorotation = sqrt(bigG*ttauriMstar/ttauriRouter)/cSpeed
+    ! rVec = VECTOR(point%x,point%y,0.d0)
+    ! vSolid = rVec .cross. VECTOR(0.d0, 0.d0, 1.d0)
+    ! call normalize(vSolid)
+    ! vSolid = (modulus(rVec)/ttauriRouter*velMagAtCorotation) * vSolid
 
 
-    velocityMahdavi = vp + vSolid
+    velocityMahdavi = vp
 
 
-666 continue
-
+    666 continue
   end function velocityMahdavi
+
 
 !Assigns the densiy of grid cells in the accretion funnel
 !Equation given in Hartmann et al.(1994) - tjgw201 10/04/19
