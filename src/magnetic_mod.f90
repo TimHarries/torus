@@ -162,13 +162,11 @@ contains
         ! if (rVecDash%z < 0.d0) wind%z = (-1.d0)*wind%z
         ! if (rVecDash%x < 0.d0) wind%x = (-1.d0)*wind%x
         ! if (rVecDash%y < 0.d0) wind%y = (-1.d0)*wind%y
-
+        wind = rotateZ(wind, -phiDash)
+        wind = rotateY(wind, beta)
     else
       wind = rVecDash
     endif
-
-    wind = rotateZ(wind, -phiDash)
-    wind = rotateY(wind, beta)
 
     call normalize(wind)
     stellarWindVector = wind
