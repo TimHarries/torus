@@ -148,24 +148,19 @@ contains
     rMaxMax = ttauriRouter / sin2theta0dash
 
     rBoundary = 1.d10*rMaxMax * sin(SW_openAngle)**2.d0
-    ! if (rDash <= rBoundary) then
     if (rDash <= rBoundary) then
       y = sin(thetaDash)**2.d0
       wind = vector(3.d0 * SQRT(y) * SQRT(1.d0-y) / SQRT(4.d0 - (3.d0*y)), &
         0.d0, &
         (2.d0 - 3.d0 * y) / SQRT(4.d0 - 3.d0 * y))
 
-          if ((rVecDash%z/rDash) < 0.d0) wind%z = (-1.d0)*wind%z
-          if ((rVecDash%z/rDash) < 0.d0) wind = (-1.d0)*wind
-          if (rVecDash%z < 0.d0) wind = (-1.d0)*wind
-
-        ! if (rVecDash%z < 0.d0) wind%z = (-1.d0)*wind%z
-        ! if (rVecDash%x < 0.d0) wind%x = (-1.d0)*wind%x
-        ! if (rVecDash%y < 0.d0) wind%y = (-1.d0)*wind%y
-        wind = rotateZ(wind, -phiDash)
-        wind = rotateY(wind, beta)
+      if ((rVecDash%z/rDash) < 0.d0) wind%z = (-1.d0)*wind%z
+      if ((rVecDash%z/rDash) < 0.d0) wind = (-1.d0)*wind
+      if (rVecDash%z < 0.d0) wind = (-1.d0)*wind
+      wind = rotateZ(wind, -phiDash)
+      wind = rotateY(wind, beta)
     else
-      wind = rVecDash
+      wind = point
     endif
 
     call normalize(wind)
