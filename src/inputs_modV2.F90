@@ -818,10 +818,10 @@ contains
        case("protobin")
        call getReal("beta", beta, 1., cLine, fLine, nLines, &
             "Rotation energy to grav enery: ","(a,f7.0,a)", 1., ok, .true.)
-!       call getDouble("mass", sphereMass, msol, cLine, fLine, nLines, &
-!            "Sphere mass (in M_sol): ","(a,f7.1,1x,a)", 1.d-30, ok, .true.)
-!       call getDouble("radius", sphereRadius, pctocm/1.d10, cLine, fLine, nLines, &
-!            "Sphere radius (in pc): ","(a,e12.3,1x,a)", 1.d-30, ok, .true.)
+       call getDouble("mass", sphereMass, msol, cLine, fLine, nLines, &
+            "Sphere mass (in M_sol): ","(a,f7.1,1x,a)", 1.d-30, ok, .true.)
+       call getDouble("radius", sphereRadius, pctocm/1.d10, cLine, fLine, nLines, &
+            "Sphere radius (in pc): ","(a,e12.3,1x,a)", 1.d-30, ok, .true.)
 
 
        case("lighthouse")

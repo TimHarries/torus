@@ -109,7 +109,7 @@ contains
     integer, parameter :: tagsne = 123
     real :: lamArray(:)
     character(len=80) :: mpiFilename, datFilename, mpifilenameB
-#ifdef CFITSIO
+#ifdef USECFITSIO
     real(double), pointer :: columnDensityImage(:,:)
 #endif
     real(double) :: dt, cfl, gamma, mu
@@ -1531,7 +1531,7 @@ contains
                "scatters     ","ioncross     ","tempconv     ","habing       ",&
                "fvisc1       ","fvisc2       ","fvisc3       ","crossings    ","mpithread    "/))
 
-#ifdef CFITSIO
+#ifdef USECFITSIO
           if (grid%octreeRoot%threeD) then
              write(mpiFilename,'(a, i4.4, a)') "columnz_", grid%iDump,".fits"
              call createColumnDensityImage(grid, VECTOR(0.d0, 0.d0, 1.d0), columnDensityImage)
@@ -1689,7 +1689,7 @@ end subroutine radiationHydro
          mchistories
 
     use inputs_mod, only : usePacketSplitting, inputNSmallPackets, amr2d, amr3d, forceminrho, nDustType, readgrid, &
-         loadBalancing, loadBalancingMethod, tsub, bufferedSend!, inputSeed 
+         loadBalancing, loadBalancingMethod, tsub, bufferedSend, clusterSinks!, inputSeed 
 
     use hydrodynamics_mod, only: refinegridgeneric, evenupgridmpi, checkSetsAreTheSame
     use dust_mod, only : sublimateDust, stripDustAway
@@ -1899,6 +1899,9 @@ end subroutine radiationHydro
 
     
     if (globalnSource == 0) goto 666
+    if (clusterSinks) then
+       if (.not. any(globalSourceArray(1:globalnSource)%nSubsource > 0)) goto 666
+    endif
 
     allocate(efficiencyArray(1:nThreadsGlobal-1))
 

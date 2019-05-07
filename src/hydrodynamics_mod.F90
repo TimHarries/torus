@@ -7723,7 +7723,7 @@ end subroutine sumFluxes
        group, nGroup,doSelfGrav, perturbPressure)
     use mpi
     use inputs_mod, only : nBodyPhysics, severeDamping, dirichlet, doGasGravity, useTensorViscosity, &
-         moveSources, hydroSpeedLimit, nbodyTest, imposeFixing
+         moveSources, hydroSpeedLimit, nbodyTest, imposeFixing, clusterSinks
     use starburst_mod, only : updateSourceProperties
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
@@ -7926,11 +7926,23 @@ end subroutine sumFluxes
    if (myrankWorldglobal == 1) call tune(6,"Updating source properties")
 
    globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + timestep*secstoyears
+   do i = 1, globalnSource
+      if (globalSourceArray(i)%nSubsource > 0) then 
+         globalSourceArray(i)%subsourceArray(1:globalSourceArray(i)%nSubsource)%age = & 
+         globalSourceArray(i)%subsourceArray(1:globalSourceArray(i)%nSubsource)%age + timestep*secstoyears 
+      endif
+   enddo
    if (nBodyPhysics .and..not.hosokawaTracks) then
       write(message, '(a)') "Updating source properties."
       call writeInfo(message, TRIVIAL)
       do i = 1, globalnSource
-         call updateSourceProperties(globalsourcearray(i))
+         if (clusterSinks) then
+            do j = 1, globalsourceArray(i)%nSubsource
+               call updateSourceProperties(globalsourcearray(i)%subsourceArray(j))
+            enddo
+         else
+            call updateSourceProperties(globalsourcearray(i))
+         endif
       enddo
    endif
 
@@ -18198,7 +18210,7 @@ end subroutine refineGridGeneric2
 !       call writeInfo("Starting down part of V-cycle", TRIVIAL)
        
        do iDepth = maxDepth, minDepth, -1
-          if (writeoutput) write(*,*) "depth ",idepth
+!          if (writeoutput) write(*,*) "depth ",idepth
           call copyPhiGasToAdot(grid%octreeRoot, iDepth)
           call setCorrectionToZero(grid%octreeRoot, iDepth)
           call setCorrectionToZero(grid%octreeRoot, iDepth - 1)
@@ -18233,7 +18245,7 @@ end subroutine refineGridGeneric2
           endif
        enddo
 
-       call setrhou(grid%octreeRoot, maxdepth-1)
+!       call setrhou(grid%octreeRoot, maxdepth-1)
 !       write(plotfile,'(a,i4.4,a)') "afterdown",bigiter,".vtk"
 !       call writeVtkFile(grid, plotfile, &
 !            valueTypeString=(/"phigas    ", &
@@ -20550,7 +20562,7 @@ end subroutine broadcastSinks
   recursive subroutine sendSinksToZerothThread(nSource, source)
     use mpi
     use inputs_mod, only : clusterSinks
-    integer :: nSource, ierr, nSubsource, i !, iSource
+    integer :: nSource, ierr, i !, iSource
     type(SOURCETYPE) :: source(:)
     integer :: status(MPI_STATUS_SIZE)
     integer, parameter :: tag = 32
@@ -20621,20 +20633,20 @@ end subroutine broadcastSinks
     endif
 
     ! sink sub sources
-    ! TODO clean up logic
     if (clusterSinks) then
+       if (myrankGlobal == 0) then
+          do i = 1, nSource
+             if (associated(source(i)%subsourceArray)) deallocate(source(i)%subsourceArray)
+             source(i)%subsourceArray => null()
+             if (source(i)%nSubsource > 0) then
+                allocate(source(i)%subsourceArray(1:source(i)%nSubsource))
+             endif
+          enddo
+       endif
        if (myrankGlobal == 0 .or. myrankGlobal == 1) then
           do i = 1, nSource
-             nSubsource = source(i)%nSubsource
-             if (nSubsource > 0) then
-                if (myrankGlobal == 0) then
-                   if (associated(source(i)%subsourceArray)) deallocate(source(i)%subsourceArray)
-                   source(i)%subsourceArray => null()
-                   if (source(i)%nSubsource > 0) then
-                      allocate(source(i)%subsourceArray(1:source(i)%nSubsource))
-                   endif
-                endif
-                call sendSinksToZerothThread(nSubsource, source(i)%subsourceArray(1:nSubsource))
+             if (source(i)%nSubsource > 0) then
+                call sendSinksToZerothThread(source(i)%nSubsource, source(i)%subsourceArray(1:source(i)%nSubsource))
              endif
           enddo
        endif

@@ -349,9 +349,10 @@ contains
             else
                write(message, '(a,i4)') "Removing source ", i
                call writeInfo(message, TRIVIAL)
-               ! FIXME adapt for clustersink 
                if (clusterSinks) then
-                  i = i + 1 ! ignore
+!                  i = i + 1 ! ignore
+                  ! TODO make this work for clustersinks
+                  call torus_stop("todo")
                else
                   nDead = nDead + 1
                   if (source(i)%initialMass > 8.d0) then
