@@ -8,6 +8,7 @@ module starburst_mod
 
 
   use kind_mod
+  use citations_mod
   use constants_mod
   use messages_mod
   use utils_mod
@@ -19,13 +20,14 @@ module starburst_mod
   type TRACKTABLE
      character(len=80) :: label
      integer :: nMass
-     real(double), pointer :: initialMass(:)
+     real(double), pointer :: initialMass(:) ! Msol
      integer, pointer :: nAges(:)
-     real(double), pointer :: age(:,:)
-     real(double), pointer :: massAtAge(:,:)
-     real(double), pointer :: logL(:,:)
-     real(double), pointer :: logTeff(:,:)
-     real(double), pointer :: mDot(:,:)
+     real(double), pointer :: age(:,:) ! yr
+     real(double), pointer :: massAtAge(:,:) ! Msol
+     real(double), pointer :: logL(:,:) ! log(Lsol)
+     real(double), pointer :: logTeff(:,:) ! log(K)
+     real(double), pointer :: mDot(:,:) ! log(Msol/yr)
+     real(double), pointer :: logRadius(:,:) ! log(Rsol)
   end type TRACKTABLE
 
 contains
@@ -332,8 +334,8 @@ contains
 
       ! now get actual masses, temps, and luminosities, and radii for age from evolution tracks
 
-      call readinTracks("schaller", thisTable)
-      call writeInfo("Schaller tracks successfully read", FORINFO)
+      call readinTracks("mist", thisTable)
+      call writeInfo("MIST tracks successfully read", FORINFO)
       nDead = 0
       nSupernova = 0
       i = initialnSource+1
@@ -470,7 +472,7 @@ contains
 
 
       if (firstTime) then
-         call readinTracks("schaller", thisTable)
+         call readinTracks("mist", thisTable)
          firstTime = .false.
       endif
 
@@ -607,10 +609,13 @@ contains
 
 
       if (firstTime) then
-         call readinTracks("schaller", thisTable)
+         call readinTracks("mist", thisTable)
          firstTime = .false.
-         call writeInfo("Schaller tracks successfully read", FORINFO)
+         call writeInfo("MIST tracks successfully read", FORINFO)
       endif
+
+
+      ! FIXME - mist models start at pre-MS - need to start as ZAMS
 
       ! find relevant Schaller track file given source's initial mass 
       call locate(thisTable%initialMass, thisTable%nMass, source%initialmass, i)
@@ -741,6 +746,8 @@ contains
     subroutine readinTracks(tracks, thisTable)
       character(len=*) :: tracks
       type(TRACKTABLE) :: thisTable
+      character(len=200) :: tfile, thisFile, dataDirectory
+      integer :: i
 
       select case(tracks)
          case("schaller")
@@ -774,7 +781,32 @@ contains
             call readSchallerModel(thisTable, 3, 1.d0, "table20")
             call readSchallerModel(thisTable, 2, 0.9d0, "table21")
             call readSchallerModel(thisTable, 1, 0.8d0, "table22")
-       end select
+
+         case("mist")
+            call addBibcode("2016ApJ...823..102C", "MESA MIST evolutionary tracks")
+            thisTable%nMass = 196
+            allocate(thisTable%nAges(thisTable%nMass))
+            allocate(thisTable%initialMass(thisTable%nMass))
+            allocate(thisTable%age(thisTable%nMass, 1710))
+            allocate(thisTable%massAtAge(thisTable%nMass, 1710))
+            allocate(thisTable%logL(thisTable%nMass, 1710))
+            allocate(thisTable%logteff(thisTable%nMass, 1710))
+            allocate(thisTable%logradius(thisTable%nMass, 1710))
+            allocate(thisTable%mDot(thisTable%nMass, 1710))
+            thisTable%label = "MIST"
+            ! read filename from list, read the track from each file 
+            call unixGetenv("TORUS_DATA", dataDirectory)
+            write(tfile, '(a,a)') trim(dataDirectory), "/mist/filelist.txt"
+            open(30, file=tfile, status="old", form="formatted")
+            i = 0
+10 continue
+            read(30,*,end=55) thisFile 
+            i = i + 1
+            call readMistModel(thisTable, i, trim(thisFile))
+            goto 10
+55 continue
+            close(30)
+      end select
 
      end subroutine readinTracks
 
@@ -848,6 +880,37 @@ contains
        close(31)
        thisTable%nAges(nMass) = nt
      end subroutine readSchallerModel
+
+     subroutine readMistModel(thisTable, nMass, thisfile)
+       type(TRACKTABLE) :: thisTable
+       integer :: nMass
+       character(len=*) :: thisfile
+       character(len=200) :: tFile, datadirectory
+       integer :: nt, i
+       character(len=254) :: cLine, junk
+
+       call unixGetenv("TORUS_DATA", dataDirectory, i)
+       ! nb: rotation is available with vvcrit0.4
+       write(tfile, *) trim(dataDirectory), "/mist/MIST_v1.2_feh_p0.00_afe_p0.0_vvcrit0.0_EEPS/", trim(thisFile)
+
+       nt = 1
+       open(31, file=tfile, status="old", form="formatted")
+       read(31,'(a)',end=55) cline
+       read(cline, *) junk, thisTable%initialMass(nMass) 
+10 continue
+       read(31,'(a)',end=55) cline
+       read(cline, *) thisTable%age(nMass, nt), thisTable%massAtAge(nMass, nt), thisTable%mdot(nMass,nt), &
+         thisTable%logL(nMass, nt), thisTable%logteff(nMass, nt), thisTable%logRadius(nMass, nt)
+       ! table gives mdot as a negative rate in Msol/yr - we want log(mdot)
+       thisTable%mdot(nMass, nt) = log10(-thisTable%mdot(nMass, nt))
+       
+       nt = nt + 1
+       goto 10
+55     continue
+       nt = nt - 1
+       close(31)
+       thisTable%nAges(nMass) = nt
+     end subroutine readMistModel
 
 
      subroutine removeSource(source, nSource, n)
@@ -1019,6 +1082,79 @@ contains
 !          endif
 !       enddo
 !     end subroutine readKuruczSpectrum
+
+   subroutine testTracks
+      real(double) :: t, dt, totalCreatedMass
+      integer :: i, j
+      character(len=100) :: fn
+      type(SOURCETYPE), pointer :: src=>null()
+
+      ! create sources
+      if (associated(globalSourceArray)) then
+         deallocate(globalSourceArray)
+         globalSourceArray => null()
+      endif
+      globalnsource = 2
+      allocate(globalsourceArray(1:globalnsource))
+      globalSourcearray(1:globalnsource)%mass = 500.d0 * msol
+      globalSourcearray(1:globalnsource)%age = 0.d0
+
+      do i = 1, globalnsource
+         call createSources(globalsourceArray(i)%nSubsource, globalsourceArray(i)%subsourceArray, "instantaneous", & 
+            0.d0, 120.d0, 0.d0, totalCreatedMass, zeroNsource=.false.)
+         if (writeoutput) write(*,*) i, " ... created ", totalCreatedMass, " Msol" 
+      enddo
+
+      ! write headers
+      if (writeoutput) then
+         do i = 1, globalnSource
+            do j = 1, globalsourceArray(i)%nSubsource
+               write(fn, '(a,i4.4,a,i4.4,a)') "track_", i, "_", j, ".dat"
+               open(400, file=trim(fn), status="replace", form="formatted")
+               write(400, '(6(a12,1x))') "# age", "mass", "mdot", "logL", "logTeff", "logR"
+               close(400)
+             enddo
+         enddo
+      endif
+
+      ! update ages
+      t = 0.d0
+      dt = 1.d4
+      do while (t <= 3.d6)
+         ! update from track
+         do i = 1, globalnSource
+            do j = 1, globalsourceArray(i)%nSubsource
+               call updateSourceProperties(globalsourcearray(i)%subsourceArray(j))
+            enddo
+         enddo
+         
+
+         ! write out 
+         if (writeoutput) then
+            do i = 1, globalnSource
+               do j = 1, globalsourceArray(i)%nSubsource
+                  write(fn, '(a,i4.4,a,i4.4,a)') "track_", i, "_", j, ".dat"
+                  open(400, file=trim(fn), status="old", position="append", form="formatted")
+                  src => globalsourcearray(i)%subsourcearray(j)
+                  write(400, '(6(es12.5,1x))') src%age, src%mass/msol, src%mdotwind/msol/secstoyears,&
+                      log10(src%luminosity/lsol), log10(src%teff), log10(src%radius*1.d10/rsol)
+                  close(400)
+               enddo
+            enddo
+         endif
+
+         ! evolve
+         globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + dt
+         do i = 1, globalnSource
+            if (globalSourceArray(i)%nSubsource > 0) then 
+               globalSourceArray(i)%subsourceArray(1:globalSourceArray(i)%nSubsource)%age = & 
+               globalSourceArray(i)%subsourceArray(1:globalSourceArray(i)%nSubsource)%age + dt 
+            endif
+         enddo
+         t = t + dt
+      enddo
+      stop
+   end subroutine testTracks
 
 
 end module starburst_mod
