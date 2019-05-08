@@ -7732,7 +7732,7 @@ end subroutine sumFluxes
     integer :: group(:), nGroup
     real(double) :: dt, timestep
     type(VECTOR) :: direction
-    integer :: iDir, thisBound, i
+    integer :: iDir, thisBound, i, j
 !    character(len=80) :: cfile
     logical, optional :: perturbPressure
     character(len=80) :: message

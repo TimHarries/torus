@@ -11,6 +11,7 @@ module starburst_mod
   use citations_mod
   use constants_mod
   use messages_mod
+  use parallel_mod
   use utils_mod
   use source_mod
   use unix_mod, only: unixGetenv
