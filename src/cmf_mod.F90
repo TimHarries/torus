@@ -3516,7 +3516,7 @@ contains
          "ne         ", "jnu        ","haschild   ", &
          "inflow     ","temperature", "velocity   ", &
          "cornervel  ","level2     ", "level3     ", &
-         "blackbody  "/))
+         "blackbody  ","etaCont    "/))
 
 
     doCube = calcDataCube
