@@ -3357,11 +3357,11 @@ contains
                 goto 666
              endif
 
-             alphanu = alphanu + bfOpac + dustOpac
+             alphanu = alphanu! + bfOpac + dustOpac
 
              ! add continuous bf and ff emissivity of hydrogen
 
-             jnu = jnu + bfEmiss + dustEmiss
+             jnu = jnu! + bfEmiss + dustEmiss
 
              if (alphanu /= 0.d0) then
                 snu = jnu/alphanu
