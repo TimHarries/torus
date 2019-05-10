@@ -998,7 +998,7 @@ contains
     real(double) :: dv, nu
     type(MODELATOM) :: thisAtom
 
-    if ((thisAtom%name=="HI").and.(thisOctal%microturb(subcell)==0.d0)) then
+    if ((thisAtom%name=="HI").and.(thisOctal%microturb(subcell)==0.d0).and.(.not.starkBroaden)) then
        phiProf = phiProfStark(dv, thisOctal, subcell, nu, thisAtom)
     else
        phiProf = phiProfTurb(dv, thisOctal%microturb(subcell))
@@ -1032,11 +1032,8 @@ contains
 
     N_HI = thisoctal%atomlevel(subcell, 1, 1)
 
-    if(starkBroaden) then
-      a = bigGamma(N_HI, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), nu) / (fourPi * DopplerWidth) ! [-]
-    else
-      a = 0.d0
-    endif
+    a = bigGamma(N_HI, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), nu) / (fourPi * DopplerWidth) ! [-]
+
 
     Hay = voigtn(a,dv*cspeed/v_th)
     phiProfStark = nu * Hay / (sqrtPi*DopplerWidth)
@@ -3363,6 +3360,7 @@ contains
 
              jnu = jnu! + bfEmiss + dustEmiss
 
+             print*, bfOpac, dustOpac, bfEmiss, dustEmiss
              if (alphanu /= 0.d0) then
                 snu = jnu/alphanu
              else
