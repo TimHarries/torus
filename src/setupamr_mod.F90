@@ -737,24 +737,31 @@ doGridshuffle: if(gridShuffle) then
 666 continue
   end subroutine setupamrgrid
    subroutine readMgAsciiFile(posArray, rhoArray, npoints)
+     use inputs_mod, only : rhofile, maxDepthAMR
      type(VECTOR), pointer :: posArray(:)
      real(double), pointer :: rhoArray(:)
      integer :: i, npoints
      type(VECTOR) :: dir
-     character(len=80) :: fn
+     character(len=80) :: fn, junk
      real(double), allocatable :: x(:), y(:), z(:)
 
-     npoints = 2097152 ! 128^3
+!     npoints = 2097152 ! 128^3
+     npoints = (2**maxdepthAMR)**3
      allocate(posArray(1:nPoints), rhoArray(1:nPoints))
      allocate(x(1:nPoints), y(1:nPoints), z(1:nPoints))
 
-     write(fn,*) "rosette-rho.txt"
+!     write(fn,*) "rosette-rho.txt"
+     write(fn,*) trim(rhoFile) 
      open(11,file=fn,form='formatted')
+     read(11, '(a)') junk
+     read(11, '(a)') junk
+     read(11, '(a)') junk
      do i=1,npoints
         read(11,*) x(i), y(i), z(i), rhoArray(i)
      enddo
      close(11)
 
+     ! convert from MG units to torus units
      x = x * 50.d0 * pcToCm / 1.d10
      y = y * 50.d0 * pcToCm / 1.d10
      z = z * 50.d0 * pcToCm / 1.d10
@@ -764,7 +771,7 @@ doGridshuffle: if(gridShuffle) then
         posArray(i) = VECTOR(x(i), y(i), z(i))
      enddo
 
-     if (Writeoutput) write(*,*) "Grid size is ",(x(npoints)-x(1))+(x(2)-x(1))
+     if (Writeoutput) write(*,*) "Grid size is (TU) ",(x(npoints)-x(1))+(x(2)-x(1))
    end subroutine readMgAsciiFile
  
 
@@ -781,9 +788,9 @@ subroutine assignMgAsciiValues(grid, posArray, rhoArray, nPoints)
      if (octalOnThread(thisOctal, subcell, myrankGlobal)) then 
         thisOctal%rho(subcell) = rhoArray(i)
         thisOctal%temperature(subcell) = 10.
-        thisOctal%tdust(subcell) = 10.d0
+!        thisOctal%tdust(subcell) = 10.d0
         thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
-        thisOCtal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+!        thisOCtal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
      endif
   enddo
 end subroutine assignMgAsciiValues
@@ -1604,6 +1611,12 @@ end subroutine assignMgAsciiValues
   subroutine postSetupChecks(grid)
 #ifdef SPH
     use sph_data_class, only: sph_mass_within_grid, info_sph
+#endif
+#ifdef MPI
+#ifdef USECFITSIO
+    use image_mod, only : writeFitsColumnDensityImage
+    use mpi_amr_mod, only : createColumnDensityImage
+#endif
 #endif
     use ramses_mod, only: finishRamses
     use inputs_mod, only : mDisc, geometry, sphWithChem

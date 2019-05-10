@@ -28,6 +28,7 @@ contains
     use image_utils_mod, only: getImageWavelength, getnImage, getimageFilename, getImagenPixelsX, &
          getImageNPixelsY,getImageSizeX, &
          getImageSizeY, getFluxUnits
+    use vtk_mod, only : writeVtkFilenBody
 #ifdef MPI
 #ifdef HYDRO
     use hydrodynamics_mod, only : checkMaclaurinBenchmark
@@ -125,6 +126,12 @@ contains
     if (geometry == "envelope") then
        if (writeoutput.and.amr2d) call writeEduard(grid)
        goto 666
+    endif
+
+    if (geometry == "mgascii") then
+       call writeVtkFilenBody(globalnSource, globalsourceArray, "nbody_rosette.vtk")
+       call writeVtkFile(grid, "dump_rosette.vtk", &
+         valueTypeString=(/"rho", "HI" , "temperature", "ioncross","crossings","tdust","tempconv"/))
     endif
 
 

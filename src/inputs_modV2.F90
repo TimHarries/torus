@@ -806,6 +806,9 @@ contains
        call getReal("beta", beta, 1., cLine, fLine, nLines, &
             "Rotation energy to grav enery: ","(a,f7.0,a)", 1., ok, .true.)
 
+       case("mgascii")
+       call getString("rhofile", rhofile, cLine, fLine, nLines, &
+            "Grid input filename: ","(a,a,1x,a)","none", ok, .true.)
 
        case("lighthouse")
        call getDouble("cavangle", cavAngle, degToRad, cLine, fLine, nLines, &
