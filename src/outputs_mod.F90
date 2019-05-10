@@ -131,7 +131,8 @@ contains
     if (geometry == "mgascii") then
        call writeVtkFilenBody(globalnSource, globalsourceArray, "nbody_rosette.vtk")
        call writeVtkFile(grid, "dump_rosette.vtk", &
-         valueTypeString=(/"rho", "HI" , "temperature", "ioncross","crossings","tdust","tempconv"/))
+         valueTypeString=(/"rho          ","HI           ","temperature  ", &
+          "tdust        ", "scatters     ","ioncross     ","tempconv     ","crossings    "/))
     endif
 
 
