@@ -2943,6 +2943,10 @@ contains
 
     call getReal("vturb", vturb, real(kmstoc), cLine, fLine, nLines, &
                "Turbulent velocity (km/s):","(a,f6.1,1x,a)", 0., ok, .true.)
+
+    call getLogical("starkbroaden",starkBroaden, cline, fline, nlines, &
+                "Use Stark Broadening", "(a,1l,1x,a)", .true., ok, .true.)
+
     !
     ! Voigt profile prameters
     !
@@ -2954,8 +2958,6 @@ contains
          "Damping constant (Stark)         in [A]: ","(a,1PE10.3,1x,a)", 1.47e-2, ok, .false.)
     call setVoigtParams(C_rad, C_vdw, C_stark)
 
-    call getLogical("starkbroaden",starkBroaden, cline, fline, nlines, &
-      "Use Stark Broadening", "(a,1l,1x,a)", .true., ok, .false.)
 
   end subroutine readAtomicPhysicsParameters
 

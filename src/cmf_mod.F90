@@ -993,6 +993,7 @@ contains
 
 
   real(double) function phiProf(dv, thisOctal, subcell, nu, thisAtom)
+    use inputs_mod, only : starkBroaden
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) :: dv, nu
@@ -1019,7 +1020,6 @@ contains
   real(double) function  phiProfStark(dv, thisOctal, subcell, nu, thisAtom)
     use utils_mod, only : voigtn
     use atom_mod, only: bigGamma
-    use inputs_mod, only : starkBroaden
     type(MODELATOM) :: thisAtom
     real(double) :: dv
     type(OCTAL), pointer :: thisOctal
@@ -1033,7 +1033,6 @@ contains
     N_HI = thisoctal%atomlevel(subcell, 1, 1)
 
     a = bigGamma(N_HI, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), nu) / (fourPi * DopplerWidth) ! [-]
-
 
     Hay = voigtn(a,dv*cspeed/v_th)
     phiProfStark = nu * Hay / (sqrtPi*DopplerWidth)
