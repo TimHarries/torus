@@ -2930,7 +2930,7 @@ contains
 
 
     call getLogical("thickcont", opticallyThickContinuum, cLine, fLine, nLines, &
-         "Continuum is optically thick: ","(a,1l,a)", .False., ok, .false.)
+         "Continuum is optically thick: ","(a,1l,a)", .false., ok, .false.)
 
     call getDouble("xabundance", Xabundance, 1.d0, cLine, fLine, nLines, &
             "Hydrogen abundance (by number): ","(a,f7.3,a)",1.d0, ok, .true.)
@@ -3612,6 +3612,10 @@ contains
 ! Also used for calculating tau in VTK output
     call getReal("lambdasmooth", lambdasmooth, 1.0, cLine, fLine, nLines, &
          "Lambda for tau smoothing: ","(a,1PE10.3,1x,a)", 5500.0, ok, .false.)
+
+    if (dosmoothgridtau) then
+       call getReal("taumax", tauSmoothMax, 1.0, cLine, fLine, nLines, &
+            "Maximum tau for smoothing: ","(a,f10.1,1x,a)", 1., ok, .false.)
        call getReal("taumin", tauSmoothMin, 1.0, cLine, fLine, nLines, &
             "Minimum tau for smoothing: ","(a,f10.1,1x,a)", 0.1, ok, .false.)
     endif
@@ -5544,50 +5548,49 @@ end subroutine getVector
  end subroutine getString
 
 
-SUBROUTINE getLogical(name, rval, cLine, fLine, nLines, message, cformat, rdef, ok, &
-     musthave)
-  CHARACTER(len=*) :: name
-  LOGICAL :: rval
-  LOGICAL :: musthave
-  CHARACTER(len=lencLine) :: cLine(:)
-  LOGICAL :: fLine(:)
-  CHARACTER(len=100) :: output
-  INTEGER :: nLines
-  CHARACTER(len=*) :: message, cformat
-  CHARACTER(len=10) :: default
-  LOGICAL :: rdef
-  CHARACTER(len=6) :: trueOrFalse, cf
-  LOGICAL :: ok, thisIsDefault
-  CHARACTER (len=80) :: errorMessage
+ subroutine getLogical(name, rval, cLine, fLine, nLines, message, cformat, rdef, ok, &
+                       musthave)
+  character(len=*) :: name
+  logical :: rval
+  logical :: musthave
+  character(len=lencLine) :: cLine(:)
+  logical :: fLine(:)
+  character(len=100) :: output
+  integer :: nLines
+  character(len=*) :: message, cformat
+  character(len=10) :: default
+  logical :: rdef
+  character(len=6) :: trueOrFalse, cf
+  logical :: ok, thisIsDefault
+  character (len=80) :: errorMessage
 
   cf = cformat
-  ok = .TRUE.
+  ok = .true.
   default = " "
-  thisIsDefault = .FALSE.
-  CALL findLogical(name, rval, cLine, fLine, nLines, ok)
-  IF (.NOT. ok) THEN
-     IF (musthave) THEN
-        WRITE(errorMessage,'(a,a)') name, " must be defined"
-        CALL writeFATAL(errorMessage)
-        CALL torus_stop
-     ENDIF
-     rval = rdef
-     default = " (default)"
-     thisIsDefault = .TRUE.
-  ENDIF
-  IF (rVal) THEN
+  thisIsDefault = .false.
+  call findLogical(name, rval, cLine, fLine, nLines, ok)
+  if (.not. ok) then
+    if (musthave) then
+       write(errorMessage,'(a,a)') name, " must be defined"
+       call writeFATAL(errorMessage)
+       call torus_stop
+    endif
+    rval = rdef
+    default = " (default)"
+    thisIsDefault = .true.
+  endif
+  if (rVal) then
      trueOrFalse = " True"
-  ELSE
+     else
      trueOrFalse = " False"
-  ENDIF
+  endif
 
 
-  IF (musthave .OR. .NOT.thisIsDefault) THEN
-     WRITE(output,'(a,a,a)') TRIM(message),trueOrFalse,default
-     CALL writeInfo(output, TRIVIAL)
-  ENDIF
-END SUBROUTINE getLogical
-
+  if (musthave .or. .not.thisIsDefault) then
+     write(output,'(a,a,a)') trim(message),trueOrFalse,default
+     call writeInfo(output, TRIVIAL)
+  endif
+ end subroutine getLogical
 
  subroutine getRealArray(name, rval, unitConversion, cLine, fLine, nLines, message, rdef, ok, &
                       musthave)
