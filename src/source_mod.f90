@@ -445,13 +445,11 @@
             else
                if (present(lambdaMono)) then
                   do i = 1, nSource
-                     prob(i) = sourceLuminosityMonochromatic(source(i), dble(lambdaMono)) * &
-                          (fourPi * (source(i)%radius*1.d10)**2)
+                     prob(i) = sourceLuminosityMonochromatic(source(i), dble(lambdaMono))
                   enddo
                else
                   do i = 1, nSource
-                     prob(i) = sourceLuminosityMonochromatic(source(i), dble(lamArray(1))) * &
-                          (fourPi * (source(i)%radius*1.d10)**2)
+                     prob(i) = sourceLuminosityMonochromatic(source(i), dble(lamArray(1)))
                   enddo
                end if
             endif

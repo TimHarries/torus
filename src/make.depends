@@ -80,8 +80,8 @@ source_mod.o: amr_utils_mod.o constants_mod.o gridtype_mod.o inputs_modV2.o \
 	octal_mod.o spectrum_mod.o surface_mod.o utils_mod.o vector_mod.o
 spectrum_mod.o: atom_mod.o constants_mod.o inputs_modV2.o messages_mod.o \
 	mpi_global_mod.o random_mod.o unix_mod.o utils_mod.o
-starburst_mod.o: constants_mod.o inputs_modV2.o kind_mod.o messages_mod.o \
-	source_mod.o unix_mod.o utils_mod.o
+starburst_mod.o: citations_mod.o constants_mod.o inputs_modV2.o kind_mod.o \
+	messages_mod.o parallel_mod.o source_mod.o unix_mod.o utils_mod.o
 surface_mod.o: constants_mod.o density_mod.o gridtype_mod.o inputs_modV2.o \
 	kind_mod.o magField.o messages_mod.o romanova_class.o spectrum_mod.o \
 	utils_mod.o vector_mod.o
@@ -292,8 +292,9 @@ torusMainV2.o: biophysics_mod.o chemistry_mod.o citations_mod.o \
 	constants_mod.o dimensionality_mod.o grid_mod.o gridio_mod.o \
 	inputs_modV2.o loadbalance_mod.o memory_mod.o messages_mod.o \
 	mpi_global_mod.o outputs_mod.o photoionAMR_mod.o physics_mod.o \
-	random_mod.o setupamr_mod.o source_mod.o sph_data_class.o timing.o \
-	torus_version_mod.o turbulence_mod.o utils_mod.o zlib_mod.o
+	random_mod.o setupamr_mod.o source_mod.o sph_data_class.o \
+	starburst_mod.o timing.o torus_version_mod.o turbulence_mod.o \
+	utils_mod.o zlib_mod.o
 torusMod.o: amr_mod.o constants_mod.o dimensionality_mod.o grid_mod.o \
 	gridio_mod.o gridtype_mod.o inputs_modV2.o kind_mod.o memory_mod.o \
 	messages_mod.o mpi_global_mod.o outputs_mod.o physics_mod.o \
