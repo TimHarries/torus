@@ -346,6 +346,10 @@ contains
 
        call getString("imf", imfType, cLine, fLine, nLines, &
             "Initial mass function: ","(a,a,1x,a)","salpeter", ok, .false.)
+       call getDouble("imfmin", imfMin, 1.d0, cLine, fLine, nLines, &
+            "IMF minimum mass (msol): ","(a,f6.1,a)", 0.8d0, ok, .false.)
+       call getDouble("imfmax", imfMax, 1.d0, cLine, fLine, nLines, &
+            "IMF maximum mass (msol): ","(a,f6.1,a)", 120.d0, ok, .false.)
 
     endif
 
@@ -388,7 +392,11 @@ contains
           call getDouble("criticalmass", criticalMass, mSol, cLine, fLine, nLines, &
                "Critical mass for creating subsources (msol): ","(a,f6.1,a)", 300.d0, ok, .true.)
           call getString("imf", imfType, cLine, fLine, nLines, &
-               "Initial mass function: ","(a,a,1x,a)","salpeter", ok, .false.)
+               "Initial mass function: ","(a,a,1x,a)","salpeter", ok, .true.)
+          call getDouble("imfmin", imfMin, 1.d0, cLine, fLine, nLines, &
+               "IMF minimum mass (msol): ","(a,f6.1,a)", 0.8d0, ok, .true.)
+          call getDouble("imfmax", imfMax, 1.d0, cLine, fLine, nLines, &
+               "IMF maximum mass (msol): ","(a,f6.1,a)", 120.d0, ok, .true.)
        endif
 
     endif

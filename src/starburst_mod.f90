@@ -33,39 +33,44 @@ module starburst_mod
 
 contains
 
-  function randomMassFromIMF(imfType, minMass, maxMass, alpha) result (mass)
+  function randomMassFromIMF(imfType, minMass, maxMass) result (mass)
 
     ! returns a stellar mass (in solar masses) drawn from an IMF
+    ! imf(logM) = dN/dlogM
 
     character(len=*) :: imfType
     character(len=80) :: message
-    real(double) :: minMass, maxMass, mass, alpha
+    real(double) :: minMass, maxMass, mass
     integer, parameter :: nMass = 100
     integer :: i
-    real(double) :: massArray(nMass), prob(nMass), dMass(nMass), r, t
+    real(double) :: massArray(nMass), prob(nMass), dlogMass(nMass), r, t
     
     do i = 1, nMass
        massArray(i) = log10(minMass) + (dble(i-1)/dble(nMass-1))*(log10(maxMass)-log10(minMass))
-       massArray(i) = 10.d0**massArray(i)
+!       massArray(i) = 10.d0**massArray(i)
     enddo
 
     do i = 2, nMass-1
-       dMass(i) = massArray(i+1)-massArray(i)
+       dlogMass(i) = massArray(i+1)-massArray(i)
     enddo
-    dMass(1) = 2.d0*(massArray(2)-massArray(1))
-    dMass(nMass) = 2.d0*(massArray(nMass)-massArray(nMass-1))
-       
+    dlogMass(1) = 2.d0*(massArray(2)-massArray(1))
+    dlogMass(nMass) = 2.d0*(massArray(nMass)-massArray(nMass-1))
+
+    massArray = 10.d0**massArray
 
     select case (imfType)
     
       case("salpeter")
          do i = 1, nMass
-            prob(i) = (massArray(i)**alpha) * dMass(i)
+            prob(i) = (massArray(i)**-1.35d0) * dlogMass(i)
          enddo
 
-      ! todo
-!     case("chabrier")      
-!     case("kroupa")      
+     case("chabrier")      
+         where(massArray(:) <= 1.d0)
+            prob = 0.158d0 * exp(-(log10(massArray) - log10(0.079d0))**2 / (2.d0 * 0.69d0**2)) * dlogMass
+         elsewhere
+            prob = 4.4d-2 * (massArray**-1.35d0) * dlogMass
+         endwhere 
 
       case DEFAULT
          write(message,'(a,a)') "IMF not recognised: ", trim(imfType)
@@ -136,8 +141,12 @@ contains
   ! calculate cluster spectrum from already calculated subsource spectra
   subroutine setClusterSpectra(clusters, nClusters)
     type(SOURCETYPE), pointer :: clusters(:)
-    integer :: i, j, nClusters
+    integer :: i, j, nClusters, k
+    type(SPECTRUMTYPE) :: newspec
+    type(SPECTRUMTYPE), pointer :: refspec, oldspec
+    logical, save :: firsttime=.true.
 
+    ! cluster%spectrum%flux is L_lambda 
     do i = 1, nClusters
        if (clusters(i)%nSubsource > 0) then
           ! update subsource spectra
@@ -145,23 +154,73 @@ contains
           ! now do cluster spectrum (weighted sum of subsource fluxes)
           call freeSpectrum(clusters(i)%spectrum)
           call copySpectrum(clusters(i)%spectrum, clusters(i)%subsourceArray(1)%spectrum)
-          clusters(i)%spectrum%flux = clusters(i)%spectrum%flux * clusters(i)%subsourceArray(1)%luminosity
+          clusters(i)%spectrum%flux = clusters(i)%spectrum%flux * fourPi*(clusters(i)%subsourceArray(1)%radius*1.d10)**2
           if (clusters(i)%nSubsource > 1) then
              do j = 2, clusters(i)%nSubsource
-                call addSpectrum(clusters(i)%spectrum, clusters(i)%subsourceArray(j)%spectrum,&
-                   clusters(i)%subsourceArray(j)%luminosity)
+                ! rebin ith spectrum (oldspec) so it has the same wavelength binning as 1st spectrum (refspec)
+                refspec => clusters(i)%subsourceArray(1)%spectrum
+                newspec%nlambda = refspec%nlambda
+                allocate(newspec%lambda(1:refspec%nlambda))
+                allocate(newspec%flux(1:refspec%nlambda))
+                newspec%lambda = refspec%lambda
+
+                oldspec => clusters(i)%subsourceArray(j)%spectrum
+                call linearResample2(oldspec%lambda, oldspec%flux, oldspec%nlambda, newspec%lambda, newspec%flux, newspec%nlambda)
+                where(newspec%lambda < minval(oldspec%lambda))
+                   newspec%flux = 1.d-30
+                elsewhere(newspec%lambda > maxval(oldspec%lambda))
+                   newspec%flux = 1.d-30
+                endwhere
+
+                ! add it onto the cluster spectrum
+                ! NB subsource fluxes retain actual fluxes. Cluster "flux" is luminosity
+                call addSpectrum(clusters(i)%spectrum, newspec, fourPi*(clusters(i)%subsourceArray(j)%radius*1.d10)**2)
+                
+                ! FIXME
+                if (firstTime) then
+                   ! original spectrum of subsource
+                   open(68,file="oldspec",status="replace",form="formatted")
+                   do k = 1, clusters(i)%subsourceArray(j)%spectrum%nlambda
+                      write(68,*) (clusters(i)%subsourceArray(j)%spectrum%lambda(k)),&
+                       clusters(i)%subsourceArray(j)%spectrum%flux(k)*fourPi*(clusters(i)%subsourceArray(j)%radius*1.d10)**2
+                   enddo
+                   close(68)
+
+                   ! resampled spectrum of subsource (match bins to subsource 1)
+                   open(68,file="newspec",status="replace",form="formatted")
+                   do k = 1, newspec%nlambda
+                      write(68,*) (newspec%lambda(k)), newspec%flux(k)*fourPi*(clusters(i)%subsourceArray(j)%radius*1.d10)**2
+                   enddo
+                   close(68)
+
+                   ! subsource 1 spectrum (bins to match to)
+                   open(68,file="refspec",status="replace",form="formatted")
+                   do k = 1, refspec%nlambda
+                      write(68,*) (refspec%lambda(k)), refspec%flux(k)*fourPi*(clusters(i)%subsourceArray(j)%radius*1.d10)**2
+                   enddo
+                   close(68)
+
+                   ! cluster spectrum (addition of subsources 1 and 2)
+                   open(68,file="combinedspec",status="replace",form="formatted")
+                   do k = 1, clusters(i)%spectrum%nlambda
+                      write(68,*) (clusters(i)%spectrum%lambda(k)), clusters(i)%spectrum%flux(k)* & 
+                      fourPi*(clusters(i)%subsourceArray(j)%radius*1.d10)**2
+                   enddo
+                   close(68)
+
+                   firsttime = .false.
+                endif
+
              enddo
           endif
           clusters(i)%luminosity = sum(clusters(i)%subsourceArray(1:clusters(i)%nsubsource)%luminosity)
-          clusters(i)%spectrum%flux = clusters(i)%spectrum%flux / clusters(i)%luminosity ! divide by sum of weights
 
           call probSpectrum(clusters(i)%spectrum)
           call normalizedSpectrum(clusters(i)%spectrum)
 
-          ! effective radius, Teff given this luminosity and spectrum
-          clusters(i)%radius = sqrt(clusters(i)%luminosity/(fourPi * integrateSpectrumOverBand(clusters(i)%spectrum, 10.d0, 1.d7)))
-          clusters(i)%radius = clusters(i)%radius/1.d10
-          clusters(i)%teff = (clusters(i)%luminosity/(fourPi * (clusters(i)%radius*1.d10)**2 * stefanBoltz))**0.25
+           ! routines which calculate L = 4 pi R^2 F will get back L = "F" (which is really L)
+           clusters(i)%radius = 1.d0/(1.d10 * sqrt(fourPi))
+           clusters(i)%teff = 0.d0
 
        else
           ! zero flux
@@ -173,18 +232,17 @@ contains
   end subroutine setClusterSpectra
 
   subroutine setSourceSpectra(sources, nSource)
-    use inputs_mod, only : clusterSinks
+!    use inputs_mod, only : clusterSinks
     type(SOURCETYPE) :: sources(:) 
     integer :: i, nSource
 
     do i = 1, nSource
-      if (clustersinks) then
-         ! TODO use tlusty/kurucz spectra (but currently easier to add BB spectra together)
-         call fillSpectrumBB(sources(i)%spectrum, sources(i)%teff, 100.d0, 1.d7, 1000)
-      else
+!      if (clustersinks) then
+!         call fillSpectrumBB(sources(i)%spectrum, sources(i)%teff, 100.d0, 1.d7, 1000)
+!      else
          ! update spectrum. If tlusty spectrum is not found for a source, kurucz spectrum is used instead
          call fillSpectrumTlusty(sources(i)%spectrum, sources(i)%teff, sources(i)%mass, sources(i)%radius*1.d10)
-      endif
+!      endif
     enddo
   end subroutine setSourceSpectra
 
@@ -198,7 +256,7 @@ contains
   end function clusterReservoir
 
   subroutine createSources(nSource, source, burstType, burstAge, burstMass, sfRate, totMass,zeroNsource)
-    use inputs_mod, only : imfType, clusterSinks
+    use inputs_mod, only : imfType, imfMin, imfMax, clusterSinks
     integer :: nSource, thisNsource, initialNsource
     type(SOURCETYPE), pointer :: source(:)
     type(SOURCETYPE), allocatable :: tempSourceArray(:)
@@ -247,7 +305,7 @@ contains
              nSource = nSource + 1
              call randomNumberGenerator(getDouble=source(nSource)%age)
              source(nSource)%age = source(nSource)%age * burstAge
-             source(nSource)%initialmass = randomMassFromIMF(imfType, 0.8d0, 120.d0, -2.35d0)
+             source(nSource)%initialmass = randomMassFromIMF(imfType, imfMin, imfMax)
              totMass = totMass + source(nSource)%initialmass
           enddo
 
@@ -260,7 +318,7 @@ contains
              thisNsource = 0
              converged = .false.
              do while (.not. converged)
-                thisMass = randomMassFromIMF(imfType, 0.8d0, 120.d0, -2.35d0)
+                thisMass = randomMassFromIMF(imfType, imfMin, imfMax) 
                 if ((thisMass + totMass) > burstMass) then
 !                   if (writeoutput) write(*,*) "CONVERGED ", thisMass, totMass, burstMass, thirtyFound, initialMasses(1:thisNsource)
                    converged = .true.
@@ -330,7 +388,7 @@ contains
       if (Writeoutput) then
          write(*,*) "number of sources in this burst ", nSource-initialNsource
          write(*,*) "burst mass ",totMass
-         write(*,*) "using ", imfType, " imf"
+         write(*,*) "using ", trim(imfType), " imf"
       endif
 
       ! now get actual masses, temps, and luminosities, and radii for age from evolution tracks
@@ -616,10 +674,7 @@ contains
          call writeInfo("MIST tracks successfully read", FORINFO)
       endif
 
-
-      ! FIXME - mist models start at pre-MS - need to start as ZAMS
-
-      ! find relevant Schaller track file given source's initial mass 
+      ! find relevant track file given source's initial mass 
       call locate(thisTable%initialMass, thisTable%nMass, source%initialmass, i)
       
       ! interpolate between rows j,j+1 in lower mass boundary file (i)
@@ -895,16 +950,24 @@ contains
        ! nb: rotation is available with vvcrit0.4
        write(tfile, *) trim(dataDirectory), "/mist/MIST_v1.2_feh_p0.00_afe_p0.0_vvcrit0.0_EEPS/", trim(thisFile)
 
-       nt = 1
        open(31, file=tfile, status="old", form="formatted")
        read(31,'(a)',end=55) cline
+       ! header
        read(cline, *) junk, thisTable%initialMass(nMass) 
+       ! skip pre-MS
+       do i = 2, 202
+          read(31,'(a)',end=55) cline
+       enddo
+       ! read from ZAMS to end
+       nt = 1
 10 continue
        read(31,'(a)',end=55) cline
        read(cline, *) thisTable%age(nMass, nt), thisTable%massAtAge(nMass, nt), thisTable%mdot(nMass,nt), &
          thisTable%logL(nMass, nt), thisTable%logteff(nMass, nt), thisTable%logRadius(nMass, nt)
        ! table gives mdot as a negative rate in Msol/yr - we want log(mdot)
        thisTable%mdot(nMass, nt) = log10(-thisTable%mdot(nMass, nt))
+       ! define start of ZAMS as t=0 
+       thisTable%age(nmass, nt) = thisTable%age(nmass, nt) - thisTable%age(nmass, 1)
        
        nt = nt + 1
        goto 10
