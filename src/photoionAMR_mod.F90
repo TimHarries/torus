@@ -1289,37 +1289,14 @@ contains
 
        endif
 
-       if (myRankWorldGlobal == 1) call tune(6,"Syncing sources")
        call sendSinksToZerothThread(globalnSource, globalsourceArray)
        call broadcastSinks(globalnSource, globalsourceArray)
-       if (myRankWorldGlobal == 1) call tune(6,"Syncing sources")
-
-
-       ! FIXME
-!       if (myrankglobal == 0 .or. myrankglobal == 1 .or. myrankglobal == 2 .or. myrankglobal == 65) then
-!          write(*,*) "AFTER BROADCAST, BEFORE POPULATE"
-!          write(*,'(a2,1x,a3,5x,a9,1x,a4,1x,a12,1x,a9)') "r", "i", "Mcl", "n*", "Mres", "age"
-!          do i = 1, globalnSource
-!             write(*,'(i2.2,1x,i3.3,5x,f9.2,1x,i4,1x,f12.5,1x,es9.2)') myrankglobal, i, globalSourceArray(i)%mass/msol, &
-!             globalSourceArray(i)%nSubsource, clusterReservoir(globalSourceArray(i))/msol, globalsourceArray(i)%age
-!             if (globalSourceArray(i)%nSubsource > 0) then
-!                j = maxloc(globalsourceArray(i)%subsourceArray(1:globalsourceArray(i)%nsubsource)%mass,dim=1)
-!                write(*,'(i2.2, 1x,i3.3, a5, f9.2,1x,i4,a14,es9.2)') myrankglobal, i, "_max ", &
-!                   globalsourceArray(i)%subsourceArray(j)%mass/msol,globalSourceArray(i)%subsourceArray(j)%nSubsource," ",&
-!                   globalSourceArray(i)%subsourceArray(j)%age
-!                j = minloc(globalsourceArray(i)%subsourceArray(1:globalsourceArray(i)%nsubsource)%mass,dim=1)
-!                write(*,'(i2.2, 1x,i3.3, a5, f9.2,1x,i4,a14,es9.2)') myrankglobal, i, "_min ", &
-!                   globalsourceArray(i)%subsourceArray(j)%mass/msol,globalSourceArray(i)%subsourceArray(j)%nSubsource," ",&
-!                   globalSourceArray(i)%subsourceArray(j)%age
-!             endif
-!          enddo
-!       endif
 
        if (nbodyPhysics) then
           if (hosokawaTracks) then
              call setSourceArrayProperties(globalsourceArray, globalnSource, fractionOfAccretionLum)
           elseif (clusterSinks) then
-             ! after addSinks and accretion (new sink masses)
+             ! after addSinks and accretion (i.e. sink masses have been updated)
              if (myrankWorldglobal == 1) call tune(6, "Setting cluster properties")
              call randomNumberGenerator(randomSeed=.true.)
              call randomNumberGenerator(syncIseed=.true.)
@@ -1333,48 +1310,47 @@ contains
           endif
        endif
 
-!       write(*,*) myrankglobal, " SUBSOURCE MASSES",&
-!          globalsourceArray(3)%subsourceArray(:)%mass/msol
-
        ! FIXME
        if (myrankglobal == 0) then!.or. myrankglobal == 1 .or. myrankglobal == 2 .or. myrankglobal == 65) then
-          write(*,*) "AFTER POPULATE" 
+          write(*,*) "Cluster properties"
           write(*,'(a2,1x,a3,5x,a9,1x,a4,1x,a12,1x,a9,1x,a9)') "r", "i", "Mcl", "n*", "Mres", "age", "teff"
           do i = 1, globalnSource
-             write(*,'(i2.2,1x,i3.3,5x,f9.2,1x,i4,1x,f12.5,1x,es9.2)') myrankglobal, i, globalSourceArray(i)%mass/msol, &
-             globalSourceArray(i)%nSubsource, clusterReservoir(globalSourceArray(i))/msol, globalsourceArray(i)%age
+             write(*,'(i2.2,1x,i3.3,5x,f9.2,1x,i4,1x,f12.5,1x,es9.2,1x,es9.2)') myrankglobal, i, globalSourceArray(i)%mass/msol, &
+             globalSourceArray(i)%nSubsource, clusterReservoir(globalSourceArray(i))/msol, globalsourceArray(i)%age, &
+             globalsourceArray(i)%teff
              if (globalSourceArray(i)%nSubsource > 0) then
                 j = maxloc(globalsourceArray(i)%subsourceArray(1:globalsourceArray(i)%nsubsource)%mass,dim=1)
                 write(*,'(i2.2, 1x,i3.3, a5, f9.2,1x,i4,a14,es9.2,1x,es9.2)') myrankglobal, i, "_max ", &
                    globalsourceArray(i)%subsourceArray(j)%mass/msol,globalSourceArray(i)%subsourceArray(j)%nSubsource," ",&
                    globalSourceArray(i)%subsourceArray(j)%age, globalSourceArray(i)%subsourceArray(j)%teff
 
-                if ((myrankglobal==0)) then
-                   totFlux = 0.d0
-                   do j = 1, globalSourceArray(i)%nSubsource
-                      totflux = totflux + ionizingFlux(globalSourceArray(i)%subsourceArray(j))
-                   enddo
-                   write(*,'(a,i4.4,a,i4.4,2(1x,es9.2))') "IONIZING FLUX ", i,"_",j, ionizingFlux(globalSourceArray(i)), totFlux
-!                      write(mpiFilename, '(a,i3.3,a,i3.3,a)') "lamspectrum_", i, "_", j, ".dat"
-!                      open(68,file=mpiFilename,status="replace",form="formatted")
-!                      do k = 1, globalSourceArray(i)%subsourceArray(j)%spectrum%nlambda
-!                         write(68,*) (globalSourceArray(i)%subsourceArray(j)%spectrum%lambda(k)),&
-!                          globalSourceArray(i)%subsourceArray(j)%spectrum%flux(k)
-!                      enddo
-!                   enddo 
-!                   write(mpiFilename, '(a,i3.3,a)') "lamspectrum_", i, ".dat"
-!                   open(68,file=mpiFilename,status="replace",form="formatted")
-!                   do k = 1, globalSourceArray(i)%spectrum%nlambda
-!                      write(68,*) (globalSourceArray(i)%spectrum%lambda(k)),&
-!                       globalSourceArray(i)%spectrum%flux(k)
+!                   ! write fluxes
+!                   totFlux = 0.d0
+!                   do j = 1, globalSourceArray(i)%nSubsource
+!                      totflux = totflux + ionizingFlux(globalSourceArray(i)%subsourceArray(j))
 !                   enddo
-!                   close(68)
-                endif
+!                   write(*,'(a,i4.4,a,i4.4,2(1x,es9.2))') "IONIZING FLUX ", i,"_",j, ionizingFlux(globalSourceArray(i)), totFlux
+                   ! write spectra
+!                do j = 1, 10
+!                   write(mpiFilename, '(a,i3.3,a,i3.3,a)') "lamspectrum_", i, "_", j, ".dat"
+!                   open(68,file=mpiFilename,status="replace",form="formatted")
+!                   do k = 1, globalSourceArray(i)%subsourceArray(j)%spectrum%nlambda
+!                      write(68,*) (globalSourceArray(i)%subsourceArray(j)%spectrum%lambda(k)),&
+!                       globalSourceArray(i)%subsourceArray(j)%spectrum%flux(k)
+!                   enddo
+!                enddo 
+!                write(mpiFilename, '(a,i3.3,a)') "lamspectrum_", i, ".dat"
+!                open(68,file=mpiFilename,status="replace",form="formatted")
+!                do k = 1, globalSourceArray(i)%spectrum%nlambda
+!                   write(68,*) (globalSourceArray(i)%spectrum%lambda(k)),&
+!                    globalSourceArray(i)%spectrum%flux(k)
+!                enddo
+!                close(68)
 
-                j = minloc(globalsourceArray(i)%subsourceArray(1:globalsourceArray(i)%nsubsource)%mass,dim=1)
-                write(*,'(i2.2, 1x,i3.3, a5, f9.2,1x,i4,a14,es9.2,1x,es9.2)') myrankglobal, i, "_min ", &
-                   globalsourceArray(i)%subsourceArray(j)%mass/msol,globalSourceArray(i)%subsourceArray(j)%nSubsource," ",&
-                   globalSourceArray(i)%subsourceArray(j)%age, globalSourceArray(i)%subsourceArray(j)%teff
+!                j = minloc(globalsourceArray(i)%subsourceArray(1:globalsourceArray(i)%nsubsource)%mass,dim=1)
+!                write(*,'(i2.2, 1x,i3.3, a5, f9.2,1x,i4,a14,es9.2,1x,es9.2)') myrankglobal, i, "_min ", &
+!                   globalsourceArray(i)%subsourceArray(j)%mass/msol,globalSourceArray(i)%subsourceArray(j)%nSubsource," ",&
+!                   globalSourceArray(i)%subsourceArray(j)%age, globalSourceArray(i)%subsourceArray(j)%teff
              endif
           enddo
        endif
@@ -2533,13 +2509,13 @@ end subroutine radiationHydro
                    photonPacketWeight = photonPacketWeight*tempWeight
                 end if
                 !re-weighting for corner sources, edges still need work
-                if(source(iSource)%onCorner) then
+                if(thisSource%onCorner) then
                    if (grid%octreeRoot%threeD) then
                       photonPacketWeight = photonPacketWeight * 1.d0/8.d0
                    else if (grid%octreeRoot%twoD) then
                       photonPacketWeight = photonPacketWeight * 1.d0 /4.d0
                    end if
-                   !else if(source(iSource)%onEdge .and. .not. source(iSource)%onCorner) then
+                   !else if(thisSource%onEdge .and. .not. thisSource%onCorner) then
                    !   photonPacketWeight = 1.d0/2.d0
                 else
                    photonPacketWeight = photonPacketWeight * 1.d0

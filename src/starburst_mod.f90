@@ -146,12 +146,11 @@ contains
     type(SPECTRUMTYPE), pointer :: refspec, oldspec
     logical, save :: firsttime=.true.
 
-    ! cluster%spectrum%flux is L_lambda 
     do i = 1, nClusters
        if (clusters(i)%nSubsource > 0) then
           ! update subsource spectra
           call setSourceSpectra(clusters(i)%subsourceArray, clusters(i)%nSubsource)
-          ! now do cluster spectrum (weighted sum of subsource fluxes)
+          ! now do cluster spectrum, where cluster%spectrum%flux is L_lambda 
           call freeSpectrum(clusters(i)%spectrum)
           call copySpectrum(clusters(i)%spectrum, clusters(i)%subsourceArray(1)%spectrum)
           clusters(i)%spectrum%flux = clusters(i)%spectrum%flux * fourPi*(clusters(i)%subsourceArray(1)%radius*1.d10)**2
@@ -232,17 +231,12 @@ contains
   end subroutine setClusterSpectra
 
   subroutine setSourceSpectra(sources, nSource)
-!    use inputs_mod, only : clusterSinks
     type(SOURCETYPE) :: sources(:) 
     integer :: i, nSource
 
     do i = 1, nSource
-!      if (clustersinks) then
-!         call fillSpectrumBB(sources(i)%spectrum, sources(i)%teff, 100.d0, 1.d7, 1000)
-!      else
-         ! update spectrum. If tlusty spectrum is not found for a source, kurucz spectrum is used instead
-         call fillSpectrumTlusty(sources(i)%spectrum, sources(i)%teff, sources(i)%mass, sources(i)%radius*1.d10)
-!      endif
+      ! update spectrum. If tlusty spectrum is not found for a source, kurucz spectrum is used instead
+      call fillSpectrumTlusty(sources(i)%spectrum, sources(i)%teff, sources(i)%mass, sources(i)%radius*1.d10)
     enddo
   end subroutine setSourceSpectra
 
