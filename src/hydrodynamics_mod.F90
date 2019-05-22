@@ -20349,7 +20349,8 @@ end subroutine minMaxDepth
           endif
 
 
-          call getPointsInAccretionRadius(thisOctal, subcell, accretionRadius*smallestCellSize, grid, npoints, position, vel, mass, phi, cs)
+          call getPointsInAccretionRadius(thisOctal, subcell, accretionRadius*smallestCellSize, grid, npoints, position, & 
+            vel, mass, phi, cs)
 
 !          if (createSink) write(*,*) "Source creating passed jeans test ",thisOctal%rho(subcell)/rhoThreshold
           rhomax = max(rhomax, thisOctal%rho(subcell)/rhoThreshold)
