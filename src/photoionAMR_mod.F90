@@ -125,7 +125,7 @@ contains
     real(double) :: deltaTforDump, timeOfNextDump, loopLimitTime
     integer :: iRefine, nUnrefine
     logical :: photoLoop, photoLoopGlobal=.false.
-    integer :: i, j, k, status(MPI_STATUS_SIZE), tag=30, sign
+    integer :: i, j, status(MPI_STATUS_SIZE), tag=30, sign
     integer :: stageCounter=1,  nPhase, nstep, nPhotoIter
     real(double) :: timeSinceLastRecomb=0.d0
     real(double) :: radDt, pressureDt, gravityDt, sourcesourceDt, gasSourceDt, gasDt, tempDouble, viscDt
@@ -140,7 +140,6 @@ contains
     real(double) :: epsoverdeltat, totalMass, tauSca, tauAbs, tff, rhosphere, feedbackStartTime
     real(double) :: ionizedVolume, ionizedMass, ke, jeansUnstableMass, maxRho, totalCreatedMass
     logical :: sourcesCreated, doFeedback
-    real(double) :: totFlux ! fixme delete after clustersink tests
     nPhotoIter = 1
 !    real :: gridToVtu_value
 !    integer :: gridVtuCounter

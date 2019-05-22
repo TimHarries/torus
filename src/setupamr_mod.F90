@@ -741,7 +741,6 @@ doGridshuffle: if(gridShuffle) then
      type(VECTOR), pointer :: posArray(:)
      real(double), pointer :: rhoArray(:)
      integer :: i, npoints
-     type(VECTOR) :: dir
      character(len=80) :: fn, junk
      real(double), allocatable :: x(:), y(:), z(:)
 

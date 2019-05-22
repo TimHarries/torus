@@ -62,14 +62,14 @@ contains
     
       case("salpeter")
          do i = 1, nMass
-            prob(i) = (massArray(i)**-1.35d0) * dlogMass(i)
+            prob(i) = (massArray(i)**(-1.35d0)) * dlogMass(i)
          enddo
 
      case("chabrier")      
          where(massArray(:) <= 1.d0)
             prob = 0.158d0 * exp(-(log10(massArray) - log10(0.079d0))**2 / (2.d0 * 0.69d0**2)) * dlogMass
          elsewhere
-            prob = 4.4d-2 * (massArray**-1.35d0) * dlogMass
+            prob = 4.4d-2 * (massArray**(-1.35d0)) * dlogMass
          endwhere 
 
       case DEFAULT

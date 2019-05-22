@@ -18154,7 +18154,7 @@ end subroutine refineGridGeneric2
     real(double) :: fracChange, tempFracChange
 
     integer :: ierr, iter, bigIter, i
-    character(len=80) :: plotfile
+!    character(len=80) :: plotfile
     integer, parameter :: minDepth = 4
     integer :: maxDepth
 
@@ -18424,7 +18424,7 @@ end subroutine refineGridGeneric2
          ghostFracChange(maxthreads), tempFracChange(maxthreads), deltaT, dx,taumin
     real(double)  :: tol = 1.d-4,  tol2 = 1.d-5
     integer :: it, ierr, minLevel, i
-    character(len=80) :: plotfile
+!    character(len=80) :: plotfile
 
 
     if (amr2d) then
