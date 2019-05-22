@@ -344,6 +344,13 @@ contains
                "Star position (10^10 cm): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .false.)
        endif
 
+       call getString("imf", imfType, cLine, fLine, nLines, &
+            "Initial mass function: ","(a,a,1x,a)","salpeter", ok, .false.)
+       call getDouble("imfmin", imfMin, 1.d0, cLine, fLine, nLines, &
+            "IMF minimum mass (msol): ","(a,f6.1,a)", 0.8d0, ok, .false.)
+       call getDouble("imfmax", imfMax, 1.d0, cLine, fLine, nLines, &
+            "IMF maximum mass (msol): ","(a,f6.1,a)", 120.d0, ok, .false.)
+
     endif
 
 #ifdef CHEMISTRY
@@ -377,6 +384,20 @@ contains
 
        call getLogical("movesinks", moveSources, cLine, fLine, nLines, &
             "Allow sources to move: ", "(a,1l,1x,a)", .true., ok, .false.)
+
+       call getLogical("clustersinks", clusterSinks, cLine, fLine, nLines, &
+            "Sinks represent clusters: ", "(a,1l,1x,a)", .false., ok, .false.)
+
+       if (clusterSinks) then
+          call getDouble("criticalmass", criticalMass, mSol, cLine, fLine, nLines, &
+               "Critical mass for creating subsources (msol): ","(a,f6.1,a)", 300.d0, ok, .true.)
+          call getString("imf", imfType, cLine, fLine, nLines, &
+               "Initial mass function: ","(a,a,1x,a)","salpeter", ok, .true.)
+          call getDouble("imfmin", imfMin, 1.d0, cLine, fLine, nLines, &
+               "IMF minimum mass (msol): ","(a,f6.1,a)", 0.8d0, ok, .true.)
+          call getDouble("imfmax", imfMax, 1.d0, cLine, fLine, nLines, &
+               "IMF maximum mass (msol): ","(a,f6.1,a)", 120.d0, ok, .true.)
+       endif
 
     endif
 
@@ -805,6 +826,10 @@ contains
        case("protobin")
        call getReal("beta", beta, 1., cLine, fLine, nLines, &
             "Rotation energy to grav enery: ","(a,f7.0,a)", 1., ok, .true.)
+       call getDouble("mass", sphereMass, msol, cLine, fLine, nLines, &
+            "Sphere mass (in M_sol): ","(a,f7.1,1x,a)", 1.d-30, ok, .true.)
+       call getDouble("radius", sphereRadius, pctocm/1.d10, cLine, fLine, nLines, &
+            "Sphere radius (in pc): ","(a,e12.3,1x,a)", 1.d-30, ok, .true.)
 
        case("mgascii")
        call getString("rhofile", rhofile, cLine, fLine, nLines, &

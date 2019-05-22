@@ -147,7 +147,7 @@ contains
     
 
   subroutine updateSourcePositions(source, nSource, dt, grid)
-    use inputs_mod, only : smallestCellSize
+    use inputs_mod, only : smallestCellSize, clusterSinks
 #ifdef MPI
     use mpi
     integer :: ierr
@@ -229,6 +229,14 @@ contains
 !          close(57)
 !       endif
     enddo
+    if (clusterSinks) then
+       do i = 1, nSource
+          if (source(i)%nSubsource > 0) then
+             source(i)%subsourceArray(1:source(i)%nSubsource)%position = source(i)%position
+             source(i)%subsourceArray(1:source(i)%nSubsource)%velocity = source(i)%velocity
+          endif
+       enddo
+    endif
     deallocate(yStart,dydx)
 !    call sumEnergy(source, nSource, energy)
 !    if (Writeoutput) write(*,*) "Total energy ",energy, nok, nbad
