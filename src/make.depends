@@ -292,9 +292,8 @@ torusMainV2.o: biophysics_mod.o chemistry_mod.o citations_mod.o \
 	constants_mod.o dimensionality_mod.o grid_mod.o gridio_mod.o \
 	inputs_modV2.o loadbalance_mod.o memory_mod.o messages_mod.o \
 	mpi_global_mod.o outputs_mod.o photoionAMR_mod.o physics_mod.o \
-	random_mod.o setupamr_mod.o source_mod.o sph_data_class.o \
-	starburst_mod.o timing.o torus_version_mod.o turbulence_mod.o \
-	utils_mod.o zlib_mod.o
+	random_mod.o setupamr_mod.o source_mod.o sph_data_class.o timing.o \
+	torus_version_mod.o turbulence_mod.o utils_mod.o zlib_mod.o
 torusMod.o: amr_mod.o constants_mod.o dimensionality_mod.o grid_mod.o \
 	gridio_mod.o gridtype_mod.o inputs_modV2.o kind_mod.o memory_mod.o \
 	messages_mod.o mpi_global_mod.o outputs_mod.o physics_mod.o \
