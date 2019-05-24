@@ -6311,7 +6311,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
              r3 = thisOctal%r + thisOctal%subcellSize
 
              ! bottom level
-
+             print*,vector(r1*cos(phi1),r1*sin(phi1),z1)
              thisOctal%cornerVelocity(1) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z1))
              thisOctal%cornerVelocity(2) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z1))
              thisOctal%cornerVelocity(3) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z1))
@@ -6356,7 +6356,6 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 
 
              ! bottom level
-
              thisOctal%cornerVelocity(1) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z1))
              thisOctal%cornerVelocity(2) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z1))
              thisOctal%cornerVelocity(3) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z1))
@@ -16431,54 +16430,53 @@ end function readparameterfrom2dmap
     enddo
   end subroutine assignDensitiesFlatDisc
 
-  recursive subroutine assignDensitiesStellarWind(grid, thisOctal)
-    use analytical_velocity_mod
-    use inputs_mod, only : SW_Mdot, SW_Rmin, SW_rmax, SW_temperature
-    type(GRIDTYPE) :: grid
-    real(double) :: thisRho, r,  v, theta
-    type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child
-    type(VECTOR) :: cellCentre
-    integer :: subcell, i
+RECURSIVE SUBROUTINE assignDensitiesStellarWind(grid, thisOctal)
+  USE analytical_velocity_mod
+  USE inputs_mod, ONLY : SW_Mdot, SW_Rmin, SW_rmax, SW_temperature
+  TYPE(GRIDTYPE) :: grid
+  REAL(DOUBLE) :: thisRho, r,  v, theta
+  TYPE(octal), POINTER   :: thisOctal
+  TYPE(octal), POINTER  :: child
+  TYPE(VECTOR) :: cellCentre
+  INTEGER :: subcell, i
 
-    do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call assignDensitiesStellarWind(grid, child)
-                exit
-             end if
-          end do
-       else
+  DO subcell = 1, thisOctal%maxChildren
+     IF (thisOctal%hasChild(subcell)) THEN
+        ! find the child
+        DO i = 1, thisOctal%nChildren, 1
+           IF (thisOctal%indexChild(i) == subcell) THEN
+              child => thisOctal%child(i)
+              CALL assignDensitiesStellarWind(grid, child)
+              EXIT
+           END IF
+        END DO
+     ELSE
 
-          cellCentre = subcellCentre(thisOctal, subcell) ! find the centre of the cell
-          r = modulus(cellCentre)
+        cellCentre = subcellCentre(thisOctal, subcell) ! find the centre of the cell
+        r = modulus(cellCentre)
 
-          ! v = modulus(TTauriStellarWindVelocity(cellCentre))*cSpeed
-          ! theta = capHalfAngle()
-          ! thisRho = 0.d0
-          ! if (v > 0.d0) then
-          !    thisRho = 0.5d0 * (SW_Mdot * mSol / yearsToSecs)/(twoPi * r**2.0d0 &
-          !    * (1.d0 - cos(theta)) * v * 1.d20)
-          ! endif
+        ! v = modulus(TTauriStellarWindVelocity(cellCentre))*cSpeed
+        ! theta = capHalfAngle()
+        ! thisRho = 0.d0
+        ! if (v > 0.d0) then
+        !    thisRho = 0.5d0 * (SW_Mdot * mSol / yearsToSecs)/(twoPi * r**2.0d0 &
+        !    * (1.d0 - cos(theta)) * v * 1.d20)
+        ! endif
 
-          thisRho = 1.d0
-          if ((r > SW_Rmin).and.(r < SW_Rmax).and.(thisRho > thisOctal%rho(subcell)).and.(stellarWindOutflow(cellCentre))) then
+        thisRho = 1.d0
+        IF ((stellarWindOutflow(cellCentre)).AND.(r > SW_Rmin).AND.(r < SW_Rmax).AND.(thisRho > thisOctal%rho(subcell))) THEN
+           thisOctal%velocity(subcell) = TTauriStellarWindVelocity(cellcentre)
+           thisOctal%inflow(subcell) = .TRUE.
+           CALL fillVelocityCorners(thisOctal,TTauriStellarWindVelocity)
+           thisOctal%iAnalyticalVelocity(subcell) = 3
+           thisOCtal%rho(subcell) = thisRho
+           thisOCtal%fixedTemperature(subcell) = .TRUE.
+           thisOctal%temperature(subcell) = REAL(SW_temperature)
+        ENDIF
 
-             thisOctal%velocity(subcell) = stellarWindVector(cellcentre)
-             thisOctal%inflow(subcell) = .true.
-             CALL fillVelocityCorners(thisOctal,stellarWindVector)
-             thisOctal%iAnalyticalVelocity(subcell) = 3
-             thisOCtal%rho(subcell) = thisRho
-             thisOCtal%fixedTemperature(subcell) = .true.
-             thisOctal%temperature(subcell) = real(SW_temperature)
-          endif
-
-       endif
-    enddo
-  end subroutine assignDensitiesStellarWind
+     ENDIF
+  ENDDO
+END SUBROUTINE assignDensitiesStellarWind
 
  !!!routine removed in favour of polar stellar wind rather than spherically symmetric winds - tjgw201
   ! recursive subroutine assignDensitiesStellarWind(grid, thisOctal)

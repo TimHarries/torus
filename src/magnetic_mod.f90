@@ -67,16 +67,17 @@ contains
 
   !!Functon determines if there is stellar outflow from poles (ttauri) at the position given by rVec
   !!tjgw201 14/03/19 based on function: inFlowMahdaviSingle(rVec)
-  logical function stellarWindOutflow(rVec)
+  logical function stellarWindOutflow(point)
     use inputs_mod, only : ttauriRinner, ttauriRouter, dipoleOffset, &
-    ttauriRstar, SW_openAngle
+    ttauriRstar, SW_openAngle, SW_eqGap
+    TYPE(VECTOR), INTENT(IN) :: point
     type(VECTOR) :: rVec, rVecDash
     real(double) :: r, theta, phi, beta
     real(double) :: thisrMax
     real(double) :: rDash, thetaDash, phiDash
     real(double) :: rMaxMax, sin2theta0dash
 
-    rVec = rVec * 1.d10
+    rVec = point * 1.d10
     beta = dipoleOffset
     r = modulus(rVec)
 
@@ -97,7 +98,7 @@ contains
     if (phiDash == 0.d0) phiDash = 1.d-20
 
     sin2theta0dash = (1.d0 + tan(beta)**2.d0 * cos(phiDash)**2.d0)**(-1.d0)
-    rMaxMax = ttauriRouter / sin2theta0dash
+    rMaxMax = SW_eqGap / sin2theta0dash
     thisRMax = rDash / sin(thetaDash)**2.d0
 
 
@@ -114,58 +115,6 @@ contains
     666 continue
   end function stellarWindOutflow
 
-
-
-
-  type (VECTOR) function stellarWindVector(point)
-    use inputs_mod, only : ttauriRouter, dipoleOffset, &
-    ttauriRstar, SW_openAngle
-
-    type(VECTOR), intent(in) :: point
-    type(VECTOR) :: rVec, rVecDash, wind
-
-    real(double) :: theta, phi, beta
-    real(double) :: rBoundary, openAngleDash
-    real(double) :: rDash, thetaDash, phiDash
-    real(double) :: rMaxMax, sin2theta0dash
-    real(double) :: y
-
-    stellarWindVector = vector(0.d0, 0.d0, 0.d0)
-    wind = vector(0.d0, 0.d0, 0.d0)
-
-    beta = dipoleOffset
-    openAngleDash = SW_openAngle - beta
-    rVec = point *1.d10
-    rVecDash = rotateY(rVec, -beta)
-    rDash = modulus(rVec)
-
-    thetaDash = acos(rVecDash%z/rDash)
-    if (thetaDash == 0.d0) thetaDash = 1.d-20
-    phiDash = atan2(rVecDash%y, rVecDash%x)
-    if (phiDash == 0.d0) phiDash = 1.d-20
-
-    sin2theta0dash = (1.d0 + tan(beta)**2.d0 * cos(phiDash)**2.d0)**(-1.d0)
-    rMaxMax = ttauriRouter / sin2theta0dash
-
-    rBoundary = 1.d10*rMaxMax * sin(SW_openAngle)**2.d0
-    if (rDash <= rBoundary) then
-      y = sin(thetaDash)**2.d0
-      wind = vector(3.d0 * SQRT(y) * SQRT(1.d0-y) / SQRT(4.d0 - (3.d0*y)), &
-        0.d0, &
-        (2.d0 - 3.d0 * y) / SQRT(4.d0 - 3.d0 * y))
-
-      if ((rVecDash%z/rDash) < 0.d0) wind%z = (-1.d0)*wind%z
-      if ((rVecDash%z/rDash) < 0.d0) wind = (-1.d0)*wind
-      if (rVecDash%z < 0.d0) wind = (-1.d0)*wind
-      wind = rotateZ(wind, -phiDash)
-      wind = rotateY(wind, beta)
-    else
-      wind = point
-    endif
-
-    call normalize(wind)
-    stellarWindVector = wind
-  end function stellarWindVector
 
 
 

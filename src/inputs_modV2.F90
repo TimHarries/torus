@@ -1312,7 +1312,11 @@ contains
                "Stellar wind:: Maximum opening angle of steller wind [deg]: ", &
                "(a,1p,e9.3,1x,a)", 30.0d0, ok, .true.)
 
-          call getDouble("SW_Rmin", SW_Rmin, ttaurirstar/1.d10, cLine, fLine, nLines, &
+          call getDouble("SW_eqGap", SW_eqGap, dble(tTauriRstar), cLine, fLine, nLines, &
+               "Stellar wind:: Gap between magnetsphere and wind at equator [ttauriRstar]: ", &
+               "(a,1p,e9.3,1x,a)", 3.0d0, ok, .false.)
+
+          call getDouble("SW_Rmin", SW_rMin, ttaurirstar/1.d10, cLine, fLine, nLines, &
                "Stellar wind:: Inner radius of the wind [stellar radii]: ", &
                "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.)
 
@@ -1324,7 +1328,7 @@ contains
                "Stellar wind:: Wind base velocity [km/s]: ", &
                "(a,1p,e9.3,1x,a)", 10.0d0, ok, .true.)
 
-          call getDouble("SW_Vmax", SW_Vmax, 1.d0, cLine, fLine, nLines, &
+          call getDouble("SW_Vmax_xEsc", SW_Vmax, 1.d0, cLine, fLine, nLines, &
                "Stellar wind:: Wind max velocity [Vesc]: ", &
                "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.)
 
