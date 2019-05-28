@@ -16455,27 +16455,24 @@ RECURSIVE SUBROUTINE assignDensitiesStellarWind(grid, thisOctal)
         cellCentre = subcellCentre(thisOctal, subcell) ! find the centre of the cell
         r = modulus(cellCentre)
 
-        ! v = modulus(TTauriStellarWindVelocity(cellCentre))*cSpeed
-        ! theta = capHalfAngle()
-        ! thisRho = 0.d0
-        ! if (v > 0.d0) then
-        !    thisRho = 0.5d0 * (SW_Mdot * mSol / yearsToSecs)/(twoPi * r**2.0d0 &
-        !    * (1.d0 - cos(theta)) * v * 1.d20)
-        ! endif
-
-        thisRho = 1.d0
-        IF ((stellarWindOutflow(cellCentre)).AND.(r > SW_Rmin).AND.(r < SW_Rmax).AND.(thisRho > thisOctal%rho(subcell))) THEN
+        IF ((stellarWindOutflow(cellCentre)).AND.(r > SW_Rmin).AND.(r < SW_Rmax)) THEN
            thisOctal%velocity(subcell) = TTauriStellarWindVelocity(cellcentre)
            thisOctal%inflow(subcell) = .TRUE.
            CALL fillVelocityCorners(thisOctal,TTauriStellarWindVelocity)
            thisOctal%iAnalyticalVelocity(subcell) = 3
-           thisOCtal%rho(subcell) = thisRho
+           v = modulus(thisOctal%velocity(subcell))
+           IF (v > 0.d0) THEN
+             thisRho = stellarWindDensity(cellCentre)
+             thisRho = thisRho / (v * cSpeed)
+             IF (thisRho > thisOctal%rho(subcell)) THEN
+               thisOCtal%rho(subcell) = thisRho
+             END IF
+           END IF
            thisOCtal%fixedTemperature(subcell) = .TRUE.
            thisOctal%temperature(subcell) = REAL(SW_temperature)
-        ENDIF
-
-     ENDIF
-  ENDDO
+        END IF
+     END IF
+  END DO
 END SUBROUTINE assignDensitiesStellarWind
 
  !!!routine removed in favour of polar stellar wind rather than spherically symmetric winds - tjgw201

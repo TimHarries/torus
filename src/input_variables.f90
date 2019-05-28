@@ -749,6 +749,7 @@
   logical :: TTauriStellarWind
   real(double) :: SW_openAngle !Maximum opening angle of the stellar wind
   real(double) :: SW_eqGap !gap at equator between magnetosphere and stellarWinds
+  real(double) :: SW_alfven !multiple to Max R at which momentum is conserved
   real(double) :: SW_Rmin  ! minimum radius of stellar wind  (10^10 cm)
   real(double) :: SW_Rmax  ! maximum radius of stellar wind  (10^10 cm)
   real(double) :: SW_Vmin  ! minimum speed of stellar wind  (cm/s)

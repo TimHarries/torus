@@ -137,7 +137,7 @@ TYPE (VECTOR) FUNCTION TTauriStellarWindVelocity(point)
   USE inputs_mod, ONLY : ttauriRouter, dipoleOffset, &
        ttauriRstar, SW_openAngle, ttauriMstar, SW_vMin, &
        SW_vMax, SW_rMin, SW_beta, SW_rMax, SW_protation, SW_Veq, &
-       SW_eqGap
+       SW_eqGap, SW_alfven
 
   TYPE(VECTOR), INTENT(IN) :: point
   TYPE(VECTOR) :: rVec, rVecDash, wind, phiHat
@@ -167,7 +167,7 @@ TYPE (VECTOR) FUNCTION TTauriStellarWindVelocity(point)
   rMaxMax = SW_eqGap / sin2theta0dash
 
   rBoundary = rMaxMax * SIN(SW_openAngle)**2.d0
-  rAlfven = rBoundary * SIN(SW_openAngle) / 1.d10
+  rAlfven = SW_alfven * rBoundary * SIN(SW_openAngle) / 1.d10
   IF (rDash <= rBoundary) THEN
      y = SIN(thetaDash)**2.d0
      wind = vector(3.d0 * SQRT(y) * SQRT(1.d0-y) / SQRT(4.d0 - (3.d0*y)), &

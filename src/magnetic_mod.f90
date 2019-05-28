@@ -68,8 +68,7 @@ contains
   !!Functon determines if there is stellar outflow from poles (ttauri) at the position given by rVec
   !!tjgw201 14/03/19 based on function: inFlowMahdaviSingle(rVec)
   logical function stellarWindOutflow(point)
-    use inputs_mod, only : ttauriRinner, ttauriRouter, dipoleOffset, &
-    ttauriRstar, SW_openAngle, SW_eqGap
+    use inputs_mod, only :  dipoleOffset, ttauriRstar, SW_openAngle, SW_eqGap
     TYPE(VECTOR), INTENT(IN) :: point
     type(VECTOR) :: rVec, rVecDash
     real(double) :: r, theta, phi, beta
@@ -119,17 +118,54 @@ contains
 
 
 !!returns the half opening angle between accretion hot spots - tjgw201 15/03/19
-  function capHalfAngle()
-    use inputs_mod, only : ttauriRouter, dipoleOffset, ttauriRstar
-    real(double) :: theta0dash, xi
-    real(double) :: capHalfAngle
+  real(Double) function stellarWindDensity(point)
+    use inputs_mod, only : dipoleOffset, ttauriRstar, SW_eqGap, &
+      SW_openAngle, SW_Mdot
+    TYPE(VECTOR), INTENT(IN) :: point
+    type(VECTOR) :: rVec, rVecDash
+    real(double) :: r, theta, phi, beta, rBoundary
+    real(double) :: thisrMax, thetaStar, area
+    real(double) :: rDash, thetaDash, phiDash
+    real(double) :: rMaxMax, sin2theta0dash
+    real(double) :: rhoStart, rhoBoundary, thisRho
 
-    xi = ttauriRstar / ttauriRouter
+    rVec = point * 1.d10
+    beta = dipoleOffset
+    r = modulus(rVec)
 
-    theta0dash = acos(sin(dipoleOffset))
-    capHalfAngle = asin(sqrt(xi*sin(theta0Dash)**2.))
-    return
-  end function capHalfAngle
+    if (r <= ttauriRstar) then
+       goto 666
+    endif
+
+    theta = acos(rVec%z/r)
+    if (theta == 0.d0) theta = 1.d-20
+
+    rDash = r
+    rVecDash = rotateY(rVec, -beta)
+
+    thetaDash = acos(rVecDash%z/rDash)
+    if (thetaDash == 0.d0) thetaDash = 1.d-20
+    phiDash = atan2(rVecDash%y, rVecDash%x)
+    if (phiDash == 0.d0) phiDash = 1.d-20
+
+    sin2theta0dash = (1.d0 + tan(beta)**2.d0 * cos(phiDash)**2.d0)**(-1.d0)
+    rMaxMax = SW_eqGap / sin2theta0dash
+    !thisRMax = rDash / sin(thetaDash)**2.d0
+
+    thetaStar = asin(sqrt(tTauriRstar / rMaxMax))
+    rBoundary = rMaxMax * SIN(SW_openAngle)**2.d0
+    area = (1.d0-cos(thetaStar))*twoPi*ttauriRstar**2.d0
+    rhoStart = 0.5d0*SW_Mdot/area
+    rhoBoundary = rhoStart * (tTauriRstar/rBoundary)**3.d0
+
+    if (rDash <= rBoundary) then
+      thisRho = rhoStart * (tTauriRstar/rDash)**3.d0
+    else
+      thisRho = rhoBoundary * (rBoundary / rDash)**2.d0
+    endif
+    stellarWindDensity = thisRho
+    666 continue
+  end function stellarWindDensity
 
 
   logical function inFlowMahdaviSingle(rVec)
