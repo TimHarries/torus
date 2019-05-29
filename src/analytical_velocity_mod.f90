@@ -195,6 +195,7 @@ TYPE (VECTOR) FUNCTION TTauriStellarWindVelocity(point)
      END IF
      vAlfven = Veq * (rAlfven/SW_rMin)
      r = r*SIN(theta)
+     IF (r == 0.d0) r = 1.d-20
      IF (r <= rAlfven) THEN
        vPhi = Veq * (r/SW_rMin)
      ELSE
