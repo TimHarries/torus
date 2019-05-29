@@ -676,7 +676,7 @@
   ! The following two are used for constantcurtain geometry (RK)
   integer :: curtain_number ! nuumber of curtains
   real    :: curtain_width  ! Width of curtain in degrees.
-  logical :: starkBroaden   !use stark broadening or not. 
+  logical :: starkBroaden   !use stark broadening or not.
 
   ! suboption for ttauri geometry
   logical :: ttau_acc_on        ! T to include magnetosphere
@@ -747,6 +747,9 @@
   !-----------------------------------For T Tauri stellar wind------------------
 
   logical :: TTauriStellarWind
+  real(double) :: SW_openAngle !Maximum opening angle of the stellar wind
+  real(double) :: SW_eqGap !gap at equator between magnetosphere and stellarWinds
+  real(double) :: SW_alfven !multiple to Max R at which momentum is conserved
   real(double) :: SW_Rmin  ! minimum radius of stellar wind  (10^10 cm)
   real(double) :: SW_Rmax  ! maximum radius of stellar wind  (10^10 cm)
   real(double) :: SW_Vmin  ! minimum speed of stellar wind  (cm/s)

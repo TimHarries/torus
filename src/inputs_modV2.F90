@@ -1221,7 +1221,7 @@ contains
        call getLogical("ttauriwind", ttauriWind, cLine, fLine, nLines, &
             "T Tauri disc wind present:","(a,1l,1x,a)", .false., ok, .false.)
 
-       call getLogical("t", ttauriStellarWind, cLine, fLine, nLines, &
+       call getLogical("ttauristellarwind", ttauriStellarWind, cLine, fLine, nLines, &
             "T Tauri stellar wind present:","(a,1l,1x,a)", .false., ok, .false.)
 
        if (ttauriwind) then
@@ -1308,7 +1308,19 @@ contains
 
        if (TTauristellarWind) then
           ! --- parameters for ttauri wind
-          call getDouble("SW_Rmin", SW_Rmin, ttaurirstar/1.d10, cLine, fLine, nLines, &
+          call getDouble("SW_Openangle", SW_openAngle, degToRad, cLine, fLine, nLines, &
+               "Stellar wind:: Maximum opening angle of steller wind [deg]: ", &
+               "(a,1p,e9.3,1x,a)", 30.0d0, ok, .true.)
+
+          call getDouble("SW_eqGap", SW_eqGap, dble(tTauriRstar), cLine, fLine, nLines, &
+               "Stellar wind:: Gap between magnetsphere and wind at equator [ttauriRstar]: ", &
+               "(a,1p,e9.3,1x,a)", 3.0d0, ok, .false.)
+
+          call getDouble("SW_rAlfvenMult", SW_alfven, 1.d0, cLine, fLine, nLines, &
+               "Stellar wind:: multiple to Max R at which momentum is conserved: ", &
+               "(a,1p,e9.3,1x,a)", 1.0d0, ok, .false.)
+
+          call getDouble("SW_Rmin", SW_rMin, ttaurirstar/1.d10, cLine, fLine, nLines, &
                "Stellar wind:: Inner radius of the wind [stellar radii]: ", &
                "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.)
 
@@ -1320,7 +1332,7 @@ contains
                "Stellar wind:: Wind base velocity [km/s]: ", &
                "(a,1p,e9.3,1x,a)", 10.0d0, ok, .true.)
 
-          call getDouble("SW_Vmax", SW_Vmax, 1.d0, cLine, fLine, nLines, &
+          call getDouble("SW_Vmax_xEsc", SW_Vmax, 1.d0, cLine, fLine, nLines, &
                "Stellar wind:: Wind max velocity [Vesc]: ", &
                "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.)
 
@@ -1328,7 +1340,7 @@ contains
                "Stellar wind:: beta-velocity index []: ", &
                "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.)
 
-          call getDouble("SW_Mdot", SW_mdot, 1.d0, cLine, fLine, nLines, &
+          call getDouble("SW_Mdot", SW_mdot, dble(mSol / yearsToSecs), cLine, fLine, nLines, &
                "Stellar wind:: mass-loss rate [Msol/yr]: ", &
                "(a,1p,e9.3,1x,a)", 1.0d-7, ok, .true.)
 
@@ -2643,7 +2655,7 @@ contains
 
 ! For setting up a grid from a Ramses file
      if (checkPresent("ramsesfilename", cline, nlines)) call readRamsesParameters
-          
+
   contains
 
     subroutine readFlashParameters
@@ -2705,14 +2717,14 @@ contains
     subroutine readRamsesParameters
       use ramses_mod, only: setGridFromRamsesParameters
       character(len=80) :: ramsesfilename
-      
+
       call getString("ramsesfilename", ramsesfilename, cLine, fLine, nLines, &
            "Ramses file name: ","(a,a,a)","none",ok, .false.)
 
       call setGridFromRamsesParameters(ramsesfilename)
     end subroutine readRamsesParameters
 
-    
+
   end subroutine readGridInitParameters
 
   subroutine readDustPhysicsParameters(cLine, fLine, nLines)
