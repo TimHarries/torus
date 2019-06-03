@@ -20248,8 +20248,7 @@ end subroutine minMaxDepth
         source(1:nSource)%nSubsource = newSource(1:nSource)%nSubsource
         if (clusterSinks) then
            do i = 1, nSource
-              if (associated(source(i)%subsourceArray)) deallocate(source(i)%subsourceArray)
-              source(i)%subsourceArray => null()
+              call freeSourceArray(source(i)%subsourceArray)
               if (source(i)%nSubsource > 0) then
                  allocate(source(i)%subsourceArray(1:source(i)%nSubsource))
                  source(i)%subsourceArray = newSource(i)%subsourceArray
@@ -20281,12 +20280,16 @@ end subroutine minMaxDepth
      real(double) :: rhomax
      integer :: nSource
      integer :: iThread
+     real :: startTime, endTime
 
      do iThread = 1, nHydroThreadsGlobal
         if (myrankGlobal == iThread) then
            rhomax = 0.d0
+           call wallTime(startTime)
            call recursaddSinks(grid%octreeRoot, grid, source, nSource, rhomax)
            call shutdownRadiusServer()
+           call wallTime(endTime)
+           write(*,'(i4,a,f11.2)') myrankglobal, " did recurseAddSinks in (sec) ", endTime-startTime
         else
            call getPointsInAccretionRadiusServer(grid, nSource, source)
         endif
@@ -20348,6 +20351,7 @@ end subroutine minMaxDepth
              cycle
           endif
 
+          ! receive pos/mass/vel of all cells inside accretion radius (including cells on other threads)
 
           call getPointsInAccretionRadius(thisOctal, subcell, accretionRadius*smallestCellSize, grid, npoints, position, & 
             vel, mass, phi, cs)
@@ -20544,8 +20548,7 @@ end subroutine minMaxDepth
      if (clusterSinks) then
         if (myrankGlobal /= 0) then
            do i = 1, nSource
-              if (associated(source(i)%subsourceArray)) deallocate(source(i)%subsourceArray)
-              source(i)%subsourceArray => null()
+              call freeSourceArray(source(i)%subsourceArray)
               if (source(i)%nSubsource > 0) then
                  allocate(source(i)%subsourceArray(1:source(i)%nSubsource))
               endif
@@ -20637,8 +20640,7 @@ end subroutine broadcastSinks
     if (clusterSinks) then
        if (myrankGlobal == 0) then
           do i = 1, nSource
-             if (associated(source(i)%subsourceArray)) deallocate(source(i)%subsourceArray)
-             source(i)%subsourceArray => null()
+             call freeSourceArray(source(i)%subsourceArray)
              if (source(i)%nSubsource > 0) then
                 allocate(source(i)%subsourceArray(1:source(i)%nSubsource))
              endif
@@ -21184,12 +21186,14 @@ end subroutine broadcastSinks
 
 
        if (myrankWorldGlobal == 1) then
-       write(*,*) "New mass of source ", iSource, sourceArray(iSource)%mass/msol
-       if (accretedMass(iSource) > 0.d0) write(*,*) "Accretion rate for source ",isource, ": ", &
-            (accretedMass(isource)/timestep)/msol * (365.25d0*24.d0*3600.d0)
+!       write(*,*) "New mass of source ", iSource, sourceArray(iSource)%mass/msol
+!       if (accretedMass(iSource) > 0.d0) write(*,*) "Accretion rate for source ",isource, ": ", &
+!            (accretedMass(isource)/timestep)/msol * (365.25d0*24.d0*3600.d0)
 !          write(*,*)  "position ",sourceArray(isource)%position
 !          write(*,'(a,3f8.3)') "After acc velocity (km/s): ",sourceArray(isource)%velocity/1.d5
 !          write(*,*) "mass (solar) ",sourceArray(isource)%mass/msol
+          write(*,'(a, i4, f10.4, es12.5, es12.5)') "mass, accrate of source ", isource, sourcearray(isource)%mass/msol, &
+            (accretedmass(isource)/timestep)/msol * (365.25d0*24.d0*3600.d0), grid%currenttime+timestep
        endif
     enddo
     deallocate(accretedMass, accretedLinMomentum, accretedAngMomentum)
@@ -21924,6 +21928,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     integer :: nOther
     integer :: status(MPI_STATUS_SIZE)
 
+    ! record current subcell (centre of sink) 
     npoints = 1
     position(1) = subcellCentre(thisOctal, subcell)
     if (.not.cylindricalHydro) then
@@ -21940,8 +21945,10 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     mass(1) = cellVolume(thisOctal, subcell)*1.d30*thisOctal%rho(subcell)
     phi(1) = thisOctal%phi_i(subcell)
     cs(1) = soundSpeed(thisOctal, subcell)
+    ! record other cells inside accretion radius (on this thread) 
     call getPointsInAccretionRadiusLocal(grid%octreeRoot, position(1), radius, grid, npoints, position, vel, mass, phi, cs)
     
+    ! send sink centre to all other threads
     temp(1) = 2.d0
     temp(2) = position(1)%x
     temp(3) = position(1)%y
@@ -21951,6 +21958,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     do iThread = 1, nHydroThreadsGlobal
        if (iThread /= myRankGlobal) then
           call MPI_SEND(temp, 13, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+          ! receive cells inside accretion radius (that are located in other threads)
           call MPI_RECV(nOther, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, status, ierr)
           if (nOther > 0) then
              call MPI_RECV(position(nPoints+1:nPoints+nOther)%x, nOther, MPI_DOUBLE_PRECISION, &
@@ -22100,6 +22108,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
 ! AA removed 03/2019 - setSourceArrayProperties/setSourceProperties create spectra
 !             call fillSpectrumBB(source(nsource)%spectrum, 1000.d0, &
 !                  100.d0, 1.d7, 1000)
+             call emptySurface(source(nsource)%surface)
              call buildSphereNbody(source(nsource)%position, grid%halfSmallestSubcell, source(nsource)%surface, 20)
           case(2) ! want points in radius
 

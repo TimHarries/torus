@@ -39,7 +39,7 @@ public :: photoIonizationloopAMR, createImagesplitgrid, ionizeGrid, &
      neutralGrid, resizePhotoionCoeff, resetNH, hasPhotoionAllocations, allocatePhotoionAttributes, &
      computeProbDistAMRMpi, putStarsInGridAccordingToDensity, testBranchCopying, createtemperaturecolumnimage,&
      writeLuminosities, calculateAverageTemperature, createtdustColumnImage, calculateAverageTdust, &
-     createEmissionMeasureImage
+     createEmissionMeasureImage, testSpectraMemory
 
 
 #ifdef HYDRO
@@ -942,12 +942,8 @@ contains
                       ! don't need to redo the 10
                       if (readgrid .and. (grid%currentTime >= feedbackStartTime + 1.5d0*deltaTforDump)) then
                          nPhotoIter = 1
-!                         firstFeedbackIter = .false.
-!                         if (writeoutput) write(*,*) "firstFeedbackIter: ", firstFeedbackIter, nPhotoIter, feedbackStartTime
                       else
                          nPhotoIter = maxPhotoionIter 
-!                         if (writeoutput) write(*,*) "firstFeedbackIter: ", firstFeedbackIter, nPhotoIter, feedbackStartTime
-!                         firstFeedbackIter = .false.
                       endif
                       ! if we're using updateHistories, do 10 initially regardless
                       if (mchistories) then
@@ -1264,9 +1260,11 @@ contains
 
 !add/merge sink particles where necessary
        if ((myrankGlobal /= 0).and.(.not.loadBalancingThreadGlobal)) then
+          if (myRankWorldGlobal == 1) call tune(6,"Added new sinks")
           if (nbodyPhysics.and.addSinkParticles) then 
              call addSinks(grid, globalsourceArray, globalnSource)       
           endif
+          if (myRankWorldGlobal == 1) call tune(6,"Added new sinks")
 
 !xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 !          call freeglobalsourceArray()
@@ -1288,8 +1286,11 @@ contains
 
        endif
 
+
+       if (myRankWorldGlobal == 1) call tune(6,"Syncing sinks")
        call sendSinksToZerothThread(globalnSource, globalsourceArray)
        call broadcastSinks(globalnSource, globalsourceArray)
+       if (myRankWorldGlobal == 1) call tune(6,"Syncing sinks")
 
        if (nbodyPhysics) then
           if (hosokawaTracks) then
@@ -1299,9 +1300,18 @@ contains
              if (myrankWorldglobal == 1) call tune(6, "Setting cluster properties")
              call randomNumberGenerator(randomSeed=.true.)
              call randomNumberGenerator(syncIseed=.true.)
-             call populateClusters(globalSourceArray, globalnSource, 0.d0) 
+             if (writeoutput) call writeInfo("Populating clusters")
+             call populateClusters(globalSourceArray, globalnSource, 0.d0, totalCreatedMass) 
              call randomNumberGenerator(randomSeed=.true.)
+             if (writeoutput) call writeInfo("Setting cluster spectra")
              call setClusterSpectra(globalSourceArray, globalnSource) 
+             if (totalCreatedMass > 0.d0) then
+                nPhotoIter = maxPhotoionIter
+             else
+                nPhotoIter = 1
+             endif 
+             ! FIXME - remove barrier
+             call MPI_BARRIER(MPI_COMM_WORLD, ierr)
              if (myrankWorldglobal == 1) call tune(6, "Setting cluster properties")
           else
              ! sources have new M, Teff, L from updateSourceProperties -> recalculate spectra (rank 0 in particular)
@@ -1312,16 +1322,16 @@ contains
        ! FIXME
        if (myrankglobal == 0) then!.or. myrankglobal == 1 .or. myrankglobal == 2 .or. myrankglobal == 65) then
           write(*,*) "Cluster properties"
-          write(*,'(a2,1x,a3,5x,a9,1x,a4,1x,a12,1x,a9,1x,a9)') "r", "i", "Mcl", "n*", "Mres", "age", "teff"
+          write(*,'(a2,1x,a3,5x,a9,1x,a4,1x,a12,1x,a9,1x,a9)') "r", "i", "Mcl", "n*", "Mres", "age", "lum"
           do i = 1, globalnSource
              write(*,'(i2.2,1x,i3.3,5x,f9.2,1x,i4,1x,f12.5,1x,es9.2,1x,es9.2)') myrankglobal, i, globalSourceArray(i)%mass/msol, &
              globalSourceArray(i)%nSubsource, clusterReservoir(globalSourceArray(i))/msol, globalsourceArray(i)%age, &
-             globalsourceArray(i)%teff
+             globalsourceArray(i)%luminosity/lsol
              if (globalSourceArray(i)%nSubsource > 0) then
                 j = maxloc(globalsourceArray(i)%subsourceArray(1:globalsourceArray(i)%nsubsource)%mass,dim=1)
                 write(*,'(i2.2, 1x,i3.3, a5, f9.2,1x,i4,a14,es9.2,1x,es9.2)') myrankglobal, i, "_max ", &
                    globalsourceArray(i)%subsourceArray(j)%mass/msol,globalSourceArray(i)%subsourceArray(j)%nSubsource," ",&
-                   globalSourceArray(i)%subsourceArray(j)%age, globalSourceArray(i)%subsourceArray(j)%teff
+                   globalSourceArray(i)%subsourceArray(j)%age, globalSourceArray(i)%subsourceArray(j)%luminosity/lsol
 
 !                   ! write fluxes
 !                   totFlux = 0.d0
@@ -8734,7 +8744,10 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
 
   subroutine createImageSplitGrid(grid, nSource, source, imageNum)
-    use inputs_mod, only: nPhotImage, gridDistance, excludeScatteredLight
+    use inputs_mod, only: nPhotImage, excludeScatteredLight
+#ifdef USECFITSIO
+    use inputs_mod, only: gridDistance
+#endif
     use hydrodynamics_mod, only: setupEdges
     use image_utils_mod
     use mpi
@@ -10810,6 +10823,42 @@ end subroutine putStarsInGridAccordingToDensity
     endif
 
   end subroutine writeLuminosities
+
+  subroutine testSpectraMemory
+    use starburst_mod
+    use hydrodynamics_mod, only : sendsinkstozeroththread, broadcastsinks
+     real(double) :: thissourceflux, tot, burstMass
+     integer :: i, j, k, ierr
+     character(len=80) :: mpifilename
+     logical :: doing
+
+     if (associated(globalSourceArray)) then
+        deallocate(globalSourceArray)
+        globalSourceArray => null()
+     endif
+     globalnsource = 10
+     allocate(globalsourcearray(1:globalnsource))
+     globalSourceArray(1:globalnSource)%mass = 101.d0*msol
+     globalSourceArray(1:3)%mass = 601.d0*msol
+
+     doing = .true.
+     i = 0
+     do while(doing) 
+        call randomNumberGenerator(randomSeed=.true.)
+        call randomNumberGenerator(syncIseed=.true.)
+        call populateClusters(globalSourceArray, globalnSource, 0.d0, burstMass) 
+        call randomNumberGenerator(randomSeed=.true.)
+        call setClusterSpectra(globalSourceArray, globalnSource) 
+        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+        if (writeoutput) then 
+           i = i + 1
+           if (mod(i,1)==0) write(*,*) "did ", i
+        endif
+     enddo
+!     call setClusterSpectra(globalSourceArray, globalnSource) 
+!        call sendSinksToZerothThread(globalnSource, globalsourceArray)
+!        call broadcastSinks(globalnSource, globalsourceArray)
+  end subroutine testSpectraMemory
 
 
 #endif

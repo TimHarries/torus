@@ -58,34 +58,92 @@
       character(len=80) :: filename
       integer :: nSource
       real(double) :: oldMass, mdot, oldAge
-      integer :: i
-      logical, save :: firstTime = .true.
+      integer :: i, j
+      logical, save :: firstTime(1:1000,0:1000) = .true.
       if (writeoutput) then
          do i = 1, nSource
             write(filename,'(a,i3.3,a)') trim(rootFilename),i,".dat"
             write(*,*) "filename ",trim(filename)
-            if (firstTime) then
+            if (firstTime(i,0)) then
                open(22, file=filename, status="unknown", form="formatted")
-               write(22,'(a4,a12,a9,a9,a9,a12,a12,a12,a12,a12,a12,a12,a12,a12,a12,a12)') &
-                    "#  N","Age (yr)","Mass","Radius","Teff","Lum","Mdot","mdotav","x","y","z","vx","vy","vz"
+               write(22,'(a4,a12,a10,a9,a9,a12,a12,a12,a12,a12,a12,a12,a12,a12,a12,a6,a12)') &
+                    "#  N","Time(yr)","Mass","Radius","Teff","Lum","Mdot","mdotav","x","y","z","vx","vy","vz","Age(yr)","Nsub","Mres"
             else
                open(22, file=filename, status="old", form="formatted", position="append")
             endif
-            mdot = (source(i)%mass - oldMass)/(source(i)%time - oldAge)
+            ! mdot only works when there's one source (with multimodel)
+            if (nSource == 1) then 
+               mdot = (source(i)%mass - oldMass)/(source(i)%time - oldAge)
+            else
+               mdot = 0.d0
+            endif
             write(*,*) "mdot", mdot
-            write(22,'(i4.4, 1p, e12.3, 0p, f9.4, f9.4, f9.1, 1p, e12.3, e12.3, e12.3, 10e12.3)') &
-                 iModel,source(i)%time*secstoYears, &
+            write(22,'(i4.4, 1p, e12.3, 0p, f10.4, f9.4, f9.1, 1p, e12.3, e12.3, e12.3, 7e12.3,i6,es12.3)') &
+                 iModel,&
+                 source(i)%time*secstoYears, &
                  source(i)%mass/msol, &
-                 source(i)%radius*1.d10/rsol, source(i)%teff, source(i)%luminosity/lsol, source(i)%mdot/msol/secstoyears,&
+                 source(i)%radius*1.d10/rsol, &
+                 source(i)%teff, &
+                 source(i)%luminosity/lsol, &
+                 source(i)%mdot/msol/secstoyears,&
                  mdot/msol/secstoyears, &
                  source(i)%position%x, &
-                 source(i)%position%y,source(i)%position%z, source(i)%velocity%x/1.d5,source(i)%velocity%y/1.d5, &
-                 source(i)%velocity%z/1.d5
+                 source(i)%position%y, &
+                 source(i)%position%z, &
+                 source(i)%velocity%x/1.d5, &
+                 source(i)%velocity%y/1.d5, &
+                 source(i)%velocity%z/1.d5, &
+                 source(i)%age, &
+                 source(i)%nsubsource, &
+                 clusterReservoir(source(i))/msol
             close(22)
             oldMass = source(i)%mass
             oldAge = source(i)%time
+
+            if (source(i)%nsubsource > 0) then
+               do j = 1, source(i)%nsubsource
+                  write(filename,'(a,i3.3,a,i4.4,a)') trim(rootFilename),i,"_",j,".dat"
+                  write(*,*) "filename ",trim(filename)
+                  if (firstTime(i,j))  then
+                     open(22, file=filename, status="unknown", form="formatted")
+                     write(22,'(a4,a12,a10,a9,a9,a12,a12,a12,a12,a12,a12,a12,a12,a12,a12)') &
+                          "#  N","Time(yr)","Mass","Radius","Teff","Lum","Mdot","mdotav","x","y","z","vx","vy","vz","Age(yr)"
+                  else
+                     open(22, file=filename, status="old", form="formatted", position="append")
+                  endif
+                  if (nSource == 1 .and. source(i)%nSubsource == 1) then 
+                     mdot = (source(i)%mass - oldMass)/(source(i)%time - oldAge)
+                  else
+                     mdot = 0.d0
+                  endif
+                  ! mdot only works when there's one source (with multimodel)
+                  write(*,*) "mdot", mdot
+                  write(22,'(i4.4, 1p, e12.3, 0p, f10.4, f9.4, f9.1, 1p, e12.3, e12.3, e12.3, 7e12.3)') &
+                       iModel, &
+                       source(i)%subsourceArray(j)%time*secstoYears, &
+                       source(i)%subsourceArray(j)%mass/msol, &
+                       source(i)%subsourceArray(j)%radius*1.d10/rsol,& 
+                       source(i)%subsourceArray(j)%teff, &
+                       source(i)%subsourceArray(j)%luminosity/lsol, &
+                       source(i)%subsourceArray(j)%mdot/msol/secstoyears,&
+                       mdot/msol/secstoyears, &
+                       source(i)%subsourceArray(j)%position%x, &
+                       source(i)%subsourceArray(j)%position%y, &
+                       source(i)%subsourceArray(j)%position%z, &
+                       source(i)%subsourceArray(j)%velocity%x/1.d5, &
+                       source(i)%subsourceArray(j)%velocity%y/1.d5, &
+                       source(i)%subsourceArray(j)%velocity%z/1.d5, &
+                       source(i)%subsourceArray(j)%age
+!                       source(i)%subsourceArray(j)%nsubsource, &
+!                       clusterReservoir(source(i)%subsourceArray(j))/msol
+                  close(22)
+                  oldMass = source(i)%subsourceArray(j)%mass
+                  oldAge = source(i)%subsourceArray(j)%time
+               enddo
+               firstTime(i,1:source(i)%nSubsource) = .false.
+            endif
          enddo
-         if (firstTime) firstTime = .false.
+         firstTime(1:nSource,0) = .false.
       endif
     end subroutine writeSourceHistory
 
@@ -332,19 +390,23 @@
       endif
     end subroutine freeGlobalSourceArray
 
-    subroutine freeSource(source)
+    recursive subroutine freeSource(source)
       type(SOURCETYPE) :: source
       call freeSpectrum(source%spectrum)
       call emptySurface(source%surface)
-      call freeSubsources(source)
+      call freeSourceArray(source%subsourceArray)
     end subroutine freeSource
 
-    subroutine freeSubsources(source)
-      type(SOURCETYPE) :: source
-      if (associated(source%subsourceArray)) deallocate(source%subsourceArray)
-      source%subsourceArray => null()
-      source%nSubsource = 0
-    end subroutine freeSubsources
+    recursive subroutine freeSourceArray(sources)
+      type(SOURCETYPE), pointer :: sources(:)
+      integer :: i
+      if (associated(sources)) then 
+         do i = 1, size(sources)
+            call freeSource(sources(i))
+         enddo
+         deallocate(sources)
+      endif
+    end subroutine freeSourceArray
 
     function ionizingFlux(source) result(flux)
       type(sourcetype) :: source
@@ -1219,6 +1281,16 @@
        endif
     enddo
   end function insideSource
+
+  real(double) function clusterReservoir(cluster) ! [g]
+    type(SOURCETYPE) :: cluster
+    if (cluster%nsubsource > 0) then
+       clusterReservoir = cluster%mass - sum(cluster%subsourceArray(1:cluster%nSubsource)%mass) 
+    else
+       clusterReservoir = cluster%mass
+    endif
+  end function clusterReservoir
+
 
 
 

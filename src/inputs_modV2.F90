@@ -359,6 +359,9 @@ contains
     endif
 #endif
 
+    call getLogical("clustersinks", clusterSinks, cLine, fLine, nLines, &
+         "Sinks represent clusters: ", "(a,1l,1x,a)", .false., ok, .false.)
+
 
     if (nBodyPhysics) then
        call getUnitDouble("tend", tEnd, "time", cLine, fLine, nLines, &
@@ -384,9 +387,6 @@ contains
 
        call getLogical("movesinks", moveSources, cLine, fLine, nLines, &
             "Allow sources to move: ", "(a,1l,1x,a)", .true., ok, .false.)
-
-       call getLogical("clustersinks", clusterSinks, cLine, fLine, nLines, &
-            "Sinks represent clusters: ", "(a,1l,1x,a)", .false., ok, .false.)
 
        if (clusterSinks) then
           call getDouble("criticalmass", criticalMass, mSol, cLine, fLine, nLines, &
@@ -1011,7 +1011,7 @@ contains
             "Sphere surface density (in g cm^-2): ","(a,f7.1,1x,a)", 1.d0, ok, .true.)
 
        call getDouble("mass", sphereMass, msol, cLine, fLine, nLines, &
-            "Sphere mass (in M_sol): ","(a,f7.1,1x,a)", 1.d-30, ok, .true.)
+            "Sphere mass (in M_sol): ","(a,e12.3,1x,a)", 1.d-30, ok, .true.)
 
        call getDouble("radius", sphereRadius, pctocm/1.d10, cLine, fLine, nLines, &
             "Sphere radius (in pc): ","(a,e12.3,1x,a)", 1.d-30, ok, .true.)

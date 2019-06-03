@@ -39,6 +39,8 @@ module spectrum_mod
       spectrum%normflux2 => null()
       if (associated(spectrum%ppw)) deallocate(spectrum%ppw)
       spectrum%ppw => null()
+      if (associated(spectrum%lambdaBinStart)) deallocate(spectrum%lambdaBinStart)
+      spectrum%lambdaBinStart => null()
 
       spectrum%nlambda = 0
     end subroutine freeSpectrum
