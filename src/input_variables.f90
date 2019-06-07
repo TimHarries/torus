@@ -413,6 +413,7 @@
   real(double), allocatable :: fracMode(:)
   character(len=80) :: sourceFilename
   logical :: sourceHistory
+  logical :: subsourceHistory
   character(len=80) :: sourceHistoryFilename
   integer :: inputNsource
   real(double) :: sourceTeff(10), sourceMass(10), sourceRadius(10), sourceProb(10), sourceMdot(10)

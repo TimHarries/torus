@@ -715,6 +715,8 @@ contains
 
     call getLogical("sourcehistory", sourceHistory, cLine, fLine, nLines, &
          "Write out the source history: ","(a,1l,1x,a)", .false., ok, .false.)
+    call getLogical("subsourcehistory", subsourceHistory, cLine, fLine, nLines, &
+         "Write out the subsource history: ","(a,1l,1x,a)", .false., ok, .false.)
 
 
     call getLogical("writeradialfile", dowriteRadialFile, cLine, fLine, nLines, &

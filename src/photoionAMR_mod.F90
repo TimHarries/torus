@@ -1430,6 +1430,14 @@ contains
        call findIonizedVolumeOverAllThreads(grid, ionizedVolume, ionizedMass)
        if (writeoutput) write(*,*) "Total ionized volume (>mincrossings) (pc^3): ", ionizedVolume/(pctocm**3)
        if (writeoutput) write(*,*) "Total ionized mass (msol): ", ionizedMass/msol
+       if (writeoutput .and. nbodyPhysics) then
+          totalMass = 0.d0
+          do i = 1, globalnSource
+             totalMass = totalMass + globalsourceArray(i)%mass
+          enddo
+          write(*,*) "Total mass in sinks (msol) is ", totalmass/mSol
+       endif
+
 
        
        if (myRankWorldGlobal == 1) write(*,*) "Current time: ",grid%currentTime
@@ -1528,6 +1536,18 @@ contains
 
              write(mpiFilename,'(a, i4.4, a)') "columnx_", grid%iDump,".fits"
              call createColumnDensityImage(grid, VECTOR(1.d0, 0.d0, 0.d0), columnDensityImage)
+             if (writeoutput) call writeFitsColumnDensityImage(columnDensityImage, trim(mpiFilename))
+
+             write(mpiFilename,'(a, i4.4, a)') "emissionMeasurez_", grid%iDump,".fits"
+             call createEmissionMeasureImage(grid, VECTOR(0.d0, 0.d0, 1.d0), columnDensityImage)
+             if (writeoutput) call writeFitsColumnDensityImage(columnDensityImage, trim(mpiFilename))
+
+             write(mpiFilename,'(a, i4.4, a)') "emissionMeasurey_", grid%iDump,".fits"
+             call createEmissionMeasureImage(grid, VECTOR(0.d0, 1.d0, 0.d0), columnDensityImage)
+             if (writeoutput) call writeFitsColumnDensityImage(columnDensityImage, trim(mpiFilename))
+
+             write(mpiFilename,'(a, i4.4, a)') "emissionMeasurex_", grid%iDump,".fits"
+             call createEmissionMeasureImage(grid, VECTOR(1.d0, 0.d0, 0.d0), columnDensityImage)
              if (writeoutput) call writeFitsColumnDensityImage(columnDensityImage, trim(mpiFilename))
           endif
 #else
@@ -10745,7 +10765,6 @@ end subroutine putStarsInGridAccordingToDensity
           if (myrankGlobal /= 0) then
              call emissionMeasureAlongPathAMR(grid, pos, direction, sigma)
           endif
-          ! image is <T> = sum(T*weight*dV)/sum(weight*dV) (along column) 
           call MPI_ALLREDUCE(sigma, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
           image(i,j) = tempDouble
        enddo

@@ -25,6 +25,7 @@ module hydrodynamics_mod
 
   type(OCTALWRAPPER), allocatable :: globalChildlessOctalArray(:)
   integer :: nGlobalChildlessOctals
+  real :: mpiTime
 
 
 contains
@@ -20285,11 +20286,13 @@ end subroutine minMaxDepth
      do iThread = 1, nHydroThreadsGlobal
         if (myrankGlobal == iThread) then
            rhomax = 0.d0
+           mpiTime = 0.
            call wallTime(startTime)
            call recursaddSinks(grid%octreeRoot, grid, source, nSource, rhomax)
-           call shutdownRadiusServer()
            call wallTime(endTime)
-           write(*,'(i4,a,f11.2)') myrankglobal, " did recurseAddSinks in (sec) ", endTime-startTime
+           call shutdownRadiusServer()
+           write(*,'(i4,a,3f12.3)') myrankglobal, " secs in recurseAddSinks, mpi, % ", endTime-startTime, mpiTime, &
+              mpiTime/(endTime-startTime)*100.
         else
            call getPointsInAccretionRadiusServer(grid, nSource, source)
         endif
@@ -20352,7 +20355,6 @@ end subroutine minMaxDepth
           endif
 
           ! receive pos/mass/vel of all cells inside accretion radius (including cells on other threads)
-
           call getPointsInAccretionRadius(thisOctal, subcell, accretionRadius*smallestCellSize, grid, npoints, position, & 
             vel, mass, phi, cs)
 
@@ -21919,14 +21921,36 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     integer :: nPoints
     type(VECTOR) :: position(:), vel(:), rVec
     real(double) :: mass(:), phi(:), cs(:), r
-    type(OCTAL), pointer :: thisOctal
+    type(OCTAL), pointer :: thisOctal, neighbourOctal
     real(double) :: temp(13)
-    integer :: iThread
-    integer :: subcell
+    integer :: iThread, i, nDir
+    integer :: subcell, neighbourSubcell
     integer :: ierr
     integer, parameter :: tag = 65
     integer :: nOther
     integer :: status(MPI_STATUS_SIZE)
+    type(VECTOR) :: locator, dir(6), cen
+    logical :: poll
+    real :: startTime, endTime
+    if (thisOctal%oneD) then
+       nDir = 2
+       dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+       dir(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+    else if (thisOctal%twoD) then
+       nDir = 4
+       dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+       dir(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+       dir(3) = VECTOR(0.d0, 0.d0, 1.d0)
+       dir(4) = VECTOR(0.d0, 0.d0,-1.d0)
+    else if (thisOctal%threed) then
+       nDir = 6
+       dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
+       dir(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+       dir(3) = VECTOR(0.d0, 0.d0, 1.d0)
+       dir(4) = VECTOR(0.d0, 0.d0,-1.d0)
+       dir(5) = VECTOR(0.d0, 1.d0, 0.d0)
+       dir(6) = VECTOR(0.d0,-1.d0, 0.d0)
+    endif
 
     ! record current subcell (centre of sink) 
     npoints = 1
@@ -21947,48 +21971,81 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     cs(1) = soundSpeed(thisOctal, subcell)
     ! record other cells inside accretion radius (on this thread) 
     call getPointsInAccretionRadiusLocal(grid%octreeRoot, position(1), radius, grid, npoints, position, vel, mass, phi, cs)
-    
-    ! send sink centre to all other threads
-    temp(1) = 2.d0
-    temp(2) = position(1)%x
-    temp(3) = position(1)%y
-    temp(4) = position(1)%z
-    temp(5) = radius
-    temp(6) = thisOctal%mpiThread(subcell)
-    do iThread = 1, nHydroThreadsGlobal
-       if (iThread /= myRankGlobal) then
-          call MPI_SEND(temp, 13, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
-          ! receive cells inside accretion radius (that are located in other threads)
-          call MPI_RECV(nOther, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, status, ierr)
-          if (nOther > 0) then
-             call MPI_RECV(position(nPoints+1:nPoints+nOther)%x, nOther, MPI_DOUBLE_PRECISION, &
-                  iThread, tag, localWorldCommunicator, status, ierr)
-             call MPI_RECV(position(nPoints+1:nPoints+nOther)%y, nOther, MPI_DOUBLE_PRECISION, &
-                  iThread, tag, localWorldCommunicator, status, ierr)
-             call MPI_RECV(position(nPoints+1:nPoints+nOther)%z, nOther, MPI_DOUBLE_PRECISION, &
-                  iThread, tag, localWorldCommunicator, status, ierr)
-             
-             call MPI_RECV(vel(nPoints+1:nPoints+nOther)%x, nOther, MPI_DOUBLE_PRECISION, &
-                  iThread, tag, localWorldCommunicator, status, ierr)
-             call MPI_RECV(vel(nPoints+1:nPoints+nOther)%y, nOther, MPI_DOUBLE_PRECISION, &
-                  iThread, tag, localWorldCommunicator, status, ierr)
-             call MPI_RECV(vel(nPoints+1:nPoints+nOther)%z, nOther, MPI_DOUBLE_PRECISION, &
-                  iThread, tag, localWorldCommunicator, status, ierr)
-             
-             call MPI_RECV(mass(nPoints+1:nPoints+nOther), nOther, MPI_DOUBLE_PRECISION, &
-                  iThread, tag, localWorldCommunicator, status, ierr)
-             
-             call MPI_RECV(phi(nPoints+1:nPoints+nOther), nOther, MPI_DOUBLE_PRECISION, &
-                  iThread, tag, localWorldCommunicator, status, ierr)
-             
-             call MPI_RECV(cs(nPoints+1:nPoints+nOther), nOther, MPI_DOUBLE_PRECISION, &
-                  iThread, tag, localWorldCommunicator, status, ierr)
 
-             nPoints = nPoints + nOther
+    ! check if any cells in radius are off-thread
+    if (nPoints < 81) then 
+       poll = .true.
+    elseif (nPoints == 81) then
+       poll = .false.
+    else
+       write(*,*) "??? npoints ", npoints
+       stop
+    endif
+!    do i = 1, nDir
+!       locator = position(1) + (radius + 0.01d0*smallestCellSize)*dir(i)
+!       if (inOctal(grid%octreeRoot, locator)) then
+!          neighbourOctal => thisOctal
+!          call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+!          if (.not.octalOnThread(neighbourOctal, neighbourSubcell, myrankGlobal)) then
+!             cen = subcellCentre(neighbourOctal, neighbourSubcell)
+!             if (modulus(cen - position(1)) < radius) then
+!                poll = .true.
+!                exit
+!             endif
+!          endif
+!       endif
+!    enddo
 
+    if (poll) then
+       temp(1) = 2.d0
+       temp(2) = position(1)%x
+       temp(3) = position(1)%y
+       temp(4) = position(1)%z
+       temp(5) = radius
+       temp(6) = thisOctal%mpiThread(subcell)
+       call wallTime(startTime)
+       do iThread = 1, nHydroThreadsGlobal
+          if (iThread /= myRankGlobal) then
+             call MPI_SEND(temp, 13, MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, ierr)
+             ! receive cells inside accretion radius (that are located in other threads)
+             call MPI_RECV(nOther, 1, MPI_INTEGER, iThread, tag, localWorldCommunicator, status, ierr)
+             if (nOther > 0) then
+                call MPI_RECV(position(nPoints+1:nPoints+nOther)%x, nOther, MPI_DOUBLE_PRECISION, &
+                     iThread, tag, localWorldCommunicator, status, ierr)
+                call MPI_RECV(position(nPoints+1:nPoints+nOther)%y, nOther, MPI_DOUBLE_PRECISION, &
+                     iThread, tag, localWorldCommunicator, status, ierr)
+                call MPI_RECV(position(nPoints+1:nPoints+nOther)%z, nOther, MPI_DOUBLE_PRECISION, &
+                     iThread, tag, localWorldCommunicator, status, ierr)
+                
+                call MPI_RECV(vel(nPoints+1:nPoints+nOther)%x, nOther, MPI_DOUBLE_PRECISION, &
+                     iThread, tag, localWorldCommunicator, status, ierr)
+                call MPI_RECV(vel(nPoints+1:nPoints+nOther)%y, nOther, MPI_DOUBLE_PRECISION, &
+                     iThread, tag, localWorldCommunicator, status, ierr)
+                call MPI_RECV(vel(nPoints+1:nPoints+nOther)%z, nOther, MPI_DOUBLE_PRECISION, &
+                     iThread, tag, localWorldCommunicator, status, ierr)
+                
+                call MPI_RECV(mass(nPoints+1:nPoints+nOther), nOther, MPI_DOUBLE_PRECISION, &
+                     iThread, tag, localWorldCommunicator, status, ierr)
+                
+                call MPI_RECV(phi(nPoints+1:nPoints+nOther), nOther, MPI_DOUBLE_PRECISION, &
+                     iThread, tag, localWorldCommunicator, status, ierr)
+                
+                call MPI_RECV(cs(nPoints+1:nPoints+nOther), nOther, MPI_DOUBLE_PRECISION, &
+                     iThread, tag, localWorldCommunicator, status, ierr)
+
+                nPoints = nPoints + nOther
+
+             endif
           endif
-       endif
-    enddo
+       enddo
+       call wallTime(endTime)
+       mpiTime = mpiTime + (endTime - startTime)
+    endif
+    ! FIXME
+    if (nPoints /= 81) then
+       write(*,*) "nPoints ", nPoints
+       stop
+    endif
 
   end subroutine getPointsInAccretionRadius
   

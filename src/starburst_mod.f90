@@ -1233,88 +1233,90 @@ contains
    end subroutine testTracks
 
    
-  subroutine testClusterSpectra(itest)
+  subroutine testClusterSpectra
      real(double) :: thissourceflux, tot, burstMass
-     integer :: i, j, k, itest
-     character(len=80) :: mpifilename
+     integer :: i, j, k
+     character(len=80) :: mpifilename, fn
 
-     if (itest == 1) then
-        if (associated(globalSourceArray)) deallocate(globalSourceArray)
-        globalnsource = 2
-        allocate(globalsourcearray(1:globalnsource))
-        globalSourceArray(1:globalNsource)%mass = 601.d0*msol
-        call randomNumberGenerator(randomSeed=.true.)
-        call randomNumberGenerator(syncIseed=.true.)
-        call populateClusters(globalSourceArray, globalnSource, 0.d0, burstMass) 
-        call randomNumberGenerator(randomSeed=.true.)
-        call setClusterSpectra(globalSourceArray, globalnSource) 
+     if (associated(globalSourceArray)) deallocate(globalSourceArray)
+     globalnsource = 100
+     allocate(globalsourcearray(1:globalnsource))
+     globalSourceArray(1:globalNsource)%mass = 600.001d0*msol
+     call randomNumberGenerator(randomSeed=.true.)
+     call randomNumberGenerator(syncIseed=.true.)
+     call populateClusters(globalSourceArray, globalnSource, 0.d0, burstMass) 
+     call randomNumberGenerator(randomSeed=.true.)
+     call setClusterSpectra(globalSourceArray, globalnSource) 
 
-   !     do i = 1, globalnsource
-   !        do j = 1, 10
-   !           write(mpiFilename, '(a,i3.3,a,i3.3,a)') "lamspectrum_", i, "_", j, ".dat"
-   !           open(68,file=mpiFilename,status="replace",form="formatted")
-   !           do k = 1, globalSourceArray(i)%subsourceArray(j)%spectrum%nlambda
-   !              write(68,*) (globalSourceArray(i)%subsourceArray(j)%spectrum%lambda(k)),&
-   !               globalSourceArray(i)%subsourceArray(j)%spectrum%flux(k)
-   !           enddo
-   !        enddo 
-   !        write(mpiFilename, '(a,i3.3,a)') "lamspectrum_", i, ".dat"
-   !        open(68,file=mpiFilename,status="replace",form="formatted")
-   !        do k = 1, globalSourceArray(i)%spectrum%nlambda
-   !           write(68,*) (globalSourceArray(i)%spectrum%lambda(k)),&
-   !            globalSourceArray(i)%spectrum%flux(k)
-   !        enddo
-   !     enddo
-
-        ! cluster luminosity
-        if (writeoutput) then
-           do i =1, globalnsource
-              write(*,'(a,i3.3,es13.5)') "Luminosity for cluster ", i, globalsourceArray(i)%luminosity
-              tot = 0.d0
-              do j = 1, globalsourceArray(i)%nsubsource
-                 thisSourceFlux = sumSourceLuminosity(globalsourcearray(i)%subsourcearray(j:j), 1, 1.e2, 1.e8)
-                 tot = tot + thisSourceFlux
-      !           if (writeoutput .and. j <= 20) then
-      !             write(*,'(a, i3.3,a,i3.3, 1x, 1pe12.5)') "Lum for subsource ", i, "_", j, thisSourceFlux 
-      !           endif 
-              enddo
-              write(*,'(a,i3.3,1x,1pe12.5)') "   summed integrated lum for cluster ", i, tot
-           enddo
-
-           ! integrate cluster spectrum
-           tot = 0.d0
-           do i = 1, globalnsource
-              thisSourceFlux = ionizingFlux(globalsourcearray(i))
-              tot = tot + thisSourceFlux
-              if (writeoutput) then
-                write(*,'(a, i3.3, 1pe12.5)') "Ionizing photons per sec for cluster ", i, thisSourceFlux 
-              endif 
-           enddo
-           write(*,'(a,1pe12.5)') "Total ionizing photons per second ", tot
-
-           ! integrate subsource spectra, then sum 
-           do i = 1, globalnsource
-              tot = 0.d0
-              do j = 1, globalsourceArray(i)%nsubsource
-                 thisSourceFlux = ionizingFlux(globalsourcearray(i)%subsourcearray(j))
-                 tot = tot + thisSourceFlux
-                 if (writeoutput .and. j <= 20) then
-                   write(*,'(a, i3.3,a,i3.3, 1x, 1pe12.5)') "Ionizing photons per sec for subsource ", i, "_", j, thisSourceFlux 
-                 endif 
-              enddo
-              write(*,'(a,i3.3,1x,1pe12.5)') "Total ionizing photons per second for cluster ", i, tot
-           enddo
-        endif
-
-
-     else if (itest == 2) then
-        ! add more sources to the sink
-        globalSourceArray(1:globalNsource)%mass = 1201.d0*msol
-        call randomNumberGenerator(randomSeed=.true.)
-        call randomNumberGenerator(syncIseed=.true.)
-        call populateClusters(globalSourceArray, globalnSource, 0.d0, burstMass) 
-        call randomNumberGenerator(randomSeed=.true.)
+     if (writeoutput) then
+        do i = 1, globalnsource
+          write(fn,'(a,i4.4,a)') "totalspec_", i, ".dat"
+          open(68,file=fn,status="replace",form="formatted")
+          do k = 1, globalSourceArray(i)%spectrum%nlambda
+             write(68,'(2(es13.5))') globalSourceArray(i)%spectrum%lambda(k), globalSourceArray(i)%spectrum%flux(k)
+          enddo
+          close(68)
+        enddo
      endif
+
+!     do i = 1, globalnsource
+!        do j = 1, 10
+!           write(mpiFilename, '(a,i3.3,a,i3.3,a)') "lamspectrum_", i, "_", j, ".dat"
+!           open(68,file=mpiFilename,status="replace",form="formatted")
+!           do k = 1, globalSourceArray(i)%subsourceArray(j)%spectrum%nlambda
+!              write(68,*) (globalSourceArray(i)%subsourceArray(j)%spectrum%lambda(k)),&
+!               globalSourceArray(i)%subsourceArray(j)%spectrum%flux(k)
+!           enddo
+!        enddo 
+!        write(mpiFilename, '(a,i3.3,a)') "lamspectrum_", i, ".dat"
+!        open(68,file=mpiFilename,status="replace",form="formatted")
+!        do k = 1, globalSourceArray(i)%spectrum%nlambda
+!           write(68,*) (globalSourceArray(i)%spectrum%lambda(k)),&
+!            globalSourceArray(i)%spectrum%flux(k)
+!        enddo
+!     enddo
+
+!     ! cluster luminosity
+!     if (writeoutput) then
+!        do i =1, globalnsource
+!           write(*,'(a,i3.3,es13.5)') "Luminosity for cluster ", i, globalsourceArray(i)%luminosity
+!           tot = 0.d0
+!           do j = 1, globalsourceArray(i)%nsubsource
+!              thisSourceFlux = sumSourceLuminosity(globalsourcearray(i)%subsourcearray(j:j), 1, 1.e2, 1.e8)
+!              tot = tot + thisSourceFlux
+!   !           if (writeoutput .and. j <= 20) then
+!   !             write(*,'(a, i3.3,a,i3.3, 1x, 1pe12.5)') "Lum for subsource ", i, "_", j, thisSourceFlux 
+!   !           endif 
+!           enddo
+!           write(*,'(a,i3.3,1x,1pe12.5)') "   summed integrated lum for cluster ", i, tot
+!        enddo
+!
+!        ! integrate cluster spectrum
+!        tot = 0.d0
+!        do i = 1, globalnsource
+!           thisSourceFlux = ionizingFlux(globalsourcearray(i))
+!           tot = tot + thisSourceFlux
+!           if (writeoutput) then
+!             write(*,'(a, i3.3, 1pe12.5)') "Ionizing photons per sec for cluster ", i, thisSourceFlux 
+!           endif 
+!        enddo
+!        write(*,'(a,1pe12.5)') "Total ionizing photons per second ", tot
+!
+!        ! integrate subsource spectra, then sum 
+!        do i = 1, globalnsource
+!           tot = 0.d0
+!           do j = 1, globalsourceArray(i)%nsubsource
+!              thisSourceFlux = ionizingFlux(globalsourcearray(i)%subsourcearray(j))
+!              tot = tot + thisSourceFlux
+!              if (writeoutput .and. j <= 20) then
+!                write(*,'(a, i3.3,a,i3.3, 1x, 1pe12.5)') "Ionizing photons per sec for subsource ", i, "_", j, thisSourceFlux 
+!              endif 
+!           enddo
+!           write(*,'(a,i3.3,1x,1pe12.5)') "Total ionizing photons per second for cluster ", i, tot
+!        enddo
+!     endif
+
+
   end subroutine testClusterSpectra
 
 

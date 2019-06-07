@@ -628,9 +628,21 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
 #ifdef USECFITSIO
     if (calculateEmissionMeasure) then
 !       call resetNe(grid%octreeRoot)
-       call createEmissionMeasureImage(grid, columnImageDirection, image)
-       write(thisFile, '(a,i4.4,a)') "emissionMeasure_", grid%idump, ".fits"
-       if (writeoutput) call writeFitsColumnDensityImage(image, thisFile)
+!       call createEmissionMeasureImage(grid, columnImageDirection, image)
+!       write(thisFile, '(a,i4.4,a)') "emissionMeasure_", grid%idump, ".fits"
+!       if (writeoutput) call writeFitsColumnDensityImage(image, thisFile)
+
+       write(thisFile,'(a, i4.4, a)') "emissionMeasurez_", grid%iDump,".fits"
+       call createEmissionMeasureImage(grid, VECTOR(0.d0, 0.d0, 1.d0), image)
+       if (writeoutput) call writeFitsColumnDensityImage(image, trim(thisFile))
+
+       write(thisFile,'(a, i4.4, a)') "emissionMeasurey_", grid%iDump,".fits"
+       call createEmissionMeasureImage(grid, VECTOR(0.d0, 1.d0, 0.d0), image)
+       if (writeoutput) call writeFitsColumnDensityImage(image, trim(thisFile))
+
+       write(thisFile,'(a, i4.4, a)') "emissionMeasurex_", grid%iDump,".fits"
+       call createEmissionMeasureImage(grid, VECTOR(1.d0, 0.d0, 0.d0), image)
+       if (writeoutput) call writeFitsColumnDensityImage(image, trim(thisFile))
    endif
 #else
     call writeInfo("FITS not enabled, not writing",FORINFO)

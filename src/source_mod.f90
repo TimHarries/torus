@@ -52,7 +52,7 @@
   contains
 
     subroutine writeSourceHistory(rootfilename, source, nSource, oldMass, oldAge)
-      use inputs_mod, only : iModel
+      use inputs_mod, only : iModel, subsourceHistory
       type(SOURCETYPE) :: source(:)
       character(len=*) :: rootFilename
       character(len=80) :: filename
@@ -100,7 +100,7 @@
             oldMass = source(i)%mass
             oldAge = source(i)%time
 
-            if (source(i)%nsubsource > 0) then
+            if (subsourceHistory .and. source(i)%nsubsource > 0) then
                do j = 1, source(i)%nsubsource
                   write(filename,'(a,i3.3,a,i4.4,a)') trim(rootFilename),i,"_",j,".dat"
                   write(*,*) "filename ",trim(filename)
