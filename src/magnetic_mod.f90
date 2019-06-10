@@ -120,7 +120,7 @@ contains
 !!returns the half opening angle between accretion hot spots - tjgw201 15/03/19
 REAL(DOUBLE) FUNCTION stellarWindDensity(point)
   USE inputs_mod, ONLY : dipoleOffset, ttauriRstar, SW_eqGap, &
-       SW_openAngle, SW_Mdot
+       SW_openAngle, SW_Mdot, SW_rMin
   TYPE(VECTOR), INTENT(IN) :: point
   TYPE(VECTOR) :: rVec, rVecDash
   REAL(DOUBLE) :: r, theta, phi, beta, rBoundary
