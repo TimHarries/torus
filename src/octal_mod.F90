@@ -193,12 +193,12 @@ MODULE octal_mod
 #ifdef SPH
     real(double) :: h(8) ! used for cluster geometries where the smoothing length of a cell can be stored
 #endif
-    
+
     LOGICAL, DIMENSION(8)              :: inFlow
 
     TYPE(OCTALPOINTER), pointer :: neighbourOctal(:,:,:) => null() ! pointer to neighbour
-    integer, pointer :: neighbourSubcell(:,:,:) => null() 
-    
+    integer, pointer :: neighbourSubcell(:,:,:) => null()
+
     TYPE(vector), DIMENSION(8)         :: velocity       ! velocity
 !    TYPE(vector), DIMENSION(8)         :: quadvelocity       ! DAR very temporary velocity expires 28 Feb 2009
 !    TYPE(vector), DIMENSION(8)         :: linearvelocity       ! DAR very temporary velocity expires 28 Feb 2009
@@ -210,7 +210,7 @@ MODULE octal_mod
     real(double), dimension(:,:,:), pointer :: qViscosity => null()
 
     integer, dimension(:,:), pointer :: isOnBoundary => null()
-    
+
     logical, dimension(:), pointer                 :: diffusionApprox => null()
     logical, dimension(:), pointer                 :: fixedTemperature => null()
     real, dimension(:), pointer :: nDiffusion => null()
@@ -230,8 +230,8 @@ MODULE octal_mod
     real(double), dimension(:,:,:), pointer       :: scatteredIntensity => null()
     real(double), dimension(:), pointer       :: meanIntensity => null()
     INTEGER(bigint), DIMENSION(:), pointer      :: nCrossings  => null()     ! no of photon crossings used by lucy R Eq
-    INTEGER(bigint), DIMENSION(:), pointer      :: nCrossIonizing  => null() ! no of H-ionizing photon crossings 
-    INTEGER(bigint), DIMENSION(:), pointer      :: nScatters  => null()    ! no of scattering events 
+    INTEGER(bigint), DIMENSION(:), pointer      :: nCrossIonizing  => null() ! no of H-ionizing photon crossings
+    INTEGER(bigint), DIMENSION(:), pointer      :: nScatters  => null()    ! no of scattering events
     real(double), dimension(:), pointer       :: adotPAH => null()
     real(double), DIMENSION(:), pointer :: nTot => null()          ! total density
     real, dimension(:), pointer :: oldFrac  => null() ! Previous value of dust sublimation fraction
@@ -270,8 +270,8 @@ MODULE octal_mod
     ! cell emissivity spectrum attributes
     real(double), pointer :: spectrum(:,:) => null()
     integer, pointer :: nFreq(:) =>  null()
-    logical, DIMENSION(:), pointer :: gasSpectrumAdded => null()     
-    logical, DIMENSION(:), pointer :: dustContinuumAdded  => null()    
+    logical, DIMENSION(:), pointer :: gasSpectrumAdded => null()
+    logical, DIMENSION(:), pointer :: dustContinuumAdded  => null()
 
 
 ! time dependent RT stuff
@@ -979,7 +979,7 @@ CONTAINS
        array = 0*array
     endif
   end subroutine allocateAttributeInteger2d
-  
+
   subroutine allocateAttributeBigInteger(array, nSize)
     integer :: nSize
     integer(bigInt), pointer :: array(:)
@@ -1295,7 +1295,7 @@ CONTAINS
     logical :: valPresent
     integer(bigint), pointer :: array(:)
     logical :: fileFormatted
-    
+
     if (fileFormatted) then
        read(lUnit,*) valPresent
     else
