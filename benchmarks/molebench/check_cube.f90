@@ -76,7 +76,7 @@ images:  do i=1,nimages
 
      ! Report basic stats
      cube_sum = SUM(cube) 
-     write(*,'(a,es10.4)') "Sum of pixel values= ", cube_sum
+     write(*,'(a,es11.4)') "Sum of pixel values= ", cube_sum
 
      diff = abs(cube_sum - expectedVal(i)) / expectedVal(i)
      write(*,'(a,f6.2,a)') "Difference from expected value= ", diff*100.0, " %"

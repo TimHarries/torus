@@ -17,13 +17,13 @@ contains
 
   subroutine getLTEopacities(rne, rtemp, retal, rchil, reta, rchi, resec, m, n)
     implicit none
-    
+
     integer :: k
     integer :: i
     real, intent(in) :: rne, rtemp
     real, intent(inout) :: retal, rchil, reta, rchi, resec
     integer, intent(in), optional :: m,n
-    
+
     real(double) ::  thresh
     real(double) ::  transe
     real(double) ::  nsaha(15),freq
@@ -34,9 +34,9 @@ contains
     real(double) ::  esec
     real(double) ::  etal
     real(double) ::  chil
-    
 
-    
+
+
     real(double) :: kappa
     real(double) ::  ah(6,6)
     real(double) ::  bh(6,6)
@@ -55,7 +55,7 @@ contains
        1025.72D-8 , 6562.80D-8 , 0000000D-8 , 18751.0D-8 , 12818.1D-8 , 10938.1D-8 , &
        992.537D-8 , 4861.32D-8 , 18751.0D-8 , 0.00000D-8 , 40512.0D-8 , 26252.0D-8 , &
        949.743D-8 , 4340.46D-8 , 12818.1D-8 , 40512.0D-8 , 0000000D-8 , 74578.0D-8 , &
-       937.803D-8 , 4101.73D-8 , 10938.1D-8 , 26252.0D-8 , 74578.0D-8 , 0000000D-8 / 
+       937.803D-8 , 4101.73D-8 , 10938.1D-8 , 26252.0D-8 , 74578.0D-8 , 0000000D-8 /
 
       DATA AH &
      / 0.000D0 , 4.699D8 , 5.575D7 , 1.278D7 , 4.125D6 , 1.644D6 , &
@@ -80,7 +80,7 @@ contains
        1.394D-2, 4.467D-2, 1.506D-1, 1.038D00, 0.000D00,-0.855D00, &
        7.799D-3, 2.209D-2, 5.584D-2, 1.793D-1, 1.231D00, 0.000D00/
 
-!    m = 2 
+!    m = 2
 !    n = 3
 
     ne = dble(rne)
@@ -137,7 +137,7 @@ contains
     kappa = kappa + ne*ne*alpkka(freq, temp)
 
     chi = kappa
-    
+
     eta = kappa * bnu(freq, temp)
 
 
@@ -151,14 +151,14 @@ contains
   end subroutine getLTEopacities
 
   subroutine boltz_saha(nsaha,ne,te)
-    !     
+    !
     !     this subroutine calculates the level populations from the saha-
     !     boltzmann equation given the temperature and the electron density.
     !     (see mihalas ii equation 5-14)
-    !     
+    !
     implicit none
     integer maxsaha
-    parameter (maxsaha=15)
+    parameter (maxsaha=10)
     real(double) ::  nsaha(maxsaha)
     integer i                        ! loop counter
     real(double) ::  ne
@@ -183,7 +183,7 @@ contains
     !
     ! calculate the level populations (mihalas ii equ 5-14).
     !
-    do i=1,15
+    do i=1,maxsaha
        nsaha(i)=(ne**2)*gh(i)*ci* &
        (exp( (ipot-eh(i)) / (kev*te) )) /(te**1.5d0)
     enddo
@@ -291,9 +291,9 @@ contains
       1.29D0        ,-0.4518333D0  ,0.12925D0     ,0.00258333D0   , &
       1.27D0        ,-0.579D0      ,0.092D0       ,-0.003D0       , &
       1.16D0        ,-0.707333D0   ,0.112D0       ,0.0053333333D0 , &
-      0.883D0       ,-0.76885D0    ,0.190175D0    ,0.022675D0     / 
+      0.883D0       ,-0.76885D0    ,0.190175D0    ,0.022675D0     /
     data a &
-     /100.D0, 10.D0, 3.D0, 1.D0, 0.3D0, 0.1D0, 0.001D0/ 
+     /100.D0, 10.D0, 3.D0, 1.D0, 0.3D0, 0.1D0, 0.001D0/
     !
     u = 1.44D+8 / (wl*t)
     ulog = log10(u)
@@ -341,7 +341,7 @@ contains
   end function giiia
 
   real(double) function bNu(nu,T)
-    
+
     real(double) :: fac1, fac2, fac3, nu, T
     real(double), parameter :: TwoTimeshCgsOverCspeedSquared = twoTimeshCGS/cSpeedSquared
     real(double), parameter :: twoTimesKoverCsquared = 2.d0 * kErg /cSpeedSquared
@@ -360,10 +360,10 @@ contains
 
 
   real(double) function dbNubydT(nu,T)
-    
+
     real(double) :: fac1, fac2, fac3, nu, T
     fac1 = (2.d0*(hcgs*nu**2)**2)/(cSpeed**2 * kErg  * T**2)
-    fac3 =  (hCgs*nu)/ (kErg * T) 
+    fac3 =  (hCgs*nu)/ (kErg * T)
     if (fac3 > 100.d0) then
        fac2 = 0.d0
     else
@@ -375,11 +375,11 @@ contains
 
 
 !!$  real(double) function bLambda(lambda,T)
-!!$    
+!!$
 !!$    real(double) :: fac1, fac2, fac3,  T, lambda
 !!$
 !!$    fac1 = (2.*hCgs*cSpeed**2)/(lambda *1.d-8)**5
-!!$    fac3 =  (hCgs * cSpeed)/ (lambda * 1.d-8 * kErg * T) 
+!!$    fac3 =  (hCgs * cSpeed)/ (lambda * 1.d-8 * kErg * T)
 !!$    if (fac3 > 100.d0) then
 !!$       fac2 = 0.d0
 !!$    else
@@ -387,7 +387,7 @@ contains
 !!$    endif
 !!$    bLambda = fac1 * fac2
 !!$  end function bLambda
-  
+
   !
   ! Plancks function B_lambda(T)
   ! in [erg cm^-2 s^-2 cm^-1 sr^-1]
@@ -398,7 +398,7 @@ contains
     real(double) :: x, y, lambda_cm
 
     lambda_cm = lambda *1.d-8  ! wavelength in cm
-    x =  (hCgs * cSpeed)/ (lambda_cm * kErg * T) 
+    x =  (hCgs * cSpeed)/ (lambda_cm * kErg * T)
     y = (2.0d0*hCgs*cSpeed*cSpeed)/(lambda_cm)**5
     !               ^^^^^^^^^^^^^
     !      It is written this way because of a problem with g95 compiler (RK)
@@ -413,16 +413,16 @@ contains
        blambda = y / (exp(x) - 1.d0)
        ! -- [erg cm^-2 s^-2 cm^-1 sr^-1]
     endif
-    
+
   end function bLambda
 
 
   real(double) function dbLambdabydT(lambda,T)
-    
+
     real(double) :: fac1, fac2, fac3,  T, lambda
 
     fac1 = (2.d0*dble(hCgs)**2*dble(cSpeed)**3)/((lambda *1.d-8)**6 * dble(Kerg) * T**2)
-    fac3 =  (hCgs * cSpeed)/ (lambda * 1.d-8 * kErg * T) 
+    fac3 =  (hCgs * cSpeed)/ (lambda * 1.d-8 * kErg * T)
     fac2 = exp(fac3)/(exp(fac3) - 1.d0)**2
     dbLambdabydT = fac1 * fac2
   end function dbLambdabyDt
@@ -444,15 +444,15 @@ contains
     !
     ! Damping contant in a Voigt Profile in [1/s]
     !
-  real function bigGamma(N_HI, temperature, Ne, nu)    
+  real function bigGamma(N_HI, temperature, Ne, nu)
 
     real(double), intent(in) :: N_HI         ! [#/cm^3]  number density of HI
     real(double), intent(in) :: temperature  ! [Kelvins]
     real(double), intent(in) :: Ne           ! [#/cm^3]  nunmber density of electron
-    real(double), intent(in) :: nu           ! [1/s]  line center frequency 
+    real(double), intent(in) :: nu           ! [1/s]  line center frequency
 
     !------------------------------------------------------------
-    ! Quadratic Stark broadening (?): 
+    ! Quadratic Stark broadening (?):
     ! -- Good for most lines especially hot stars (Gray's comment)
     !------------------------------------------------------------
     !! see Muzerolle et al. 2001 ApJ 550 944
@@ -460,28 +460,28 @@ contains
     !     &    C_rad  &
     !     &  + C_vdw*(N_HI / 1.e16)*(temperature/5000.)**0.3 &
     !     &  + C_stark*(Ne/1.e12)**0.6666  ! [Angstrom]
-    
-    
+
+
     !----------------------------------------------------------
     ! Linear Stark broadening:
     ! -- Good for Hydrogen lines
     !---------------------------------------------------------
     ! See Luttermoser & Johnson, 1992, ApJ, 388, 579
     !  Note: smallGamma = bigGamma/(4*pi)
-    !        e.g. For H-alpha: C_rad   = 8.16e-3 [A], 
-    !                          C_vdw   = 5.53e-3 [A], 
-    !                          C_stark = 1.47e-2 [A], 
-    
+    !        e.g. For H-alpha: C_rad   = 8.16e-3 [A],
+    !                          C_vdw   = 5.53e-3 [A],
+    !                          C_stark = 1.47e-2 [A],
+
     bigGamma = real(&
          &    C_rad  &
          &  + C_vdw*(N_HI / 1.e16)*(temperature/5000.)**0.3 &
          &  + C_stark*(Ne/1.e12))  ! [Angstrom]
-    
-    
-    
-    ! convert units 
+
+
+
+    ! convert units
     bigGamma = real((bigGamma*1.e-8) * nu**2   / cSpeed)  ! [1/s]
     !                  [cm]       * [1/s^2] / [cm/s]
   end function bigGamma
-  
+
 end module atom_mod

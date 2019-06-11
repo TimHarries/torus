@@ -1,4 +1,6 @@
 #!/bin/ksh
+set -u
+
 # Build the Torus executable
 make_build()
 {
@@ -61,8 +63,8 @@ ln -s ${WORKING_DIR}/build/torus.${SYSTEM} .
 
 case ${THISCONFIG} in
     openmp) ./torus.${SYSTEM} > ${log_file} 2>&1 ;;
-    mpi)    mpirun -np ${NUM_MPI_PROC} torus.${SYSTEM} > ${log_file} 2>&1 ;;
-    hybrid) mpirun -np ${NUM_MPI_PROC} torus.${SYSTEM} > ${log_file} 2>&1 ;;
+    mpi)    mpirun -np ${NUM_MPI_PROC} ./torus.${SYSTEM} > ${log_file} 2>&1 ;;
+    hybrid) mpirun -np ${NUM_MPI_PROC} ./torus.${SYSTEM} > ${log_file} 2>&1 ;;
     *) echo "Unrecognised configuration. Skipping this test.";;
 esac
 
@@ -78,8 +80,8 @@ export TORUS_JOB_DIR=./
 
 case ${THISCONFIG} in
     openmp) ./torus.${SYSTEM} > ${log_file} 2>&1 ;;
-    mpi)    mpirun -np ${NUM_MPI_PROC} torus.${SYSTEM} > ${log_file} 2>&1 ;;
-    hybrid) mpirun -np ${NUM_MPI_PROC} torus.${SYSTEM} > ${log_file} 2>&1 ;;
+    mpi)    mpirun -np ${NUM_MPI_PROC} ./torus.${SYSTEM} > ${log_file} 2>&1 ;;
+    hybrid) mpirun -np ${NUM_MPI_PROC} ./torus.${SYSTEM} > ${log_file} 2>&1 ;;
     *) echo "Unrecognised configuration. Skipping this test.";;
 esac
 
@@ -91,7 +93,7 @@ run_dom_decomp()
 {
 cd ${WORKING_DIR}/benchmarks/${THIS_BENCH}
 ln -s ${WORKING_DIR}/build/torus.${SYSTEM} . 
-mpirun -np $1 torus.${SYSTEM} > run_log_${THIS_BENCH}.txt 2>&1
+mpirun -np $1 ./torus.${SYSTEM} > run_log_${THIS_BENCH}.txt 2>&1
 mv tune.dat tune_${THIS_BENCH}.txt
 # The check_completion function expects the run log to be tagged with the configuration
 ln -s run_log_${THIS_BENCH}.txt run_log_${THISCONFIG}_${THIS_BENCH}.txt
@@ -218,21 +220,22 @@ if [[ ${TORUS_WORKING_COPY} == none ]]; then
     if [[ ${MODE} != build ]]; then
 	/usr/bin/git clone ${TORUSDATA_GIT_PATH} >> git_log.txt 2>&1
     fi
-# Create the version header file
-    cd torus/src; ./creategitversion; cd ../..
 else
-    if [[ -e ${TORUS_WORKING_COPY}/torus/torusMainV2.F90 ]]; then
-	echo "Taking source code from working copy in ${TORUS_WORKING_COPY}"
+    if [[ -e ${TORUS_WORKING_COPY}/src/torusMainV2.F90 ]]; then
+	echo "Using source code from working copy in ${TORUS_WORKING_COPY}"
 	mkdir -p ${TEST_DIR}
-	cd ${TEST_DIR}
 	touch ${LOCKFILE}
-	ln -s ${TORUS_WORKING_COPY}/torus . 
+	cd ${TEST_DIR}
+	ln -s ${TORUS_WORKING_COPY}
     else
-	echo "Did not find torusMainV2.F90 in ${TORUS_WORKING_COPY}/torus "
+	echo "Did not find torusMainV2.F90 in ${TORUS_WORKING_COPY}/src "
 	echo "This doesn't look like a working copy. Aborting ..."
 	exit 1
     fi
 fi
+
+# Create the version header file
+    cd torus/src; ./creategitversion; cd ../..
 }
 
 run_torus_test_suite()
@@ -241,27 +244,51 @@ run_torus_test_suite()
 for config in ${CONFIG_TO_TEST}; do
 
 # Details of how to run each configuration are set here
-    export THISCONFIG=${config}
-    export USEGCOV=no
-    if [[ ${config} == "hybrid" ]]; then
-	export USEOPENMP=yes
-	export USEMPI=yes
-	# OpenMPI will bind to core by default so we'll use the 2 OpenMP threads available from hyperthreading.
-	# Binding can be disabled by giving mpirun the '--bind-to none' option if more OpenMP threads are required.
-	export NUM_MPI_PROC=4
-	export OMP_NUM_THREADS=2
-    elif [[ ${config} == "mpi" ]]; then
-	export USEOPENMP=no
-	export USEMPI=yes
-	export NUM_MPI_PROC=8
-	export USEGCOV=yes
-    elif [[ ${config} == "openmp" ]]; then
-	export USEMPI=no
-	export USEOPENMP=yes
-	export OMP_NUM_THREADS=8
+    if [[ ${MODE} == stable ]]; then
+	# Set up stable version tests for an Isca compute node
+	export THISCONFIG=${config}
+	export USEGCOV=no
+	if [[ ${config} == "hybrid" ]]; then
+	    export USEOPENMP=yes
+	    export USEMPI=yes
+	    export NUM_MPI_PROC=2
+	    export OMP_NUM_THREADS=8
+	elif [[ ${config} == "mpi" ]]; then
+	    export USEOPENMP=no
+	    export USEMPI=yes
+	    export NUM_MPI_PROC=16
+	elif [[ ${config} == "openmp" ]]; then
+	    export USEMPI=no
+	    export USEOPENMP=yes
+	    export OMP_NUM_THREADS=16
+	else
+	    echo "${config} not recognised. Aborting."
+	    exit 1
+	fi
     else
-	echo "${config} not recognised. Aborting."
-	exit 1
+	# Assume we are on post-zen othewise
+	export THISCONFIG=${config}
+	export USEGCOV=no
+	if [[ ${config} == "hybrid" ]]; then
+	    export USEOPENMP=yes
+	    export USEMPI=yes
+	    # OpenMPI will bind to core by default so we'll use the 2 OpenMP threads available from hyperthreading.
+	    # Binding can be disabled by giving mpirun the '--bind-to none' option if more OpenMP threads are required.
+	    export NUM_MPI_PROC=4
+	    export OMP_NUM_THREADS=2
+	elif [[ ${config} == "mpi" ]]; then
+	    export USEOPENMP=no
+	    export USEMPI=yes
+	    export NUM_MPI_PROC=8
+	    export USEGCOV=yes
+	elif [[ ${config} == "openmp" ]]; then
+	    export USEMPI=no
+	    export USEOPENMP=yes
+	    export OMP_NUM_THREADS=8
+	else
+	    echo "${config} not recognised. Aborting."
+	    exit 1
+	fi
     fi
 
     echo
@@ -566,8 +593,8 @@ if [[ ${MODE} == "stable" ]]; then
     num_success=`${grepper} "TORUS: Test successful"  benchmarks_hybrid/benchmarks/disc_cylindrical/check_log_hybrid_disc_cylindrical.txt`
     num_success2=`${grepper} "TORUS: Test successful" benchmarks_openmp/benchmarks/disc_cylindrical/check_log_openmp_disc_cylindrical.txt`
     num_success3=`${grepper} "TORUS: Test successful" benchmarks_mpi/benchmarks/disc_cylindrical/check_log_mpi_disc_cylindrical.txt`
-# SEDs only, no image so look for 2 successful results
-    if [[ ${num_success} -eq 2 && ${num_success2} -eq 2  && ${num_success3} -eq 2 ]]; then
+# Same tests as for 2D disc
+    if [[ ${num_success} -eq 3 && ${num_success2} -eq 3  && ${num_success3} -eq 3 ]]; then
 	echo "3D Disc benchmark successful" >> header 
     else
 	echo "!! 3D Disc benchmark FAILED !!" >> header
@@ -721,14 +748,17 @@ fi
 
 # We won't attach the output now that it is available on post-zen
 echo  >> header
-echo "Output from these tests is on post-zen in ${TEST_DIR}" >> header
+echo "Output from these tests is in ${TEST_DIR}" >> header
 echo  >> header
+
+echo "Torus test suite: ${suite_status}" > status
+echo >> status
 
 # Send mail for daily test or write to terminal for other modes
 if [[ ${MODE} == "daily" ]]; then
-    mail_to="aali@astro.ex.ac.uk tdouglas@astro.ex.ac.uk t.haworth@imperial.ac.uk fjmw201@exeter.ac.uk d.m.acreman@exeter.ac.uk T.J.Harries@exeter.ac.uk"
+    mail_to="aali@astro.ex.ac.uk tdouglas@astro.ex.ac.uk t.haworth@imperial.ac.uk d.m.acreman@exeter.ac.uk T.J.Harries@exeter.ac.uk"
 # Set up the message body 
-    cat header ${TORUS_DAILY_TEST_LOG} > /home/torustest/torus_daily_test_email
+    cat status header ${TORUS_DAILY_TEST_LOG} > /home/torustest/torus_daily_test_email
     for user in ${mail_to}; do
         /usr/bin/mail -s "Torus test suite: ${suite_status}" ${user} < /home/torustest/torus_daily_test_email
     done
@@ -763,6 +793,7 @@ export TORUS_WORKING_COPY=none
 export SYSTEM=testsuite
 export TORUS_RUNNING_LOG=${HOME}/testsuite.log
 export TORUS_DAILY_TEST_LOG=${HOME}/torus_daily_test_log
+START_DIR=${PWD}
 
 # Parse command line arguments
 while [ $# -gt 0 ]
@@ -780,16 +811,19 @@ do
 shift
 done
 
-# Check for a lock file from an existing run and bail out if one exists
+# Set name of output directory
 case ${MODE} in 
-    daily)       export LOCKFILE=${HOME}/torus_daily_test/lock;;
-    workingcopy) export LOCKFILE=${TORUS_WORKING_COPY}/tests/lock;;
-    build)       export LOCKFILE=${HOME}/torus_build_tests/lock;;
-    stable)      export LOCKFILE=${HOME}/torus_stable_version_tests/lock;;
-    *)           echo "ERROR: unrecognised mode"
+    daily)       export TEST_DIR=${HOME}/torus_daily_test;;
+    build)       export TEST_DIR=${HOME}/torus_build_tests;;
+    stable)      export TEST_DIR_ROOT=${START_DIR}/stable_version_tests
+                 export TEST_DIR=${TEST_DIR_ROOT};;
+    workingcopy) export TEST_DIR=${TORUS_WORKING_COPY}/tests;;
+    *)           echo "Unrecognised MODE"
 	         exit 1;;
 esac
 
+# Check for a lock file from an existing run and bail out if one exists
+export LOCKFILE=${TEST_DIR}/lock
 if [[ -e ${LOCKFILE} ]]; then
     if [[ ${MODE} == daily ]]; then
 	echo `date` "Found lock file. Aborting" >> ${TORUS_RUNNING_LOG}
@@ -798,12 +832,6 @@ if [[ -e ${LOCKFILE} ]]; then
     fi
     exit 1
 fi
-
-
-# Set platform specific variables. We will assume that we are running on post-zen.
-export PATH=/home/torustest/openmpi/bin:/home/torustest/bin:/usr/local/bin:${PATH}:/usr/bin
-export TORUS_FITSLIBS="/home/torustest/cfitsio/lib"
-export TORUS_FC="gfortran -g -fcheck=all"
 
 case ${MODE} in 
 
@@ -834,7 +862,7 @@ case ${MODE} in
 
     stable) export CONFIG_TO_TEST="openmp mpi hybrid"
 	    export BUILD_ONLY=""
-            export DEBUG_OPTS="yes no"
+            export DEBUG_OPTS="no yes"
 	    echo -------------------------------------------------------------------
 	    echo TORUS stable version tests started on `date`
 	    echo -------------------------------------------------------------------
@@ -847,17 +875,21 @@ esac
 for opt in ${DEBUG_OPTS}; do
     export USEDEBUGFLAGS=${opt}
 
-# Set name of output directory
-    case ${MODE} in 
-	daily)       export TEST_DIR=${HOME}/torus_daily_test;;
-	workingcopy) export TEST_DIR=${TORUS_WORKING_COPY}/tests;;
-	stable)      export TEST_DIR=${HOME}/torus_stable_version_tests/debug=${USEDEBUGFLAGS};;
-	build)       export TEST_DIR=${HOME}/torus_build_tests;;
-	    *)       echo "Unrecognised MODE"
-	             exit 1;;
-    esac
-
-    export TORUS_DATA=${TEST_DIR}/torusdata
+    if [[ ${MODE} == stable ]]; then
+        export SYSTEM=isca
+        export TORUS_WORKING_COPY=${START_DIR}
+# Update name of output directory with debug status
+	export TEST_DIR=${TEST_DIR_ROOT}/debug=${USEDEBUGFLAGS}
+# Set platform specific variables for Isca.
+	export TORUS_FC="ifort -g -check all"
+	export TORUS_FITSLIBS=/gpfs/ts0/shared/software/CFITSIO/3.38-intel-2016b/lib
+    else
+# Set platform specific variables for post-zen.
+	export PATH=/home/torustest/openmpi/bin:/home/torustest/bin:/usr/local/bin:${PATH}:/usr/bin
+	export TORUS_FITSLIBS="/home/torustest/cfitsio/lib"
+	export TORUS_FC="gfortran -g -fcheck=all"
+	export TORUS_DATA=${TEST_DIR}/torusdata
+    fi
 
 # Set up working directory and check out source code
     prepare_run
@@ -868,11 +900,15 @@ for opt in ${DEBUG_OPTS}; do
 # Run benchmark tests
     run_torus_test_suite
 
-    if [[ ${MODE} != build ]]; then 
-# Process results from coverage analysis
+# Process results from coverage analysis in daily test
+    if [[ ${MODE} == daily ]]; then
 	process_gcov
-# Report timing information
+    fi
+
+# Report timing information and check results unless this is a build only test
+    if [[ ${MODE} != build ]]; then 
 	process_timing
+	check_results
     fi
 
 done
@@ -880,11 +916,6 @@ done
 echo -------------------------------------------------------------------
 echo TORUS test suite finished at `date`
 echo -------------------------------------------------------------------
-
-# Check results
-if [[ ${MODE} == daily || ${MODE} == workingcopy ]]; then
-    check_results
-fi
 
 # Clean up ready for next run
 rm ${LOCKFILE}

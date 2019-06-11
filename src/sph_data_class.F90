@@ -3229,7 +3229,7 @@ contains
   end subroutine FindCriticalValue
 
   TYPE(vector)  function Clusterparameter(point, thisoctal, subcell, rho_out, rhoH2_out, rhoCO_out, temp_out, dustfrac_out)
-    USE inputs_mod, only: sph_norm_limit, convertRhoToHI
+    USE inputs_mod, only: sph_norm_limit, convertRhoToHI, sphToGridSimple
     USE constants_mod, only: tcbr
     use octal_mod, only: OCTAL
 
@@ -3300,6 +3300,13 @@ contains
        write(*,*) "sph ",sphdata%npart
     endif
 
+    if (sphToGridSimple) then
+
+       ! A simple algorithm for particle selection parallelised with OpenMP
+       call findParticles_simple(point, nparticles, indexArray, partarray, sumweight)
+
+    else
+
     ! --------------------------------------------------------------------------------------------
     ! Build a list of particles to use for calculating kernel smoothed values. We will make 
     ! three attempts to find a list of particles with a sum of smoothing weights above 1.0e-3. 
@@ -3309,27 +3316,29 @@ contains
 
     ! Attempt 1: 4d is far enough away to have particles with their smoothing lengths captured, 
     ! rcrit puts an upper limit on time
-    nparticles = 0; sumweight = 0.d0
-    r = min(4.d0 * d, rcrit) 
-    call findNearestParticles(point, nparticles, r, indexArray, q2array)
-    call doweights(sumweight, nparticles, q2array, partarray)
+       nparticles = 0; sumweight = 0.d0
+       r = min(4.d0 * d, rcrit) 
+       call findNearestParticles(point, nparticles, r, indexArray, q2array)
+       call doweights(sumweight, nparticles, q2array, partarray, indexArray)
 
     ! Attempt 2: 
     ! 2 rcrit is essential for the mass to be correctly done... (in my case it had to be hcrit = 99%)
-    if (sumweight .le. 1d-3) then
-       r = min(max(r * 4.d0, 2.d0 * rcrit), rmax * 0.1)
-       call findNearestParticles(point, nparticles, r, indexArray, q2array)
-       call doweights(sumweight, nparticles, q2array, partarray)
-    end if
+       if (sumweight .le. 1d-3) then
+          r = min(max(r * 4.d0, 2.d0 * rcrit), rmax * 0.1)
+          call findNearestParticles(point, nparticles, r, indexArray, q2array)
+          call doweights(sumweight, nparticles, q2array, partarray, indexArray)
+       end if
 
     ! Attempt 3: Search out to 0.5*rmax. If the sum of weights is still too small then this is 
     ! considered an emnpty cell
-    if (sumweight .le. 1d-3) then
-       r = rmax * 0.5d0
-       call findNearestParticles(point, nparticles, r, indexArray, q2array)
-       call doweights(sumweight, nparticles, q2array, partarray)
-    end if
+       if (sumweight .le. 1d-3) then
+          r = rmax * 0.5d0
+          call findNearestParticles(point, nparticles, r, indexArray, q2array)
+          call doweights(sumweight, nparticles, q2array, partarray, indexArray)
+       end if
 
+    endif
+    
 
     ! --------------------------------------------------------------------------------------------
     ! Calculate kernel smoothed values for velocity and any other required parameters 
@@ -3428,7 +3437,7 @@ contains
   end function Clusterparameter
 
   subroutine init_clusterparameter_arrays
-    USE inputs_mod, only: kernelType, hcritPercentile, hmaxPercentile
+    USE inputs_mod, only: hcritPercentile, hmaxPercentile, variableEta
 
     implicit none
 
@@ -3462,11 +3471,10 @@ contains
        write(*,*) "ptmass ",sphData%nptmass
     endif
           
-    Positionarray(1,:) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
-    xArray(:) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted
-       
+    xArray(:) = sphdata%xn(:) * codeLengthtoTORUS! fill with x's to be sorted       
     call sortbyx(xarray(:),ind(:)) ! sort the x's and recall their indices
-          
+
+    Positionarray(1,:) = sphdata%xn(ind(:)) * codeLengthtoTORUS ! fill with x's in sorted order
     PositionArray(2,:) = sphdata%yn(ind(:)) * codeLengthtoTORUS ! y's go with their x's
     PositionArray(3,:) = sphdata%zn(ind(:)) * codeLengthtoTORUS ! z's go with their x's
           
@@ -3520,17 +3528,19 @@ contains
     Harray(:) = sphdata%hn(ind(:)) ! repeat second time to fix messed up array by sort
     RhoArray(:) = sphdata%rhon(ind(:))
        
-    if (kerneltype == 1) then
-       call writeInfo("Spline kernel in use. Will calculate variable eta")
+    if (variableEta) then
+       call writeInfo("Will calculate variable eta to allow for eta !=1.2")
        ! added to fix smoothing length discrepancy - h != 1.2 (rho/m)^(1/3)
        ! etaarray stores 1/(eta**3)
        allocate(etaArray(npart)) 
-       etaarray(:) = sphdata%gasmass(:) / (rhoarray(:) * harray(:)**3)
+       etaarray(:) = sphdata%gasmass(ind(:)) / (rhoarray(:) * harray(:)**3)
        write(message, *) "Max/min eta", (1.d0/maxval(etaArray(:)))**(1.0/3.0), &
             (1.d0/minval(etaArray(:)))**(1.0/3.0)
        call writeinfo(message, TRIVIAL)
+    else
+       call writeInfo("Assuming eta=1.2 in smoothing length calculation")
     endif
-       
+ 
     write(message, *) "Critical smoothing Length in code units", hcrit
     call writeinfo(message, TRIVIAL)
     write(message, *) "Maximum smoothing Length in code units", hmax
@@ -3589,6 +3599,78 @@ contains
     if (allocated(VelocityArray))   deallocate (VelocityArray)
 
   end subroutine deallocate_clusterparameter_arrays
+
+! A simpler version of the particle selection algorithm parallelised 
+! with OpenMP. This was added to allow a comparison with the Rundle algorithm. 
+! This alogithm is hard-wired to use a cut-off at q=3. 
+! D. Acreman, May 2018
+  subroutine findparticles_simple(pos, partcount, indexarray, partarray, sumweight)
+
+    use inputs_mod, only : kerneltype, variableEta
+
+    type(VECTOR), intent(in)  :: pos
+    integer,      intent(out) :: partcount
+    integer,      intent(out) :: indexarray(npart)
+    real(double), intent(out) :: partarray(npart)
+    real(double), intent(out) :: sumweight
+
+    real(double) :: q2
+    real(double), parameter :: qmax =3.0
+    real(double), parameter :: qmax2=qmax**2
+    real(double) :: thisWeight
+    integer      :: i
+
+    ! This is eta^-nu with eta=1.2 and nu=3
+    real(double), parameter :: num = 0.578703703d0 ! (5/6)^3 = (1/1.2^3)
+
+    ! This constant is: eta^-nu * 1/(pi^(nu/2))
+    ! eta = 1.2 = 6/5 comes from the expression for the variable smoothing length
+    ! nu = 3 is the number of spatial dimensions
+    real(double), parameter :: scalar = 0.103927732d0 ! 5 / 6 * one over sqrtpicubed
+
+    partcount = 0
+    sumweight = 0.0
+!$OMP PARALLEL DO default(none) private(i, q2, thisWeight) &
+!$OMP shared(pos, partcount, indexArray, partArray, npart, OneOverHsquared, positionArray) &
+!$OMP shared(variableEta, kerneltype, etaarray, xarray) &
+!$OMP reduction (+: sumweight) 
+    do i = 1, npart 
+
+       q2 = (positionArray(1,i) - pos%x)**2 &
+          + (positionArray(2,i) - pos%y)**2 &
+          + (positionArray(3,i) - pos%z)**2 
+
+       q2 = q2 * OneOverHsquared(i)
+
+       if ( q2 < qmax2 ) then 
+
+          if(kerneltype .eq. 0) then
+             if (variableEta) then
+                thisWeight = etaarray(i) * (1.0/pi**1.5) * exp(-q2)
+             else
+                thisWeight = scalar * exp(-q2)
+             end if
+          elseif( kerneltype .eq. 1) then
+             if (variableEta) then
+                thisWeight = etaarray(i) * SmoothingKernel3d(sqrt(q2))
+             else
+                thisWeight = num * SmoothingKernel3d(sqrt(q2))
+             endif
+          endif
+          sumweight  = sumweight + thisWeight
+
+!$OMP CRITICAL
+          partcount = partcount + 1
+          indexArray(partcount) = i
+          partarray(partcount)  = thisWeight
+!$OMP END CRITICAL
+
+       endif
+
+    enddo
+!$OMP END PARALLEL DO
+
+  end subroutine findparticles_simple
 
   subroutine findnearestparticles(pos, partcount, r, indexarray, q2array)
 
@@ -3768,15 +3850,21 @@ contains
 
   end subroutine findnearestparticles
 
-  Subroutine doWeights(sumweight, nparticles, q2array, partarray)
+  Subroutine doWeights(sumweight, nparticles, q2array, partarray, indexArray)
 
-    use inputs_mod, only : kerneltype
+    use inputs_mod, only : kerneltype, variableEta
 
-!    real(double), parameter :: num = 0.578703703d0 ! (5/6)^3 ! (1/1.2^3)
+    ! This is eta^-nu with eta=1.2 and nu=3
+    real(double), parameter :: num = 0.578703703d0 ! (5/6)^3 = (1/1.2^3)
+
+    ! This constant is: eta^-nu * 1/(pi^(nu/2))
+    ! eta = 1.2 = 6/5 comes from the expression for the variable smoothing length
+    ! nu = 3 is the number of spatial dimensions
     real(double), parameter :: scalar = 0.103927732d0 ! 5 / 6 * one over sqrtpicubed
 
     integer,      intent(in)  :: nparticles
     real(double), intent(in)  :: q2array(npart)
+    integer,      intent(in)  :: indexArray(npart)
     real(double), intent(out) :: partarray(npart)
     real(double), intent(out) :: sumweight
 
@@ -3786,15 +3874,24 @@ contains
     if(nparticles .gt. 0) then
               
        if(kerneltype .eq. 0) then
-       
-          partarray(1:nparticles) = scalar * exp(-q2array(1:nparticles))
-       
+
+          if (variableEta) then
+             do i = 1, nparticles
+                partarray(i) = etaarray(indexArray(i)) * (1.0/pi**1.5) * exp(-q2array(i))
+             end do
+          else
+             partarray(1:nparticles) = scalar * exp(-q2array(1:nparticles))
+          end if
+          
        elseif( kerneltype .eq. 1) then
           
           do i = 1, nparticles
              sqrtq = sqrt(q2array(i))
-!             partarray(i) = num * SmoothingKernel3d(sqrtq)
-             partarray(i) = etaarray(i) * SmoothingKernel3d(sqrtq)
+             if (variableEta) then
+                partarray(i) = etaarray(indexArray(i)) * SmoothingKernel3d(sqrtq)
+             else
+                partarray(i) = num * SmoothingKernel3d(sqrtq)
+             endif
           enddo
           
        endif

@@ -28,6 +28,7 @@ contains
     use image_utils_mod, only: getImageWavelength, getnImage, getimageFilename, getImagenPixelsX, &
          getImageNPixelsY,getImageSizeX, &
          getImageSizeY, getFluxUnits
+    use vtk_mod, only : writeVtkFilenBody
 #ifdef MPI
 #ifdef HYDRO
     use hydrodynamics_mod, only : checkMaclaurinBenchmark
@@ -127,6 +128,13 @@ contains
        goto 666
     endif
 
+    if (geometry == "mgascii") then
+       call writeVtkFilenBody(globalnSource, globalsourceArray, "nbody_rosette.vtk")
+       call writeVtkFile(grid, "dump_rosette.vtk", &
+         valueTypeString=(/"rho          ","HI           ","temperature  ", &
+          "tdust        ", "scatters     ","ioncross     ","tempconv     ","crossings    "/))
+    endif
+
 
   if (dustPhysics.and.writepolar) then
      call setupXarray(grid, xarray, nLambda, numLam = 1)
@@ -168,12 +176,16 @@ contains
 
     if (doClusterAnalysis) then
 #ifdef PHOTOION
-       if (photoionPhysics) then
+       if (photoionPhysics.or.dustPhysics) then
           call setupXarray(grid, xArray, nLambda, photoion=.true.)
           if (dustPhysics) call setupDust(grid, xArray, nLambda, miePhase, nMumie)
        endif
 #endif
+#ifdef MPI
        call clusterAnalysis(grid, globalSourceArray, globalnSource, nLambda, xArray, miePhase, nMuMie)
+#else
+       call clusterAnalysis(grid)
+#endif
     endif
 
 !    if (calcColumnImage) then

@@ -10,8 +10,8 @@ module utils_mod
   use octal_mod
 
   implicit none
- 
- public 
+
+ public
 
   interface stripSimilarValues
      module procedure stripSimilarValuesDouble
@@ -79,7 +79,7 @@ contains
     integer             :: res
     integer             :: tmp
 
-    res = -1 
+    res = -1
     ! Negativ values not allowed
     if ( val < 1 ) return
 
@@ -136,7 +136,7 @@ contains
     x = t
     deallocate(t)
   end subroutine reverse
-       
+
   subroutine findMultiFilename(rootFilename, iNumber, actualFilename)
     character(len=*) :: rootFilename, actualFilename
     character(len=80) :: beginString, endString
@@ -194,11 +194,11 @@ contains
     ! special case:
     if (a == 0.d0) then
        if (b/=0.d0) then
-          x1 = -c/b; x2 = -c/b 
+          x1 = -c/b; x2 = -c/b
        else
           write(*,*) "! quad solver failed (1):   (a,b,c) = ", a, b, c
           ok = .false.
-          x1 = 0.0d0; x2 =0.0d0 
+          x1 = 0.0d0; x2 =0.0d0
        end if
     end if
 
@@ -234,16 +234,16 @@ contains
     select case (band)
        case("B")
           offset = 6.4d-9
-       case("V") 
+       case("V")
           offset = 3.75d-9
        case("R")
           offset = 1.8e-9
        case("J")
           offset = 3.133e-10 ! 2mass from gemini website
        case("H")
-          offset = 1.111e-10 
+          offset = 1.111e-10
        case("K")
-          offset = 4.288e-11 
+          offset = 4.288e-11
        case DEFAULT
           call writeWarning("Band "//trim(band)//" not recognised in returnMagntiude")
           offset = 0.d0
@@ -257,16 +257,16 @@ contains
     select case (band)
        case("B")
           offset = 6.4d-9
-       case("V") 
+       case("V")
           offset = 3.75d-9
        case("R")
           offset = 1.8e-9
        case("J")
           offset = 3.133e-10 ! 2mass from gemini website
        case("H")
-          offset = 1.111e-10 
+          offset = 1.111e-10
        case("K")
-          offset = 4.288e-11 
+          offset = 4.288e-11
        case DEFAULT
           call writeWarning("Band "//trim(band)//" not recognised in returnMagntiude")
           offset = 0.d0
@@ -600,7 +600,7 @@ contains
     RA(I)=RRA
     GO TO 10
   END subroutine sortdouble
-  
+
   SUBROUTINE SORTdouble2(N,RA,rb)
     INTEGER N, L, IR, I, J
     real(double) RRA, rrb
@@ -868,7 +868,7 @@ contains
     endif
 !    write(*,*) "y2(1)",y2(1)
 !    write(*,*) "u(1)",u(1)
-    
+
     do i=2, n-1
         sig = (x(i)-x(i-1))/(x(i+1)-x(i-1))
         p = sig*y2(i-1)+2.d0
@@ -878,7 +878,7 @@ contains
 
 !        write(*,*) "LOOP", "so...", sig,p,y2(i),u(i)
 !        write(*,*) "LOOP", "so...", 6.d0*((y(i+1)-y(i))/(x(i+1)-x(i))-(y(i)-y(i-1))/(x(i)-x(i-1)),(x(i+1)-x(i-1)) - sig*u(i-1))/p
-        
+
     Enddo
 
     if (ypn .gt. .99d30) then
@@ -1040,7 +1040,7 @@ contains
     real                :: t
     !$OMP THREADPRIVATE (i)
     call locate(x, ny, xi, i)
-    
+
     t = (xi - x(i))/(x(i+1)-x(i))
 
     logInterp = 10.e0**(log10(y(i)) + t * (log10(y(i+1))-log10(y(i))))
@@ -1055,7 +1055,7 @@ contains
     !$OMP THREADPRIVATE (i)
 
     call locate(x, n, xi, i)
-    
+
     t = (xi - x(i))/(x(i+1)-x(i))
 
     logInterp_dble = 10.d0**(log10(y(i)) + t * (log10(y(i+1))-log10(y(i))))
@@ -1092,7 +1092,7 @@ contains
       return
 
     END SUBROUTINE LOCATE_single
-  
+
 
     PURE SUBROUTINE LOCATE_double(XX,N,X,J)
     real(double), intent(in) :: XX(:)
@@ -1257,11 +1257,11 @@ contains
 
 
     type(VECTOR) function maxwellianVelocity(mass, temperature)
-      
 
-! Calculates a random maxwellian velocity using the 
+
+! Calculates a random maxwellian velocity using the
 ! rejection method.
-      
+
       real(double), intent(in) :: mass
       real, intent(in) ::  temperature
       real(double) :: x, y, t, u, vel
@@ -1273,9 +1273,9 @@ contains
          call randomNumberGenerator(getDouble=x)
          x = 3.d0 * x
          call randomNumberGenerator(getDouble=y)
-         
+
          t = 4.d0/sqrt(pi) * x**2 * exp(-x**2)
-         
+
          if (y < t) then
             ok = .true.
             u = x
@@ -1301,15 +1301,15 @@ contains
     end function fvmaxwellian
 
 
-    ! Computes a random Lorentzian frequency using rejection method 
+    ! Computes a random Lorentzian frequency using rejection method
     ! -- The output in [Hz]
-    !  
-    !  The form of the profile is assumed to be 
+    !
+    !  The form of the profile is assumed to be
     !                   (Gamma/4Pi)^2
     !  phi(nu) = ------------------------------
     !              (nu-nu0)^2 +  (Gamma/4Pi)^2
     !
-    real(double) function random_Lorentzian_frequency(nu0, Gamma)      
+    real(double) function random_Lorentzian_frequency(nu0, Gamma)
       real(double), intent(in) :: nu0   !  line center freq.  [Hz]
       real(double), intent(in) :: Gamma !  Damping Constant  [Hz]
       !
@@ -1321,7 +1321,7 @@ contains
       ok = .false.
 
       if (a<=0.0d0) then  ! special case. No shift in line frequency
-         x=0.0d0 
+         x=0.0d0
          ok = .true.
       end if
 
@@ -1329,23 +1329,23 @@ contains
          ! trial value of (nu-nu0)
          call randomNumberGenerator(getDouble=x)
          ! random number between -6a to 6a
-         x =6.0d0*a*(-1.0d0 + 2.0d0*x) 
+         x =6.0d0*a*(-1.0d0 + 2.0d0*x)
          ! trial value of phi(nu)
          call randomNumberGenerator(getDouble=y)
 
          t = a2/(x*x +a2)  ! This should be always less than 1.
-         
+
          if (y < t) then
             ok = .true.
          endif
 
       end do
-      
+
       ! x = nu - nu0, so
       random_Lorentzian_frequency = x + nu0  ! [Hz]
 
     end function random_Lorentzian_frequency
-    
+
 
     integer function findIlambda(lambda, xArray, nLambda, ok)
       implicit none
@@ -1353,9 +1353,9 @@ contains
       real :: lambda
       real :: xArray(:)
       logical, intent(out) :: ok
-      
+
       ok = .true.
-      
+
       if (lambda < (xArray(1))) then
          findiLambda = 1
          ok = .false.
@@ -1366,7 +1366,7 @@ contains
          ok = .false.
          goto 666
       endif
-      
+
       call locate(xArray, nLambda, lambda, i)
       if (i /= nLambda) then
          if (lambda > 0.5*(xArray(i)+xArray(i+1))) then
@@ -1449,7 +1449,7 @@ contains
          endif
       endif
     end function interpLogLinearDouble
-         
+
 
 
     function convertToJanskies(flux, wavelength) result (newflux)
@@ -1471,7 +1471,7 @@ contains
     FUNCTION VOIGTN(AA,VV)
       IMPLICIT NONE
       ! Modefied: 05-Nov-2004 :: Now treats a = 0 as a special case.   (R. Kurosawa)
-      ! Imported from JDH's CMFGEN code: 27-Oct-2004    (R. Kurosawa) 
+      ! Imported from JDH's CMFGEN code: 27-Oct-2004    (R. Kurosawa)
       ! Cleaned : 20-Nov-2000 (JDH)
       !
       REAL(double) :: VOIGTN,AA,VV
@@ -1480,7 +1480,7 @@ contains
       !
       REAL(double) :: V,V2,V4,V6
       REAL(double) ::  A,A2,A4,A6
-      REAL(double) ::  Z,Z2                       
+      REAL(double) ::  Z,Z2
       REAL(double) ::  X,W
       REAL(double) ::  C1,C2
       DATA C1,C2/1.128379167095512D0  ,5.64189583547756D-1/
@@ -1497,15 +1497,17 @@ contains
       V2=V*V
       A2=A*A
       Z=A2+V2
-!      IF(A .EQ. 0.0D0  ) THEN
-!         ! ---- Normal Doppler brodening.         
-!         IF (V2 < 1.D-04) THEN
-!            VOIGTN = 1.0D0 + V2*(1.0D0 + 0.5D0*V2*(1.0D0 + V2/6.0D0))
-!         ELSE
-!            VOIGTN = EXP(-V2)
-!         END IF
-!         RETURN
-!      END IF
+     IF(A .EQ. 0.0D0  ) THEN !!uncommented out as might be useful and casue of
+                             !!drastic increase in time for simulation when
+                             !!broadening parameters are set to zero - tjgw201
+        ! ---- Normal Doppler brodening.
+        IF (V2 < 1.D-04) THEN
+           VOIGTN = 1.0D0 + V2*(1.0D0 + 0.5D0*V2*(1.0D0 + V2/6.0D0))
+        ELSE
+           VOIGTN = EXP(-V2)
+        END IF
+        RETURN
+     END IF
       IF(A .LE. 0.5D0  )GOTO 20
       IF(Z .LT. 10.D0  )GOTO 50
       !-----ASYMPTOTIC EXPANSION FOR LARGE MODULUS
@@ -1515,7 +1517,7 @@ contains
       A4=A2*A2
       A6=A4*A2
       VOIGTN=C2*A* (1.D0  +  ((1.875D0  *(7.D0  *V6-35.D0  *A2*V4+21.D0*A4*V2-A6) &
-           /Z2+ 0.75D0  *(5.D0  *V4-10.D0  *A2*V2+A4))/Z2+1.5D0  *V2-0.5D0*A2)/Z2)/Z 
+           /Z2+ 0.75D0  *(5.D0  *V4-10.D0  *A2*V2+A4))/Z2+1.5D0  *V2-0.5D0*A2)/Z2)/Z
       RETURN
       !-----HARRIS EXPANSION
 20    IF(V .GT. 5.D0  ) GOTO 10
@@ -1523,7 +1525,7 @@ contains
       H(1)= EXP(-V2)
       H(2)=-C1*(1.0D0  -2.0D0  *V*W)
       H(3)=(1.0D0  -2.0D0  *V2)*H(1)
-      H(4)=-C1*(2.D0  *(1.D0  -V2)/3.D0  -2.D0  *V*W*(1.D0  -2.D0  *V2/3.D0  ))      
+      H(4)=-C1*(2.D0  *(1.D0  -V2)/3.D0  -2.D0  *V*W*(1.D0  -2.D0  *V2/3.D0  ))
       !-----HIGHER TERMS BY RECURSION
       DO I=5,11
          X=I-1
@@ -1560,7 +1562,7 @@ contains
     !
     FUNCTION DAWSON(XX)
       IMPLICIT NONE
-      ! Imported from JDH's CMFGEN code: 27-Oct-2004    (R. Kurosawa) 
+      ! Imported from JDH's CMFGEN code: 27-Oct-2004    (R. Kurosawa)
       !
       REAL(double) ::  DAWSON,XX
       REAL(double) ::  X,U
@@ -1573,7 +1575,7 @@ contains
       DAWSON= ((5.0000000167450D-1+7.4999919056701D-1/      &
            (-2.5001711668562D0  +U-2.4878765880441D0  /     &
            (-4.6731202214124D0  +U-4.1254406560831D0  /     &
-           (-1.1195216423662D1+U))))/U+1.0D0  )/(2.0D0  *X) 
+           (-1.1195216423662D1+U))))/U+1.0D0  )/(2.0D0  *X)
       RETURN
       !-----X ON (3.5D0,5.0D0)
 10    IF(X .LT. 3.5D0  ) GOTO 20
@@ -1582,7 +1584,7 @@ contains
            (-1.77068693717670D1 +U+2.04866410976332D2/      &
            (7.49584016278357D0   +U-2.298758419286D0  /     &
            (4.02187490205698D1+U+2.53388006963558D3/        &
-           (-5.9391591850032E1+U))))))/X                    
+           (-5.9391591850032E1+U))))))/X
       RETURN
       !-----X ON (2.5,3.5)
 20    IF(X .LT. 2.5D0  ) GOTO 30
@@ -1596,7 +1598,7 @@ contains
       !-----X LESS THAN 2.5
    30 UP=(((((U*2.0846835103886D-2 -8.5410681195954D-1)*U  &
             +5.4616122556699D1)*U-4.3501160207595D2)*U     &
-            +9.6696398191665D3)*U-2.9179464300780D4)*U+2.3156975201341D5    
+            +9.6696398191665D3)*U-2.9179464300780D4)*U+2.3156975201341D5
       DOWN=((((( U+2.9391995612556D1)*U +4.668490654511D2  &
            )*U+4.7447098440662D3)*U+3.1384620138163D4)*U   &
            +1.2520037031851D5)*U+2.3156975201425D5
@@ -1640,7 +1642,7 @@ contains
       real p0, p2, p4, p6, p8, z0, z2, z4, z6, z8
       real xp(0:5), xm(0:5), yp(0:5), ym(0:5)                           ! cpf12 temporary values
       real mq(0:5), pq(0:5), mf(0:5), pf(0:5)
-      real d, yf, ypy0, ypy0q  
+      real d, yf, ypy0, ypy0q
 
       !$OMP THREADPRIVATE (c, s, t)
       !**** start of executable code *****************************************
@@ -1690,7 +1692,7 @@ contains
             d = rrtpi / (d0 + xq*(d2 + xq))
             k(i) = d*y   *(a0 + xq)
 
-         elseif ( abx .gt. xlim2 ) then                                   ! humlicek w4 region 2 
+         elseif ( abx .gt. xlim2 ) then                                   ! humlicek w4 region 2
             if ( rg2 .ne. 0 ) then                                          ! first point in region 2
                rg2 = 0
                h0 =  0.5625 + yq*(4.5 + yq*(10.5 + yq*(6.0 + yq)))            ! region 2 y-dependents
@@ -1769,7 +1771,7 @@ contains
 
 
 
-    
+
     subroutine resampleRay_tau(L, nTau, tau, dtau_max, maxtau, newL, newNTau,&
          inFlow, newInFlow)
       integer, intent(in) :: nTau, maxtau
@@ -1782,8 +1784,8 @@ contains
       logical, intent(inout)  :: InFlow(:)
       logical, intent(inout)  :: newInFlow(:)
       !
-      real :: dtau  
-      integer :: nAdd 
+      real :: dtau
+      integer :: nAdd
       integer :: i, j
 !      real, parameter :: dvel  = 10.e5/cSpeed
       real ::  dL
@@ -1829,7 +1831,7 @@ contains
       newL(newNTau) = L(nTau)
       newInFlow(newNTau) = inFlow(nTau)
     end subroutine resampleRay_tau
-               
+
     subroutine linearResample(xArray, yArray, nX, nx_max, newXarray, newNx)
       real(single) :: xArray(:), yArray(:)
       integer :: nx, newNx
@@ -1888,39 +1890,58 @@ contains
       yArray(1:newNx) = newYArray(1:newNx)
     end subroutine linearResample_dble
 
-  
-  SUBROUTINE trapzd(func,a,b,s,n) 
-    IMPLICIT NONE 
-    REAL, INTENT(IN) :: a,b 
-    REAL, INTENT(INOUT) :: s 
-    INTEGER, INTENT(IN) :: n 
-  
+
+    ! resample yarray onto newYarray (given bins in newXarray which are finer/coarser than xArray)
+    subroutine linearResample2(xArray, yArray, nX, newXarray, newYarray, newNx)
+      real(double), intent(in) :: xArray(:), yArray(:)
+      integer, intent(in) :: nx, newNx
+      real(double), intent(in) :: newXarray(:)
+      real(double), intent(out) :: newYarray(:)
+      integer :: i, j
+
+      do i = 1, newNx
+         call locate(xArray, nx, newXarray(i), j)
+         if (xArray(j+1) /= xArray(j)) then
+            newYarray(i) = yArray(j) + (yArray(j+1)-yArray(j))*(newXarray(i)-xArray(j))/(xArray(j+1)-xArray(j))
+         else
+            newYarray(i) = yArray(j)
+         endif
+      enddo
+    end subroutine linearResample2
+
+
+  SUBROUTINE trapzd(func,a,b,s,n)
+    IMPLICIT NONE
+    REAL, INTENT(IN) :: a,b
+    REAL, INTENT(INOUT) :: s
+    INTEGER, INTENT(IN) :: n
+
     INTERFACE
-      FUNCTION func(x) 
+      FUNCTION func(x)
         REAL, DIMENSION(:), INTENT(IN) :: x
-        REAL, DIMENSION(size(x)) :: func 
-      END FUNCTION func 
-    END INTERFACE 
-    
-    ! This routine computes the nth stage of refinement of an extended trapezoidal rule. 
-    ! func is input as the name of the function to be integrated between limits a and b, 
-    ! also input. When called with n=1, the routine returns as s the crudest estimate of 
+        REAL, DIMENSION(size(x)) :: func
+      END FUNCTION func
+    END INTERFACE
+
+    ! This routine computes the nth stage of refinement of an extended trapezoidal rule.
+    ! func is input as the name of the function to be integrated between limits a and b,
+    ! also input. When called with n=1, the routine returns as s the crudest estimate of
     ! b a f(x)dx. Subsequent calls with n=2,3,... (in that sequential order) will improve
     ! the accuracy of s by adding 2n-2 additional interior points. s should not be modified
-    ! between sequential calls. 
+    ! between sequential calls.
     REAL :: del,fsum
-    INTEGER :: it 
+    INTEGER :: it
     if (n == 1) then
-      s=0.5*(b-a)*sum(func( (/ a,b /) )) 
-    else 
+      s=0.5*(b-a)*sum(func( (/ a,b /) ))
+    else
       it=2**(n-2)
-      del=(b-a)/it ! This is the spacing of the points to be added. 
+      del=(b-a)/it ! This is the spacing of the points to be added.
       fsum=sum(func(arth(a+0.5*del,del,it)))
-      s=0.5*(s+del*fsum) ! This replaces s by its re ned value. 
+      s=0.5*(s+del*fsum) ! This replaces s by its re ned value.
     end if
   END SUBROUTINE trapzd
 
-  
+
   FUNCTION arth_r(first,increment,n)
     REAL(SP), INTENT(IN) :: first,increment
     INTEGER(I4B), INTENT(IN) :: n
@@ -2001,38 +2022,38 @@ contains
   END FUNCTION arth_i
 
   FUNCTION qsimp(func,a,b)
-   
-   IMPLICIT NONE 
-   REAL, INTENT(IN) :: a,b 
-   REAL :: qsimp 
-   INTERFACE 
-     FUNCTION func(x) 
-       REAL, DIMENSION(:), INTENT(IN) :: x 
-       REAL, DIMENSION(size(x)) :: func 
-     END FUNCTION func 
-   END INTERFACE 
-   INTEGER, PARAMETER :: JMAX=20 
+
+   IMPLICIT NONE
+   REAL, INTENT(IN) :: a,b
+   REAL :: qsimp
+   INTERFACE
+     FUNCTION func(x)
+       REAL, DIMENSION(:), INTENT(IN) :: x
+       REAL, DIMENSION(size(x)) :: func
+     END FUNCTION func
+   END INTERFACE
+   INTEGER, PARAMETER :: JMAX=20
    REAL, PARAMETER :: EPS=2.0e-4
    ! Returns the integral of the function func from a to b. The parameter EPS should be
    ! set to the desired fractional accuracy and JMAX so that 2 to the power JMAX-1
    ! is the maximum allowed number of steps. Integration is performed by Simpson's
-   ! rule. 
-   INTEGER :: j 
+   ! rule.
+   INTEGER :: j
    REAL :: os,ost,st
-   ost=0.0 
+   ost=0.0
    os= 0.0
-   do j=1,JMAX 
-     call trapzd(func,a,b,st,j) 
-     qsimp=(4.0*st-ost)/3.0  ! Compare equation (4.2.4). 
-     if (j > 5) then !Avoid spurious early convergence. 
+   do j=1,JMAX
+     call trapzd(func,a,b,st,j)
+     qsimp=(4.0*st-ost)/3.0  ! Compare equation (4.2.4).
+     if (j > 5) then !Avoid spurious early convergence.
        if (abs(qsimp-os) < EPS*abs(os) .or. (qsimp == 0.0 .and. os == 0.0)) RETURN
-     end if 
-     os=qsimp  
+     end if
+     os=qsimp
      ost=st
-   end do 
+   end do
    print *, 'Too many steps in qsimp'
    stop
-   
+
   END FUNCTION qsimp
 
   subroutine stripSimilarValuesSingle(x, nx, xtol)
@@ -2043,7 +2064,7 @@ contains
     integer :: i, newNx
 
     allocate(xtemp(1:nx))
-    
+
     call sort(nx, x)
 
     newnx = 1
@@ -2068,7 +2089,7 @@ contains
     integer :: i, newNx
 
     allocate(xtemp(1:nx))
-    
+
     call sort(nx, x)
 
     newnx = 1
@@ -2084,7 +2105,7 @@ contains
     nx = newnx
     deallocate(xtemp)
   end subroutine stripSimilarValuesDouble
-       
+
 
   subroutine convertByte4(iByte, ival)
     integer(kind=single) :: ibyte(4)
@@ -2106,7 +2127,7 @@ contains
 
     ubyte = ibyte
     where (ubyte < 0) ubyte = ibyte + 256
-    ival = ubyte(1) + 256*ubyte(2) 
+    ival = ubyte(1) + 256*ubyte(2)
 
   end subroutine convertByte2
 
@@ -2245,7 +2266,6 @@ SUBROUTINE GAUSSJ(A,N,NP,B,M,MP, ok)
                  ENDIF
               ELSE IF (IPIV(K).GT.1) THEN
                  write(*,*) '! Singular matrix: pivot'
-                 stop
                  ok = .false.
                  goto 666
               ENDIF
@@ -2312,16 +2332,16 @@ END SUBROUTINE GAUSSJ
   ! this procedure performs the solution of linear equations
   subroutine luSlv(a, b, ok)
     implicit none
-    
+
     real(double), intent(inout) :: a(:,:)
-    real(double), intent(inout) :: b(:)    
+    real(double), intent(inout) :: b(:)
     logical, intent(out) :: ok
     integer :: i, n
     logical, save :: firstTime = .true.
     !$OMP THREADPRIVATE(firstTime)
 
 
-! lured can change diagonal terms in a so check for 
+! lured can change diagonal terms in a so check for
 ! zeros in the subroutine iteslf
     call lured(a,ok)
     if (.not. ok) then
@@ -2346,26 +2366,26 @@ END SUBROUTINE GAUSSJ
     call reslv(a,b)
 
   end subroutine luSlv
-  
+
   subroutine lured(a,ok)
     implicit none
-    
+
     real(double), intent(inout)  :: a(:,:)
     logical, intent(out) :: ok
 
     ! local variables
     integer          :: i, j, k, n                    ! counters
-    
+
     real(double) :: factor                     ! general calculation factor
 
     ok = .true.
     n = size(a,1)
 
     if (n == 1) return
-    
+
 i_loop: do i = 1, n-1
        do k = i+1, n
-          if (a(i,i)==0.d0) then 
+          if (a(i,i)==0.d0) then
              ok=.false.
              exit i_loop
           endif
@@ -2377,13 +2397,13 @@ i_loop: do i = 1, n-1
     end do i_loop
 
   end subroutine lured
-  
+
   subroutine reslv(a,b)
-    implicit none 
-    
+    implicit none
+
     real(double), intent(inout) :: a(:,:)
     real(double), intent(inout) :: b(:)
-    
+
     ! local variables
     integer    :: i, j, k, l              ! counters
     integer    :: n
@@ -2394,7 +2414,7 @@ i_loop: do i = 1, n-1
        b(n) = b(n) / a(n,n)
        return
     end if
-    
+
     do i = 1, n-1
        do j = i+1, n
           b(j) = b(j) - b(i)*a(j, i)/ a(i, i)
@@ -2439,7 +2459,7 @@ i_loop: do i = 1, n-1
        enddo
     endif
   end subroutine insertBin
-    
+
 
   PURE SUBROUTINE INDEXX_int(N,ARRIN,INDX)
     INTEGER, INTENT(IN)  :: N
@@ -2611,7 +2631,7 @@ i_loop: do i = 1, n-1
     real(double) :: xbasis1, xbasis2, ybasis1, ybasis2, zbasis1, zbasis2
     real(double) :: xyweights(9)
     real(double) :: weights(27)
-! OpenMP has problems with saved variables so set reuse=.false. 
+! OpenMP has problems with saved variables so set reuse=.false.
 
 
     xbasis1 = t1 - 1.d0
@@ -2620,11 +2640,11 @@ i_loop: do i = 1, n-1
     ybasis2 = 2.d0 * t2 - 1.d0
     zbasis1 = t3 - 1.d0
     zbasis2 = 2.d0 * t3 - 1.d0
-    
+
     xu = xbasis1 * xbasis2
     xv = -4.d0 * xbasis1 * t1
     xw = xbasis2 * t1
-            
+
     yu = ybasis1 * ybasis2
     yv = -4.d0 * ybasis1 * t2
     yw = ybasis2 * t2
@@ -2634,13 +2654,13 @@ i_loop: do i = 1, n-1
     zw = zbasis2 * t3
 
     ! base levels
-            
-    xyweights(:) = (/ xu*yu, xv*yu, xw*yu, xu*yv, xv*yv, xw*yv, xu*yw, xv*yw, xw*yw /) 
-            
+
+    xyweights(:) = (/ xu*yu, xv*yu, xw*yu, xu*yv, xv*yv, xw*yv, xu*yw, xv*yw, xw*yw /)
+
     weights(1:9) = zu * xyweights
     weights(10:18) = zv * xyweights
     weights(19:27) = zw * xyweights
-    
+
 
   end subroutine regular_tri_quadint
 
@@ -2650,7 +2670,7 @@ i_loop: do i = 1, n-1
      real(double), intent(in) :: xi(:),yi(:),x
      real(double) :: y
      real(double) :: xxi(3),a(3), det
-     
+
      xxi = xi * xi
 
      det = xxi(1)*(xi(2)-xi(3))+&
@@ -2681,7 +2701,7 @@ i_loop: do i = 1, n-1
         real(double) ::  X(NPTS),Y(NPTS),SIGMAY(NPTS)
         real(double) :: sum, sumx, sumy, sumx2,sumy2, sumxy, xi, yi, weight
         real(double) :: c, varnce, delta
-        real(double), intent(out) :: a, b, sigmaa, sigmab,r 
+        real(double), intent(out) :: a, b, sigmaa, sigmab,r
 !
 !     MAKES LEAST-SQUARES FIT TO DATA WITH A STRAIGHT LINE  Y = A + B*X
 !
@@ -2779,7 +2799,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
     integer :: vectorsize
     logical, optional :: doubleweight
     logical :: dodoubleweight
-    
+
     vectorsize = size(torig)
     out = torig
 ! Catch any nasty 0s
@@ -2793,7 +2813,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
     else
        dodoubleweight = .false.
     endif
-  
+
     if(present(weight)) then
        OABweight(1:length) = weight(1:length)
     else
@@ -2804,12 +2824,12 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
     r = rorig(1:length)
     s = sorig(1:length)
     t = torig(1:length)
-    
+
     OneOverT(1:length) = 1.d0 / t(1:length)
-    
-    q(1:length) = q(1:length) * OneOverT(1:length) 
-    r(1:length) = r(1:length) * OneOverT(1:length) 
-    s(1:length) = s(1:length) * OneOverT(1:length) 
+
+    q(1:length) = q(1:length) * OneOverT(1:length)
+    r(1:length) = r(1:length) * OneOverT(1:length)
+    s(1:length) = s(1:length) * OneOverT(1:length)
     t(1:length) = 1.d0
 
       if(dodoubleweight) then
@@ -2822,18 +2842,18 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
       diff  = (t - s)
       diff1 = (s - r)
       diff2 = (r - q)
-      
+
       diff01 = (diff - diff1)
       diff02 = (diff - diff2)
-      
+
       a = sum(diff01**2 * OABweight)
       b = sum(diff01 * diff02 * OABweight)
       d = sum(diff02**2 * OABweight)
       e = sum(diff * diff01 * OABweight)
       f = sum(diff * diff02 * OABweight)
-      
+
       det = a*d - b*b
-      
+
       if(det .eq. 0.d0) then
          out = torig
          goto 666
@@ -2843,8 +2863,8 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
       c2 = (a*f-e*b) / det
 
       out(1:length) = (1d0 - c1 - c2) * torig(1:length) + c1 * sorig(1:length) + c2 * rorig(1:length)
-      
-! Uncomment this code if you find yourself trapping NaNs      
+
+! Uncomment this code if you find yourself trapping NaNs
 !      if(any(isnan(out))) then
 !         outarray(1:vectorsize) = torig(1:vectorsize)
 !         out => outarray(1:vectorsize)
@@ -2936,7 +2956,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
     INTEGER     IVER(MAXVER), JVER(MAXVER)
     INTEGER     NNAB(MAXN), INAB, JNAB
 
-! NABLST has been made allocatable to avoid segfaults with OpenMP 
+! NABLST has been made allocatable to avoid segfaults with OpenMP
     integer, allocatable :: NABLST(:,:)
 
     INTEGER     NCAN, NVER, NCOORD, NEDGE
@@ -3039,7 +3059,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
           ENDIF
 
        enddo
-       
+
           CAN = CAN + 1
           PX(CAN) = -2.*RX(j)
           PY(CAN) = 0.d0
@@ -3124,7 +3144,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
                 yp(ver) = ry(j)+ryver(ver)
 
              enddo
-             
+
              call  sortConvex(nver, xp, yp, xc, yc)
 !             if (writeoutput) then
 !                write(33,*) "plot ""-"" using 1:2 w l"
@@ -3550,7 +3570,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
   subroutine bondi(x, y, z)
     real(double) :: x, y, y1, y2, z
     real(double), parameter :: lambda = 0.25d0*exp(1.d0)**(3.d0/2.d0)
-    
+
     if (x > 0.5) then
        y1 = 0.01d0
     else
@@ -3629,7 +3649,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
           enddo
 
           h = a1*e /(sqrt(a3**2 + lam_mid))
-          
+
           phi = -(2.d0*pi*bigG*rho*a1*a3/e) * (atan(h) - (1.d0/(2.d0*a1**2*e**2)) * ( (x**2+y**2)*(atan(h) - (h/(1.d0+h**2))) + &
                2.d0 * z**2 * (h - atan(h)) ) )
 
@@ -3637,7 +3657,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
 
      end function macLaurinPhi
 
-  real(double) function lambdaFunc(x, y, z, a1, a2, a3, lambda) 
+  real(double) function lambdaFunc(x, y, z, a1, a2, a3, lambda)
     real(double) :: x, y, z, a1, a2, a3, lambda
 
     lambdaFunc = x**2/(a1**2 + lambda) + y**2 / (a2**2 + lambda) + z**2 / (a3**2 + lambda) - 1.d0
@@ -3659,7 +3679,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
     a0 = SUM(w(1:npoints)*a(1:nPoints))
     deallocate(r, w)
   end subroutine myInterp
-    
+
 
 !...+....1....+....2....+....3....+....4....+....5....+....6....+....7....+
 !     File:        ccubsolv.f (Fortran 77 source for the ccubsolv routine)
@@ -3725,7 +3745,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
 
   end subroutine ccubsolv
 
-  complex(double) function Ylm(l, m, theta, phi) 
+  complex(double) function Ylm(l, m, theta, phi)
     real(double) :: theta, phi
     integer :: l, m
     ylm = sqrt( (dble((2*l + 1)*factorial(l-m))/(fourPi * dble(factorial(l+m))) )) * &
@@ -3768,6 +3788,5 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
       ENDIF
    ENDIF
  END FUNCTION PLGNDR
-      
-end module utils_mod
 
+end module utils_mod

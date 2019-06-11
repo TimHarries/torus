@@ -135,8 +135,6 @@ contains
     real(double), allocatable :: tempArrayd(:), tArrayd(:), tdArray(:)
 #endif
 
-    !$OMP THREADPRIVATE (firstTime)
-
     call writeinfo("",IMPORTANT)
     write(message,*) 'Photoionization loop computed by ', nThreadsGlobal, ' processors.'
     call writeinfo(message,IMPORTANT)
@@ -294,7 +292,7 @@ contains
        !$OMP PRIVATE (thisFreq, thisLam, kappaAbsDb, kappaScaDb, albedo, r) &
        !$OMP PRIVATE (freqWeight, thisOctal, nscat, ilam, octVec, spectrum, kappaAbsDust, kappaAbsGas, escat, r1) &
        !$OMP SHARED (imonte_beg, imonte_end, source, nsource, grid, lamArray, freq, dfreq, gammatableArray) &
-       !$OMP SHARED (nlambda, writeoutput, epsoverdeltat) &
+       !$OMP SHARED (nlambda, writeoutput, epsoverdeltat, firsttime) &
        !$OMP REDUCTION(+:nPacketIonizing, nPhotonIonizing)
 
 
@@ -379,6 +377,7 @@ contains
                    else ! non-ionizing photon must be absorbed by dust
                          call  addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
                    endif
+!$OMP CRITICAL (writespec)
                    if (firsttime.and.writeoutput) then
                       firsttime = .false.
                       open(67,file="spec.dat",status="unknown",form="formatted")
@@ -387,7 +386,7 @@ contains
                       enddo
                       close(67)
                    endif
-
+!$OMP END CRITICAL (writespec)
                    thisFreq =  getPhotonFreq(nfreq, freq, spectrum)
 !                   write(*,*) 1.d8*cspeed/thisFreq, thisFreq*hCgs*ergtoev
                    uHat = randomUnitVector() ! isotropic emission
@@ -420,7 +419,6 @@ contains
           enddo
        end do mainloop
        !$OMP END DO
-       !$OMP BARRIER
        !$OMP END PARALLEL
 
 #ifdef MPI
@@ -2290,7 +2288,6 @@ real(double) function getPhotonFreq(nfreq, freq, spectrum) result(Photonfreq)
   real(double), allocatable :: tSpec(:)
   integer :: i
   logical, save :: firstTime = .true.
-  !$OMP THREADPRIVATE (firstTime)
 
   allocate(tSpec(1:nFreq))
   
@@ -2309,6 +2306,7 @@ real(double) function getPhotonFreq(nfreq, freq, spectrum) result(Photonfreq)
   else
      photonFreq = cSpeed / (1.d-8 * 100.e4)
   endif
+!$OMP CRITICAL (writepdf)
   if (firstTime.and.writeoutput) then
      firstTime = .false.
      open(32, file="pdf.dat",form="formatted",status="unknown")
@@ -2317,6 +2315,7 @@ real(double) function getPhotonFreq(nfreq, freq, spectrum) result(Photonfreq)
      enddo
      close(32)
   endif
+!$OMP END CRITICAL (writepdf)
 end function getPhotonFreq
 
 

@@ -1052,7 +1052,7 @@ subroutine getUniformSphereDirections(splits, ndir, dir)
   do i=1, splits
     ico = splitSphere(ico)
   enddo
-  
+
   nDir = size(ico%point)
 
   allocate(dir(1:nDir))
@@ -1064,4 +1064,3 @@ end subroutine getUniformSphereDirections
 
 
 end module vector_mod
-

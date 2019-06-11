@@ -1,0 +1,13 @@
+ 
+################################################################
+Job info :
+ 
+Parallelism: MPI
+No. of MPI processes:      3
+ 
+ 
+Process     0: Host wasabiastro.local
+Process     1: Host wasabiastro.local
+Process     2: Host wasabiastro.local
+ 
+############################################################

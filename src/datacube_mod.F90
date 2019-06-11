@@ -9,11 +9,11 @@ module datacube_mod
   implicit none
 
   type TELESCOPE
-     
+
      character(len=10) :: label
      real :: diameter
      real :: beamsize ! in arcsecs
-     
+
   end type TELESCOPE
 
   type DATACUBE
@@ -25,8 +25,8 @@ module datacube_mod
      character(len=10) :: IntensityUnit ! units for intensity
 ! Weighting for integration (used to find spectra) (molecular_mod::GaussinWeighting) or
 ! Density weighted temperature (angularImage_mod)
-     real(double),pointer :: weight(:,:) => null()    
-     integer :: nx 
+     real(double),pointer :: weight(:,:) => null()
+     integer :: nx
      integer :: ny
      integer :: nv
 
@@ -47,7 +47,7 @@ module datacube_mod
 
   real, save :: cubePositionAngle
   character(len=80), save :: datacubeFilename
-  integer, save          :: npixels  ! 
+  integer, save          :: npixels  !
   integer, save, private :: npixelsX ! number of spatial pixels in x-axis
   integer, save, private :: npixelsY ! number of spatial pixels in y-axis
   real, save, private    :: axisRatio ! ratio of npixelsX to npixelsY
@@ -58,9 +58,9 @@ module datacube_mod
 contains
 
   subroutine setCubeParams(npix_in, aspectratio, WV_background)
-    implicit none 
+    implicit none
     integer, intent(in) :: npix_in
-    real, intent(in)    :: aspectRatio 
+    real, intent(in)    :: aspectRatio
     real, intent(in)    :: WV_background
 
     npixelsX  = int(npix_in * aspectratio)
@@ -69,7 +69,7 @@ contains
 
 ! Set background to subtract when generating moment maps
 ! Negative values of WV_background set the bg to the minimum value in the data cube
-    if (WV_background < 0.0 ) then 
+    if (WV_background < 0.0 ) then
        useFixedBg=.false.
     else
        useFixedBg=.true.
@@ -84,7 +84,7 @@ contains
 !    use inputs_mod, only : ALMA
     use fits_utils_mod
     implicit none
-    
+
     type(DATACUBE), intent(in) :: thisCube
     character(len=*) :: filename
 
@@ -120,82 +120,82 @@ contains
     if (PRESENT(ALMA)) doALMA = ALMA
 
 ! Decide which arrays to write. Default is to write all which are allocated.
-! Optional arguments override the defaults. 
-    if ( .not. associated(thiscube%intensity) ) then 
-       do_write_Intensity = .false. 
-    else if ( present(write_Intensity) ) then 
+! Optional arguments override the defaults.
+    if ( .not. associated(thiscube%intensity) ) then
+       do_write_Intensity = .false.
+    else if ( present(write_Intensity) ) then
        do_write_Intensity = write_Intensity
     else
-       do_write_Intensity = .true. 
+       do_write_Intensity = .true.
     end if
 
-    if ( .not. associated(thisCube%tau) ) then 
+    if ( .not. associated(thisCube%tau) ) then
        do_write_Tau = .false.
-    else if ( present(write_Tau) ) then 
+    else if ( present(write_Tau) ) then
        do_write_Tau = write_Tau
     else
-       do_write_Tau = .true. 
+       do_write_Tau = .true.
     end if
 
-    if ( .not. associated(thisCube%weight) ) then 
+    if ( .not. associated(thisCube%weight) ) then
        do_write_Weight = .false.
-    else if ( present(write_Weight) ) then 
+    else if ( present(write_Weight) ) then
        do_write_Weight = write_Weight
     else
-       do_write_Weight = .true. 
+       do_write_Weight = .true.
     end if
 
-    if ( .not. associated(thisCube%nCol) ) then 
+    if ( .not. associated(thisCube%nCol) ) then
        do_write_nCol = .false.
-    else if ( present(write_nCol) ) then 
+    else if ( present(write_nCol) ) then
        do_write_nCol = write_nCol
     else
-       do_write_nCol = .true. 
+       do_write_nCol = .true.
     end if
 
-    if ( .not. associated(thisCube%i0_pos) ) then 
+    if ( .not. associated(thisCube%i0_pos) ) then
        do_write_ipos = .false.
-    else if ( present(write_ipos) ) then 
+    else if ( present(write_ipos) ) then
        do_write_ipos = write_ipos
     else
-       do_write_ipos = .true. 
+       do_write_ipos = .true.
     end if
 
-    if ( .not. associated(thisCube%i0_neg) ) then 
+    if ( .not. associated(thisCube%i0_neg) ) then
        do_write_ineg = .false.
-    else if ( present(write_ineg) ) then 
+    else if ( present(write_ineg) ) then
        do_write_ineg = write_ineg
     else
-       do_write_ineg = .true. 
+       do_write_ineg = .true.
     end if
 
-    if ( .not. associated(thisCube%xAxis) ) then 
+    if ( .not. associated(thisCube%xAxis) ) then
        do_write_xaxis = .false.
     else
        do_write_xaxis = .true.
     end if
 
-    if ( .not. associated(thisCube%yAxis) ) then 
+    if ( .not. associated(thisCube%yAxis) ) then
        do_write_yaxis = .false.
     else
        do_write_yaxis = .true.
     end if
 
-    if ( .not. associated(thisCube%vAxis) ) then 
+    if ( .not. associated(thisCube%vAxis) ) then
        do_write_vaxis = .false.
     else
        do_write_vaxis = .true.
     end if
 
-    if ( present(write_axes) ) then 
-       if (.not. write_axes ) then 
+    if ( present(write_axes) ) then
+       if (.not. write_axes ) then
           do_write_xaxis = .false.
           do_write_yaxis = .false.
           do_write_vaxis = .false.
        end if
     end if
 
-    if ( present(write_WV) ) then 
+    if ( present(write_WV) ) then
        do_write_WV = write_WV
     else
        do_write_WV = .false.
@@ -208,7 +208,7 @@ contains
     !  Delete the file if it already exists, so we can then recreate it.
     !
     call deleteFitsFile ( trim(filename), status )
-    
+
     !  Get an unused Logical Unit Number to use to open the FITS file.
     call ftgiou ( unit, status )
     !  Create the new empty FITS file.
@@ -225,7 +225,7 @@ contains
     if(present(frequency) .and. doALMA) then
        call convertVelocityToHz(thiscube, frequency)
     endif
-    
+
 
     ! 1st HDU : flux
     if( do_write_Intensity ) then
@@ -241,7 +241,7 @@ contains
        call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
 
        !  Write keywords to the header.
-       call ftpkys(unit,'LABEL',thisCube%label,"Telescope label",status) 
+       call ftpkys(unit,'LABEL',thisCube%label,"Telescope label",status)
        call ftpkys(unit,'VUNIT',thisCube%vUnit,"Velocity unit",status)
        call ftpkys(unit,'XUNIT',thisCube%xUnit,"Spatial unit",status)
        call ftpkys(unit,'BUNIT',thisCube%IntensityUnit,"Intensity unit",status)
@@ -275,7 +275,7 @@ contains
     endif
 
     if( do_write_Weight ) then
-       
+
        ! 3rd HDU : weight
        call FTCRHD(unit, status)
        bitpix=-64
@@ -286,7 +286,7 @@ contains
 
        !  Write the required header keywords.
        call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
-       
+
        !  Write the array to the FITS file.
        call ftpprd(unit,group,fpixel,nelements,thisCube%weight,status)
     endif
@@ -296,12 +296,12 @@ contains
        call FTCRHD(unit, status)
        bitpix=-64
        naxis=1
-       naxes(1)=thisCube%nx     
+       naxes(1)=thisCube%nx
        nelements=naxes(1)
 
        !  Write the required header keywords.
        call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
-       
+
        !  Write the array to the FITS file.
        call ftpprd(unit,group,fpixel,nelements,thisCube%xAxis,status)
     endif
@@ -311,12 +311,12 @@ contains
        call FTCRHD(unit, status)
        bitpix=-64
        naxis=1
-       naxes(1)=thisCube%ny    
+       naxes(1)=thisCube%ny
        nelements=naxes(1)
 
        !  Write the required header keywords.
        call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
-       
+
        !  Write the array to the FITS file.
        call ftpprd(unit,group,fpixel,nelements,thisCube%yAxis,status)
     endif
@@ -324,18 +324,18 @@ contains
     if( do_write_vaxis) then
        ! 6th HDU : vAxis
        call FTCRHD(unit, status)
-       bitpix=-64 
+       bitpix=-64
        naxis=1
-       naxes(1)=thisCube%nv        
+       naxes(1)=thisCube%nv
        nelements=naxes(1)
-       
+
        !  Write the required header keywords.
        call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
-       
+
        !  Write the array to the FITS file.
        call ftpprd(unit,group,fpixel,nelements,thisCube%vAxis,status)
     endif
-       
+
     if( do_write_nCol ) then
        ! 7th HDU : nCol
        call FTCRHD(unit, status)
@@ -344,7 +344,7 @@ contains
        naxes(1)=thisCube%nx
        naxes(2)=thisCube%ny
        nelements=naxes(1)*naxes(2)
-       
+
        !  Write the required header keywords.
        call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
        call ftpkys(unit,'BUNIT',"cm^-2","Column density unit",status)
@@ -409,7 +409,7 @@ contains
     if (status > 0) then
        call printFitsError(status)
     end if
-    
+
 
     contains
 
@@ -417,7 +417,7 @@ contains
         implicit none
         real(double) :: refPix, refVal, deltaPix, startVal
         real(double) :: refValX, refValY, dx, dy
-! 
+!
 ! Axis 1:
 !
         ! Write WCS keywords to the header
@@ -433,7 +433,7 @@ contains
            call ftpkys(unit,'CTYPE1',"RA---SIN","x axis", status)
            call ftpkyd(unit,'CRVAL1',refValX,-5,'coordinate value at reference point',status)
            call ftpkys(unit,'CUNIT1', "deg", "x axis unit", status)
-           
+
         else
            call ftpkyd(unit,'CRPIX1',0.5_db,-3,'reference pixel',status)
            call ftpkyd(unit,'CDELT1',thisCube%xAxis(2)-thisCube%xAxis(1),-3,'coordinate increment at reference point',status)
@@ -442,7 +442,7 @@ contains
            call ftpkys(unit,'CUNIT1', thisCube%xUnit, "x axis unit", status)
         endif
 
-! 
+!
 ! Axis 2:
 !
 
@@ -473,7 +473,7 @@ contains
               ! -1 x distance from start of the grid to zero terms of in number of pixels
               refPix    = -1.0*startVal / (deltaPix)
               ! Reference latitude is zero by definition
-              refVal    = 0.0_db                              
+              refVal    = 0.0_db
            else
               deltaPix  = thisCube%yAxis(2)-thisCube%yAxis(1)
               refPix    = 0.5_db
@@ -487,7 +487,7 @@ contains
            call ftpkys(unit,'CUNIT2',thisCube%xUnit, "y axis unit", status)
         endif
 
-! 
+!
 ! Axis 3:
 !
         if(doALMA) then
@@ -497,18 +497,18 @@ contains
               call ftpkyd(unit,'CDELT3',thisCube%vAxis(2)-thisCube%vAxis(1),-3,'coordinate increment at reference point',status)
               call ftpkyd(unit,'CD3_3',thisCube%vAxis(2)-thisCube%vAxis(1),-3,'coordinate increment at reference point',status)
            endif
-           
-           
+
+
            call ftpkys(unit,'CTYPE3',thisCube%vAxisType, "velocity axis", status)
            call ftpkyd(unit,'CRVAL3',thisCube%vAxis(1),-9,'coordinate value at reference point',status)
-           call ftpkys(unit,'CUNIT3', "Hz", "vel axis unit", status)           
+           call ftpkys(unit,'CUNIT3', "Hz", "vel axis unit", status)
 
         else
            call ftpkyd(unit,'CRPIX3',0.5_db,-3,'reference pixel',status)
            if (SIZE(thisCube%vAxis)  > 1) then
               call ftpkyd(unit,'CDELT3',thisCube%vAxis(2)-thisCube%vAxis(1),-3,'coordinate increment at reference point',status)
            endif
-           
+
            call ftpkys(unit,'CTYPE3',thisCube%vAxisType, "velocity axis", status)
            call ftpkyd(unit,'CRVAL3',thisCube%vAxis(1),-3,'coordinate value at reference point',status)
         endif
@@ -533,7 +533,7 @@ contains
         vAxis_sp(:) = real(thisCube%vAxis(:))
         deltaV      = vAxis_sp(2) - vAxis_sp(1)
 
-        if (useFixedBg) then 
+        if (useFixedBg) then
            background = fixedBg
            write(message,*) "Using fixed background of: ", background
            call writeInfo(message,FORINFO)
@@ -551,7 +551,7 @@ contains
               where (S<0.0) S=0.0
               intensitySum = sum( S(:) )
 
-              if (intensitySum /= 0.0 ) then 
+              if (intensitySum /= 0.0 ) then
                  ! Multiply intensity sum by channel width to get zero moment in K.km/s
                  zeroMoment(i,j)   = intensitySum * deltaV
                  firstMoment(i,j)  = sum( S(:)*vAxis_sp(:) ) / intensitySum
@@ -573,9 +573,9 @@ contains
         naxes(2)=thisCube%ny
         nelements=naxes(1)*naxes(2)
 
-! Zero moment 
+! Zero moment
         call FTCRHD(unit, status)
-        
+
         ! Write the required header keywords.
         call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
         call ftpkys(unit,'BUNIT',"K km/s","Velocity unit",status)
@@ -587,9 +587,9 @@ contains
         call ftppne(unit,group,fpixel,nelements,zeroMoment,blankVal,status)
         call printFitsError(status)
 
-! First moment 
+! First moment
         call FTCRHD(unit, status)
-        
+
         ! Write the required header keywords.
         call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
         call ftpkys(unit,'BUNIT',"km/s","Velocity unit",status)
@@ -603,7 +603,7 @@ contains
 
 ! Second moment
         call FTCRHD(unit, status)
-        
+
         ! Write the required header keywords.
         call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
         call ftpkys(unit,'BUNIT',"km/s","Velocity unit",status)
@@ -622,21 +622,21 @@ contains
         deallocate (vAxis_sp)
 
       end subroutine writeWeightedVelocity
-    
+
     end subroutine writeDataCube
 
 #endif
 
   !***********************************************************
 
-! Initialises cube - sets intensity for cube to 0 
+! Initialises cube - sets intensity for cube to 0
 !
-! thisCube%weight is only allocated when using angularImage_mod. If you want to re-instate 
-! the GaussianWeighting subroutine in molecular_mod then you'll need to allocate 
+! thisCube%weight is only allocated when using angularImage_mod. If you want to re-instate
+! the GaussianWeighting subroutine in molecular_mod then you'll need to allocate
 ! thisCube%weight here. D. Acreman, March 2014.
 !
   subroutine initCube(thisCube, nv, mytelescope, splitCubes, wantTau, galacticPlaneSurvey, ALMA)
-!    use inputs_mod, only : ALMA
+    use h21cm_mod, only : h21cm
     type(DATACUBE) :: thisCube
     type(TELESCOPE), optional :: mytelescope
     integer :: nx, ny, nv
@@ -646,7 +646,7 @@ contains
     ny = npixelsY
 
     if(present(mytelescope)) then
-       
+
        thisCube%telescope = mytelescope
 
     else
@@ -663,36 +663,40 @@ contains
     thisCube%xAxisType    = "X"
     thisCube%yAxisType    = "Y"
     thisCube%xUnit        = "10^10cm "
-    thisCube%IntensityUnit= " "
-
+    if (h21cm) then
+       thisCube%intensityUnit = "K (Tb)  "
+    else
+       thisCube%IntensityUnit= " "
+    end if
+    
 ! Set up cube for a Galactic plane survey, as generated by angularImage_mod.
-    if ( present(galacticPlaneSurvey) ) then 
-       if (galacticPlaneSurvey) then 
+    if ( present(galacticPlaneSurvey) ) then
+       if (galacticPlaneSurvey) then
           thisCube%xUnit     = "degrees"
           thisCube%xAxisType = "GLON-CAR"
           thisCube%yAxisType = "GLAT-CAR"
           thisCube%vAxisType = "VELO-LSR"
           thisCube%intensityUnit = "K (Tb)  "
 ! Weighted temperature is only required when nv=1 i.e. column density mode
-          if ( nv==1 ) then 
+          if ( nv==1 ) then
              allocate(thisCube%weight(1:nx,1:ny))
-             thisCube%weight(:,:) = 0.0 
+             thisCube%weight(:,:) = 0.0
           end if
        endif
     end if
 
-
-
     if(present(ALMA)) then
-       thisCube%xUnit     = "degrees "
-       thisCube%xAxisType = "RA---SIN"
-       thisCube%yAxisType = "DEC--SIN"
-       thisCube%vAxisType = "FREQ    "
-       thisCube%vUnit =     "Hz      "
-       thisCube%intensityUnit =  "Jy/pixel"
-       if ( nv==1 ) then          
-          allocate(thisCube%weight(1:nx,1:ny))
-          thisCube%weight(:,:) = 0.0
+       if (ALMA) then 
+          thisCube%xUnit     = "degrees "
+          thisCube%xAxisType = "RA---SIN"
+          thisCube%yAxisType = "DEC--SIN"
+          thisCube%vAxisType = "FREQ    "
+          thisCube%vUnit =     "Hz      "
+          thisCube%intensityUnit =  "Jy/pixel"
+          if ( nv==1 ) then          
+             allocate(thisCube%weight(1:nx,1:ny))
+             thisCube%weight(:,:) = 0.0
+          end if
        end if
     endif
 
@@ -708,15 +712,15 @@ contains
     thisCube%intensity = 0.d0
     thisCube%nCol = 0.d0
 
-    if ( present(wantTau) ) then 
+    if ( present(wantTau) ) then
        if (wantTau) then
           allocate(thisCube%tau(1:nx,1:ny,1:nv))
           thisCube%tau = 0.d0
        end if
     end if
 
-    if ( present(splitCubes) ) then 
-       if (splitCubes) then 
+    if ( present(splitCubes) ) then
+       if (splitCubes) then
           allocate(thisCube%i0_pos(1:nx,1:ny,1:nv))
           allocate(thisCube%i0_neg(1:nx,1:ny,1:nv))
           thisCube%i0_pos(:,:,:) = 0.0
@@ -738,7 +742,7 @@ contains
     real, intent(in) :: gridDistance
     real(double), intent(in), optional :: smallestCell ! In Torus units
 
-! Calculate xMin and xMax from the axis ratio 
+! Calculate xMin and xMax from the axis ratio
     xMin = yMin * axisRatio
     xMax = yMax * axisRatio
 
@@ -751,13 +755,13 @@ contains
     call writeinfo(message,TRIVIAL)
 
 ! If the smallestCell argument is present then compare with the pixel size to check we aren't doing something daft
-    if (present(smallestCell)) then 
+    if (present(smallestCell)) then
        if (dx < 0.1*smallestCell) call writeWarning("X-axis pixel size is more than 10x smaller than the smallest grid cell")
        if (dy < 0.1*smallestCell) call writeWarning("Y-axis pixel size is more than 10x smaller than the smallest grid cell")
     endif
 
 ! Report the linear pixel size in suitable units
-    if (dxInCm < pcToCm) then 
+    if (dxInCm < pcToCm) then
        write(message,'(a,1pe12.3,a)') "Linear pixel resolution  : ", dxInCm/rSol, " Rsol"
        call writeinfo(message,TRIVIAL)
     else
@@ -765,7 +769,7 @@ contains
        call writeinfo(message,TRIVIAL)
     endif
 
-    if (gridDistance > 0.0 ) then 
+    if (gridDistance > 0.0 ) then
        write(message,'(a,1pe12.3,a)') "Angular pixel resolution : ", (dxInCm/griddistance)*radiansToArcSec, " arcseconds"
        call writeinfo(message,TRIVIAL)
     else
@@ -774,11 +778,11 @@ contains
     endif
 
     do i = 1, cube%nx
-       cube%xAxis(i) = xmin + dble(i-0.5d0)*dx 
+       cube%xAxis(i) = xmin + dble(i-0.5d0)*dx
     enddo
 
     do i = 1, cube%ny
-       cube%yAxis(i) = ymin + dble(i-0.5d0)*dx 
+       cube%yAxis(i) = ymin + dble(i-0.5d0)*dx
     enddo
 
   end subroutine addSpatialAxes
@@ -792,7 +796,7 @@ contains
     type(DATACUBE) :: cube
     character(len=*), intent(in) :: newUnit
 
-    select case (newUnit) 
+    select case (newUnit)
 
     case ('pc')
        cube%xAxis(:) = cube%xAxis(:) * 1.0e10_db / pctocm
@@ -816,13 +820,13 @@ contains
 
     case('m')
        cube%xAxis(:) = cube%xAxis(:) * 1.0e10_db / 100.0
-       cube%yAxis(:) = cube%yAxis(:) * 1.0e10_db / 100.0 
+       cube%yAxis(:) = cube%yAxis(:) * 1.0e10_db / 100.0
        cube%xUnit    = "m"
 
     case('torus')
        continue
 
-    case DEFAULT 
+    case DEFAULT
        call writewarning('Unrecognised unit in convertSpatialAxes')
 
     end select
@@ -834,7 +838,7 @@ contains
     type(DATACUBE) :: cube
     real(double) :: freq
 
-    cube%vAxis(:) = freq*(1.d0 + ((cube%vAxis(:)*1.d5)/cspeed))
+    cube%vAxis(:) = freq*(1.d0 - ((cube%vAxis(:)*1.d5)/cspeed))
 
   end subroutine convertVelocityToHz
 
@@ -847,13 +851,13 @@ contains
     type(DATACUBE) :: cube
     character(len=*), intent(in) :: newUnit
 
-    select case (newUnit) 
+    select case (newUnit)
 
     case ('m/s')
-       cube%vAxis(:) = cube%vAxis(:) * 1000.0 
+       cube%vAxis(:) = cube%vAxis(:) * 1000.0
        cube%vUnit    = "m/s      "
 
-    case DEFAULT 
+    case DEFAULT
        call writewarning('Unrecognised unit in convertVelocity')
 
     end select
@@ -873,7 +877,7 @@ contains
 
        write(message, '(a,f9.4,a)') "Velocity pixel resolution: ", dv, " km/s"
        call writeinfo(message,TRIVIAL)
-       
+
        do i = 1, cube%nv
           cube%vAxis(i) = vmin + dv * real(i-1)
        enddo
@@ -895,7 +899,7 @@ contains
 
   subroutine convertIntensityToBrightnessTemperature(cube, thisWavelength)
     use constants_mod, only: kErg
-    
+
     type(DATACUBE) :: cube
     real(double), intent(in) :: thisWavelength
 
@@ -907,61 +911,61 @@ subroutine TranslateCubeIntensity(cube,constant)
 
   type(DATACUBE) :: cube
   real(double) :: constant
-  
+
   cube%intensity = cube%intensity + real(constant)
-    
+
 end subroutine TranslateCubeIntensity
 
 subroutine freeDataCube(thiscube)
   type(DATACUBE) :: thiscube
 
-    if (associated(thisCube%weight)) then 
+    if (associated(thisCube%weight)) then
        deallocate(thiscube%weight)
        nullify(thiscube%weight)
     end if
 
-    if (associated(thisCube%xAxis)) then 
+    if (associated(thisCube%xAxis)) then
        deallocate(thiscube%xAxis)
        nullify(thiscube%xAxis)
     end if
 
-    if (associated(thisCube%yAxis)) then 
+    if (associated(thisCube%yAxis)) then
        deallocate(thiscube%yAxis)
        nullify(thiscube%yAxis)
     end if
 
-    if (associated(thisCube%vAxis)) then 
+    if (associated(thisCube%vAxis)) then
        deallocate(thiscube%vAxis)
        nullify(thiscube%vAxis)
     end if
 
-    if (associated(thisCube%intensity)) then 
+    if (associated(thisCube%intensity)) then
        deallocate(thiscube%intensity)
        nullify(thiscube%intensity)
     end if
 
-    if (associated(thisCube%tau)) then 
+    if (associated(thisCube%tau)) then
        deallocate(thiscube%tau)
        nullify(thiscube%tau)
     end if
 
-    if (associated(thisCube%nCol)) then 
+    if (associated(thisCube%nCol)) then
        deallocate(thiscube%nCol)
        nullify(thiscube%nCol)
     end if
 
-    if (associated(thisCube%i0_pos)) then 
+    if (associated(thisCube%i0_pos)) then
        deallocate(thiscube%i0_pos)
        nullify(thiscube%i0_pos)
     end if
 
-    if (associated(thisCube%i0_neg)) then 
+    if (associated(thisCube%i0_neg)) then
        deallocate(thiscube%i0_neg)
        nullify(thiscube%i0_neg)
     end if
 
   end subroutine freeDataCube
-  
+
 #ifdef USECFITSIO
   subroutine writeCollapsedDataCube(thisCube, filename)
     use fits_utils_mod
@@ -1025,7 +1029,7 @@ subroutine freeDataCube(thiscube)
     call ftpkys(unit,'CTYPE1',thisCube%xAxisType,"x axis", status)
     call ftpkyd(unit,'CRVAL1',thisCube%xAxis(1),-3,'coordinate value at reference point',status)
     call ftpkys(unit,'CUNIT1', thisCube%xUnit, "x axis unit", status)
-    
+
     call ftpkyd(unit,'CRPIX2',0.5_db,-3,'reference pixel',status)
     call ftpkyd(unit,'CDELT2',thisCube%yAxis(2)-thisCube%yAxis(1),-3,'coordinate increment at reference point',status)
     call ftpkys(unit,'CTYPE2',thisCube%yAxisType, "y axis", status)
@@ -1057,7 +1061,7 @@ subroutine freeDataCube(thiscube)
     real(double) :: wavelength
     real(double), allocatable :: dimage(:,:), xAxis(:), yAxis(:)
     integer :: iv
-    real, intent(in) :: gridDistance 
+    real, intent(in) :: gridDistance
 
     allocate(dImage(1:thisCube%nx,1:thisCube%ny))
     allocate(xAxis(1:thisCube%nx))
@@ -1096,7 +1100,7 @@ subroutine freeDataCube(thiscube)
     deallocate(v, y)
     close(38)
   end subroutine dumpCubeToSpectrum
-       
+
   subroutine writeSpectroastrometry(cube, saFilename)
 
     type(DATACUBE) :: cube

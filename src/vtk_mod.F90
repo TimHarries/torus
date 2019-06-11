@@ -1,5 +1,5 @@
 module vtk_mod
-  
+
 !
 !
 
@@ -69,7 +69,7 @@ contains
        write(lunit,'(a)') "</Points>"
     endif
     close(lunit)
-       
+
 
   contains
 
@@ -115,21 +115,21 @@ contains
                   ym = REAL(rVec%y - d)
                   zp = REAL(rVec%z + d)
                   zm = REAL(rVec%z - d)
-                  
+
                   write(lunit,*) xm, ym, zm
-                  
+
                   write(lunit,*) xp, ym, zm
-                  
+
                   write(lunit,*) xm, yp, zm
-                  
+
                   write(lunit,*) xp, yp, zm
-                  
+
                   write(lunit,*) xm, ym, zp
-                  
+
                   write(lunit,*) xp, ym, zp
-                  
+
                   write(lunit,*) xm, yp, zp
-                  
+
                   write(lunit,*) xp, yp, zp
                else
                   rVec = subcellCentre(thisOctal, subcell)
@@ -148,19 +148,19 @@ contains
                      phiEnd   = real(phi1 + (phi2 - phi1) * dble(iphi)/dble(nphi))
 
                      write(lunit,*) r1*cos(phiStart), r1*sin(phiStart), zm
-                     
+
                      write(lunit,*) r1*cos(phiEnd), r1*sin(phiEnd), zm
-                     
+
                      write(lunit,*) r2*cos(phiEnd), r2*sin(phiEnd), zm
-                     
+
                      write(lunit,*) r2*cos(phiStart), r2*sin(phiStart), zm
-                     
+
                      write(lunit,*) r1*cos(phiStart), r1*sin(phiStart), zp
-                     
+
                      write(lunit,*) r1*cos(phiEnd), r1*sin(phiEnd), zp
-                     
+
                      write(lunit,*) r2*cos(phiEnd), r2*sin(phiEnd), zp
-                     
+
                      write(lunit,*) r2*cos(phiStart), r2*sin(phiStart), zp
                   enddo
                endif
@@ -246,7 +246,7 @@ contains
                   ym = REAL(rVec%y - d)
                   zp = REAL(rVec%z + d)
                   zm = REAL(rVec%z - d)
-                  
+
                   nPoints = nPoints + 1
                   points(1, nPoints) = xm
                   points(2, nPoints) = ym
@@ -472,13 +472,13 @@ contains
                      enddo
                   endif
                else
-                  
+
                   write(lunit, '(5i10)') 4, nCount + iOffset,&
                        nCount + iOffset + 1, &
                        nCount + iOffset + 2, &
                        nCount + iOffset + 3
                   nCount = nCount + 4
-                  
+
 
                endif
             else
@@ -509,13 +509,13 @@ contains
                      enddo
                   endif
                else
-                  
+
                   write(lunit, '(4i10)') nCount + iOffset,&
                        nCount + iOffset + 1, &
                        nCount + iOffset + 2, &
                        nCount + iOffset + 3
                   nCount = nCount + 4
-                  
+
 
                endif
 
@@ -611,7 +611,7 @@ contains
     integer :: offsets(:)
 
 
-    ioffSet = 0 
+    ioffSet = 0
     nCount = 0
     call getOffsetsRecursive(grid%octreeRoot, nCount, offsets, iOffset, grid)
 
@@ -710,7 +710,7 @@ contains
              write(69, '(a,a,a)') "<DataArray type='Float32' NumberOfComponents='3' Name='", &
                   trim(valueType), "' format='ascii' >"
           endif
-             
+
        endif
     endif
 
@@ -768,10 +768,10 @@ contains
 
             do j = 1, nVal
             select case (valueType)
-               
+
                case("sourceCont")
                   write(lunit, *) thisOctal%normSourceContribution(subcell, 1)
-               
+
                case("logRho")
                   write(lunit, *) log10(thisOctal%rho(subcell))
                case("rho")
@@ -823,7 +823,7 @@ contains
                case("i0")
                   write(lunit, *) thisOctal%newmolecularlevel(3,subcell)
 
-! galLon and galLat re-use storage used for i0 and dIattenuated 
+! galLon and galLat re-use storage used for i0 and dIattenuated
                case("galLon")
                   write(lunit, *) thisOctal%newmolecularlevel(2,subcell)
 
@@ -957,7 +957,7 @@ contains
 
                case("radforce")
                   if (thisOctal%threed) then
-                     write(lunit, *) real(thisOctal%kappaTimesFlux(subcell)%x/cSpeed), & 
+                     write(lunit, *) real(thisOctal%kappaTimesFlux(subcell)%x/cSpeed), &
                                      real(thisOctal%kappaTimesFlux(subcell)%y/cSpeed), &
                                      real(thisOctal%kappaTimesFlux(subcell)%z/cSpeed)
                   else
@@ -976,7 +976,7 @@ contains
                                      real(thisOctal%radiationMomentum(subcell)%z), &
                                      0.
                   endif
-                  
+
                case("velocity")
                      ! stop vectors from showing up in visit if too big
                      if(thisoctal%velocity(subcell)%x .ge. 1.d0) then
@@ -996,7 +996,7 @@ contains
               case("cornervel")
                  rVec = subcellCentre(thisOctal, subcell)
                  vel = amrGridVelocity(grid%octreeRoot,rvec,startOctal=thisOctal,&
-                      actualSubcell=subcell) 
+                      actualSubcell=subcell)
                  if (thisOctal%threed) then
                     write(lunit, *) real(vel%x*cspeed/1.e5), real(vel%y*cspeed/1.e5), &
                          real(vel%z*cspeed/1.e5)
@@ -1004,7 +1004,7 @@ contains
                     write(lunit, *) real(vel%x*cspeed/1.e5), real(vel%z*cspeed/1.e5), &
                          real(vel%y*cspeed/1.e5)
                  endif
-                    
+
 !               case("quadvelocity")
 !                     write(lunit, *) thisOctal%quadvelocity(subcell)%x*cspeed/1.e5, &
 !                          thisOctal%quadvelocity(subcell)%y*cspeed/1.e5, thisOctal%quadvelocity(subcell)%z*cspeed/1.e5
@@ -1177,22 +1177,22 @@ contains
 
                case("undersampled")
                   if (thisOctal%undersampled(subcell)) then
-                     write(lunit, *) 1. 
+                     write(lunit, *) 1.
                   else
-                     write(lunit, *) 0. 
+                     write(lunit, *) 0.
                   endif
 
                case("tempconv")
                   if (thisOctal%temperatureConv(subcell)) then
-                     write(lunit, *) 1. 
+                     write(lunit, *) 1.
                   else
-                     write(lunit, *) 0. 
+                     write(lunit, *) 0.
                   endif
 
                case("scatters")
                   value = real(thisOctal%nScatters(subcell))
                   write(lunit, *) real(value)
-                  
+
                case("phi")
                   write(lunit, *) real(thisOctal%phi_i(subcell))
 
@@ -1281,7 +1281,7 @@ contains
     real(double) :: dphi, dtheta
     integer :: nCount
     real(double) :: smallFac = 1.01d0
-    
+
     if(noVtkGrid) return
 
 
@@ -1294,7 +1294,7 @@ contains
     write(lunit,'(a)') "ASCII"
     write(lunit,'(a)') "DATASET UNSTRUCTURED_GRID"
 
-    nPoints = 0 
+    nPoints = 0
     do iSource = 1 , nSource
        nPoints = nPoints + source(iSource)%surface%nElements
     enddo
@@ -1388,7 +1388,7 @@ contains
     type(VECTOR) :: cVec, aVec, v1, v2, v3, v4, zAxis
     real(double) :: dphi, dtheta, r, ang1, ang2
     integer :: nCount
-    
+
 
 #ifdef MPI
     if (myrankWorldGlobal /=1 ) goto 666
@@ -1403,7 +1403,7 @@ contains
     write(lunit,'(a)') "DATASET UNSTRUCTURED_GRID"
 
     if (amr3d) then
-    nPoints = 0 
+    nPoints = 0
     do iSource = 1 , nSource
        nPoints = nPoints + source(iSource)%surface%nElements
     enddo
@@ -1518,7 +1518,7 @@ contains
        do i = 1, 100
           write(lunit, '(5i10)') 3, nCount,&
                     nCount + 1, &
-                    nCount + 2 
+                    nCount + 2
                nCount = nCount + 3
        enddo
     enddo
@@ -1685,7 +1685,7 @@ contains
        nPointOffset = 2
     endif
 
-    call countVoxels(grid%octreeRoot, nOctals, nVoxels)  
+    call countVoxels(grid%octreeRoot, nOctals, nVoxels)
     if (cylindrical) then
        nVoxels = 0
        call countVoxelsCylindrical(grid%octreeRoot, nVoxels)
@@ -1700,7 +1700,7 @@ contains
        do i = 2, nHydrothreadsGlobal-1
           iOffsetArray(i) = iOffsetArray(i) + iOffsetArray(i-1)
        enddo
-       iOffsetArray = iOffsetArray * nPointOffset 
+       iOffsetArray = iOffsetArray * nPointOffset
     endif
 #endif
 
@@ -1715,7 +1715,7 @@ contains
        writeHeader = .false.
     endif
 #endif
-    
+
     if (writeHeader) then
        if (ascii) then
           open(lunit,file=vtkFilename, form="formatted", status="unknown")
@@ -1821,7 +1821,7 @@ endif
     endif
 
     do iType = 1, nValueType
-    
+
        if (.not.grid%splitOverMPI) &
             call writeValue(grid, vtkFilename, valueType(iType), writexml)
 
@@ -1836,7 +1836,7 @@ endif
        enddo
     endif
 #endif
-    
+
  enddo
 
     if (writeheader.and.writexml) then
@@ -2102,7 +2102,7 @@ endif
      real, optional :: fArray32(:)
      integer(kind=1), pointer :: iBytes(:), iHeader(:),iBytesUncompressed(:)
      integer (bigint) :: nBytes, nBytesUncompressed
-     
+
      integer(kind=4) :: i
      integer(bigint), allocatable :: sizeCompressedBlock(:)
      integer(kind=1), pointer :: thisBlock(:), iTemp(:)
@@ -2118,17 +2118,17 @@ endif
      integer, allocatable, save :: savedBlockSize(:)
      integer, allocatable :: tempBlocks(:)
      integer(kind=1), pointer :: newIBytes(:) => null()
-     
+
      doFirstTime = .false.
      doLastTime = .false.
      if (PRESENT(firstTime)) doFirstTime = firstTime
      if (PRESENT(lastTime)) doLastTime = lastTime
-     
+
      if (doFirstTime) then
         if (associated(iBytes)) deallocate(iBytes)
         nLeftOverBytes = 0
      endif
-     
+
      if (associated(iHeader)) deallocate(iHeader)
 
      if (PRESENT(iArray64)) then
@@ -2207,7 +2207,7 @@ endif
      if (doFirstTime) then
         nBytes = SUM(sizeCompressedBlock(1:nBlocks))
         allocate(iBytes(1:nBytes))
-        iBytes(1:nBytes) = itemp(1:nBytes)        
+        iBytes(1:nBytes) = itemp(1:nBytes)
      else
         nBytes = SUM(sizeCompressedBlock(1:nBlocks))
         allocate(newIBytes(1:size(iBytes)+nBytes))
@@ -2262,7 +2262,7 @@ endif
     logical, optional :: padEnd
     integer :: npad
     integer,optional :: inputipad(:), outiPad(:)
-    integer(bigint) :: j 
+    integer(bigint) :: j
     real, optional :: float32(:)
     integer(bigInt), optional :: iarray64(:)
     integer, optional :: iarray32(:)
@@ -2282,9 +2282,9 @@ endif
     doPadEnd = .true.
     if (present(padend)) dopadend = padend
 
-    if (PRESENT(iArray32)) nBytes = SIZE(iArray32)*4 
-    if (PRESENT(float32))  nBytes = SIZE(float32)*4 
-    if (PRESENT(iArray64)) nBytes = SIZE(iArray64)*8 
+    if (PRESENT(iArray32)) nBytes = SIZE(iArray32)*4
+    if (PRESENT(float32))  nBytes = SIZE(float32)*4
+    if (PRESENT(iArray64)) nBytes = SIZE(iArray64)*8
     if (PRESENT(iArray8))  nBytes = SIZE(iArray8)
 
     if (writeheader) then
@@ -2405,10 +2405,10 @@ endif
 
 function returnBase64Char(i) result(c)
   character(len=1) :: c
-  integer(kind=1) :: i 
+  integer(kind=1) :: i
 
   if ((i >= 0).and.(i<26)) then
-     c = char(i + ichar("A")) 
+     c = char(i + ichar("A"))
   else if ((i >= 26).and.(i < 52)) then
      c = char(i - 26 + ichar("a"))
   else if ((i >= 52).and.(i < 62)) then
@@ -2497,7 +2497,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
   if (grid%splitOverMpi.and.(myRankGlobal == 0)) goto 666
 
   ! just return if not the first set of domain decomposed threads
-  if (grid%splitOverMpi.and.(myHydroSetGlobal /= 0)) goto 666 
+  if (grid%splitOverMpi.and.(myHydroSetGlobal /= 0)) goto 666
 #endif
 
   lf = char(10)
@@ -2634,7 +2634,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
      write(lunit) trim(buffer)
      buffer = '<VTKFile type="UnstructuredGrid" version="0.1" byte_order="LittleEndian" compressor="vtkZLibDataCompressor">'//lf
      write(lunit) trim(buffer)
-     buffer = '  <UnstructuredGrid>'//lf 
+     buffer = '  <UnstructuredGrid>'//lf
      write(lunit) trim(buffer)
      buffer = '    <FieldData>'//lf
      write(lunit) trim(buffer)
@@ -2656,7 +2656,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
      write(lunit) trim(buffer)
      close(lunit)
   endif
-     
+
 
   if (writeheader.and.(.not.grid%splitoverMPI)) then
      allocate(points(1:3,1:nPoints))
@@ -2748,7 +2748,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
      deallocate(pString)
      deallocate(iBytes, iHeader)
 
-  
+
      buffer = lf//'        </DataArray>'//lf
      write(lunit) trim(buffer)
 
@@ -2771,7 +2771,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
      write(lunit) pstring2(1:nString2)
      deallocate(pString, pstring2)
      deallocate(iBytes, iHeader, offsets)
- 
+
 
 
     buffer = lf//'        </DataArray>'//lf
@@ -2896,7 +2896,7 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
            call writeDomainDecomposed(valueType(iValues), grid, vtkFilename, lunit, nCells, chemIndex(iValues))
 #endif
         endif
-           
+
 
 
         if (writeheader) then
@@ -2935,7 +2935,7 @@ end subroutine writeXMLVtkFileAMR
     integer :: n
     logical :: includeGhosts
 
-    n = 0 
+    n = 0
 
     call getValuesRecursive(grid, grid%octreeRoot, valueType, rArray, n, includeGhosts, chemIndex)
 
@@ -2968,7 +2968,7 @@ end subroutine writeXMLVtkFileAMR
       type(VECTOR) :: rVec, vel, vec, pos
       real, parameter :: min_single_prec = 1.0e-37
       logical, save :: firstTime=.true.
-      logical :: found 
+      logical :: found
 !$OMP THREADPRIVATE (firstTime)
 
 #ifdef CHEMISTRY
@@ -3055,7 +3055,7 @@ end subroutine writeXMLVtkFileAMR
                case("i0")
                   rArray(1, n) = real(thisOctal%newmolecularlevel(3,subcell))
 
-! galLon and galLat re-use storage used for i0 and dIattenuated 
+! galLon and galLat re-use storage used for i0 and dIattenuated
                case("galLon")
                   rArray(1, n) = real(thisOctal%newmolecularlevel(2,subcell))
 
@@ -3270,7 +3270,7 @@ end subroutine writeXMLVtkFileAMR
                case("fvisc2")
                   rVec = subcellCentre(thisOctal,subcell)
                   r = rVec%x * gridDistanceScale
-                  
+
                   rArray(1, n) = real(thisOctal%fViscosity(subcell)%y*r)
                case("fvisc3")
                         rArray(1, n) = real(thisOctal%fViscosity(subcell)%z)
@@ -3278,7 +3278,7 @@ end subroutine writeXMLVtkFileAMR
                case("velcall")
                   pos = subcellCentre(thisOctal, subcell)
                   vec  = amrGridVelocity(grid%octreeRoot, pos, startOctal = thisOctal, actualSubcell = subcell, &
-                     linearInterp=.false.) 
+                     linearInterp=.false.)
                   if (thisOctal%threed) then
                      rArray(1, n) = real(thisOctal%velocity(subcell)%x*cspeed/1.e5)
                      rArray(2, n) = real(thisOctal%velocity(subcell)%y*cspeed/1.e5)
@@ -3292,7 +3292,7 @@ end subroutine writeXMLVtkFileAMR
                case("vely")
                   pos = subcellCentre(thisOctal, subcell)
                   vec  = amrGridVelocity(grid%octreeRoot, pos, startOctal = thisOctal, actualSubcell = subcell, &
-                     linearInterp=.false.) 
+                     linearInterp=.false.)
                   rArray(1, n) = real(thisOctal%velocity(subcell)%y*cspeed/1.e5)
 
 
@@ -3315,7 +3315,7 @@ end subroutine writeXMLVtkFileAMR
               case("cornervel")
                  rVec = subcellCentre(thisOctal, subcell)
                  vel = amrGridVelocity(grid%octreeRoot,rvec,startOctal=thisOctal,&
-                      actualSubcell=subcell) 
+                      actualSubcell=subcell)
                  if (thisOctal%threeD) then
                     rArray(1, n) = real(real(vel%x*cspeed/1.e5))
                     rArray(2, n) = real(vel%y*cspeed/1.e5)
@@ -3510,7 +3510,7 @@ end subroutine writeXMLVtkFileAMR
                      value = 0.d0
                   endif
                   rArray(1, n) = real(value)
-                  
+
                case("phi")
                   rArray(1, n) = real(thisOctal%phi_i(subcell))
 
@@ -3565,16 +3565,16 @@ end subroutine writeXMLVtkFileAMR
                   rArray(1, n) = real(thisOctal%abundance(subcell, 28))
 
                case("CII_1")
-                  rArray(1, n) = real(thisOctal%CII_POP(subcell, 1))       
+                  rArray(1, n) = real(thisOctal%CII_POP(subcell, 1))
 
                case("CII_2")
-                  rArray(1, n) = real(thisOctal%CII_POP(subcell, 2))       
+                  rArray(1, n) = real(thisOctal%CII_POP(subcell, 2))
 
                case("CII_3")
-                  rArray(1, n) = real(thisOctal%CII_POP(subcell, 3))       
+                  rArray(1, n) = real(thisOctal%CII_POP(subcell, 3))
 
                case("CII_4")
-                  rArray(1, n) = real(thisOctal%CII_POP(subcell, 4))       
+                  rArray(1, n) = real(thisOctal%CII_POP(subcell, 4))
 
                case("C+_PDR")
                   rArray(1, n) = real(thisOctal%abundance(subcell, 11))
@@ -3615,7 +3615,7 @@ end subroutine writeXMLVtkFileAMR
                      rArray(1, n) =  0.
                   endif
 
-                  
+
 
                case("edges")
                   if (thisOctal%edgeCell(subcell)) then
@@ -3688,7 +3688,7 @@ end subroutine writeXMLVtkFileAMR
         vectorvalue = .false.
      end select
 
-     
+
      if (myrankGlobal == 1) then
         if (scalarValue) then
            allocate(float32(1:nCells))
@@ -3740,7 +3740,7 @@ end subroutine writeXMLVtkFileAMR
            write(lunit) pstring2(1:nString2)
            deallocate(pstring2)
         end do
- 
+
 
         close(lunit)
 
@@ -3749,7 +3749,7 @@ end subroutine writeXMLVtkFileAMR
         deallocate(iBytes, iHeader)
 
      else
-     
+
         if (scalarValue) then
            allocate(float32(1:nCells))
            allocate(rArray(1:1, 1:nCells))
@@ -3767,7 +3767,7 @@ end subroutine writeXMLVtkFileAMR
         call MPI_SEND(float32, j, MPI_REAL, 1, tag, MPI_COMM_WORLD, ierr)
         deallocate(float32, rArray)
      endif
-        
+
      call MPI_BARRIER(amrCommunicator, ierr)
    end subroutine writeDomainDecomposed
 
@@ -3840,7 +3840,7 @@ end subroutine writeXMLVtkFileAMR
            write(lunit) pstring2(1:nString2)
            deallocate(pstring2)
         end do
- 
+
 
         close(lunit)
 
@@ -3849,7 +3849,7 @@ end subroutine writeXMLVtkFileAMR
         deallocate(iBytes, iHeader)
 
      else
-     
+
         allocate(float32(1:int(nPoints,kind=bigint)*3))
         allocate(rArray(1:3, 1:int(nPoints,kind=bigint)))
 
@@ -3860,7 +3860,7 @@ end subroutine writeXMLVtkFileAMR
         call MPI_SEND(float32, int(j,kind=4), MPI_REAL, 1, tag, MPI_COMM_WORLD, ierr)
         deallocate(float32, rArray)
      endif
-     
+
 
      call MPI_BARRIER(amrCommunicator, ierr)
    end subroutine writePointsDecomposed
@@ -3930,7 +3930,7 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
   if (grid%splitOverMpi.and.(myRankGlobal == 0)) goto 666
 
   ! just return if not the first set of domain decomposed threads
-  if (grid%splitOverMpi.and.(myHydroSetGlobal /= 0)) goto 666 
+  if (grid%splitOverMpi.and.(myHydroSetGlobal /= 0)) goto 666
 
 #endif
 
@@ -3977,7 +3977,7 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
   endif
 
 
-  call countVoxels(grid%octreeRoot, nOctals, nVoxels)  
+  call countVoxels(grid%octreeRoot, nOctals, nVoxels)
   if (grid%octreeRoot%cylindrical) then
      nVoxels = 0
      call countVoxelsCylindrical(grid%octreeRoot, nVoxels)
@@ -4018,7 +4018,7 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
            scalarvalue = .true.
            vectorvalue = .false.
         end select
-        
+
         if (scalarvalue) then
            write(lunit) '      <PDataArray type="Float32" Name="',trim(valueType(i)),'"/>'//lf
         else
@@ -4044,7 +4044,7 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
 
   j  = index(vtkFilename, ".") -1
   write(pVtkFilename, '(a,a,i3.3,a)') vtkFilename(1:j),"_",myrankGlobal,".vtu"
-     
+
 
   if (Writeoutput) then
 !     nBytesPoints = sizeofFloat * 3 * nPointsGlobal
@@ -4070,7 +4070,7 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
      write(lunit) trim(buffer)
      buffer = '<VTKFile type="UnstructuredGrid" version="0.1" byte_order="LittleEndian" compressor="vtkZLibDataCompressor">'//lf
      write(lunit) trim(buffer)
-     buffer = '  <UnstructuredGrid>'//lf 
+     buffer = '  <UnstructuredGrid>'//lf
      write(lunit) trim(buffer)
      write(str1(1:12),'(i10)') nUniquePoints
      write(str2(1:12),'(i10)') nCells
@@ -4084,7 +4084,7 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
   endif
 
 
-  if (writeheader) then 
+  if (writeheader) then
      allocate(float32(1:(nUniquePoints*3)))
      float32 = RESHAPE(points(1:3,1:nUniquePoints), (/SIZE(float32)/))
      open(lunit, file=pvtkFilename, form="unformatted",access="stream",status="old",position="append")
@@ -4143,7 +4143,7 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
      write(lunit) pstring2(1:nString2)
      deallocate(pString, pstring2)
      deallocate(iBytes, iHeader, offsets)
- 
+
 
 
 
@@ -4261,7 +4261,7 @@ subroutine writeParallelXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valu
            deallocate(float32)
            deallocate(rArray)
         endif
-           
+
 
 
         if (writeheader) then
@@ -4349,7 +4349,7 @@ end subroutine writeParallelXMLVtkFileAMR
                if (.not.thisOctal%cylindrical) then
                   rVec = subcellCentre(thisOctal,subcell)
                   d = real(thisOctal%subcellSize/2.d0)
-                  
+
                   nPointsInCell = 8
 
                   xp = REAL(rVec%x + d)
@@ -4358,7 +4358,7 @@ end subroutine writeParallelXMLVtkFileAMR
                   ym = REAL(rVec%y - d)
                   zp = REAL(rVec%z + d)
                   zm = REAL(rVec%z - d)
-                  
+
                   pointCell(1, 1) = xm
                   pointCell(2, 1) = ym
                   pointCell(3, 1) = zm
@@ -4532,7 +4532,7 @@ end subroutine writeParallelXMLVtkFileAMR
        theSamePoint = .false.
     endif
   end function theSamePoint
-    
+
   logical function checkGhost(thisOctal, subcell)
     use inputs_mod, only : cylindricalHydro
     type(VECTOR) :: rVec
@@ -4540,7 +4540,7 @@ end subroutine writeParallelXMLVtkFileAMR
     integer :: subcell
 
     checkGhost = .false.
-    
+
     if (thisOctal%ghostCell(subcell)) checkGhost = .true.
 
 
@@ -4551,4 +4551,3 @@ end subroutine writeParallelXMLVtkFileAMR
   end function checkGhost
 
 end module vtk_mod
-

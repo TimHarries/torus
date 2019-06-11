@@ -5,6 +5,9 @@ dustphysics T   ! use dust microphysics
 
 radeq T  ! perform a radiative equilibrium calculation
 
+loadbalancing T
+nhydrothreads 2
+
 ! AMR grid parameters
 
 readgrid F   ! we aren't reading a grid, we will set one up from scratch
@@ -62,3 +65,15 @@ distance 2.25558e-8  ! Distance to observer
 sedlammin 0.12       ! minimum wavelength in SED file
 sedlammax 2000       ! maximum wavelength in SED file
 sedwavlin F          ! Linear spacing in SED file? 
+
+! Image parameters
+ 
+image T                    ! Produce images
+lambdaimage  220000.0      ! at 22 microns
+nimage 2                   ! There will be two images
+
+imagefile1 test_22um.fits  ! Filename for the first image
+imagefile2 test2_22um.fits ! Filename for the second image
+
+inclination1 12.5          ! Inclination angle for first image 
+inclination2 77.5          ! Inclination angle for second image

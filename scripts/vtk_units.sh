@@ -44,5 +44,4 @@ num_lines_left=$((${total_lines}-${num_lines}))
 tail -${num_lines_left} ${infile} >> ${outfile}
 
 echo "All done"
-exit 0 
-
+exit 0

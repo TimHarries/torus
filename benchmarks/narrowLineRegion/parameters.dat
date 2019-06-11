@@ -2,17 +2,17 @@
 ! Grid set up
 !
 
-splitovermpi    T
-readgrid        F
+splitovermpi T
+readgrid F
 
-amr1d           T
-mindepthamr     8
-maxdepthamr     8
-amrgridcentrex  5.e7
-amrgridcentrey  0.0000
-amrgridcentrez  0.0000
-amrgridsize     1.e8
-geometry        NLR
+amr1d T
+mindepthamr 8
+maxdepthamr 8
+amrgridcentrex 5.e7
+amrgridcentrey 0.0000
+amrgridcentrez 0.0000
+amrgridsize 1.e8
+geometry NLR
 
 
 nhydrothreads 2
@@ -23,18 +23,18 @@ nhydrothreads 2
 ! See readPhotoionPhysicsParameters for parameters
 !
 
-photoionphysics  T 
-xray		 T
-dustphysics      T
+photoionphysics T 
+xray T
+dustphysics T
 
 !
 !Elemental abundances
 !
 
 he_abund 0.1
-c_abund	 30.e-5
-n_abund	 10.e-5
-o_abund	 80.e-5
+c_abund 30.e-5
+n_abund 10.e-5
+o_abund 80.e-5
 ne_abund 10.e-5
 s_abund 3.e-5
 
@@ -51,7 +51,7 @@ sourcepos1  0.0,0.0,0.0
 ! Type of calculation
 !
 
-photoioneq   T
+photoioneq T
 
 !
 ! Dust parameters

@@ -6,9 +6,13 @@
 # image: atlassian/default-image:latest
 
 # enable Docker for your repository
+definitions:
+  services:
+    docker:
+     memory: 7000
 options:
   docker: true
-
+  size: 2x
 pipelines:
   default:
     - step:

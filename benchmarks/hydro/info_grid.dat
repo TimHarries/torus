@@ -1,0 +1,15 @@
+ 
+######################################################
+Grid info :
+ 
+ geometry             = hydro1d             
+ maxDepth             =        32766
+ halfSmallestSubcell  =    6.9531199078533598E-310  [10^10 cm]
+ nVoxels              =           28
+ smoothingFactor      =    3.00000000    
+ grid center          =  0.50000000000000000        0.0000000000000000        0.0000000000000000     
+ Size of largest cell =   1.0000000000000000       [10^10 cm]
+#######################################################
+ 
+ 
+**** WARNING: Grid cell depth is so great numerical problems may occur****

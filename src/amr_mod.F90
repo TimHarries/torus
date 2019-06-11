@@ -717,6 +717,7 @@ CONTAINS
     use gridFromFitsFile, only: assign_from_fitsfile
 #endif
     use angularImage_utils, only: calcAngImgTest
+    use ramses_mod, only: fillRamses
 
     IMPLICIT NONE
 
@@ -1004,7 +1005,7 @@ CONTAINS
     CASE("unimed")
        call calcUniMed(thisOctal, subcell)
 
-       
+
     CASE("shell")
        call calcShell(thisOctal, subcell)
 
@@ -1015,7 +1016,7 @@ CONTAINS
     CASE("plumber")
        call calcPlumber(thisOctal, subcell)
 
-    CASE("krumholz") 
+    CASE("krumholz")
        ! uniform-density sphere with power-law falloff
        ! Krumholz et al 2011, ApJ, 740, 74 / Krumholz et al 2012, ApJ, 754, 71
        call calckrumholz(thisOctal, subcell)
@@ -1086,6 +1087,10 @@ CONTAINS
 
        ! Flag as missing data to be filled in by FinishGrid
        thisoctal%rho(subcell) = -9.9d99
+       if (associated (thisoctal%cornervelocity)) thisoctal%cornervelocity = VECTOR(-9.9d99,-9.9d99,-9.9d99)
+
+    CASE("Gareth")
+       call fillRamses(thisOctal, subcell)
        if (associated (thisoctal%cornervelocity)) thisoctal%cornervelocity = VECTOR(-9.9d99,-9.9d99,-9.9d99)
 
     CASE ("benchmark")
@@ -1211,6 +1216,9 @@ CONTAINS
    CASE("fitsfile")
       call assign_from_fitsfile(thisOctal, subcell)
 #endif
+   CASE("mgascii")
+      thisOctal%rho = 1d-30
+      thisOctal%temperature = 10.
 
     CASE ("magstream")
 
@@ -2087,7 +2095,7 @@ CONTAINS
     !   and calculates all the other variables in the model.
     ! this should be called once the structure of the grid is complete.
 
-    USE inputs_mod, ONLY : modelwashydro, splitOverMPI, molecularPhysics !, useHartmannTemp
+    USE inputs_mod, ONLY : modelwashydro, splitOverMPI, molecularPhysics, densitySubSample !, useHartmannTemp
     USE luc_cir3d_class, ONLY:  calc_cir3d_temperature
     USE cmfgen_class, ONLY:     calc_cmfgen_temperature
     USE jets_mod, ONLY:         calcJetsTemperature
@@ -2154,7 +2162,7 @@ CONTAINS
        CASE ("sphfile","molcluster", "theGalaxy", "dale")
           if( .not. thisoctal%haschild(subcell)) then
 
-             if (molecularPhysics) then
+             if (molecularPhysics.or.h21cm) then
              if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
              if (.not. associated(thisoctal%cornervelocity)) then
                 allocate(thisoctal%cornervelocity(27))
@@ -2174,6 +2182,19 @@ CONTAINS
 
 !          CASE("molebench")
 !             CALL fillDensityCorners(thisOctal,grid, molebenchdensity, molebenchvelocity, thisOctal%threed)
+
+       case ("Gareth")
+          if (.not. associated(thisoctal%cornervelocity)) then
+             allocate(thisoctal%cornervelocity(27))
+             thisoctal%cornervelocity(:) = VECTOR(-9.9d99,-9.9d99,-9.9d99)
+          endif
+          if(thisoctal%cornervelocity(14)%x .eq. -9.9d99) then
+             call interpolateVelocityCorners(thisOctal)
+             if (densitySubSample) then
+                if(.not. associated(thisoctal%cornerrho)) allocate(thisOctal%cornerrho(27))
+                call interpolateDensityCorners(thisOctal)
+             end if
+          endif
 
        CASE DEFAULT
           ! Nothing to be done for this geometry so just return.
@@ -3374,7 +3395,7 @@ CONTAINS
     TYPE(octal),  POINTER          :: thisOctal, currentOctal
     INTEGER, INTENT(OUT), OPTIONAL :: foundSubcell
     Logical, Optional              :: Hydro
-    Logical                        :: Hydrovelocities 
+    Logical                        :: Hydrovelocities
 
     TYPE(vector)                   :: octalDirection
     TYPE(octal), POINTER           :: firstOctal
@@ -3390,7 +3411,7 @@ CONTAINS
 !       goto 666
 !    endif
 
-    
+
     if(present(hydro)) then
        hydrovelocities = hydro
     else
@@ -3596,6 +3617,7 @@ CONTAINS
 ! Currently commented out. Reinstate if required.
     use inputs_mod, only : smoothInnerEdge, variableDustSublimation, rCut, doDiscSplit
 !    use inputs_mod, only: ttauriwind, smoothinneredge, amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
+    use ramses_mod, only: splitRamses
 
 #ifdef USECFITSIO
     use gridFromFitsFile, only : checkFitsSplit
@@ -3757,7 +3779,7 @@ CONTAINS
 
           end if
        end do
-       
+
 
        if ((inputnSource>0).and.(dorefine)) then
           centre = subcellCentre(thisOctal, subcell)
@@ -4150,7 +4172,7 @@ CONTAINS
           endif
 
 
-          
+
           !     if (thisOctal%threed) then
           !        cellsize = MAX(cellsize, r0 * thisOctal%dphi)
           !     endif
@@ -4508,6 +4530,10 @@ CONTAINS
 
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
+
+       case("mgascii")
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
+
        case("isosphere")
           if(thisOctal%nDepth < mindepthamr) split = .true.
 
@@ -4605,11 +4631,10 @@ CONTAINS
           if (sqrt(rvec%x**2+(0.25*rvec%z)**2) <= (smallestCellSize * 2.5**(1+maxDepthAMR-thisOctal%nDepth))) then
               split=.true.
           endif
-!       case("shell")
-!          r = modulus(subcellCentre(thisOctal,subcell))*1.d10
-!          split = .false.
-!          if ( (r+thisOCtal%subcellsize*1.d10 >rInner).and.(  r-thisOCtal%subcellsize*1.d10 < rOuter)) split = .true.
-          
+       case("shell")
+          r = modulus(subcellCentre(thisOctal,subcell))*1.d10
+          split = .false.
+          if ( (r+thisOCtal%subcellsize*1.d10 >rInner).and.(  r-thisOCtal%subcellsize*1.d10 < rOuter)) split = .true.
 
        case("spiral")
           call splitSpiral(thisOctal, split, splitInAzimuth)
@@ -5164,8 +5189,8 @@ CONTAINS
                 enddo
              endif
 
-             
-          ! The stellar disc code is retained in case this functionality needs to be used in future 
+
+          ! The stellar disc code is retained in case this functionality needs to be used in future
 !!$
 !!$      if (include_disc(stellar_cluster)) then
 !!$
@@ -5220,6 +5245,8 @@ CONTAINS
              splitinazimuth = .false.
           endif
 
+       case ("Gareth")
+          split = splitRamses(thisOctal%subcellSize,subcellCentre(thisOctal, subcell))
 
        case ("wr104")
           ! Splits if the number of particle is more than a critical value (~3).
@@ -5566,7 +5593,7 @@ CONTAINS
           if (((r - cellSize/2.d0) < (rOuterMod(nDiscModule)*1.01d0)).and. &
              ((r + cellSize/2.d0) > (rOuterMod(nDiscModule)*0.99d0)).and.(ABS(cellCentre%z/hr) < 7.d0).and. &
              (cellSize/hr > thisheightSplitFac)) split = .true.
-          
+
           do iMod = 1, nDiscModule
              if ((r > rInnerMod(iMod)).and.(r < rOuterMod(iMod))) then
                 hr = heightMod(iMod) * (r/rInnerMod(iMod))**betaMod(iMod)
@@ -5583,7 +5610,7 @@ CONTAINS
                    (thisOctal%nDepth < maxdepthamr)) split = .true.
              endif
           enddo
-          
+
        case("circumbin")
 
           if (thisOctal%ndepth  < 5) split = .true.
@@ -6283,7 +6310,7 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
              r3 = thisOctal%r + thisOctal%subcellSize
 
              ! bottom level
-
+             print*,vector(r1*cos(phi1),r1*sin(phi1),z1)
              thisOctal%cornerVelocity(1) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z1))
              thisOctal%cornerVelocity(2) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z1))
              thisOctal%cornerVelocity(3) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z1))
@@ -6328,7 +6355,6 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 
 
              ! bottom level
-
              thisOctal%cornerVelocity(1) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z1))
              thisOctal%cornerVelocity(2) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z1))
              thisOctal%cornerVelocity(3) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z1))
@@ -6395,6 +6421,107 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
 !    endif
 
   END SUBROUTINE fillVelocityCorners
+
+  subroutine interpolateVelocityCorners(thisOctal)
+    use vector_mod
+    implicit none
+    type(OCTAL) :: thisOctal
+    logical, parameter :: debug=.false.
+    integer :: i
+
+    ! Base level
+    thisOctal%cornerVelocity(1) =  thisOctal%velocity(1)
+    thisOctal%cornerVelocity(2) = (thisOctal%velocity(1) + thisOctal%velocity(2)) / 2.0_db
+    thisOctal%cornerVelocity(3) =  thisOctal%velocity(2)
+
+    thisOctal%cornerVelocity(4) = (thisOctal%velocity(1) + thisOctal%velocity(3)) / 2.0_db
+    thisOctal%cornerVelocity(5) = (thisOctal%velocity(1) + thisOctal%velocity(2) + &
+                                   thisOctal%velocity(3) + thisOctal%velocity(4)) / 4.0_db
+    thisOctal%cornerVelocity(6) = (thisOctal%velocity(2) + thisOctal%velocity(4)) / 2.0_db
+
+    thisOctal%cornerVelocity(7) =  thisOctal%velocity(3)
+    thisOctal%cornerVelocity(8) = (thisOctal%velocity(3) + thisOctal%velocity(4)) / 2.0_db
+    thisOctal%cornerVelocity(9) =  thisOctal%velocity(4)
+
+    ! Top level
+    thisOctal%cornerVelocity(19) =  thisOctal%velocity(5)
+    thisOctal%cornerVelocity(20) = (thisOctal%velocity(5) + thisOctal%velocity(6)) / 2.0_db
+    thisOctal%cornerVelocity(21) =  thisOctal%velocity(6)
+
+    thisOctal%cornerVelocity(22) = (thisOctal%velocity(5) + thisOctal%velocity(7)) / 2.0_db
+    thisOctal%cornerVelocity(23) = (thisOctal%velocity(5) + thisOctal%velocity(6) + &
+                                   thisOctal%velocity(7) + thisOctal%velocity(8)) / 4.0_db
+    thisOctal%cornerVelocity(24) = (thisOctal%velocity(6) + thisOctal%velocity(8)) / 2.0_db
+
+    thisOctal%cornerVelocity(25) =  thisOctal%velocity(7)
+    thisOctal%cornerVelocity(26) = (thisOctal%velocity(7) + thisOctal%velocity(8)) / 2.0_db
+    thisOctal%cornerVelocity(27) =  thisOctal%velocity(8)
+
+    ! Average base and top levels onto middle level
+    do i=1,9
+       thisOctal%cornerVelocity(i+9) = (thisOctal%cornerVelocity(i) + thisOctal%cornerVelocity(i+18)) / 2.0_db
+    end do
+
+    if (debug) then
+       write(*,*) "DMA: subcell locations"
+       do i=1,8
+          write(*,*) i, subcellCentre(thisOctal,i)
+       end do
+       write(*,*) "DMA: subcell velocities"
+       do i=1,8
+          write(*,*) i, thisOctal%velocity(i)
+       end do
+       write(*,*) "DMA: corner velocities"
+       do i=1,27
+          write(*,*) i, thisOctal%cornerVelocity(i)
+       end do
+       write(*,*)
+       read(*,*)
+    end if
+
+
+  end subroutine interpolateVelocityCorners
+
+  subroutine interpolateDensityCorners(thisOctal)
+    use vector_mod
+    implicit none
+    type(OCTAL) :: thisOctal
+    integer :: i
+
+    ! Base level
+    thisOctal%cornerRho(1) =  thisOctal%rho(1)
+    thisOctal%cornerRho(2) = (thisOctal%rho(1) + thisOctal%rho(2)) / 2.0_db
+    thisOctal%cornerRho(3) =  thisOctal%rho(2)
+
+    thisOctal%cornerRho(4) = (thisOctal%rho(1) + thisOctal%rho(3)) / 2.0_db
+    thisOctal%cornerRho(5) = (thisOctal%rho(1) + thisOctal%rho(2) + &
+                                   thisOctal%rho(3) + thisOctal%rho(4)) / 4.0_db
+    thisOctal%cornerRho(6) = (thisOctal%rho(2) + thisOctal%rho(4)) / 2.0_db
+
+    thisOctal%cornerRho(7) =  thisOctal%rho(3)
+    thisOctal%cornerRho(8) = (thisOctal%rho(3) + thisOctal%rho(4)) / 2.0_db
+    thisOctal%cornerRho(9) =  thisOctal%rho(4)
+
+    ! Top level
+    thisOctal%cornerRho(19) =  thisOctal%rho(5)
+    thisOctal%cornerRho(20) = (thisOctal%rho(5) + thisOctal%rho(6)) / 2.0_db
+    thisOctal%cornerRho(21) =  thisOctal%rho(6)
+
+    thisOctal%cornerRho(22) = (thisOctal%rho(5) + thisOctal%rho(7)) / 2.0_db
+    thisOctal%cornerRho(23) = (thisOctal%rho(5) + thisOctal%rho(6) + &
+                               thisOctal%rho(7) + thisOctal%rho(8)) / 4.0_db
+    thisOctal%cornerRho(24) = (thisOctal%rho(6) + thisOctal%rho(8)) / 2.0_db
+
+    thisOctal%cornerRho(25) =  thisOctal%rho(7)
+    thisOctal%cornerRho(26) = (thisOctal%rho(7) + thisOctal%rho(8)) / 2.0_db
+    thisOctal%cornerRho(27) =  thisOctal%rho(8)
+
+    ! Average base and top levels onto middle level
+    do i=1,9
+       thisOctal%cornerRho(i+9) = (thisOctal%cornerRho(i) + thisOctal%cornerRho(i+18)) / 2.0_db
+    end do
+
+  end subroutine interpolateDensityCorners
 
   TYPE(vector) FUNCTION TTauriVelocity(point)
     ! calculates the velocity vector at a given point for a model
@@ -7065,9 +7192,9 @@ endif
     use  inputs_mod, only: dipoleoffset, thindiskrin, ttaurirstar
 
     implicit none
-    
-    type(GRIDTYPE), intent(inout)      :: grid                
-   
+
+    type(GRIDTYPE), intent(inout)      :: grid
+
     real :: rStar
 
 
@@ -8035,7 +8162,7 @@ endif
 
 !Sets up a turbulent medium. To perform radiative round up models:
 !1. Run this with all boundaries reflective or periodic
-!2. Then run a radiation hydro calculation with periodic ±y, ±z and reflecting -x, freeoutnoin +x
+!2. Then run a radiation hydro calculation with periodic ï¿½y, ï¿½z and reflecting -x, freeoutnoin +x
   subroutine calcRadiativeRoundUpDensity(thisOctal,subcell)
 !    use inputs_mod, only : xplusbound, xminusbound, yplusbound, yminusbound, zplusbound, zminusbound
     use inputs_mod, only : readTurb
@@ -9316,7 +9443,7 @@ endif
     type(VECTOR) :: centre(numClouds)
 !    logical :: inSphere = .false.
 
-!THaw - initially trying 30pc box centered at 0,0,0 and extending ± 15pc
+!THaw - initially trying 30pc box centered at 0,0,0 and extending ï¿½ 15pc
 !Star at 0,0,0
 !BES's at 2.5, 5, 7.5, 10, 12.5pc
 
@@ -9581,7 +9708,7 @@ endif
    rHat = rVec / r
 
    thisOctal%rho(subcell) = 1.d-30
-   thisOctal%temperature(subcell) = 1.e-30 
+   thisOctal%temperature(subcell) = 1.e-30
    thisOctal%kappaAbs(subcell,1) =  1.d-30
    thisOctal%kappaSca(subcell,1) = 1.d-30
    thisOctal%etaLine(subcell) = 1.d-30
@@ -9597,7 +9724,7 @@ endif
       velGrad = (v_etacar(i+1)-v_etacar(i))*1.d5 / ((r_etaCar(i+1)-r_etaCar(i)))
       tauSob = chil_etacar(i)  / nu0
       tauSob = tauSob / velGrad
-      
+
       if (tauSob < 0.01) then
          escProb = 1.0d0-tauSob*0.5d0*(1.0d0 -   &
               tauSob/3.0d0*(1. - tauSob*0.25d0*(1.0d0 - 0.20d0*tauSob)))
@@ -9607,7 +9734,7 @@ endif
          escProb = 1.d0/tauSob
       end if
       escProb = max(escProb, 1.d-10)
-             
+
 
 
       thisOctal%rho(subcell) = esec_etacar(i) + t*(esec_etacar(i+1)-esec_etacar(i))
@@ -9639,7 +9766,7 @@ endif
          thisOctal%temperature(subcell) = real(t_ostar(i))
          thisOctal%kappaAbs(subcell,1) = chi_th_ostar(i)
          thisOctal%kappaSca(subcell,1) = esec_ostar(i)
-         thisOctal%etaLine(subcell) = etal_ostar(i) 
+         thisOctal%etaLine(subcell) = etal_ostar(i)
          thisOctal%chiLine(subcell) = chil_ostar(i)
          thisOctal%etaCont(subcell) = eta_ostar(i)
          thisOctal%velocity(subcell) = (v_ostar(i)*1.d5/cSpeed)*rHat
@@ -9762,7 +9889,7 @@ endif
       else
          rHat = VECTOR(0.d0, 0.d0, 0.d0)
       endif
-      
+
       if ((r > r_ostar(1)).and.(r < r_ostar(nd_ostar))) then
          call locate(r_ostar, nd_ostar, r, i)
          etaCarVelocity = (v_ostar(i) * 1.d5/cSpeed)*rHat
@@ -9930,7 +10057,7 @@ logical function insideCone(position, binarySep, momRatio)
   real(double) :: binarySep, momRatio, openingAngle
 
   ! two relationships from Eichler & Usov, 1993, ApJ, 402, 271
-  
+
   insideCone = .false.
   goto 666
   stagPoint = VECTOR(0.d0, 0.d0, -binarySep * sqrt(momRatio) / (1. + sqrt(momRatio)))
@@ -9995,7 +10122,7 @@ logical function insideCone(position, binarySep, momRatio)
     thisOctal%nhii(subcell) = thisOctal%ne(subcell)
 
   end subroutine calcUnimed
-  
+
   subroutine calcUniformDensityGrid(thisOctal,subcell)
     use inputs_mod, only : gridDensity, decoupleGasDustTemperature, hydrodynamics
     TYPE(octal), INTENT(INOUT) :: thisOctal
@@ -10088,7 +10215,7 @@ logical function insideCone(position, binarySep, momRatio)
     rVec = subcellCentre(thisOctal, subcell)
     r = modulus(rVec)
 
-    rho0 = 1.d-30*shellmass  * (3.d0 - shellalpha) / (fourPi * rInner**shellalpha * & 
+    rho0 = shellmass  * (3.d0 - shellalpha) / (fourPi * rInner**shellalpha * &
             (rOuter**(3.d0-shellalpha) - rInner**(3.d0-shellalpha)))
 
     if ((r > rInner).and.(r < rOuter)) then
@@ -10120,12 +10247,12 @@ logical function insideCone(position, binarySep, momRatio)
     rDash = modulus(vVec)
     call normalize(vVec)
     theta =atan2(rVec%y, rVec%x)
-    
+
     if (hydrodynamics) thisOctal%phi_gas(subcell) = -bigG * plumberMass / (sqrt(rDash**2 * plumberRadius**2)*gridDistanceScale)
     thisOctal%rho(subcell) = min(rhoThreshold,rhoPlumber * (1+(rDash/plumberRadius)**2)**(-plumberExponent/2))
-    thisOctal%temperature(subcell) = 20.d0 
+    thisOctal%temperature(subcell) = 20.d0
     thisOctal%velocity(subcell) = ((rDash * gridDistanceScale)*omega/cSpeed)*vVec
-    
+
     if (Hydrodynamics)  then
        if (cylindricalHydro) then
           thisOctal%rhou(subcell) = thisOctal%velocity(subcell)%x * thisOctal%rho(subcell)
@@ -10190,7 +10317,7 @@ logical function insideCone(position, binarySep, momRatio)
        thisOctal%rho(subcell) = 1.d-2 * 2.d0**beta * rhoCore
     endif
     thisOctal%rho(subcell) = max(rhoFloor, thisOctal%rho(subcell))
-    thisOctal%temperature(subcell) = 10.d0 
+    thisOctal%temperature(subcell) = 10.d0
     if (decoupleGasDustTemperature) thisOctal%tDust(subcell) = 10.d0
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
 
@@ -10201,7 +10328,7 @@ logical function insideCone(position, binarySep, momRatio)
        thisOctal%gamma(subcell) = 2.d0
     endif
 
-  end subroutine calcKrumholz 
+  end subroutine calcKrumholz
 
   ! geometry 3dgaussian
   subroutine calcGaussianSphere(thisOctal,subcell)
@@ -10228,13 +10355,13 @@ logical function insideCone(position, binarySep, momRatio)
     if (rMod < sphereRadius) then
        ! ratio of max/min density ~ 3
        sigma = sphereRadius / sqrt(2.d0 * log(3.d0))
-       sphereRho0 = sphereMass / (sigma * sqrt(2.d0 * pi)) 
-       thisOctal%rho(subcell) = sphereRho0 * exp(-((rVec%x-spherePosition%x)**2 + & 
-            (rVec%y-spherePosition%y)**2 + (rVec%z-spherePosition%z)**2) / (2 * sigma**2)) 
+       sphereRho0 = sphereMass / (sigma * sqrt(2.d0 * pi))
+       thisOctal%rho(subcell) = sphereRho0 * exp(-((rVec%x-spherePosition%x)**2 + &
+            (rVec%y-spherePosition%y)**2 + (rVec%z-spherePosition%z)**2) / (2 * sigma**2))
        thisOctal%rho(subcell) = min(rhoThreshold,thisOctal%rho(subcell))
 ! set up density outside sphere
     else
-       thisOctal%rho(subcell) = rhoFloor 
+       thisOctal%rho(subcell) = rhoFloor
        thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
     endif
     thisOctal%rho(subcell) = max(rhoFloor, thisOctal%rho(subcell))
@@ -10254,11 +10381,11 @@ logical function insideCone(position, binarySep, momRatio)
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
-    real(double) :: rho_0 
+    real(double) :: rho_0
 
     rVec = subcellCentre(thisOctal, subcell)
 
-    rho_0 = arthurN0 * mHydrogen 
+    rho_0 = arthurN0 * mHydrogen
     thisOctal%rho(subcell) = rho_0 * exp(rVec%z / arthurScaleHeight)
 
     thisOctal%temperature(subcell) = 300.d0
@@ -10586,7 +10713,7 @@ logical function insideCone(position, binarySep, momRatio)
 
   subroutine calcProtoBinDensity(thisOctal,subcell)
 
-    use inputs_mod, only : beta
+    use inputs_mod, only : beta, sphereMass, sphereRadius
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
@@ -10597,8 +10724,8 @@ logical function insideCone(position, binarySep, momRatio)
 !    mCloud = 1.d0 * msol
 !    rCloud = 5.d16
 
-    mCloud = 100.d0 * msol
-    rCloud = 0.1d0 * pctocm
+    mCloud = sphereMass !100.d0 * msol
+    rCloud = sphereRadius*1.d10 !0.1d0 * pctocm
 
 !    mCloud = mSol
 !    rCloud = 3.2d16
@@ -12267,7 +12394,7 @@ end function readparameterfrom2dmap
     integer :: subcell
 
     call findSubcellLocal(point, recentOctal,subcell)
-    clustervelocity = Clusterparameter(point, recentoctal, subcell, rho_out=density) 
+    clustervelocity = Clusterparameter(point, recentoctal, subcell, rho_out=density)
 
   end FUNCTION ClusterVelocity
 
@@ -12280,7 +12407,7 @@ end function readparameterfrom2dmap
     integer :: subcell
 
     call findSubcellLocal(point, recentOctal,subcell)
-    out = Clusterparameter(point, recentoctal, subcell, rho_out=clusterdensity) 
+    out = Clusterparameter(point, recentoctal, subcell, rho_out=clusterdensity)
 
   end FUNCTION ClusterDensity
 #endif
@@ -12683,7 +12810,7 @@ end function readparameterfrom2dmap
           thisOctal%dustTypeFraction(subcell,1:nDustType) = max(1.d-20,grainFrac(1:nDustType)*exp(-fac))
        endif
     endif
-    
+
     r = modulus(rVec)*1.d10
     rhoEnv = 1.e-30
     if ((r > erInner).and.(r < erOuter)) then
@@ -12719,46 +12846,46 @@ end function readparameterfrom2dmap
   end subroutine shakaraDisk
 
   subroutine modularDisc(thisOctal, subcell)
-    
+
     use inputs_mod, only : rho0, rSublimation ! real precision disc module-independent param
     use inputs_mod, only : nDiscModule, nDustType ! counting params
     use inputs_mod, only : alphaMod, betaMod, heightMod, rInnerMod, rOuterMod, prod ! 1D array params
     use inputs_mod, only : dustFracMod, dustHeightMod, dustBetaMod ! 2D array params
-    
+
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
     real(double) :: r, z, h, thisHeight, fracDust
     integer :: iMod, iDust
-    
+
       rVec = subcellCentre(thisOctal, subcell)        ! locate your position in the grid
       r = dble(SQRT(rVec%x**2 + rVec%y**2))           ! locate your disc midplane position
       z = dble(rVec%z)                                ! locate your position above the disc midplane
-    
+
       ! Fill the entire grid with default values
       thisOctal%rho(subcell) = 1.d-30                           ! default value of gas density
       thisOctal%temperature(subcell) = 1.d1                     ! default value of temperature
       thisOctal%dustTypeFraction(subcell,1:nDustType) = 1.d-30  ! default dust fraction
       thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)    ! default velocity value
-    
+
       ! Determine which disc module you are located in and assign a gas density
       do iMod = 1, nDiscModule
         if ((rOuterMod(iMod) > r).and.(rInnerMod(iMod) < r)) then
           h = heightMod(iMod) * (r/rInnerMod(iMod))**betaMod(iMod)
           ! determine the scale height of the gas disc at your position, r
-          thisOctal%rho(subcell) = MAX(dble(rho0) * rInnerMod(1)**alphaMod(1) * prod(iMod) * & 
+          thisOctal%rho(subcell) = MAX(dble(rho0) * rInnerMod(1)**alphaMod(1) * prod(iMod) * &
                                    (1/r)**alphaMod(iMod) * EXP(-0.5d0 * (z/h)**2), 1.d-30)
           ! determine the density of the gas in the current disc module
         endif
         if (dble(rSublimation) < r) then
           if ((rOuterMod(iMod) > r).and.(rInnerMod(iMod) < r)) then
             do iDust = 1, nDustType
-              h = heightMod(iMod) * (r/rInnerMod(iMod))**betaMod(iMod)              
+              h = heightMod(iMod) * (r/rInnerMod(iMod))**betaMod(iMod)
               thisHeight = dustHeightMod(iMod, iDust) * (r/rInnerMod(iMod))**dustBetaMod(iMod, iDust)
               ! determines the dust scale height at position, r
               if (real(dustHeightMod(iMod, iDust)) <= real(heightMod(iMod))) then
                 fracDust = MAX(2.d0*(1.d0/dble(SQRT(twopi)*ERF(1/SQRT(2.d0))))*EXP(-0.5d0*(z/thisHeight)**2), 1.d-30)
-                ! normalisation for the dust settling exponential profile. 
+                ! normalisation for the dust settling exponential profile.
               else
                 fracDust = 1.d0
               endif
@@ -13058,7 +13185,7 @@ end function readparameterfrom2dmap
              thisOctal%dustTypeFraction(subcell, iDust) = max(1.d-30,grainFrac(iDust) * fracDust / fracGas)
           enddo
        endif
-             
+
 
 
 
@@ -15568,7 +15695,7 @@ end function readparameterfrom2dmap
        endif
 
     endif
-    
+
     if (PRESENT(kappaScaDust)) kappaScaDust = kappaSca
 
     if (PRESENT(kappaAbs)) then
@@ -16302,59 +16429,138 @@ end function readparameterfrom2dmap
     enddo
   end subroutine assignDensitiesFlatDisc
 
-  recursive subroutine assignDensitiesStellarWind(grid, thisOctal)
-    use analytical_velocity_mod
-    use inputs_mod, only : SW_Mdot, SW_Rmin, SW_rmax, SW_temperature
+RECURSIVE SUBROUTINE assignDensitiesStellarWind(grid, thisOctal)
+  USE analytical_velocity_mod
+  USE inputs_mod, ONLY : SW_Mdot, SW_Rmin, SW_rmax, SW_temperature
+  TYPE(GRIDTYPE) :: grid
+  REAL(DOUBLE) :: thisRho, r,  v, theta
+  TYPE(octal), POINTER   :: thisOctal
+  TYPE(octal), POINTER  :: child
+  TYPE(VECTOR) :: cellCentre
+  INTEGER :: subcell, i
+
+  DO subcell = 1, thisOctal%maxChildren
+     IF (thisOctal%hasChild(subcell)) THEN
+        ! find the child
+        DO i = 1, thisOctal%nChildren, 1
+           IF (thisOctal%indexChild(i) == subcell) THEN
+              child => thisOctal%child(i)
+              CALL assignDensitiesStellarWind(grid, child)
+              EXIT
+           END IF
+        END DO
+     ELSE
+
+        cellCentre = subcellCentre(thisOctal, subcell) ! find the centre of the cell
+        r = modulus(cellCentre)
+
+        IF ((stellarWindOutflow(cellCentre)).AND.(r > SW_Rmin).AND.(r < SW_Rmax)) THEN
+           thisOctal%velocity(subcell) = TTauriStellarWindVelocity(cellcentre)
+           thisOctal%inflow(subcell) = .TRUE.
+           CALL fillVelocityCorners(thisOctal,TTauriStellarWindVelocity)
+           thisOctal%iAnalyticalVelocity(subcell) = 3
+           v = modulus(thisOctal%velocity(subcell))
+           IF (v > 0.d0) THEN
+             thisRho = stellarWindDensity(cellCentre)
+             thisRho = thisRho / (v * cSpeed)
+             IF (thisRho > thisOctal%rho(subcell)) THEN
+               thisOCtal%rho(subcell) = thisRho
+             END IF
+           END IF
+           thisOCtal%fixedTemperature(subcell) = .TRUE.
+           thisOctal%temperature(subcell) = REAL(SW_temperature)
+        END IF
+     END IF
+  END DO
+END SUBROUTINE assignDensitiesStellarWind
+
+ !!!routine removed in favour of polar stellar wind rather than spherically symmetric winds - tjgw201
+  ! recursive subroutine assignDensitiesStellarWind(grid, thisOctal)
+  !   use analytical_velocity_mod
+  !   use inputs_mod, only : SW_Mdot, SW_Rmin, SW_rmax, SW_temperature
+  !   type(GRIDTYPE) :: grid
+  !   real(double) :: thisRho, r,  v
+  !   type(octal), pointer   :: thisOctal
+  !   type(octal), pointer  :: child
+  !   type(VECTOR) :: cellCentre
+  !   integer :: subcell, i
+  !
+  !   do subcell = 1, thisOctal%maxChildren
+  !      if (thisOctal%hasChild(subcell)) then
+  !         ! find the child
+  !         do i = 1, thisOctal%nChildren, 1
+  !            if (thisOctal%indexChild(i) == subcell) then
+  !               child => thisOctal%child(i)
+  !               call assignDensitiesStellarWind(grid, child)
+  !               exit
+  !            end if
+  !         end do
+  !      else
+  !
+  !         cellCentre = subcellCentre(thisOctal, subcell) ! find the centre of the cell
+  !         r = modulus(cellCentre)
+  !
+  !         v = modulus(TTauriStellarWindVelocity(cellCentre))*cSpeed
+  !         thisRho = 0.d0
+  !         if (v > 0.d0) then
+  !            thisRho = (SW_Mdot * mSol / yearsToSecs)/(fourPi * r**2 * v * 1.d20)
+  !         endif
+  !
+  !
+  !
+  !         if ( (r > SW_Rmin).and.(r < SW_Rmax).and.(thisRho > thisOctal%rho(subcell))) then
+  !            thisOctal%velocity(subcell) = TTauriStellarWindvelocity(cellcentre)
+  !            thisOctal%inflow(subcell) = .true.
+  !            CALL fillVelocityCorners(thisOctal,ttauriStellarWindvelocity)
+  !            thisOctal%iAnalyticalVelocity(subcell) = 3
+  !            thisOCtal%rho(subcell) = thisRho
+  !            thisOCtal%fixedTemperature(subcell) = .true.
+  !            thisOctal%temperature(subcell) = real(SW_temperature)
+  !            thisOctal%fixedTemperature(subcell) = .true.
+  !         endif
+  !
+  !      endif
+  !   enddo
+  ! end subroutine assignDensitiesStellarWind
+
+
+  recursive subroutine outputTempRhoVel(grid, thisOctal,fp)
+    integer, intent(in) :: fp
+    integer :: subcell, i
+    type(VECTOR) :: cellCentre
     type(GRIDTYPE) :: grid
-    real(double) :: thisRho, r,  v
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
-    type(VECTOR) :: cellCentre
-    integer :: subcell, i
+    real(double) :: thisR, theta, cylR
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call assignDensitiesStellarWind(grid, child)
+                child =>thisOctal%child(i)
+                call outputTempRhoVel(grid, child,fp)
                 exit
              end if
           end do
        else
-
-          cellCentre = subcellCentre(thisOctal, subcell) ! find the centre of the cell
-          r = modulus(cellCentre)
-
-          v = modulus(TTauriStellarWindVelocity(cellCentre))*cSpeed
-          thisRho = 0.d0
-          if (v > 0.d0) then
-             thisRho = (SW_Mdot * mSol / yearsToSecs)/(fourPi * r**2 * v * 1.d20)
-          endif
-
-
-
-          if ( (r > SW_Rmin).and.(r < SW_Rmax).and.(thisRho > thisOctal%rho(subcell))) then
-             thisOctal%velocity(subcell) = TTauriStellarWindvelocity(cellcentre)
-             thisOctal%inflow(subcell) = .true.
-             CALL fillVelocityCorners(thisOctal,ttauriStellarWindvelocity)
-             thisOctal%iAnalyticalVelocity(subcell) = 3
-             thisOCtal%rho(subcell) = thisRho
-             thisOCtal%fixedTemperature(subcell) = .true.
-             thisOctal%temperature(subcell) = real(SW_temperature)
-             thisOctal%fixedTemperature(subcell) = .true.
-          endif
-
-       endif
-    enddo
-  end subroutine assignDensitiesStellarWind
+         if (thisOCtal%inFlow(subcell)) then
+           cellCentre = subcellCentre(thisOctal, subcell)
+           thisR = modulus(cellCentre)*1.d10
+           theta = acos(cellCentre%z / thisR)
+           cylR = sqrt((cellCentre%x*cellCentre%x) + (cellCentre%y*cellCentre%y))*1.d10
+           write(fp,*) thisR, cylR, thisOCtal%temperature(subcell), &
+                thisOctal%rho(subcell), modulus(thisOctal%velocity(subcell))
+         end if
+       end if
+    end do
+  end subroutine outputTempRhoVel
 
 
   recursive subroutine assignDensitiesMahdavi(grid, thisOctal, astar, mdot, minrCubedRhoSquared)
     use inputs_mod, only :  vturb, isothermTemp, ttauriRstar
     use inputs_mod, only : TTauriDiskHeight
-    use magnetic_mod, only : inflowMahdavi, velocityMahdavi
+    use magnetic_mod, only : inflowMahdavi, velocityMahdavi, densityHartmann
     real(double) :: astar, mdot, thisR, thisRho, thisV, minRcubedRhoSquared
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
@@ -16394,7 +16600,8 @@ end function readparameterfrom2dmap
              thisOctal%fixedTemperature(subcell) = .true.
              thisV = modulus(thisOctal%velocity(subcell))*cSpeed
              if (thisV /= 0.d0) then
-                thisRho =  mdot /(aStar * thisV)  * (ttauriRstar/thisR)**3
+                ! thisRho =  mdot /(aStar * thisV)  * (ttauriRstar/thisR)**3
+                thisRho =  densityHartmann(cellCentre,mdot)
                 thisOctal%inflow(subcell) = .true.
                 thisOctal%rho(Subcell) = thisRho
                 thisOctal%temperature(subcell) = isothermTemp
@@ -18665,7 +18872,7 @@ end function readparameterfrom2dmap
           call allocateAttribute(thisOctal%isOnBoundary,thisOctal%maxchildren,4)
        else
           call allocateAttribute(thisOctal%isOnBoundary,thisOctal%maxchildren,2)
-       endif       
+       endif
 
        call allocateAttribute(thisOctal%ghostCell,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%corner,thisOctal%maxchildren)
@@ -19760,7 +19967,7 @@ end function readparameterfrom2dmap
           cornerVec(27) = vector(x3,y3,z3)
 
           ! Now loop over all the corners filling in the velocity and density values.
-          ! This can be run in parallel but causes problems with the Intel compiler so is off by default. 
+          ! This can be run in parallel but causes problems with the Intel compiler so is off by default.
 #ifdef SPH2GRID_PARALLEL
           !$OMP PARALLEL DO default(none) private(i, thisDensity) shared (thisOctal, cornerVec) copyin(recentOctal)
 #endif
