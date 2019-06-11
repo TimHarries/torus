@@ -135,7 +135,7 @@ ifeq ($(SYSTEM), gfortran)
 #    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-surprising -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
 #    DEBUGFLAG= -ggdb -fbacktrace -Wunderflow -Wall -Werror -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
     FASTFLAG = -O3
-    OPENMPFLAG = -fopenmp 
+    OPENMPFLAG = -Wl,-stack_size,0xf0000000,-stack_addr,0xf0000000 -fopenmp 
 # -static-libgcc fixes linking problems under Mac OS
 # -lcurl is required for newer cfitsio libraries to prevent failure at link stage
     STARLIBS += -static-libgcc -static-libgfortran -lcurl

@@ -8699,7 +8699,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 ! Weight of envelope relative to sources
     real(double) :: weightEnv    
 ! weight of this particular source (for multiple sources)
-    real(double) :: thisSourceWeight , inclination
+    real(double) :: thisSourceWeight 
 #ifdef USECFITSIO
     real(double) :: theoretical
 #endif

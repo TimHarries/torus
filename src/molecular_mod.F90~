@@ -4733,7 +4733,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
            imagebasis(2) = rotateY(imagebasis(2), imageBasisPrerotate * degtorad)
 
 ! This line controls inclination in a 2D geometry (e.g. IRAS04158, shakara) - ANTI-CLOCKWISE ROTATION           
-           viewvec = rotateX(viewvec, rotateViewAboutX * degtorad) 
+           viewvec = rotateX(viewvec, -rotateViewAboutX * degtorad) 
 ! Image bases are necessarily orthonormal and linearly independent
            imagebasis(1) = rotateX(imagebasis(1), rotateViewAboutX * degtorad) 
            imagebasis(2) = rotateX(imagebasis(2), rotateViewAboutX * degtorad)

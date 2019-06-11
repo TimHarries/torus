@@ -207,6 +207,11 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           call readJaehan(grid)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
+       case("jaehan2d")
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
+          call readJaehan2d(grid)
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+
        case("skin")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
@@ -2844,7 +2849,7 @@ recursive subroutine populateJaehan(thisOctal, nTheta, nr, nphi, rho, rArray, ph
   type(octal), pointer  :: child 
   type(VECTOR) :: rVec
   integer :: iTheta, iPhi, ir
-  integer :: subcell, i, n
+  integer :: subcell, i
   
   do subcell = 1, thisOctal%maxChildren
      if (thisOctal%hasChild(subcell)) then
@@ -2871,5 +2876,330 @@ recursive subroutine populateJaehan(thisOctal, nTheta, nr, nphi, rho, rArray, ph
      endif
   enddo
 end subroutine populateJaehan
+
+   subroutine readJaehan2d(grid)
+     use inputs_mod, only : maxDepthAMR
+     type(GRIDTYPE) :: grid
+     integer, parameter :: nPhi = 1084, nR = 448
+     real(double) :: phi(nPhi), r(nR),tmp(0:nr)
+     real(double) :: rho(nphi,nr)
+     real(double) :: vR(nphi,nr)
+     real(double) :: vPhi(nphi,nr)
+     integer :: i, j, k
+     logical :: split, splitInAzimuth
+     type(OCTAL), pointer :: thisOctal
+     integer :: subcell
+     real(double)  :: z, height
+     logical :: converged
+     type(VECTOR) :: point
+     integer, parameter :: npart = 49129
+     type(VECTOR) :: dustPos(nPart)
+     real(double) :: dustsize(npart)
+     real(double) :: rdust, phidust,junk1,junk2,junk3
+     real(double) :: massDust, totalvol
+
+     open(31, file="gasdens10.dat",status="old", form="unformatted", access="STREAM")
+     read(31) rho(1:nphi,1:nr)
+     close(31)
+
+     open(31, file="gasvrad10.dat",status="old", form="unformatted", access="STREAM")
+     read(31) vr(1:nphi,1:nr)
+     close(31)
+     vr = vr / cSpeed
+
+     open(31, file="gasvtheta10.dat",status="old", form="unformatted", access="STREAM")
+     read(31) vphi(1:nphi,1:nr)
+     close(31)
+     vphi = vphi / cSpeed
+
+     open(31, file="used_rad.dat",status="old", form="formatted", access="STREAM")
+     do i = 0, nr
+        read(31,*) tmp(i)
+     enddo
+     close(31)
+     do i = 1, nr
+        r(i) = sqrt(tmp(i-1)*tmp(i))*356.d0*autocm/1.d10
+     enddo
+
+     open(31, file="used_azi.dat",status="old", form="formatted")
+     do i = 1, nphi
+        read(31,*) phi(i)
+     enddo
+     close(31)
+     phi = phi + 1.d-6
+
+
+     open(31, file="dustsystat10.dat",status="old", form="formatted")
+     do i = 1, npart
+        read(31,*) rdust, phidust, junk1, junk2, junk3, dustsize(i)
+        dustpos(i) = VECTOR(rDust*cos(phidust),rDust*sin(phidust),0.d0)
+        dustPos(i) =  (365.d0 * autocm / 1.d10) * dustPos(i)
+     enddo
+     close(31)
+     dustSize = dustSize * 1.d3 ! mm
+     totalVol = SUM(dustSize(1:nPart)**3)
+     massDust = 0.6d-4  * mSol
+
+     converged = .false.
+     thisOctal => grid%octreeRoot
+     do while (.not.converged)
+        converged = .true.
+           do j = 2, nR
+              do i = 2,nPhi
+                 do k = 1, 100
+                    height = 10.d0*(autocm/1.d10)*((r(j)*1.d10)/(100.d0*autocm))**1.125d0
+                    z = -2.d0*height + 4.d0*height*dble(k-1)/99.d0
+
+                    point = VECTOR( r(j)*cos(phi(i)), &
+                         r(j)*sin(phi(i)), &
+                         z)
+
+
+                 call findSubcellLocal(point,thisOctal,subcell)
+
+
+                 split = .false.
+                 splitinazimuth = .false.
+
+                    if ((r(j)-r(j-1)) < thisOctal%subcellSize) split = .true.
+                    if ((height/thisOctal%subcellSize) < 2.d0) split = .true.
+!                    write(*,*) z/height,height/thisoctal%subcellsize,split
+                    if (abs(phi(i)-phi(i-1)) < thisOctal%dPhi) then
+                       split = .true.
+                       splitInAzimuth = .true.
+                    endif
+
+                 if (thisOctal%nDepth == maxDepthAMR) split = .false.
+
+                 if (split) then
+                    converged = .false.
+                    call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                         inherit=.true., interp=.false.,splitAzimuthally=splitinAzimuth)
+                 endif
+              enddo
+           enddo
+        enddo
+     enddo
+     call populateJaehan2d(grid%octreeRoot,  nr, nphi, rho, vr, vphi, r, phi)
+     call fillVelocityCornersFromCentresCylindrical(grid, grid%octreeRoot)
+     thisOctal => grid%octreeRoot
+     do i = 1, npart
+        if (dustSize(i) > 0.1) then
+           write(*,*) i,dustsize(i)
+           call findSubcellLocal(dustpos(i), thisOctal, subcell)
+           if (.not.associated(thisOctal%etaLine)) then
+              allocate(thisOctal%etaline(Subcell))
+              thisOctal%etaLine = 0.d0
+           endif
+           thisOctal%etaLine(subcell) = thisOctal%etaLine(Subcell) + massDust*dustSize(i)**3/totalVol
+        endif
+     enddo
+     call writeVTKfile(grid, "jaehan.vtk", valueTypeString=(/"rho         ", &
+                                                             "etaline     "/))
+
+   end subroutine readJaehan2d
+     
+
+
+
+recursive subroutine populateJaehan2d(thisOctal,  nr, nphi, rho, vr, vphi, rArray, phiArray)
+  real(double) :: rho(:,:), rArray(:), phiArray(:)
+  real(double) :: vr(:,:), vphi(:,:)
+  integer :: nr, nphi
+  real(double) :: r, phi
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  type(VECTOR) :: rVec,rHat,phiHat
+  real(double) :: height, fac
+  integer ::  iPhi, ir
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+     if (thisOctal%hasChild(subcell)) then
+        ! find the child
+        do i = 1, thisOctal%nChildren, 1
+           if (thisOctal%indexChild(i) == subcell) then
+              child => thisOctal%child(i)
+              call populateJaehan2d(child, nr, nphi, rho, vr, vphi, rArray, phiArray)
+              exit
+           end if
+        end do
+     else 
+        rVec = subcellCentre(thisOctal, subcell)
+        r = sqrt(rVec%x**2 + rVec%y**2)
+        rHat = VECTOR(rVec%x,rVec%y,0.d0)
+        call normalize(rHat)
+        phiHat = rHat .cross. zHat
+        call normalize(phiHat)
+        if ( (r > rArray(1)).and.(r < rArray(nr))) then
+           phi = atan2(rVec%y, rVec%x)
+           if (phi < 0.d0) phi = phi + twoPi
+           call locate(rArray, nr, r, ir)
+           call locate(phiArray, nphi, phi, iphi)
+           height = 10.d0*autocm*((r*1.d10)/(100.d0*autocm))**1.125d0
+           fac = 1.d0/(height*sqrt(twoPi)) * exp(-0.5d0*(rVec%z*1.d10/height)**2)
+           thisOctal%rho(subcell) = rho(iphi, ir)*fac
+           thisOctal%velocity(subcell) = vr(iphi,ir)*rHat + vphi(iphi,ir)*phiHat
+        endif
+
+     endif
+  enddo
+end subroutine populateJaehan2d
+
+recursive subroutine fillVelocityCornersFromCentresCylindrical(grid, thisOctal)
+  use inputs_mod, only : smallestCellsize
+  type(GRIDTYPE) :: grid
+  type(OCTAL), pointer :: thisOctal, neighbourOctal, child
+  integer :: subcell, i, j, k, neighbourSubcell
+  type(VECTOR) :: cornerPos(27), probe(8), vel, point
+  real(double) :: r1, r2, r3, z1, z2, z3, phi1, phi2, phi3, d,d2
+  
+  do subcell = 1, thisOctal%maxChildren
+     if (thisOctal%hasChild(subcell)) then
+        ! find the child
+        do i = 1, thisOctal%nChildren, 1
+           if (thisOctal%indexChild(i) == subcell) then
+              child => thisOctal%child(i)
+              call fillVelocityCornersFromCentresCylindrical(grid, child)
+              exit
+           end if
+        end do
+     else 
+             if (.not.associated(thisOctal%cornerVelocity)) allocate(thisOCtal%cornerVelocity(1:27))
+
+             d = smallestcellSize/10.d0
+             d2 = 1.001*smallestcellSize/10.d0
+             probe(1) = vector(d, d2, d)
+             probe(2) = vector(-d, d2, d)
+             probe(3) = vector(d, -d2, d)
+             probe(4) = vector(-d, -d2, d)
+             probe(5) = vector(d, d2, -d)
+             probe(6) = vector(-d, d2, -d)
+             probe(7) = vector(d, -d2, -d)
+             probe(8) = vector(-d, -d2, d)
+
+
+          if (thisOctal%splitAzimuthally) then
+             z1 = thisOctal%centre%z - thisOctal%subcellSize
+             z2 = thisOctal%centre%z
+             z3 = thisOctal%centre%z + thisOctal%subcellSize
+             phi1 = thisOctal%phiMin
+             phi2 = thisOctal%phi
+             phi3 = thisOctal%phiMax
+             r1 = thisOctal%r - thisOctal%subcellSize
+             r2 = thisOctal%r
+             r3 = thisOctal%r + thisOctal%subcellSize
+
+             ! bottom level
+
+             cornerpos(1) = vector(r1*cos(phi1),r1*sin(phi1),z1)
+             cornerpos(2) = vector(r2*cos(phi1),r2*sin(phi1),z1)
+             cornerpos(3) = vector(r3*cos(phi1),r3*sin(phi1),z1)
+             cornerpos(4) = vector(r1*cos(phi2),r1*sin(phi2),z1)
+             cornerpos(5) = vector(r2*cos(phi2),r2*sin(phi2),z1)
+             cornerpos(6) = vector(r3*cos(phi2),r3*sin(phi2),z1)
+             cornerpos(7) = vector(r1*cos(phi3),r1*sin(phi3),z1)
+             cornerpos(8) = vector(r2*cos(phi3),r2*sin(phi3),z1)
+             cornerpos(9) = vector(r3*cos(phi3),r3*sin(phi3),z1)
+
+             cornerpos(10) = vector(r1*cos(phi1),r1*sin(phi1),z2)
+             cornerpos(11) = vector(r2*cos(phi1),r2*sin(phi1),z2)
+             cornerpos(12) = vector(r3*cos(phi1),r3*sin(phi1),z2)
+             cornerpos(13) = vector(r1*cos(phi2),r1*sin(phi2),z2)
+             cornerpos(14) = vector(r2*cos(phi2),r2*sin(phi2),z2)
+             cornerpos(15) = vector(r3*cos(phi2),r3*sin(phi2),z2)
+             cornerpos(16) = vector(r1*cos(phi3),r1*sin(phi3),z2)
+             cornerpos(17) = vector(r2*cos(phi3),r2*sin(phi3),z2)
+             cornerpos(18) = vector(r3*cos(phi3),r3*sin(phi3),z2)
+
+             cornerpos(19) = vector(r1*cos(phi1),r1*sin(phi1),z3)
+             cornerpos(20) = vector(r2*cos(phi1),r2*sin(phi1),z3)
+             cornerpos(21) = vector(r3*cos(phi1),r3*sin(phi1),z3)
+             cornerpos(22) = vector(r1*cos(phi2),r1*sin(phi2),z3)
+             cornerpos(23) = vector(r2*cos(phi2),r2*sin(phi2),z3)
+             cornerpos(24) = vector(r3*cos(phi2),r3*sin(phi2),z3)
+             cornerpos(25) = vector(r1*cos(phi3),r1*sin(phi3),z3)
+             cornerpos(26) = vector(r2*cos(phi3),r2*sin(phi3),z3)
+             cornerpos(27) = vector(r3*cos(phi3),r3*sin(phi3),z3)
+
+             neighbourOctal => thisOctal
+             do j = 1, 27
+                vel = vector(0.d0, 0.d0, 0.d0)
+                do k = 1, 8
+                   point = cornerPos(j) + probe(k)
+                   if (inOctal(grid%octreeRoot,point)) then
+                      call findsubcellLocal(point, neighbourOctal, neighboursubcell)
+                      vel = vel + neighbourOctal%velocity(neighboursubcell)
+                   else
+                      vel = vel + thisOctal%velocity(subcell)
+                   endif
+                enddo
+                vel = (1.d0/8.d0) * vel
+                thisOctal%cornerVelocity(j) = vel
+             enddo
+
+          else
+
+             z1 = thisOctal%centre%z - thisOctal%subcellSize
+             z2 = thisOctal%centre%z
+             z3 = thisOctal%centre%z + thisOctal%subcellSize
+             phi1 = thisOctal%phi - thisOctal%dPhi/2.d0
+             phi2 = thisOctal%phi + thisOctal%dPhi/2.d0
+             r1 = thisOctal%r - thisOctal%subcellSize
+             r2 = thisOctal%r
+             r3 = thisOctal%r + thisOctal%subcellSize
+             
+
+             ! bottom level
+
+             cornerpos(1) = vector(r1*cos(phi1),r1*sin(phi1),z1)
+             cornerpos(2) = vector(r1*cos(phi1),r1*sin(phi1),z1)
+             cornerpos(3) = vector(r2*cos(phi1),r2*sin(phi1),z1)
+             cornerpos(4) = vector(r2*cos(phi2),r2*sin(phi2),z1)
+             cornerpos(5) = vector(r3*cos(phi2),r3*sin(phi2),z1)
+             cornerpos(6) = vector(r3*cos(phi2),r3*sin(phi2),z1)
+
+             ! middle level
+
+             cornerpos(7) = vector(r1*cos(phi1),r1*sin(phi1),z2)
+             cornerpos(8) = vector(r1*cos(phi1),r1*sin(phi1),z2)
+             cornerpos(9) = vector(r2*cos(phi1),r2*sin(phi1),z2)
+             cornerpos(10) = vector(r2*cos(phi2),r2*sin(phi2),z2)
+             cornerpos(11) = vector(r3*cos(phi2),r3*sin(phi2),z2)
+             cornerpos(12) = vector(r3*cos(phi2),r3*sin(phi2),z2)
+
+             ! top level
+
+             cornerpos(13) = vector(r1*cos(phi1),r1*sin(phi1),z3)
+             cornerpos(14) = vector(r1*cos(phi1),r1*sin(phi1),z3)
+             cornerpos(15) = vector(r2*cos(phi1),r2*sin(phi1),z3)
+             cornerpos(16) = vector(r2*cos(phi2),r2*sin(phi2),z3)
+             cornerpos(17) = vector(r3*cos(phi2),r3*sin(phi2),z3)
+             cornerpos(18) = vector(r3*cos(phi2),r3*sin(phi2),z3)
+
+             neighbourOctal => thisOctal
+             do j = 1, 18
+                vel = vector(0.d0, 0.d0, 0.d0)
+                do k = 1, 8
+                   point = cornerPos(j) + probe(k)
+                   if (inOctal(grid%octreeRoot,point)) then
+                      call findsubcellLocal(point, neighbourOctal, neighboursubcell)
+                      vel = vel + neighbourOctal%velocity(neighboursubcell)
+                   else
+                      vel = vel + thisOctal%velocity(subcell)
+                   endif
+                enddo
+                vel = (1.d0/8.d0) * vel
+                thisOctal%cornerVelocity(j) = vel
+             enddo
+
+
+
+          endif
+       endif
+    enddo
+end subroutine fillVelocityCornersFromCentresCylindrical
+
+
 
 end module setupamr_mod

@@ -522,11 +522,6 @@ contains
         endif
         call setupDust(grid, xArray, nLambda, miePhase, nMumie, filestart="dust")
 
-        if (grid%geometry == "jaehan2d") then
-           call fillDustJaehan(grid, grid%octreeRoot, dustMass)
-           write(*,*) "Large dust mass ",dustMass/msol
-        endif
-
         if ((grid%geometry == "shakara").and.(.not.restartLucy)) then
            call fillDustShakara(grid, grid%octreeRoot, dustmass)
            if (dustSettling) call fillDustSettled(grid)

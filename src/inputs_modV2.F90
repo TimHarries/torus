@@ -934,9 +934,9 @@ contains
             "Scale height (in pc): ","(a,e12.3,1x,a)", 0.05d0 , ok, .false.)
 
      case("shell")
-          call getReal("rinner", rInner, real(rSol), cLine, fLine, nLines, &
+          call getReal("rinner", rInner, real(rSol)/1.e10, cLine, fLine, nLines, &
                "Inner Radius (solar radii): ","(a,f7.3,a)", 12., ok, .true.)
-          call getReal("router", rOuter, real(rsol), cLine, fLine, nLines, &
+          call getReal("router", rOuter, real(rsol)/1.e10, cLine, fLine, nLines, &
                "Outer Radius (solar radii): ","(a,f5.1,a)", 20., ok, .true.)
           call getDouble("alpha", shellalpha, 1.d0, cLine, fLine, nLines, &
                "Shell density power law index: ","(a,f7.3,a)", 12.d0, ok, .true.)
@@ -4042,10 +4042,17 @@ contains
                "Image Centre Coordinate (lat): ","(a,f7.2,1x,a)", 0.d0, ok, .true.)
        else
           if (amr3d) then
-             call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
-                  "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", amrGridCentreX, ok, .false.)
-             call getDouble("centrevecy", centrevecy, 1.d0, cLine, fLine, nLines, &
-                  "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", amrGridCentreY, ok, .false.)
+             if (cylindrical) then
+                call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
+                  "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .false.)
+                call getDouble("centrevecy", centrevecy, 1.d0, cLine, fLine, nLines, &
+                  "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .false.)
+             else
+                call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
+                     "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", amrGridCentreX, ok, .false.)
+                call getDouble("centrevecy", centrevecy, 1.d0, cLine, fLine, nLines, &
+                     "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", amrGridCentreY, ok, .false.)
+             endif
           else
              call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
                   "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .false.)
@@ -4079,6 +4086,8 @@ contains
        call getReal("beamsize", beamsize, 1., cLine, fLine, nLines, &
             "Beam size (arcsec): ","(a,f4.1,1x,a)", 1000., ok, .false.)
 
+       call getReal("inclination", thisinclination, real(degtorad), cLine, fLine, nLines, &
+            "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
        rotateViewAboutX = 90.0 - thisInclination*radtodeg
 
 
@@ -4092,12 +4101,20 @@ contains
        else
           
           if (amr3d) then
-          call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
-               "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", amrGridCentreX, ok, .false.)
-             call getDouble("centrevecy", centrevecy, 1.d0, cLine, fLine, nLines, &
-                  "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", amrGridCentreY, ok, .false.)
+
+             if (cylindrical) then
+                call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
+                  "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .false.)
+                call getDouble("centrevecy", centrevecy, 1.d0, cLine, fLine, nLines, &
+                  "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .false.)
+             else
+                call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
+                     "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", amrGridCentreX, ok, .false.)
+                call getDouble("centrevecy", centrevecy, 1.d0, cLine, fLine, nLines, &
+                     "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", amrGridCentreY, ok, .false.)
+             endif
           else
-          call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
+             call getDouble("centrevecx", centrevecx, 1.d0, cLine, fLine, nLines, &
                "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .false.)
              call getDouble("centrevecy", centrevecy, 1.d0, cLine, fLine, nLines, &
                   "Image Centre Coordinate (10^10cm): ","(a,1pe8.1,1x,a)", 0.d0, ok, .false.)

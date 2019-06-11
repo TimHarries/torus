@@ -155,13 +155,13 @@ module image_mod
 #endif
 
 #ifdef PHOTOION
-   subroutine addPhotonToPhotoionImage(observerDirection, thisImage, thisPhoton, totalFlux)
+   subroutine addPhotonToPhotoionImage(observerDirection, xAxis, yAxis, thisImage, thisPhoton, totalFlux)
 
      type(VECTOR), intent(in) :: observerDirection
      type(IMAGETYPE), intent(inout) :: thisImage
      type(PHOTON), intent(in) :: thisPhoton
      real(double), intent(inout) :: totalFlux
-     type(VECTOR) :: xProj, yProj
+     type(VECTOR) :: xAxis, yAxis
      real :: xDist, yDist
      integer :: xPix, yPix
 
@@ -169,12 +169,8 @@ module image_mod
 
      xPix = 0; yPix = 0
 
-     xProj =  observerDirection .cross. zAxis
-     call normalize(xProj)
-     yProj = observerDirection .cross. xProj
-     call normalize(yProj)
-     xDist = real((thisPhoton%position) .dot. xProj)
-     yDist = real((thisPhoton%position) .dot. yProj)
+     xDist = real((thisPhoton%position) .dot. xAxis)
+     yDist = real((thisPhoton%position) .dot. yAxis)
            
 
      call pixelLocate(thisImage, xDist, yDist, xPix, yPix)
@@ -194,7 +190,7 @@ module image_mod
    end subroutine addPhotonToPhotoionImage
 #endif
 
-   subroutine addPhotonToImage(viewVec, rotationAxis, thisImageSet, nImage, thisPhoton, &
+   subroutine addPhotonToImage(viewVec, xAxis, yAxis, rotationAxis, thisImageSet, nImage, thisPhoton, &
                                thisVel, weight, filters, positionAngle, lambda0_cont)
      use inputs_mod, only : imageOrigin
      use filter_set_class
@@ -203,7 +199,7 @@ module image_mod
      integer, intent(in) :: nImage  ! number of images in a set
      type(IMAGETYPE), intent(inout) :: thisImageSet(nImage)
      type(PHOTON) :: thisPhoton
-     type(VECTOR) :: viewVec,  xProj, yProj, rotationAxis
+     type(VECTOR) :: viewVec,  xAxis, yAxis, rotationAxis
      real :: xDist, yDist
      real(double) :: positionAngle!, ang
 !     real :: r
@@ -236,15 +232,16 @@ module image_mod
 
      do i = 1, nImage
 
-        xProj = (-1.d0)*(rotationAxis.cross.viewVec)
+!tjh changed to try and get alignment between molecular line images and these images
 
-        call normalize(xProj)
-        yProj = (-1.d0)*(viewVec .cross. xProj)
+!        write(*,*) "viewVec ",viewVec
+!        write(*,*) "xaxis ",xaxis
+!        write(*,*) "yaxis ",yaxis
+!        stop
+         
 
-        call normalize(yProj)
-           
-        xDist = real((thisPhoton%position-imageOrigin) .dot. xProj)
-        yDist = real((thisPhoton%position-imageOrigin) .dot. yProj)
+        xDist = real((thisPhoton%position-imageOrigin) .dot. xAxis)
+        yDist = real((thisPhoton%position-imageOrigin) .dot. yAxis)
 
         r = sqrt(xDist**2 + yDist**2)
         ang = atan2(yDist, xDist)

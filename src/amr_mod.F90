@@ -4402,7 +4402,7 @@ CONTAINS
 
 
 
-       case ("testamr","proto")
+       case ("testamr","proto","shell")
           cellSize = thisOctal%subcellSize
           cellCentre = subcellCentre(thisOctal,subCell)
 
@@ -4416,18 +4416,18 @@ CONTAINS
           rGrid(6) = 1.002
           rGrid(7) = 1.004
           rGrid(8) = 1.008
-          rGrid(1:nr1) = log10(rGrid(1:nr1)*grid%rInner)
+          rGrid(1:nr1) = log10(rGrid(1:nr1)*rInner)
           nr = nr1 + nr2
           !      do i = 1, nr1
-          !         rgrid(i) = log10(grid%rInner)+dble(i-1)*(log10(4.*grid%rInner)-log10(grid%rInner))/dble(nr1-1)
+          !         rgrid(i) = log10(rInner)+dble(i-1)*(log10(4.*rInner)-log10(rInner))/dble(nr1-1)
           !      end do
           do i = 1, nr2
-             rgrid(nr1+i) = log10(1.01*grid%rInner)+dble(i)*(log10(grid%rOuter)-log10(1.01*grid%rInner))/dble(nr2)
+             rgrid(nr1+i) = log10(1.01*rInner)+dble(i)*(log10(rOuter)-log10(1.01*rInner))/dble(nr2)
           end do
           rgrid(1:nr) = 10.d0**rgrid(1:nr)
           r = modulus(cellcentre)
           if (thisOctal%nDepth < 4) split = .true.
-          if ((r-cellsize/2.) < grid%rOuter) then
+          if ((r-cellsize/2.) < rOuter) then
              call locate(rGrid, nr, r, i)
              if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
           endif
@@ -4605,10 +4605,10 @@ CONTAINS
           if (sqrt(rvec%x**2+(0.25*rvec%z)**2) <= (smallestCellSize * 2.5**(1+maxDepthAMR-thisOctal%nDepth))) then
               split=.true.
           endif
-       case("shell")
-          r = modulus(subcellCentre(thisOctal,subcell))*1.d10
-          split = .false.
-          if ( (r+thisOCtal%subcellsize*1.d10 >rInner).and.(  r-thisOCtal%subcellsize*1.d10 < rOuter)) split = .true.
+!       case("shell")
+!          r = modulus(subcellCentre(thisOctal,subcell))*1.d10
+!          split = .false.
+!          if ( (r+thisOCtal%subcellsize*1.d10 >rInner).and.(  r-thisOCtal%subcellsize*1.d10 < rOuter)) split = .true.
           
 
        case("spiral")
@@ -10086,9 +10086,9 @@ logical function insideCone(position, binarySep, momRatio)
     real(double) :: r, rho0
 
     rVec = subcellCentre(thisOctal, subcell)
-    r = modulus(rVec)*1.d10
+    r = modulus(rVec)
 
-    rho0 = shellmass  * (3.d0 - shellalpha) / (fourPi * rInner**shellalpha * & 
+    rho0 = 1.d-30*shellmass  * (3.d0 - shellalpha) / (fourPi * rInner**shellalpha * & 
             (rOuter**(3.d0-shellalpha) - rInner**(3.d0-shellalpha)))
 
     if ((r > rInner).and.(r < rOuter)) then

@@ -722,7 +722,7 @@ contains
 
        endPosition = currentPosition + tval * direction
 
-       if ((currentPosition%z*endPosition%z) < 0.d0) then ! ray passes through z=0
+       if (currentPosition%z*endPosition%z < 0.d0) then ! ray passes through z=0
           if (sqrt(currentPosition%x**2 + currentPosition%y**2) > holeRadius/1.d10) then
              hitDisc = .true.
              hitPhotosphere = .false.

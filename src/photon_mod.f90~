@@ -402,12 +402,12 @@ contains
              fac =1.
           endif
           
-          allocate(allsca(1:nDustType))
+
           call returnKappa(grid, currentOctal, currentSubcell, ilambda=i, allSca=allSca,&
                dir=thisPhoton%direction)
 
           k = randomIndex(allSca(1:nDustType), nDustType)
-          deallocate(allSca)
+
           miePhaseTemp = miePhase(k, i, j) + fac * &
                   (miePhase(k, i, j+1) - miePhase(k, i, j))
 

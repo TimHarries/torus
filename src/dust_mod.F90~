@@ -959,42 +959,6 @@ contains
 
   end subroutine fillDustShakara
 
-  recursive subroutine fillDustJaehan(grid, thisOctal, dustmass)
-    use inputs_mod, only : grainFrac, nDustType
-    use octal_mod, only : cellVolume
-    use density_mod
-
-    type(gridtype) :: grid
-    type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child
-    real(double) :: cellMass, dustMass
-
-    integer :: subcell, i
-    do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call fillDustJaehan(grid, child, dustMass)
-                exit
-             end if
-          end do
-       else
-         
-          
-
-          thisOctal%dustTypeFraction(subcell,1:nDustType) = grainFrac(1:nDustType)
-          thisOctal%dustTypeFraction(subcell,3) = thisOctal%etaline(subcell)/(cellVolume(thisOctal,subcell)*1.d30)&
-               /thisOctal%rho(subcell)
-          cellMass = cellVolume(thisOctal, subcell) * 1.d30 * thisOctal%rho(subcell)
-          dustMass = dustMass + SUM(thisOctal%dustTypeFraction(subcell,1:nDustType))*cellMass
-
-       end if
-    end do
-
-  end subroutine fillDustJaehan
-
   subroutine reportMasses(grid)
     use inputs_mod, only : nDustType
     type(GRIDTYPE) :: grid

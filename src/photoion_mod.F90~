@@ -37,6 +37,7 @@ contains
 
 
   subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray)
+    use vector_mod
     use inputs_mod, only : nlucy, taudiff, lambdaSmooth, variableDustSublimation, dustPhysics
     use diffusion_mod, only: defineDiffusionOnRosseland, defineDiffusionOnUndersampled, solvearbitrarydiffusionzones, randomWalk
     use amr_mod, only: countVoxels, getOctalArray
@@ -3091,6 +3092,7 @@ end subroutine readHeIIrecombination
 #endif
     integer, intent(in) :: imageNum
     type(GRIDTYPE) :: grid
+    type(VECTOR) :: xAxis, yAxis
     character(len=80)   :: imageFilename
     integer, intent(in) :: nSource
     real :: lambdaLine
@@ -3121,6 +3123,7 @@ end subroutine readHeIIrecombination
     real(double) :: thisSourceWeight 
     integer(kind=bigint) :: iBeg, iEnd
     character(len=80) :: message
+    real(double) :: inclination
 #ifdef MPI
     real(double) :: tempTotalFlux
     integer(kind=bigint) :: i
@@ -3131,6 +3134,11 @@ end subroutine readHeIIrecombination
     outputImageType = getImageType(imageNum)
     imageFilename   = getImageFilename(imageNum)
     observerDirection = getImageViewVec(imageNum)
+    inclination = getImageInc(imageNum)
+
+    xAxis = rotateX(xAxis, inclination)
+    yAxis = rotateX(yAxis, inclination)
+        
 
     call randomNumberGenerator(randomSeed = .true.)
     totalFlux = 0.d0
@@ -3154,6 +3162,13 @@ end subroutine readHeIIrecombination
     call computeProbDist(grid, totalLineEmission, totalEmission, 1.0, .false.)
     if (writeoutput) write(*,*) "Probabilities computed."
     totalEmission = totalEmission * 1.d30
+
+       call writeVtkFile(grid, "prob.vtk", &
+            valueTypeString=(/"rho        ", "temperature", "HI         ", &
+            "tdust      ", &
+            "dust1      ", &
+            "etacont    "/))
+
 
     ! Probability that a photon comes from a source rather than the envelope
     chanceSource = lCore / (lCore + totalEmission)
@@ -3205,7 +3220,7 @@ end subroutine readHeIIrecombination
 !$OMP PRIVATE (iPhoton, thisPhoton, thisSource, r, rhat, iSource, thisSourceWeight) &
 !$OMP PRIVATE (thisOctal, subcell, escaped, absorbed, observerPhoton) &
 !$OMP SHARED (iBeg, iEnd, powerPerPhoton, iLambdaPhoton, probSource, grid, source) &
-!$OMP SHARED (weightSource, weightEnv, nsource, thisImage, observerDirection) &
+!$OMP SHARED (weightSource, weightEnv, nsource, thisImage, observerDirection, xAxis, yAxis) &
 !$OMP REDUCTION (+: totalFlux) 
 
 !$OMP DO
@@ -3241,7 +3256,7 @@ end subroutine readHeIIrecombination
        observerPhoton%direction = observerDirection
        
        call propagateObserverPhoton(grid, observerPhoton)
-       call addPhotonToPhotoionImage(observerDirection, thisImage, observerPhoton, totalFlux)
+       call addPhotonToPhotoionImage(observerDirection, xAxis, yAxis, thisImage, observerPhoton, totalFlux)
 
        scatterloop: do 
           call moveToNextScattering(grid, thisPhoton, escaped, absorbed)      
@@ -3253,7 +3268,7 @@ end subroutine readHeIIrecombination
           observerPhoton%tau = 0.d0
           observerPhoton%direction = observerDirection
           call propagateObserverPhoton(grid, observerPhoton)          
-          call addPhotonToPhotoionImage(observerDirection, thisImage, observerPhoton, totalFlux)
+          call addPhotonToPhotoionImage(observerDirection, xAxis, yAxis, thisImage, observerPhoton, totalFlux)
        end do scatterloop
 
     end do mainloop
