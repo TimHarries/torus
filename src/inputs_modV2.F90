@@ -2953,18 +2953,20 @@ contains
                "Turbulent velocity (km/s):","(a,f6.1,1x,a)", 0., ok, .true.)
 
     call getLogical("starkbroaden",starkBroaden, cline, fline, nlines, &
-                "Use Stark Broadening", "(a,1l,1x,a)", .true., ok, .true.)
+                "Use Stark Broadening", "(a,1l,1x,a)", .false., ok, .true.)
 
     !
     ! Voigt profile prameters
     !
-    call getReal("C_rad", C_rad, 1., cLine, fLine, nLines, &
-         "Damping constant (radiation)     in [A]: ","(a,1PE10.3,1x,a)", 8.16e-3, ok, .false.)
-    call getReal("C_vdw", C_vdw, 1., cLine, fLine, nLines, &
-         "Damping constant (van der Waals) in [A]: ","(a,1PE10.3,1x,a)", 5.53e-3, ok, .false.)
-    call getReal("C_stark", C_stark, 1., cLine, fLine, nLines, &
-         "Damping constant (Stark)         in [A]: ","(a,1PE10.3,1x,a)", 1.47e-2, ok, .false.)
-    call setVoigtParams(C_rad, C_vdw, C_stark)
+    IF (starkBroaden) THEN
+      call getReal("C_rad", C_rad, 1., cLine, fLine, nLines, &
+           "Damping constant (radiation)     in [A]: ","(a,1PE10.3,1x,a)", 8.16e-3, ok, .false.)
+      call getReal("C_vdw", C_vdw, 1., cLine, fLine, nLines, &
+           "Damping constant (van der Waals) in [A]: ","(a,1PE10.3,1x,a)", 5.53e-3, ok, .false.)
+      call getReal("C_stark", C_stark, 1., cLine, fLine, nLines, &
+           "Damping constant (Stark)         in [A]: ","(a,1PE10.3,1x,a)", 1.47e-2, ok, .false.)
+      call setVoigtParams(C_rad, C_vdw, C_stark)
+    END IF
 
 
   end subroutine readAtomicPhysicsParameters
