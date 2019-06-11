@@ -916,7 +916,7 @@ contains
      type(GRIDTYPE) :: grid
      real(double) :: coreContinuumFlux, lAccretion, xRayFlux
      real(double) :: thisTime
-     real(double) :: sumSurfaceLuminosity, fac
+     real(double) :: sumSurfaceLuminosity, fac, totalCreatedMass
      real :: fAccretion
      character(len=120) :: message
      logical :: ok
@@ -1068,7 +1068,7 @@ contains
         allocate(globalsourcearray(1:10000))
         globalsourceArray(:)%outsideGrid = .false.
         globalnSource = 0
-        call createSources(globalnSource,globalsourcearray, burstType, burstAge, mStarburst, 1.d0)
+        call createSources(globalnSource,globalsourcearray, burstType, burstAge, mStarburst, 1.d0, totalCreatedMass)
         call randomNumberGenerator(randomSeed = .true.)
     endif
 
