@@ -3511,9 +3511,14 @@ END FUNCTION intensityAlongRayGeneric
          "sourceline ",  &
          "ne         ", "jnu        ","haschild   ", &
          "inflow     ","temperature", "velocity   ", &
-         "cornervel  ","level2     ", "level3     ", &
-         "blackbody  ","etaCont    "/))
-
+         "cornervel  ","blackbody  ","etacont    "/))
+         !
+         ! call writeVTKfile(grid,"eta_cmf.vtk", valueTypeString = (/"etaline    ","chiline    ",&
+         !      "sourceline ",  &
+         !      "ne         ", "jnu        ","haschild   ", &
+         !      "inflow     ","temperature", "velocity   ", &
+         !      "cornervel  ","level2     ", "level3     ", &
+         !      "blackbody  ","etacont    "/))
 
     doCube = calcDataCube
     doSpec = calcSpectrum

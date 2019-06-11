@@ -2926,16 +2926,24 @@ contains
     call getLogical("cmf", cmf, cLine, fLine, nLines, &
          "Perform co-moving frame calculation ","(a,1l,1x,a)", .false., ok, .true.)
 
-    if (cmf) then
-       call getInteger("natom", nAtom, cLine, fLine, nLines, &
-            "Number of model atoms to solve for: ","(a,i1,a)",1,ok,.true.)
+
+    ! if (cmf) then
+    !    call getInteger("natom", nAtom, cLine, fLine, nLines, &
+    !         "Number of model atoms to solve for: ","(a,i1,a)",1, ok, .true.)
+    !    do i = 1, nAtom
+    !       write(keyword, '(a,i1)') "atom",i
+    !       call getString(keyword, atomFileName(i), cLine, fLine, nLines, &
+    !            "Use atom filename: ","(a,a,1x,a)","none", ok, .true.)
+    !    enddo
+    ! endif
+
+    call getInteger("natom", nAtom, cLine, fLine, nLines, &
+            "Number of model atoms to solve for: ","(a,i1,a)",1, ok, .true.)
        do i = 1, nAtom
           write(keyword, '(a,i1)') "atom",i
           call getString(keyword, atomFileName(i), cLine, fLine, nLines, &
                "Use atom filename: ","(a,a,1x,a)","none", ok, .true.)
        enddo
-    endif
-
 
     call getLogical("thickcont", opticallyThickContinuum, cLine, fLine, nLines, &
          "Continuum is optically thick: ","(a,1l,a)", .false., ok, .false.)
