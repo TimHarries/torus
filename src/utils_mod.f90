@@ -1497,9 +1497,8 @@ contains
       V2=V*V
       A2=A*A
       Z=A2+V2
-     IF(A .EQ. 0.0D0  ) THEN !!uncommented out as might be useful and casue of
-                             !!drastic increase in time for simulation when
-                             !!broadening parameters are set to zero - tjgw201
+     IF(A .EQ. 0.0D0  ) THEN !!uncommented out - tjgw201
+
         ! ---- Normal Doppler brodening.
         IF (V2 < 1.D-04) THEN
            VOIGTN = 1.0D0 + V2*(1.0D0 + 0.5D0*V2*(1.0D0 + V2/6.0D0))

@@ -993,12 +993,13 @@ contains
 
 
   real(double) function phiProf(dv, thisOctal, subcell, nu, thisAtom)
+    use inputs_mod, only : starkBroaden
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) :: dv, nu
     type(MODELATOM) :: thisAtom
 
-    if ((thisAtom%name=="HI").and.(thisOctal%microturb(subcell)==0.d0)) then
+    if ((thisAtom%name=="HI").and.(thisOctal%microturb(subcell)==0.d0).and.(.not.starkBroaden)) then
        phiProf = phiProfStark(dv, thisOctal, subcell, nu, thisAtom)
     else
        phiProf = phiProfTurb(dv, thisOctal%microturb(subcell))
@@ -1019,7 +1020,6 @@ contains
   real(double) function  phiProfStark(dv, thisOctal, subcell, nu, thisAtom)
     use utils_mod, only : voigtn
     use atom_mod, only: bigGamma
-    use inputs_mod, only : starkBroaden
     type(MODELATOM) :: thisAtom
     real(double) :: dv
     type(OCTAL), pointer :: thisOctal
@@ -1032,11 +1032,7 @@ contains
 
     N_HI = thisoctal%atomlevel(subcell, 1, 1)
 
-    if(starkBroaden) then
-      a = bigGamma(N_HI, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), nu) / (fourPi * DopplerWidth) ! [-]
-    else
-      a = 0.d0
-    endif
+    a = bigGamma(N_HI, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), nu) / (fourPi * DopplerWidth) ! [-]
 
     Hay = voigtn(a,dv*cspeed/v_th)
     phiProfStark = nu * Hay / (sqrtPi*DopplerWidth)
@@ -2471,55 +2467,53 @@ contains
   end subroutine calcNe
 
 
-  recursive  subroutine calcContinuumOpacities(thisOctal, thisAtom, nAtom, freq)
-    use inputs_mod, only : opticallyThickContinuum
-    type(MODELATOM) :: thisAtom(:)
-    real(double) :: freq
-    real(double) :: nstar(10,50)
-    integer :: nAtom
-    type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child
-    integer :: subcell, i, iAtom, iLevel
+RECURSIVE  SUBROUTINE calcContinuumOpacities(thisOctal, thisAtom, nAtom, freq)
+  USE inputs_mod, ONLY : opticallyThickContinuum
+  TYPE(MODELATOM) :: thisAtom(:)
+  REAL(DOUBLE) :: freq
+  REAL(DOUBLE) :: nstar(10,50)
+  INTEGER :: nAtom
+  TYPE(octal), POINTER   :: thisOctal
+  TYPE(octal), POINTER  :: child
+  INTEGER :: subcell, i, iAtom, iLevel
 
-    do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call calcContinuumOpacities(child, thisAtom, nAtom, freq)
-                exit
-             end if
-          end do
-       else
+  DO subcell = 1, thisOctal%maxChildren
+     IF (thisOctal%hasChild(subcell)) THEN
+        ! find the child
+        DO i = 1, thisOctal%nChildren, 1
+           IF (thisOctal%indexChild(i) == subcell) THEN
+              child => thisOctal%child(i)
+              CALL calcContinuumOpacities(child, thisAtom, nAtom, freq)
+              EXIT
+           END IF
+        END DO
+     ELSE
 
+        thisOctal%kappaAbs(subcell,1) = 1.d-30
+        thisOctal%kappaSca(subcell,1) = 1.d-30
+        thisOctal%etaCont(subcell) = 1.d-30
 
+        IF (thisOctal%inflow(subcell).AND.(thisOctal%temperature(subcell) > 2000.0)) THEN
+           DO iatom = 1, SIZE(thisAtom)
+              DO iLevel = 1, thisAtom(iatom)%nLevels-1
+                 nStar(iatom,ilevel) = boltzSahaGeneral(thisAtom(iAtom), iLevel, thisOctal%ne(subcell), &
+                      DBLE(thisOctal%temperature(subcell))) * &
+                      thisOctal%atomLevel(subcell, iatom, thisAtom(iAtom)%nLevels)
+              ENDDO
+           ENDDO
+           IF (opticallyThickContinuum) THEN
+              thisOctal%kappaAbs(subcell, 1) = bfOpacity(freq, nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), nstar, &
+                   thisOctal%ne(subcell), DBLE(thisOctal%temperature(subcell))) * 1.d10
 
-          thisOctal%kappaAbs(subcell,1) = 1.d-30
-          thisOctal%kappaSca(subcell,1) = 1.d-30
-          thisOctal%etaCont(subcell) = 1.d-30
+              thisOctal%kappaSca(subcell, 1) = 1.d-30 !e-scattering inc in absorption
+              thisOctal%etaCont(subcell)  = bfEmissivity(freq, nAtom, thisAtom,  thisOctal%atomLevel(subcell,:,:), nstar, &
+                   DBLE(thisOctal%temperature(subcell)), thisOctal%ne(subcell)) * 1.d10
+           ENDIF
+        ENDIF
+     ENDIF
+  ENDDO
+END SUBROUTINE calcContinuumOpacities
 
-          if (thisOctal%inflow(subcell).and.(thisOctal%temperature(subcell) > 2000.0)) then
-          do iatom = 1, size(thisAtom)
-             do iLevel = 1, thisAtom(iatom)%nLevels-1
-                nStar(iatom,ilevel) = boltzSahaGeneral(thisAtom(iAtom), iLevel, thisOctal%ne(subcell), &
-                     dble(thisOctal%temperature(subcell))) * &
-                     thisOctal%atomLevel(subcell, iatom, thisAtom(iAtom)%nLevels)
-             enddo
-          enddo
-          if (opticallyThickContinuum) then
-             thisOctal%kappaAbs(subcell, 1) = bfOpacity(freq, nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), nstar, &
-                  thisOctal%ne(subcell), dble(thisOctal%temperature(subcell))) * 1.d10
-
-             thisOctal%kappaSca(subcell, 1) = 1.d-30 !e-scattering inc in absorption
-             thisOctal%etaCont(subcell)  = bfEmissivity(freq, nAtom, thisAtom,  thisOctal%atomLevel(subcell,:,:), nstar, &
-                  dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell)) * 1.d10
-          endif
-
-       endif
-       endif
-    enddo
-  end subroutine calcContinuumOpacities
 
   recursive subroutine  allocateLevels(grid, thisOctal, nAtom, thisAtom, nRBBTrans, nFreq, ionized)
     use inputs_mod, only : Xabundance, Yabundance
@@ -3062,371 +3056,373 @@ contains
 !!$  end function intensityAlongRay
 
 
-  function intensityAlongRayGeneric(position, direction, grid,deltaV, source, nSource, thisAtom, itrans, &
-      forceFreq, occultingDisc) result (i0)
-    use inputs_mod, only : lineOff,  mie, lamLine, holeRadius, amr2d
-    use amr_mod, only: distanceToGridFromOutside, returnKappa
-    use utils_mod, only : findIlambda
-    use atom_mod, only : bnu
-    type(MODELATOM) :: thisAtom
-    integer :: itrans
-    logical ::     justPhotosphere
-    type(VECTOR) :: position, direction, pvec, photoDirection
-    type(GRIDTYPE) :: grid
-    logical, optional :: occultingDisc
-    integer :: nSource
-    real(double), optional :: forceFreq
-    type(SOURCETYPE) :: source(:)
-    real(double) :: transitionFreq
-    real(double) :: disttoGrid
-    real(double) :: totDist
-    logical :: hitSource
-    real(double) :: i0
-    type(OCTAL), pointer :: thisOctal, startOctal !, endOctal
-    !    integer :: endSubcell
-    integer :: subcell
-    real(double) :: costheta
-    type(VECTOR) :: currentPosition, thisPosition, thisVel, oldposition
-    type(VECTOR) :: rayVel, startVel, endVel, endPosition !, rvec
-    real(double) :: alphanu, snu, jnu, alphanuLine
-    real(double) :: dv, deltaV
-    integer :: i, icount
-    real(double) :: tval
-    real(double),allocatable :: distArray(:)
-    integer :: nTau
-    real(double) :: dTau, etaline, tau
-    real(double) :: intensityIntegral
-    real(double) :: dvAcrossCell
-    real(double) :: dv1, dv2
-    real(double) :: a, bul, blu
-    real(double) :: distToSource,disttoDisc
-    integer :: sourcenumber
-    integer :: iElement
-    logical :: endLoopAtPhotosphere
-    real(double) ::  rhoCol
-    real(double) :: bfOpac, bfEmiss
-    real(double) :: dustOpac, dustEmiss
-    integer :: ilambda, iomp
-    real(double) :: transitionLambda, kappaSca, kappaAbs, kappaExt
+FUNCTION intensityAlongRayGeneric(position, direction, grid,deltaV, source, nSource, thisAtom, itrans, &
+     forceFreq, occultingDisc) RESULT (i0)
+  USE inputs_mod, ONLY : lineOff,  mie, lamLine, holeRadius, amr2d
+  USE amr_mod, ONLY: distanceToGridFromOutside, returnKappa
+  USE utils_mod, ONLY : findIlambda
+  USE atom_mod, ONLY : bnu
+  TYPE(MODELATOM) :: thisAtom
+  INTEGER :: itrans
+  LOGICAL ::     justPhotosphere
+  TYPE(VECTOR) :: position, direction, pvec, photoDirection
+  TYPE(GRIDTYPE) :: grid
+  LOGICAL, OPTIONAL :: occultingDisc
+  INTEGER :: nSource
+  REAL(DOUBLE), OPTIONAL :: forceFreq
+  TYPE(SOURCETYPE) :: source(:)
+  REAL(DOUBLE) :: transitionFreq
+  REAL(DOUBLE) :: disttoGrid
+  REAL(DOUBLE) :: totDist
+  LOGICAL :: hitSource
+  REAL(DOUBLE) :: i0
+  TYPE(OCTAL), POINTER :: thisOctal, startOctal !, endOctal
+  !    integer :: endSubcell
+  INTEGER :: subcell
+  REAL(DOUBLE) :: costheta
+  TYPE(VECTOR) :: currentPosition, thisPosition, thisVel, oldposition
+  TYPE(VECTOR) :: rayVel, startVel, endVel, endPosition !, rvec
+  REAL(DOUBLE) :: alphanu, snu, jnu, alphanuLine
+  REAL(DOUBLE) :: dv, deltaV
+  INTEGER :: i, icount
+  REAL(DOUBLE) :: tval
+  REAL(DOUBLE),ALLOCATABLE :: distArray(:)
+  INTEGER :: nTau
+  REAL(DOUBLE) :: dTau, etaline, tau
+  REAL(DOUBLE) :: intensityIntegral
+  REAL(DOUBLE) :: dvAcrossCell
+  REAL(DOUBLE) :: dv1, dv2
+  REAL(DOUBLE) :: a, bul, blu
+  REAL(DOUBLE) :: distToSource,disttoDisc
+  INTEGER :: sourcenumber
+  INTEGER :: iElement
+  LOGICAL :: endLoopAtPhotosphere
+  REAL(DOUBLE) ::  rhoCol
+  REAL(DOUBLE) :: bfOpac, bfEmiss
+  REAL(DOUBLE) :: dustOpac, dustEmiss
+  INTEGER :: ilambda, iomp
+  REAL(DOUBLE) :: transitionLambda, kappaSca, kappaAbs, kappaExt
 
-    real(double) :: tauStep, tauTmp, iStep
-    logical :: passThroughResonance, ok, closeToResonance, hitgrid
+  REAL(DOUBLE) :: tauStep, tauTmp, iStep
+  LOGICAL :: passThroughResonance, ok, closeToResonance, hitgrid
 #ifdef _OPENMP
-    integer :: omp_get_thread_num
+  INTEGER :: omp_get_thread_num
 #endif
 
-       iomp = 0
+  iomp = 0
 #ifdef _OPENMP
-       iomp = omp_get_thread_num()
+  iomp = omp_get_thread_num()
 #endif
 
 
-    i0 = tiny(i0)
-    justPhotosphere = .false.
-
-    hitsource = .false.; disttosource = 0.d0; sourceNumber = 0
-    a = 0.d0; blu = 0.d0; bul = 0.d0
-
-
-
-    transitionLambda = lamLine
-
-    transitionFreq = cSpeed / (lamLine * angstromtocm)
-    if (PRESENT(forceFreq)) then
-       transitionFreq = forceFreq
-       transitionLambda = (cspeed/transitionFreq)/angstromToCm
-    endif
+  i0 = TINY(i0)
+  justPhotosphere = .FALSE.
+
+  hitsource = .FALSE.; disttosource = 0.d0; sourceNumber = 0
+  a = 0.d0; blu = 0.d0; bul = 0.d0
+
+
+
+  transitionLambda = lamLine
+
+  transitionFreq = cSpeed / (lamLine * angstromtocm)
+  IF (PRESENT(forceFreq)) THEN
+     transitionFreq = forceFreq
+     transitionLambda = (cspeed/transitionFreq)/angstromToCm
+  ENDIF
 
 
-
-    ilambda = 1
-    if (mie) iLambda = findIlambda(real(transitionLambda), grid%lamArray, grid%nLambda, ok)
+
+  ilambda = 1
+  IF (mie) iLambda = findIlambda(REAL(transitionLambda), grid%lamArray, grid%nLambda, ok)
 
-
-    distToGrid = distanceToGridFromOutside(grid, position, direction, hitgrid=hitgrid)
-    if (.not.hitgrid) then
-       i0 = tiny(i0)
-       goto 666
-    endif
+
+  distToGrid = distanceToGridFromOutside(grid, position, direction, hitgrid=hitgrid)
+  IF (.NOT.hitgrid) THEN
+     i0 = TINY(i0)
+     GOTO 666
+  ENDIF
 
 
-    currentposition = position
-    distToDisc = 1.d30
-    if ((currentposition.dot.direction) < 0.d0) then
-       if (direction%z /= 0.d0) then
-          distToDisc = abs(currentPosition%z/direction%z)
-          oldPosition = currentPosition + distToDisc * direction
-          if (sqrt(oldPosition%x**2 + oldPosition%y**2) < (2.d0*grid%octreeRoot%subcellSize)) then
-             distToDisc = 1.d30
-          endif
-       else
-          distToDisc = 1.d30
-       endif
-    endif
-    if (present(OccultingDisc)) then
-       if (occultingDisc) then
-          if (distToDisc < distToGrid) then
-             i0 = tiny(i0)
-!             write(*,*) "ray hit occulting disc"
-             goto 666
-          endif
-       endif
-    endif
+  currentposition = position
+  distToDisc = 1.d30
+  IF ((currentposition.dot.direction) < 0.d0) THEN
+     IF (direction%z /= 0.d0) THEN
+        distToDisc = ABS(currentPosition%z/direction%z)
+        oldPosition = currentPosition + distToDisc * direction
+        IF (SQRT(oldPosition%x**2 + oldPosition%y**2) < (2.d0*grid%octreeRoot%subcellSize)) THEN
+           distToDisc = 1.d30
+        ENDIF
+     ELSE
+        distToDisc = 1.d30
+     ENDIF
+  ENDIF
+  IF (PRESENT(OccultingDisc)) THEN
+     IF (occultingDisc) THEN
+        IF (distToDisc < distToGrid) THEN
+           i0 = TINY(i0)
+           !             write(*,*) "ray hit occulting disc"
+           GOTO 666
+        ENDIF
+     ENDIF
+  ENDIF
 
-    if (distToGrid > 1.e29) then
-!              write(*,*) "ray does not intersect grid",position,direction
-       i0 = tiny(i0)
-       goto 666
-    endif
+  IF (distToGrid > 1.e29) THEN
+     !              write(*,*) "ray does not intersect grid",position,direction
+     i0 = TINY(i0)
+     GOTO 666
+  ENDIF
 
-    currentPosition = position + (distToGrid + 1.d-6*grid%halfSmallestSubcell) * direction
+  currentPosition = position + (distToGrid + 1.d-6*grid%halfSmallestSubcell) * direction
 
 
 
-    if (.not.inOctal(grid%octreeRoot, currentPosition)) then
-       write(*,*) "initial position not in grid"
-       write(*,*) "curre pos",currentPosition
-       if (amr2d) then
-          write(*,*) "current position r ",sqrt(currentposition%x**2 + currentposition%y**2),&
-               "current position z ",currentposition%z
-       endif
-       write(*,*) "dir",direction
-       write(*,*) "pos",position
-       write(*,*) "modulsu",modulus(currentPosition - position)
-       stop
-    endif
+  IF (.NOT.inOctal(grid%octreeRoot, currentPosition)) THEN
+     WRITE(*,*) "initial position not in grid"
+     WRITE(*,*) "curre pos",currentPosition
+     IF (amr2d) THEN
+        WRITE(*,*) "current position r ",SQRT(currentposition%x**2 + currentposition%y**2),&
+             "current position z ",currentposition%z
+     ENDIF
+     WRITE(*,*) "dir",direction
+     WRITE(*,*) "pos",position
+     WRITE(*,*) "modulsu",modulus(currentPosition - position)
+     STOP
+  ENDIF
 
-    totDist = 0.d0
-    call distanceToSource(source, nSource, currentposition, direction, hitSource, disttoSource, sourcenumber)
+  totDist = 0.d0
+  CALL distanceToSource(source, nSource, currentposition, direction, hitSource, disttoSource, sourcenumber)
 
-    if ((.not.hitsource).and.justPhotosphere) goto 666
-    if (hitSource) then
-       pVec = (currentposition + (direction * distToSource) - source(sourceNumber)%position)
-       call normalize(pVec)
-       cosTheta = -1.d0*(pVec.dot.direction)
-       photoDirection = pVec
-       call normalize(photoDirection)
-    endif
+  IF ((.NOT.hitsource).AND.justPhotosphere) GOTO 666
+  IF (hitSource) THEN
+     pVec = (currentposition + (direction * distToSource) - source(sourceNumber)%position)
+     CALL normalize(pVec)
+     cosTheta = -1.d0*(pVec.dot.direction)
+     photoDirection = pVec
+     CALL normalize(photoDirection)
+  ENDIF
 
 
-    !    write(*,*) "currentposition",sqrt(currentPosition%x**2+currentPosition%y**2),currentPosition%z, &
-    !         inOctal(grid%octreeRoot, currentPosition),distTogrid
-    i0 = tiny(i0)!0.d0
-    intensityIntegral = 0.0
-    tau = 0.d0
-    rayVel = VECTOR(0.d0, 0.d0, 0.d0)
+  !    write(*,*) "currentposition",sqrt(currentPosition%x**2+currentPosition%y**2),currentPosition%z, &
+  !         inOctal(grid%octreeRoot, currentPosition),distTogrid
+  i0 = TINY(i0)!0.d0
+  intensityIntegral = 0.0
+  tau = 0.d0
+  rayVel = VECTOR(0.d0, 0.d0, 0.d0)
 
-    thisOctal => grid%octreeRoot
-    icount = 0
-    rhoCol = 0.d0
-    endLoopAtPhotosphere = .false.
+  thisOctal => grid%octreeRoot
+  icount = 0
+  rhoCol = 0.d0
+  endLoopAtPhotosphere = .FALSE.
 
-    !    if (hitSource) endLoopAtphotosphere = .true.
+  !    if (hitSource) endLoopAtphotosphere = .true.
 
-    !    write(*,*) lineoff,hitsource,endloopatphotosphere
+  !    write(*,*) lineoff,hitsource,endloopatphotosphere
 
 
-       do while(inOctal(grid%octreeRoot, currentPosition).and.(.not.endloopAtPhotosphere).and.(tau < 20.d0))
-          icount = icount + 1
-          call findSubcellLocal(currentPosition, thisOctal, subcell)
+  DO WHILE(inOctal(grid%octreeRoot, currentPosition).AND.(.NOT.endloopAtPhotosphere).AND.(tau < 20.d0))
+     icount = icount + 1
+     CALL findSubcellLocal(currentPosition, thisOctal, subcell)
 
-          !       rVec = subcellCentre(thisOctal,subcell)
+     !       rVec = subcellCentre(thisOctal,subcell)
 
-          call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
+     CALL distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
 
-          if ((totDist + tval) > distTosource) then
-             tVal = distToSource - totDist
-             endLoopAtPhotosphere = .true.
-          endif
+     IF ((totDist + tval) > distTosource) THEN
+        tVal = distToSource - totDist
+        endLoopAtPhotosphere = .TRUE.
+     ENDIF
 
-          if (thisOctal%blackBody(subcell)) then
-             i0 = i0 + bnu(transitionFreq, dble(thisOctal%temperature(subcell))) * exp(-tau)
-             tau = 1.d10
-!             write(*,*) "hit blackbody ",i0
-          else
+     IF (thisOctal%blackBody(subcell)) THEN
+        i0 = i0 + bnu(transitionFreq, DBLE(thisOctal%temperature(subcell))) * EXP(-tau)
+        tau = 1.d10
+        !             write(*,*) "hit blackbody ",i0
+     ELSE
 
 
-          nTau = 2
+        nTau = 2
 
-          if (.not.lineOff) then
-             startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell, &
-                  linearInterp=.false.)
+        IF (.NOT.lineOff) THEN
+           startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell, &
+                linearInterp=.FALSE.)
 
-             endPosition = currentPosition + tval * direction
-             endVel = amrGridVelocity(grid%octreeRoot, endPosition, &
-                  linearInterp=.false.)
+           endPosition = currentPosition + tval * direction
+           endVel = amrGridVelocity(grid%octreeRoot, endPosition, &
+                linearInterp=.FALSE.)
 
-             dv1 = deltaV + (startVel .dot. direction)
-             dv2 = deltaV + (endVel .dot. direction)
+           dv1 = deltaV + (startVel .dot. direction)
+           dv2 = deltaV + (endVel .dot. direction)
 
-             dvAcrossCell = abs((dv2-dv1) / thisOctal%microturb(subcell))
+           dvAcrossCell = ABS((dv2-dv1) / thisOctal%microturb(subcell))
 
-             passThroughResonance =.false.
-             closeToResonance = .false.
+           passThroughResonance =.FALSE.
+           closeToResonance = .FALSE.
 
-             if (dv1*dv2 < 0.d0) passThroughResonance = .true.
+           IF (dv1*dv2 < 0.d0) passThroughResonance = .TRUE.
 
-!             if (modulus(endVel)==0.d0) passThroughResonance = .false.
+           !             if (modulus(endVel)==0.d0) passThroughResonance = .false.
 
-             if (passthroughresonance.or.(min(abs(dv1),abs(dv2)) < 10.d0*thisOctal%microturb(subcell))) then
-                closeToResonance = .true.
-             endif
+           IF (passthroughresonance.OR.(MIN(ABS(dv1),ABS(dv2)) < 10.d0*thisOctal%microturb(subcell))) THEN
+              closeToResonance = .TRUE.
+           ENDIF
 
-             if (closeToResonance.or.passThroughResonance) nTau = 20
+           IF (closeToResonance.OR.passThroughResonance) nTau = 20
 
-!             if (passThroughResonance) write(*,*) "ray passes through resonance ",dv1*cspeed/1.d5,dv2*cspeed/1.d5
-!             if (closeToResonance) write(*,*) "close to resonance ",dv1*cspeed/1.d5,dv2*cspeed/1.d5
+           !             if (passThroughResonance) write(*,*) "ray passes through resonance ",dv1*cspeed/1.d5,dv2*cspeed/1.d5
+           !             if (closeToResonance) write(*,*) "close to resonance ",dv1*cspeed/1.d5,dv2*cspeed/1.d5
 
-          endif
-          bfOpac = 0.d0
-          bfEmiss = 0.d0
+        ENDIF
+        bfOpac = 0.d0
+        bfEmiss = 0.d0
 
 
-       ok = .false.
-       do while (.not.ok)
-          ok = .true.
-          tauStep = 0.d0
-          tautmp = tau
-          iStep = 0.d0
-          if (allocated(distArray)) write(*,*) "Error: dist array already allocated"
-          allocate(distArray(1:nTau))
-          do i = 1, ntau
-             distArray(i) = tval * dble(i-1)/dble(nTau-1)
-          enddo
-          do i = 2, nTau
+        ok = .FALSE.
+        DO WHILE (.NOT.ok)
+           ok = .TRUE.
+           tauStep = 0.d0
+           tautmp = tau
+           iStep = 0.d0
+           IF (ALLOCATED(distArray)) WRITE(*,*) "Error: dist array already allocated"
+           ALLOCATE(distArray(1:nTau))
+           DO i = 1, ntau
+              distArray(i) = tval * DBLE(i-1)/DBLE(nTau-1)
+           ENDDO
+           DO i = 2, nTau
 
-             startOctal => thisOctal
-             thisPosition = currentPosition + distArray(i)*direction
+              startOctal => thisOctal
+              thisPosition = currentPosition + distArray(i)*direction
 
 
 
 
-             if (.not.lineoff) then
-                thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell, &
-                     linearInterp=.false.)
+              IF (.NOT.lineoff) THEN
+                 thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell, &
+                      linearInterp=.FALSE.)
 
-                thisVel= thisVel - rayVel
-                dv = (thisVel .dot. direction) + deltaV
-                alphanu = thisOctal%chiLine(subcell) * phiProf(dv, thisOctal, subcell, &
-                        thisAtom%transfreq(itrans), thisAtom)/transitionFreq
-             else
-                alphanu = 0.d0
-             endif
-             alphaNuLine = alphaNu
+                 thisVel= thisVel - rayVel
+                 dv = (thisVel .dot. direction) + deltaV
+                 alphanu = thisOctal%chiLine(subcell) * phiProf(dv, thisOctal, subcell, &
+                      thisAtom%transfreq(itrans), thisAtom)/transitionFreq
+              ELSE
+                 alphanu = 0.d0
+              ENDIF
+              alphaNuLine = alphaNu
 
-             if (i == 2) then
-                bfOpac = thisOctal%kappaAbs(subcell,1)
-                bfEmiss = thisOctal%etaCont(subcell)
-                dustOpac = 0.d0
-                dustEmiss = 0.d0
-                if (mie) then
-                   call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
-                   kappaExt = kappaAbs + kappaSca
-                   dustOpac = kappaExt
-                   dustEmiss = kappaAbs * bnu(transitionFreq, dble(thisOctal%temperature(subcell)))
-                   dustEmiss = dustEmiss + kappaSca * thisOctal%meanIntensity(subcell)
-                endif
-             endif
+              IF (i == 2) THEN
+                 bfOpac = thisOctal%kappaAbs(subcell,1)
+                 bfEmiss = thisOctal%etaCont(subcell)
+                 dustOpac = 0.d0
+                 dustEmiss = 0.d0
+                 IF (mie) THEN
+                    CALL returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+                    kappaExt = kappaAbs + kappaSca
+                    dustOpac = kappaExt
+                    dustEmiss = kappaAbs * bnu(transitionFreq, DBLE(thisOctal%temperature(subcell)))
+                    dustEmiss = dustEmiss + kappaSca * thisOctal%meanIntensity(subcell)
+                 ENDIF
+              ENDIF
 
 
 
-             if (.not.lineoff) then
-                etaLine = thisOctal%etaLine(subcell)
-                jnu = etaLine * phiProf(dv, thisOctal, subcell, &
-                        thisAtom%transfreq(itrans), thisAtom)/transitionFreq
-             else
-                jnu = 0.d0
-                etaline = 0.d0
-             endif
+              IF (.NOT.lineoff) THEN
+                 etaLine = thisOctal%etaLine(subcell)
+                 jnu = etaLine * phiProf(dv, thisOctal, subcell, &
+                      thisAtom%transfreq(itrans), thisAtom)/transitionFreq
+              ELSE
+                 jnu = 0.d0
+                 etaline = 0.d0
+              ENDIF
 
-!             if (associated(thisOctal%fixedTemperature)) then
-!                if (.not.thisOctal%fixedTemperature(subcell)) then
-!                   jnu = 0.d0
-!                   etaline = 0.d0
-!                endif
-!             endif
+              !             if (associated(thisOctal%fixedTemperature)) then
+              !                if (.not.thisOctal%fixedTemperature(subcell)) then
+              !                   jnu = 0.d0
+              !                   etaline = 0.d0
+              !                endif
+              !             endif
 
-             if (thisOctal%rho(subcell) > 0.1d0) then ! opaque disc
-                bfOpac = 1.d30
-                bfEmiss = 0.d0
-                alphanu = 1.d30
-                etaLine = 0.d0
-                jnu = 0.d0
-                snu = 0.d0
-                deallocate(distArray)
-                goto 666
-             endif
+              IF (thisOctal%rho(subcell) > 0.1d0) THEN ! opaque disc
+                 bfOpac = 1.d30
+                 bfEmiss = 0.d0
+                 alphanu = 1.d30
+                 etaLine = 0.d0
+                 jnu = 0.d0
+                 snu = 0.d0
+                 DEALLOCATE(distArray)
+                 GOTO 666
+              ENDIF
 
-             alphanu = alphanu + bfOpac + dustOpac
+              alphanu = alphanu + bfOpac + dustOpac
 
-             ! add continuous bf and ff emissivity of hydrogen
+              ! add continuous bf and ff emissivity of hydrogen
 
-             jnu = jnu + bfEmiss + dustEmiss
+              jnu = jnu + bfEmiss + dustEmiss
 
-             if (alphanu /= 0.d0) then
-                snu = jnu/alphanu
-             else
-                snu = tiny(snu)
-             endif
+              !print*, bfOpac, dustOpac, bfEmiss, dustEmiss
+              IF (alphanu /= 0.d0) THEN
+                 snu = jnu/alphanu
+              ELSE
+                 snu = TINY(snu)
+              ENDIF
 
 
-             dTau = alphaNu *  (distArray(i)-distArray(i-1))
+              dTau = alphaNu *  (distArray(i)-distArray(i-1))
 
-             if ((dtau > 0.1d0).and.(tau < 20.d0).and.(alphanu < 1.d29)) then
-                ok = .false.
-                ntau = ntau * 2
-!                write(*,*) "ntau doubled to ",ntau,tau
-                exit
-             endif
+              IF ((dtau > 0.1d0).AND.(tau < 20.d0).AND.(alphanu < 1.d29)) THEN
+                 ok = .FALSE.
+                 ntau = ntau * 2
+                 !                write(*,*) "ntau doubled to ",ntau,tau
+                 EXIT
+              ENDIF
 
 
-             if (thisOctal%inflow(subcell)) then
+              IF (thisOctal%inflow(subcell)) THEN
 
-                istep = istep + jnu * exp(-tautmp) *  (distArray(i)-distArray(i-1))
-                tauStep = tauStep + dtau
-                tautmp = tautmp + dtau
+                 istep = istep + jnu * EXP(-tautmp) *  (distArray(i)-distArray(i-1))
+                 tauStep = tauStep + dtau
+                 tautmp = tautmp + dtau
 
-             endif
-          enddo
-             deallocate(distArray)
-             if (ok) then
-                i0 = i0 + iStep
-                tau = tau + tauStep
-!                if ((myrankGlobal==1).and.(iomp==0).and.(tau > 0.01d0))write(*,*) "i0, tau ",real(i0),real(tau),real(taustep)
-             endif
-             if ((.not. ok).and.(ntau > 100000)) then
-                write(*,*) "ntau cap limit reached ",alphanu, " dust ",dustopac, &
-                     " tau ",tau, " dtau ",dtau, " temp ",thisOctal%temperature(subcell)
-                write(*,*) "line, continuum opac ",alphanuLine, bfOpac
-                ok = .true.
-             endif
-          enddo
-       endif
+              ENDIF
+           ENDDO
+           DEALLOCATE(distArray)
+           IF (ok) THEN
+              i0 = i0 + iStep
+              tau = tau + tauStep
+              !                if ((myrankGlobal==1).and.(iomp==0).and.(tau > 0.01d0))write(*,*) "i0, tau ",real(i0),real(tau),real(taustep)
+           ENDIF
+           IF ((.NOT. ok).AND.(ntau > 100000)) THEN
+              WRITE(*,*) "ntau cap limit reached ",alphanu, " dust ",dustopac, &
+                   " tau ",tau, " dtau ",dtau, " temp ",thisOctal%temperature(subcell)
+              WRITE(*,*) "line, continuum opac ",alphanuLine, bfOpac
+              ok = .TRUE.
+           ENDIF
+        ENDDO
+     ENDIF
 
 
-          rhoCol = rhoCol + tVal*thisOctal%rho(subcell)*1.d10
-          oldPosition = currentPosition
-          currentPosition = currentPosition + (tVal+1.d-3*grid%halfSmallestSubcell) * direction
-          totdist = totdist + (tVal+1.d-3*grid%halfSmallestSubcell)
+     rhoCol = rhoCol + tVal*thisOctal%rho(subcell)*1.d10
+     oldPosition = currentPosition
+     currentPosition = currentPosition + (tVal+1.d-3*grid%halfSmallestSubcell) * direction
+     totdist = totdist + (tVal+1.d-3*grid%halfSmallestSubcell)
 
-          if (PRESENT(occultingDisc)) then
-             if (occultingDisc) then
-                if  (oldPosition%z*currentPosition%z < 0.d0) then
-                   if (sqrt(currentPosition%x**2 + currentPosition%y**2) > holeRadius/1.d10) goto 666
-                endif
-             endif
-          endif
-       enddo
+     IF (PRESENT(occultingDisc)) THEN
+        IF (occultingDisc) THEN
+           IF  (oldPosition%z*currentPosition%z < 0.d0) THEN
+              IF (SQRT(currentPosition%x**2 + currentPosition%y**2) > holeRadius/1.d10) GOTO 666
+           ENDIF
+        ENDIF
+     ENDIF
+  ENDDO
 
-    if (endLoopAtPhotosphere) then
+  IF (endLoopAtPhotosphere) THEN
 
-       iElement = getElement(source(sourcenumber)%surface, photoDirection)
+     iElement = getElement(source(sourcenumber)%surface, photoDirection)
 
-       i0 = i0 + i_nu(source(sourceNumber), transitionFreq, iElement, cosTheta)*exp(-tau)
-    endif
-666 continue
+     i0 = i0 + i_nu(source(sourceNumber), transitionFreq, iElement, cosTheta)*EXP(-tau)
+  ENDIF
+666 CONTINUE
 
-  end function intensityAlongRayGeneric
+END FUNCTION intensityAlongRayGeneric
+
 
 
   subroutine calculateAtomSpectrum(grid, thisAtom, nAtom, iAtom, iTrans, viewVec, distance, source, nsource, &
