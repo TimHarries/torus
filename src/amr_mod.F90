@@ -4631,10 +4631,10 @@ CONTAINS
           if (sqrt(rvec%x**2+(0.25*rvec%z)**2) <= (smallestCellSize * 2.5**(1+maxDepthAMR-thisOctal%nDepth))) then
               split=.true.
           endif
-       case("shell")
-          r = modulus(subcellCentre(thisOctal,subcell))*1.d10
-          split = .false.
-          if ( (r+thisOCtal%subcellsize*1.d10 >rInner).and.(  r-thisOCtal%subcellsize*1.d10 < rOuter)) split = .true.
+!       case("shell")
+!          r = modulus(subcellCentre(thisOctal,subcell))*1.d10
+!          split = .false.
+!          if ( (r+thisOCtal%subcellsize*1.d10 >rInner).and.(  r-thisOCtal%subcellsize*1.d10 < rOuter)) split = .true.
 
        case("spiral")
           call splitSpiral(thisOctal, split, splitInAzimuth)

@@ -4631,19 +4631,10 @@ CONTAINS
           if (sqrt(rvec%x**2+(0.25*rvec%z)**2) <= (smallestCellSize * 2.5**(1+maxDepthAMR-thisOctal%nDepth))) then
               split=.true.
           endif
-<<<<<<< HEAD
-!       case("shell")
-!          r = modulus(subcellCentre(thisOctal,subcell))*1.d10
-!          split = .false.
-!          if ( (r+thisOCtal%subcellsize*1.d10 >rInner).and.(  r-thisOCtal%subcellsize*1.d10 < rOuter)) split = .true.
-          
-=======
        case("shell")
           r = modulus(subcellCentre(thisOctal,subcell))*1.d10
           split = .false.
           if ( (r+thisOCtal%subcellsize*1.d10 >rInner).and.(  r-thisOCtal%subcellsize*1.d10 < rOuter)) split = .true.
-
->>>>>>> b96f510b011b545832b041726eae94ca40b73c45
 
        case("spiral")
           call splitSpiral(thisOctal, split, splitInAzimuth)
@@ -10224,11 +10215,7 @@ logical function insideCone(position, binarySep, momRatio)
     rVec = subcellCentre(thisOctal, subcell)
     r = modulus(rVec)
 
-<<<<<<< HEAD
-    rho0 = 1.d-30*shellmass  * (3.d0 - shellalpha) / (fourPi * rInner**shellalpha * & 
-=======
     rho0 = shellmass  * (3.d0 - shellalpha) / (fourPi * rInner**shellalpha * &
->>>>>>> b96f510b011b545832b041726eae94ca40b73c45
             (rOuter**(3.d0-shellalpha) - rInner**(3.d0-shellalpha)))
 
     if ((r > rInner).and.(r < rOuter)) then
