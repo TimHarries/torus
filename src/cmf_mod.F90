@@ -1606,7 +1606,8 @@ contains
 
     nStage = 2
 
-    sobolevApprox = .true.
+    ! sobolevApprox = .true.
+    sobolevApprox = .FALSE.
 
     dongStep = .true.
 
