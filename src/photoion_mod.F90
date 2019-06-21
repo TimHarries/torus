@@ -60,7 +60,8 @@ contains
     integer :: nlambda
     real :: lamArray(:)
     integer :: nSource
-    type(SOURCETYPE) :: source(:), thisSource
+    type(SOURCETYPE), target :: source(:)
+    type(SOURCETYPE), pointer :: thisSource
     integer :: iSource
     type(VECTOR) :: rVec, uHat, rHat
     real(double) :: lCore
@@ -299,7 +300,7 @@ contains
        !$OMP DO SCHEDULE (STATIC)
        mainloop: do iMonte = iMonte_beg, iMonte_end
           call randomSource(source, nSource, iSource, sourceWeight)
-          thisSource = source(iSource)
+          thisSource => source(iSource)
 
           !thap variance reduction for melvin geometry
           if (grid%geometry == "melvin") then
@@ -3096,7 +3097,8 @@ end subroutine readHeIIrecombination
     integer, intent(in) :: nSource
     real :: lambdaLine
     character(len=80) :: outputimageType
-    type(SOURCETYPE) :: source(:), thisSource
+    type(SOURCETYPE), target :: source(:)
+    type(SOURCETYPE), pointer :: thisSource
     type(PHOTON) :: thisPhoton, observerPhoton
     type(OCTAL), pointer :: thisOctal
     real(double) :: totalFlux
@@ -3236,7 +3238,7 @@ end subroutine readHeIIrecombination
 
        if (r < probSource) then
           call randomSource(source, nSource, iSource, thisSourceWeight)
-          thisSource = source(iSource)
+          thisSource => source(iSource)
           call getPhotonPositionDirection(thisSource, thisPhoton%position, thisPhoton%direction, rHat,grid)         
           thisPhoton%weight = weightSource * thisSourceWeight
        else
