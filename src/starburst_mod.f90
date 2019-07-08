@@ -91,33 +91,196 @@ contains
     mass = 10.d0**mass
   end function randomMassFromIMF
 
-  subroutine populateClusters(clusters, nClusters, age, totalCreatedMass) 
+  subroutine getStarList(starList, iList, nList)
+     use inputs_mod, only : readIMF, imfFilename, imfType, imfMin, imfMax, populationMass, populationMethod
+     real(double), allocatable :: starList(:), tempList(:)
+     integer :: iList
+     real(double) :: total
+     integer :: i, nList
+     character(len=80) :: junk
+
+     if (populationMethod /= "list") then
+        if (allocated(starList)) starlist(:) = 0.d0 
+        goto 666
+     endif
+
+
+     if (readIMF) then
+        call writeInfo("Reading IMF from file", TRIVIAL)
+        open(77, file=imfFilename, status="old", form="formatted")
+        read(77,*) junk, iList, nList
+        total = 0.d0
+        do i = 1, nList
+           read(77,*) starList(i) ! [msol]
+           starList(i) = starList(i) * msol ! [g]
+           total = total + starList(i)
+        enddo
+        close(77)
+        !FIXME
+        if (writeoutput) write(*,*) "GETSTARLIST read ", total/msol, " msol"
+        if (writeoutput) write(*,*) iList, nList, starList(1:3)/msol, starlist(iList)/msol, starlist(nlist)/msol
+        
+     else
+        ! generate a new IMF
+        call randomNumberGenerator(randomSeed=.true.)
+        call randomNumberGenerator(syncIseed=.true.)
+        nList = 0
+        total = 0.d0
+        starList = 0.d0
+        do while (total < populationMass) ! [g]
+           if (nList+1 > size(starList)) then
+              allocate(tempList(1:nList))
+              tempList(1:nList) = starList(1:nList)
+              deallocate(starList)
+              allocate(starList(1:nList*10))
+              starList = 0.d0
+              starList(1:nList) = tempList(1:nList)
+              deallocate(tempList)
+           endif
+           nList = nList + 1
+           starList(nList) = randomMassFromIMF(imfType, imfMin, imfMax) * msol ! [g]
+           total = total + starList(nList)
+        enddo
+        iList = 1
+        call randomNumberGenerator(randomSeed=.true.)
+        if (writeoutput) write(*,*) "GETSTARLIST initialised ", total/msol, " msol"
+        if (writeoutput) call writeStarList(starList, iList, nList, "imfdump.dat")
+     endif
+
+666  continue
+  end subroutine getStarList
+
+  subroutine writeStarList(starList, iList, nList, fn)
+     real(double), intent(in) :: starList(:)
+     integer, intent(in) :: iList, nList
+     character(len=*), intent(in) :: fn
+     integer :: i
+
+     open(67,file=trim(fn),status="unknown",form="formatted")
+     write(67, '(a,i6,1x,i6)') "# i, N: ", iList, nList 
+     do i = 1, nList 
+        write(67, *) starList(i)/msol 
+     enddo
+  end subroutine writeStarList
+
+  subroutine populateClusters(clusters, nClusters, age, populated, imf, iIMF, nIMF) 
     use inputs_mod, only : criticalMass ! [g]
+    use inputs_mod, only : populationMethod
     use source_mod, only : clusterReservoir
     type(SOURCETYPE), pointer :: clusters(:)
-    real(double), intent(out) :: totalCreatedMass ! [msol]
-    real(double) :: reservoir  ! [g]
+    logical, intent(out) :: populated
+    real(double), optional :: imf(:) ! [g]
+    real(double) :: createdMass ! [msol]
+    real(double) :: reservoir ! [g] 
     real(double) :: age ! [yr]
-    integer :: nClusters, i
+    integer, optional :: iImf, nIMF
+    integer :: nClusters, i, iEligible, nEligible
+    real(double) :: thisMass, starsForCluster(1:nClusters, 100000), reservoirs(1:nClusters) ! [g]
+    integer, dimension(1:nClusters) :: nStarsForCluster, eligibleClusters
+    logical :: done
+    character(len=80) :: message
 
-    totalCreatedMass = 0.d0
+
+    if (nClusters == 0) goto 666
+
+    createdMass = 0.d0
+    populated = .false.
+
+    select case (populationMethod)
+       ! when a sink's reservoir exceeds a specified threshold mass, convert mass to stars
+       case ("threshold")
+          do i = 1, nClusters
+             reservoir = clusterReservoir(clusters(i))
+             if (reservoir >= criticalMass) then
+                if (writeoutput) write(*,*) "Creating subsources for cluster ", i
+                call createSources(clusters(i)%nSubsource, clusters(i)%subsourceArray, "instantaneous", age, reservoir/msol, 0.d0, &
+                      createdMass, zeroNsource=.false.)
+                if (writeoutput) write(*,*) " ... created ", createdMass, " Msol" 
+                populated = .true. 
+             endif
+          enddo
+
+       ! add the next star on a pre-calculated list to a random sink (provided it's massive enough)
+       case ("list")
+
+          ! initial reservoirs
+          do i = 1, nClusters
+             reservoirs(i) = clusterReservoir(clusters(i)) ! [g]
+          enddo
+
+          ! check if clusters can take the next star off the list
+          nStarsForCluster(:) = 0
+          starsForCluster(:,:) = 0.d0
+          done = .false.
+          do while (.not. done) 
+             if (iIMF > nIMF) then
+                write(*,*) "WARNING: iIMF ", iIMF, " exceeded nIMF ", nIMF 
+                done = .true.
+                stop
+                exit
+             endif
+             thisMass = imf(iImf) ! [g]
+             ! pick out the clusters with massive enough reservoirs
+             nEligible = 0
+             do i = 1, nClusters
+                if (reservoirs(i) >= thisMass) then
+                   nEligible = nEligible + 1
+                   eligibleClusters(nEligible) = i 
+                endif
+             enddo
+             if (nEligible > 0) then
+                ! randomly select a cluster from the eligible list
+                call randomSourceUniform(nEligible, iEligible)
+                i = eligibleClusters(iEligible)
+                ! save the star for later
+                nStarsForCluster(i) = nStarsForCluster(i) + 1
+                starsForCluster(i, nStarsForCluster(i)) = thisMass/msol ! [msol]
+                reservoirs(i) = reservoirs(i) - thisMass
+                if (thisMass/Msol > 8.d0 .and. .not. populated) then
+                   populated = .true. ! tell radhydro routine to do additional photoion iterations
+                endif
+                ! go to next star in list
+                done = .false.
+                iImf = iImf + 1
+             else
+                if (writeoutput) write(*,*) "stopped at iIMF ", iIMF, thisMass/msol, " Msol"
+                done = .true.
+             endif
+          enddo
+
+          ! now actually put the stars in the clusters
+          do i = 1, nClusters
+             if (nStarsForCluster(i) > 0) then
+                if (writeoutput) write(*,*) "Creating subsources for cluster ", i
+                call createSources(clusters(i)%nSubsource, clusters(i)%subsourceArray, "list", age, & 
+                      clusterReservoir(clusters(i))/msol, 0.d0, createdMass, zeroNsource=.false., &
+                      list=starsForCluster(i, 1:nStarsForCluster(i)), nlist=nStarsForCluster(i))
+                if (writeoutput) write(*,*) " ... created ", createdMass, " Msol" 
+                call writeClusterIMF(clusters(i), i)
+             endif
+          enddo
+             
+
+       case DEFAULT
+          write(message,'(a,a)') "Population method not recognised: ", trim(populationMethod)
+          call writefatal(message)
+    end select
+
     do i = 1, nClusters
-       reservoir = clusterReservoir(clusters(i))
-       if (reservoir >= criticalMass) then
-          if (writeoutput) write(*,*) "Creating subsources for cluster ", i
-          call createSources(clusters(i)%nSubsource, clusters(i)%subsourceArray, "instantaneous", age, reservoir/msol, 0.d0, &
-                totalCreatedMass, zeroNsource=.false.)
-          if (writeoutput) write(*,*) " ... created ", totalCreatedMass, " Msol" 
-!          if (totalCreatedMass > 0.d0) write(*,*) myrankglobal, " CREATED ", clusters(i)%subsourceArray(:)%mass/msol
-
+       if (clusters(i)%nSubsource > 0) then
           clusters(i)%subsourceArray(1:clusters(i)%nSubsource)%position = clusters(i)%position
           clusters(i)%subsourceArray(1:clusters(i)%nSubsource)%velocity = clusters(i)%velocity
 
-          call writeClusterIMF(clusters(i), i)
+          clusters(i)%stellar = .true.
+          clusters(i)%viscosity = .false.
+          clusters(i)%pointSource = .true.
+          clusters(i)%diffuse = .false.
+          clusters(i)%outsideGrid = .false.
+          clusters(i)%prob = 0.d0
        endif
     enddo
 
-
+666 continue 
   end subroutine populateClusters
 
   subroutine writeClusterIMF(cluster, i)
@@ -128,10 +291,10 @@ contains
     if (writeoutput) then
        if (cluster%nSubsource > 0) then
           write(fn, '(a,i4.4,a)') "imf_", i, ".dat"
-          open(67,file=trim(fn),status="replace",form="formatted")
-          write(67, '(a4,a9,a12)') "#i", "M(msol)", "age(yr)"
+          open(67,file=trim(fn),status="unknown",form="formatted")
+          write(67, '(a4,a9,a12)') "#i", "Mini(msol)", "age(yr)"
           do j = 1, cluster%nSubsource
-             write(67, '(i4.4,f9.3,es12.5)') j, cluster%subsourceArray(j)%mass/msol, cluster%subsourceArray(j)%age
+             write(67, '(i4.4,f9.3,es12.5)') j, cluster%subsourceArray(j)%initialMass, cluster%subsourceArray(j)%age
           enddo
           close(67)
           write(*,*) "Written IMF to ", trim(fn)
@@ -142,7 +305,7 @@ contains
   ! calculate cluster spectrum from already calculated subsource spectra
   subroutine setClusterSpectra(clusters, nClusters)
     type(SOURCETYPE), pointer :: clusters(:)
-    integer :: i, j, nClusters, k, newnLambda, oldnLambda
+    integer :: i, j, nClusters, k, newnLambda, oldnLambda, jRef
 !    type(SPECTRUMTYPE) :: newspec, refspec, oldspec
     logical, save :: firsttime=.true., firsttotalspec=.true.
     real(double), allocatable :: newFlux(:), newLambda(:)
@@ -154,75 +317,80 @@ contains
           call setSourceSpectra(clusters(i)%subsourceArray, clusters(i)%nSubsource)
           ! now do cluster spectrum, where cluster%spectrum%flux is L_lambda 
           call freeSpectrum(clusters(i)%spectrum)
-          call copySpectrum(clusters(i)%spectrum, clusters(i)%subsourceArray(1)%spectrum)
-          clusters(i)%spectrum%flux = clusters(i)%spectrum%flux * fourPi*(clusters(i)%subsourceArray(1)%radius*1.d10)**2
+          if (clusters(i)%nSubsource == 1) then
+             call copySpectrum(clusters(i)%spectrum, clusters(i)%subsourceArray(1)%spectrum)
+             clusters(i)%spectrum%flux = clusters(i)%spectrum%flux * fourPi*(clusters(i)%subsourceArray(1)%radius*1.d10)**2
+          elseif (clusters(i)%nSubsource > 1) then
+             jRef = maxloc(clusters(i)%subsourceArray(1:clusters(i)%nsubsource)%mass,dim=1) ! ref spectrum is subsource with highest mass
+             call copySpectrum(clusters(i)%spectrum, clusters(i)%subsourceArray(jRef)%spectrum)
+             clusters(i)%spectrum%flux = clusters(i)%spectrum%flux * fourPi*(clusters(i)%subsourceArray(jRef)%radius*1.d10)**2
 
-          if (clusters(i)%nSubsource > 1) then
 !             refspec = clusters(i)%subsourceArray(1)%spectrum
-             newNlambda = clusters(i)%subsourceArray(1)%spectrum%nlambda
+             newNlambda = clusters(i)%subsourceArray(jRef)%spectrum%nlambda
              allocate(newLambda(1:newNlambda))
-             newLambda = clusters(i)%subsourceArray(1)%spectrum%lambda
+             newLambda = clusters(i)%subsourceArray(jRef)%spectrum%lambda
              allocate(newFlux(1:newNlambda))
-             do j = 2, clusters(i)%nSubsource
-!                oldspec = clusters(i)%subsourceArray(j)%spectrum
-                ! calculate flux in the wavelength bins of first subsource
-                oldNlambda = clusters(i)%subsourceArray(j)%spectrum%nlambda
-                do k = 1, newNlambda
-                   if (newLambda(k) < clusters(i)%subsourceArray(j)%spectrum%lambda(1)) then 
-                      newFlux(k) = 1.d-30
-                   else if (newLambda(k) > clusters(i)%subsourceArray(j)%spectrum%lambda(oldNlambda)) then
-                      newFlux(k) = 1.d-30
-                   else
-                      newFlux(k) = loginterp_dble(clusters(i)%subsourceArray(j)%spectrum%flux, &
-                        oldNlambda, clusters(i)%subsourceArray(j)%spectrum%lambda, newLambda(k))
-                   endif
-                enddo
-                ! deallocate oldspec
-
-                ! add new flux to the cluster spectrum
-                ! NB subsource fluxes retain actual fluxes. Cluster "flux" is luminosity
-!                call addSpectrum(clusters(i)%spectrum, newspec, fourPi*(clusters(i)%subsourceArray(j)%radius*1.d10)**2)
-                do k = 1, clusters(i)%spectrum%nLambda
-                   clusters(i)%spectrum%flux(k) = clusters(i)%spectrum%flux(k) + &
-                      newFlux(k)*fourPi*(clusters(i)%subsourceArray(j)%radius*1.d10)**2
-                enddo
-                
-                ! FIXME
-                if (firstTime) then
-                   ! original spectrum of subsource
-                   open(68,file="oldspec.dat",status="replace",form="formatted")
-                   do k = 1, clusters(i)%subsourceArray(j)%spectrum%nlambda
-                      write(68,*) (clusters(i)%subsourceArray(j)%spectrum%lambda(k)),&
-                       clusters(i)%subsourceArray(j)%spectrum%flux(k)*fourPi*(clusters(i)%subsourceArray(j)%radius*1.d10)**2
-                   enddo
-                   close(68)
-
-                   ! resampled spectrum of subsource (match bins to subsource 1)
-                   open(68,file="newspec.dat",status="replace",form="formatted")
+             do j = 1, clusters(i)%nSubsource
+                if (j /= jRef) then
+   !                oldspec = clusters(i)%subsourceArray(j)%spectrum
+                   ! calculate flux in the wavelength bins of ref subsource
+                   oldNlambda = clusters(i)%subsourceArray(j)%spectrum%nlambda
                    do k = 1, newNlambda
-                      write(68,*) newLambda(k), newFlux(k)*fourPi*(clusters(i)%subsourceArray(j)%radius*1.d10)**2
+                      if (newLambda(k) < clusters(i)%subsourceArray(j)%spectrum%lambda(1)) then 
+                         newFlux(k) = 1.d-30
+                      else if (newLambda(k) > clusters(i)%subsourceArray(j)%spectrum%lambda(oldNlambda)) then
+                         newFlux(k) = 1.d-30
+                      else
+                         newFlux(k) = loginterp_dble(clusters(i)%subsourceArray(j)%spectrum%flux, &
+                           oldNlambda, clusters(i)%subsourceArray(j)%spectrum%lambda, newLambda(k))
+                      endif
                    enddo
-                   close(68)
+                   ! deallocate oldspec
 
-                   ! subsource 1 spectrum (bins to match to)
-                   open(68,file="refspec.dat",status="replace",form="formatted")
-                   do k = 1, clusters(i)%subsourceArray(1)%spectrum%nlambda
-                      write(68,*) (clusters(i)%subsourceArray(1)%spectrum%lambda(k)),&
-                       clusters(i)%subsourceArray(1)%spectrum%flux(k)*fourPi*(clusters(i)%subsourceArray(1)%radius*1.d10)**2
+                   ! add new flux to the cluster spectrum
+                   ! NB subsource fluxes retain actual fluxes. Cluster "flux" is luminosity
+   !                call addSpectrum(clusters(i)%spectrum, newspec, fourPi*(clusters(i)%subsourceArray(j)%radius*1.d10)**2)
+                   do k = 1, clusters(i)%spectrum%nLambda
+                      clusters(i)%spectrum%flux(k) = clusters(i)%spectrum%flux(k) + &
+                         newFlux(k)*fourPi*(clusters(i)%subsourceArray(j)%radius*1.d10)**2
                    enddo
-                   close(68)
+                   
+                   ! FIXME
+                   if (firstTime) then
+                      ! original spectrum of subsource
+                      open(68,file="oldspec.dat",status="replace",form="formatted")
+                      do k = 1, clusters(i)%subsourceArray(j)%spectrum%nlambda
+                         write(68,*) (clusters(i)%subsourceArray(j)%spectrum%lambda(k)),&
+                          clusters(i)%subsourceArray(j)%spectrum%flux(k)*fourPi*(clusters(i)%subsourceArray(j)%radius*1.d10)**2
+                      enddo
+                      close(68)
 
-                   ! cluster spectrum (addition of subsources 1 and 2)
-                   open(68,file="combinedspec.dat",status="replace",form="formatted")
-                   do k = 1, clusters(i)%spectrum%nlambda
-                      write(68,*) (clusters(i)%spectrum%lambda(k)), clusters(i)%spectrum%flux(k)
-                   enddo
-                   close(68)
+                      ! resampled spectrum of subsource (match bins to subsource 1)
+                      open(68,file="newspec.dat",status="replace",form="formatted")
+                      do k = 1, newNlambda
+                         write(68,*) newLambda(k), newFlux(k)*fourPi*(clusters(i)%subsourceArray(j)%radius*1.d10)**2
+                      enddo
+                      close(68)
 
-                   firsttime = .false.
+                      ! subsource 1 spectrum (bins to match to)
+                      open(68,file="refspec.dat",status="replace",form="formatted")
+                      do k = 1, clusters(i)%subsourceArray(jRef)%spectrum%nlambda
+                         write(68,*) (clusters(i)%subsourceArray(jRef)%spectrum%lambda(k)),&
+                          clusters(i)%subsourceArray(jRef)%spectrum%flux(k)*fourPi*(clusters(i)%subsourceArray(jRef)%radius*1.d10)**2
+                      enddo
+                      close(68)
+
+                      ! cluster spectrum (addition of subsources 1 and 2)
+                      open(68,file="combinedspec.dat",status="replace",form="formatted")
+                      do k = 1, clusters(i)%spectrum%nlambda
+                         write(68,*) (clusters(i)%spectrum%lambda(k)), clusters(i)%spectrum%flux(k)
+                      enddo
+                      close(68)
+
+                      firsttime = .false.
+                   endif
+   !                call freeSpectrum(oldspec)
                 endif
-!                call freeSpectrum(oldspec)
-
              enddo
              ! deallocate refspec, newspec
 !             call freeSpectrum(newspec)
@@ -268,11 +436,11 @@ contains
     enddo
   end subroutine setSourceSpectra
 
-  subroutine createSources(nSource, source, burstType, burstAge, burstMass, sfRate, totMass,zeroNsource)
+  subroutine createSources(nSource, source, burstType, burstAge, burstMass, sfRate, totMass,zeroNsource,list, nlist)
     use inputs_mod, only : imfType, imfMin, imfMax, clusterSinks
     integer :: nSource, thisNsource, initialNsource
     type(SOURCETYPE), pointer :: source(:)
-    type(SOURCETYPE), allocatable :: tempSourceArray(:)
+    type(SOURCETYPE), pointer :: tempSourceArray(:)
     type(TRACKTABLE) :: thisTable
     character(len=80) :: message
     character(len=*) :: burstType
@@ -281,6 +449,8 @@ contains
     real(double) :: thisMass, totMass    ! Msol
     real(double) :: sfRate    ! Msol/yr
     real(double), allocatable :: initialMasses(:), temp(:) ! Msol
+    real(double), optional :: list(:) ! Msol
+    integer, optional :: nlist
     logical, optional :: zeroNsource
     integer :: i, j
     integer :: nDead, nSupernova, nOB
@@ -344,26 +514,68 @@ contains
                 endif
              enddo
           enddo
-          allocate(temp(1:thisNsource))
-          temp = initialMasses(1:thisNsource) 
-          call sort(thisNsource, temp) ! sort in ascending order
-          temp = temp(thisNsource:1:-1) ! reverse, i.e. sort in descending order
+          if (thisNsource > 1) then
+             allocate(temp(1:thisNsource))
+             temp = initialMasses(1:thisNsource) 
+             call sort(thisNsource, temp) ! sort in ascending order
+             initialMasses(1:thisNsource) = temp(thisNsource:1:-1) ! reverse, i.e. sort in descending order
+          endif
 
 !          if (writeoutput) write(*,*) "TEMP SOURCE ", temp
           if (.not.associated(source)) then
-             allocate(source(1:thisNsource))
+!             allocate(source(1:thisNsource))
+             allocate(source(1:1000))
              if (writeoutput) write(*,*) "ALLOCATING ", size(source)
           endif
-          ! extend source array if necessary
+!          ! extend source array if necessary
+!          if ((initialnSource+thisNsource) > size(source)) then
+!             if (writeoutput) write(*,*) "RESIZING (A) ", initialnsource, thisNsource
+!             allocate(tempSourceArray(1:initialnSource))
+!             tempSourceArray(1:initialnSource) = source(1:initialnSource)
+!             call freeSourceArray(source)
+!             allocate(source(1:initialnSource+thisNsource))
+!             source(1:initialnSource) = tempSourceArray(1:initialnSource)
+!             deallocate(tempSourceArray)
+!!             if (writeoutput) write(*,*) "RESIZED ", size(source)
+!          endif
+
+          ! update nSource
+          nSource = nSource + thisNsource
+          if (writeoutput) write(*,*) "NEW NSOURCE", nSource, thisNsource
+          
+          ! add to actual source array
+          source(initialNsource+1:nSource)%initialMass = initialMasses(1:thisNsource) 
+          source(initialNsource+1:nSource)%age = burstAge
+
+          if (writeoutput) write(*,*) "NEW SOURCE ARRAY ", source(1:nSource)%initialMass
+          
+       case("list")
+          thisNsource = nlist
+          totMass = sum(list(1:nlist))
+          if (thisNsource > 1) then
+             allocate(temp(1:thisNsource))
+             temp = list(1:thisNsource) 
+             call sort(thisNsource, temp) ! sort in ascending order
+             list(1:thisNsource) = temp(thisNsource:1:-1) ! reverse, i.e. sort in descending order
+          endif
+
+!          if (writeoutput) write(*,*) "TEMP SOURCE ", temp
+          if (.not.associated(source)) then
+!             allocate(source(1:thisNsource))
+             allocate(source(1:1000))
+             if (writeoutput) write(*,*) "ALLOCATING ", size(source)
+          endif
+!          ! extend source array if necessary
           if ((initialnSource+thisNsource) > size(source)) then
-             if (writeoutput) write(*,*) "RESIZING (A) ", initialnsource, thisNsource, size(source)
-             allocate(tempSourceArray(1:initialnSource))
-             tempSourceArray(1:initialnSource) = source(1:initialnSource)
-             call freeSourceArray(source)
-             allocate(source(1:initialnSource+thisNsource))
-             source(1:initialnSource) = tempSourceArray(1:initialnSource)
-             deallocate(tempSourceArray)
-!             if (writeoutput) write(*,*) "RESIZED ", size(source)
+             if (writeoutput) write(*,*) "RESIZING (A) ", initialnsource, thisNsource
+             stop
+!             allocate(tempSourceArray(1:initialnSource))
+!             tempSourceArray(1:initialnSource) = source(1:initialnSource)
+!             call freeSourceArray(source)
+!             allocate(source(1:initialnSource+thisNsource))
+!             source(1:initialnSource) = tempSourceArray(1:initialnSource)
+!             deallocate(tempSourceArray)
+!!             if (writeoutput) write(*,*) "RESIZED ", size(source)
           endif
 
           ! update nSource
@@ -371,13 +583,11 @@ contains
           if (writeoutput) write(*,*) "NEW NSOURCE", nSource, thisNsource
           
           ! add to actual source array
-          source(initialNsource+1:nSource)%initialMass = temp(1:thisNsource) 
+          source(initialNsource+1:nSource)%initialMass = list(1:thisNsource) 
           source(initialNsource+1:nSource)%age = burstAge
 
-          if (writeoutput) write(*,*) "NEW SOURCE ARRAY ", source(:)%initialMass
-          deallocate(initialMasses)
-          deallocate(temp)
-          
+!          if (writeoutput) write(*,*) "NEW SOURCE ARRAY ", source(1:nsource)%initialMass
+          if (writeoutput) write(*,*) "NEW SOURCES ADDED ", source(initialNsource+1:nsource)%initialMass
        case("supernovatest")
              nSource = 1
              source(1)%initialMass = 40.d0
@@ -961,7 +1171,7 @@ contains
 
        call unixGetenv("TORUS_DATA", dataDirectory, i)
        ! nb: rotation is available with vvcrit0.4
-       write(tfile, *) trim(dataDirectory), "/mist/MIST_v1.2_feh_p0.00_afe_p0.0_vvcrit0.0_EEPS/", trim(thisFile)
+       write(tfile, '(a,a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_p0.00_afe_p0.0_vvcrit0.0_EEPS/", trim(thisFile)
 
        open(31, file=tfile, status="old", form="formatted")
        read(31,'(a)',end=55) cline
@@ -1235,29 +1445,91 @@ contains
    
   subroutine testClusterSpectra
      real(double) :: thissourceflux, tot, burstMass
-     integer :: i, j, k
+     integer :: i, j, k, iImf, nIMF
      character(len=80) :: mpifilename, fn
+     logical :: populated
+     real(double), allocatable :: imf(:)
 
+     iIMF = 0
+     nimf = 0
+     allocate(imf(1:1000000))
+     call getStarList(imf, iIMF, nIMF)
+     if (writeoutput) write(*,*) "START iIMF, nIMF: ", iIMF, nIMF
+
+     ! populate clusters continuously given a pre-tabulated IMF
      if (associated(globalSourceArray)) deallocate(globalSourceArray)
-     globalnsource = 100
-     allocate(globalsourcearray(1:globalnsource))
-     globalSourceArray(1:globalNsource)%mass = 600.001d0*msol
-     call randomNumberGenerator(randomSeed=.true.)
-     call randomNumberGenerator(syncIseed=.true.)
-     call populateClusters(globalSourceArray, globalnSource, 0.d0, burstMass) 
-     call randomNumberGenerator(randomSeed=.true.)
-     call setClusterSpectra(globalSourceArray, globalnSource) 
+     nullify(globalSourceArray)
 
+     globalnsource = 20
+     allocate(globalsourcearray(1:globalnsource))
+     do i = 1, globalnSource
+        globalSourceArray(i)%mass = 50.d0 * msol
+
+        globalSourceArray(i)%position = VECTOR(0.d0, 0.d0, 0.d0)
+        globalSourceArray(i)%accretionRadius = 1.d0 * pctocm 
+        call emptySurface(globalsourceArray(i)%surface)
+        call buildSphereNbody(globalsourceArray(i)%position, globalsourceArray(i)%accretionRadius/1.d10, &
+             globalsourceArray(i)%surface, 20)
+     enddo
+
+     j = 0
      if (writeoutput) then
-        do i = 1, globalnsource
-          write(fn,'(a,i4.4,a)') "totalspec_", i, ".dat"
-          open(68,file=fn,status="replace",form="formatted")
-          do k = 1, globalSourceArray(i)%spectrum%nlambda
-             write(68,'(2(es13.5))') globalSourceArray(i)%spectrum%lambda(k), globalSourceArray(i)%spectrum%flux(k)
-          enddo
-          close(68)
+        do i = 1, globalnSource
+           write(fn,'(a,i4.4,a)') "msink_",i,".dat"
+           open(68,file=fn,status="replace",form="formatted")
+           write(68,'(i6,1x,2(es12.3,1x),i6)') j, globalSourceArray(i)%mass/msol, clusterReservoir(globalSourceArray(i))/msol, &
+              globalSourcearray(i)%nsubsource
+           close(68)
         enddo
      endif
+
+     do j = 1, 200
+        if (writeoutput) write(*,*) "iter ", j
+
+        do i = 1, globalnSource
+           globalSourceArray(i)%mass = globalSourceArray(i)%mass + dble(i) * 1.d-3 * msol * 1.d2
+        enddo
+
+        call randomNumberGenerator(randomSeed=.true.)
+        call randomNumberGenerator(syncIseed=.true.)
+        call populateClusters(globalSourceArray, globalnSource, dble(j)*1.d2, populated, imf=imf(1:nimf), iImf=iImf, nIMF=nIMF) 
+        call randomNumberGenerator(randomSeed=.true.)
+
+        if (writeoutput) then
+           do i = 1, globalnSource
+              write(fn,'(a,i4.4,a)') "msink_",i,".dat"
+              open(68,file=fn,status="old",position="append",form="formatted")
+              write(68,'(i6,1x,2(es12.3,1x),i6)') j, globalSourceArray(i)%mass/msol, clusterReservoir(globalSourceArray(i))/msol, &
+                  globalSourceArray(i)%nsubsource
+              close(68)
+           enddo
+        endif
+     enddo
+
+     if (writeoutput) then
+        write(fn,'(a)') "nstars.dat"
+        open(68,file=fn,status="replace",form="formatted")
+        do i = 1, globalnSource
+           write(68,'(2(i6,1x))') i, globalSourceArray(i)%nSubsource 
+        enddo
+        close(68)
+        write(*,*) iIMF-1, " out of ", nIMF, " stars were allocated to clusters"
+        call writeStarList(imf, iIMF, nIMF, "imfdump_end.dat")
+     endif
+     stop
+
+
+!     call setClusterSpectra(globalSourceArray, globalnSource) 
+!     if (writeoutput) then
+!        do i = 1, globalnsource
+!          write(fn,'(a,i4.4,a)') "totalspec_", i, ".dat"
+!          open(68,file=fn,status="replace",form="formatted")
+!          do k = 1, globalSourceArray(i)%spectrum%nlambda
+!             write(68,'(2(es13.5))') globalSourceArray(i)%spectrum%lambda(k), globalSourceArray(i)%spectrum%flux(k)
+!          enddo
+!          close(68)
+!        enddo
+!     endif
 
 !     do i = 1, globalnsource
 !        do j = 1, 10

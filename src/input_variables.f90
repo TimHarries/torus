@@ -157,6 +157,10 @@
   real(double) :: feedbackDelay ! after starburst, delay feedback mechanisms by this fraction of free-fall time
   character(len=20) :: burstType
   character(len=20) :: imfType  !Initial mass function sampled by cluster sink particles
+  character(len=20) :: populationMethod  !Method by which populate cluster sinks with stars
+  character(len=80) :: imfFilename ! if reading in an IMF
+  real(double) :: populationMass ! total mass of IMF
+  logical :: readIMF
   real(double) :: imfMin, imfMax 
   type(VECTOR) :: burstPosition ! pos of star for burstType 'singlestartest'
   logical :: dumpregularVTUS   !dump vtu after every photo step

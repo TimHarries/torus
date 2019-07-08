@@ -375,24 +375,24 @@ end subroutine readSurface
        do i = 1, surface%nelements
           if (associated(surface%element(i)%hotFlux)) then
              deallocate(surface%element(i)%hotFlux)
-             nullify(surface%element(i)%hotFlux)
           end if
+          nullify(surface%element(i)%hotFlux)
        end do
        deallocate(surface%element)
     end if
+    nullify(surface%element) 
     if (associated(surface%nuarray)) deallocate(surface%nuarray)
+    nullify(surface%nuarray) 
     if (associated(surface%hnuarray)) deallocate(surface%hnuarray)
+    nullify(surface%hnuarray) 
     if (associated(surface%angleArray)) deallocate(surface%angleArray)
+    nullify(surface%angleArray)
     if (associated(surface%totalPhotosphere)) deallocate(surface%totalPHotosphere)
+    nullify(surface%totalPHotosphere)
     if (associated(surface%totalAccretion)) deallocate(surface%totalAccretion)
+    nullify(surface%totalAccretion)
 
     surface%nElements = 0 
-    nullify(surface%element) 
-    nullify(surface%nuarray) 
-    nullify(surface%hnuarray) 
-    
-
-    
   end subroutine emptySurface
     
   subroutine addElement(surface, radius, rVec, theta, phi, dtheta, dphi, area, teff)

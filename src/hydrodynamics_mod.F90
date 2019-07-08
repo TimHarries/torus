@@ -20203,9 +20203,11 @@ end subroutine minMaxDepth
                         ni = source(i)%nSubsource
                         nj = source(j)%nSubsource
                         newSource(newNsource)%nSubsource = ni + nj 
-                        allocate(newSource(newNsource)%subsourceArray(1:newSource(newNsource)%nSubsource))
-                        newSource(newNsource)%subsourceArray(1:ni) = source(i)%subsourceArray
-                        newSource(newNsource)%subsourceArray(ni+1:ni+nj) = source(j)%subsourceArray
+                        if (ni + nj > 0) then
+                           allocate(newSource(newNsource)%subsourceArray(1:1000))
+                           newSource(newNsource)%subsourceArray(1:ni) = source(i)%subsourceArray
+                           newSource(newNsource)%subsourceArray(ni+1:ni+nj) = source(j)%subsourceArray
+                        endif
                     endif
                     merged(i) = .true.
                     merged(j) = .true.
@@ -20228,8 +20230,10 @@ end subroutine minMaxDepth
               newSource(newnSource)%accretionRadius = source(i)%accretionRadius
               if (clusterSinks) then
                  newSource(newnSource)%nSubsource = source(i)%nSubsource
-                 allocate(newSource(newnSource)%subsourceArray(1:newSource(newnSource)%nSubsource))
-                 newSource(newnSource)%subsourceArray = source(i)%subsourceArray
+                 if (source(i)%nSubsource > 0) then
+                    allocate(newSource(newnSource)%subsourceArray(1:1000))
+                    newSource(newnSource)%subsourceArray = source(i)%subsourceArray
+                 endif
               else 
                  newSource(newnSource)%nSubsource = 0
               endif
@@ -20251,7 +20255,7 @@ end subroutine minMaxDepth
            do i = 1, nSource
               call freeSourceArray(source(i)%subsourceArray)
               if (source(i)%nSubsource > 0) then
-                 allocate(source(i)%subsourceArray(1:source(i)%nSubsource))
+                 allocate(source(i)%subsourceArray(1:1000))
                  source(i)%subsourceArray = newSource(i)%subsourceArray
               endif
            enddo
@@ -20291,8 +20295,8 @@ end subroutine minMaxDepth
            call recursaddSinks(grid%octreeRoot, grid, source, nSource, rhomax)
            call wallTime(endTime)
            call shutdownRadiusServer()
-           write(*,'(i4,a,3f12.3)') myrankglobal, " secs in recurseAddSinks, mpi, % ", endTime-startTime, mpiTime, &
-              mpiTime/(endTime-startTime)*100.
+!           write(*,'(i4,a,3f12.3)') myrankglobal, " secs in recurseAddSinks, mpi, % ", endTime-startTime, mpiTime, &
+!              mpiTime/(endTime-startTime)*100.
         else
            call getPointsInAccretionRadiusServer(grid, nSource, source)
         endif
@@ -20495,7 +20499,7 @@ end subroutine minMaxDepth
   recursive subroutine broadcastSinks(nSource, source)
     use mpi
     use inputs_mod, only : clusterSinks
-    integer :: nSource, nSubsource, i
+    integer :: nSource, i
     type(SOURCETYPE) :: source(:)
     integer :: ierr
      call MPI_BCAST(nSource, 1, MPI_INTEGER, 0, localWorldCommunicator, ierr)
@@ -20540,6 +20544,8 @@ end subroutine minMaxDepth
              localWorldCommunicator, ierr)
         call MPI_BCAST(source(1:nSource)%diffuse     , nSource, MPI_LOGICAL, 0, &
              localWorldCommunicator, ierr)
+        call MPI_BCAST(source(1:nSource)%pointSource , nSource, MPI_LOGICAL, 0, &
+             localWorldCommunicator, ierr)
         call MPI_BCAST(source(1:nSource)%initialMass , nSource, MPI_DOUBLE_PRECISION, 0, &
              localWorldCommunicator, ierr)
         call MPI_BCAST(source(1:nSource)%nSubsource  , nSource, MPI_INTEGER, 0, &
@@ -20552,14 +20558,13 @@ end subroutine minMaxDepth
            do i = 1, nSource
               call freeSourceArray(source(i)%subsourceArray)
               if (source(i)%nSubsource > 0) then
-                 allocate(source(i)%subsourceArray(1:source(i)%nSubsource))
+                 allocate(source(i)%subsourceArray(1:1000))
               endif
            enddo
         endif
         do i = 1, nSource
-           nSubsource = source(i)%nSubsource
-           if (nSubsource > 0) then
-              call broadcastSinks(nSubsource, source(i)%subsourceArray(1:nSubsource))
+           if (source(i)%nSubsource > 0) then
+              call broadcastSinks(source(i)%nSubsource, source(i)%subsourceArray)
            endif
         enddo
      endif
@@ -20603,6 +20608,7 @@ end subroutine broadcastSinks
                ierr)
           call mpi_recv(source(1:nSource)%stellar, nSource, MPI_LOGICAL, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%diffuse, nSource, MPI_LOGICAL, 1, tag, localWorldCommunicator, status, ierr)
+          call mpi_recv(source(1:nSource)%pointSource, nSource, MPI_LOGICAL, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%nSubsource, nSource, MPI_INTEGER, 1, tag, localWorldCommunicator, status, ierr)
 !       enddo
   
@@ -20634,6 +20640,7 @@ end subroutine broadcastSinks
           call mpi_send(source(1:nSource)%angMomentum%z, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%stellar, nSource, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%diffuse, nSource, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
+          call mpi_send(source(1:nSource)%pointSource, nSource, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%nSubsource, nSource, MPI_INTEGER, 0, tag, localWorldCommunicator, ierr)
 !       enddo
     endif
@@ -20644,14 +20651,14 @@ end subroutine broadcastSinks
           do i = 1, nSource
              call freeSourceArray(source(i)%subsourceArray)
              if (source(i)%nSubsource > 0) then
-                allocate(source(i)%subsourceArray(1:source(i)%nSubsource))
+                allocate(source(i)%subsourceArray(1:1000))
              endif
           enddo
        endif
        if (myrankGlobal == 0 .or. myrankGlobal == 1) then
           do i = 1, nSource
              if (source(i)%nSubsource > 0) then
-                call sendSinksToZerothThread(source(i)%nSubsource, source(i)%subsourceArray(1:source(i)%nSubsource))
+                call sendSinksToZerothThread(source(i)%nSubsource, source(i)%subsourceArray)
              endif
           enddo
        endif

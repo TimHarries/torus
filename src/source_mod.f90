@@ -61,13 +61,21 @@
       integer :: i, j
       logical, save :: firstTime(1:1000,0:1000) = .true.
       if (writeoutput) then
+         if (any(source(1:nSource)%outsideGrid)) write(*,*) "A SOURCE IS OUTSIDE GRID"
+         if (any(.not.source(1:nSource)%stellar)) write(*,*) "A SOURCE IS NOT STELLAR" 
+         if (any(.not.source(1:nSource)%pointSource)) write(*,*) "A SOURCE IS NOT POINT" 
+
          do i = 1, nSource
             write(filename,'(a,i3.3,a)') trim(rootFilename),i,".dat"
             write(*,*) "filename ",trim(filename)
+            if (source(i)%outsideGrid) write(*,*) "source outside ", source(i)%outsideGrid
+            if (.not. source(i)%stellar) write(*,*) "source stellar ", source(i)%stellar
+            if (.not. source(i)%pointsource) write(*,*) "source pointsource ", source(i)%pointsource
             if (firstTime(i,0)) then
                open(22, file=filename, status="unknown", form="formatted")
                write(22,'(a4,a12,a10,a9,a9,a12,a12,a12,a12,a12,a12,a12,a12,a12,a12,a6,a12)') &
-                    "#  N","Time(yr)","Mass","Radius","Teff","Lum","Mdot","mdotav","x","y","z","vx","vy","vz","Age(yr)","Nsub","Mres"
+                    "#  N","Time(yr)","Mass","Radius","Teff","Lum","Mdot","mdotav","x","y","z","vx","vy","vz","Age(yr)",&
+                    "Nsub","Mres"
             else
                open(22, file=filename, status="old", form="formatted", position="append")
             endif
@@ -101,6 +109,7 @@
             oldAge = source(i)%time
 
             if (subsourceHistory .and. source(i)%nsubsource > 0) then
+               if (any(source(i)%subsourceArray(1:source(i)%nsubsource)%outsideGrid)) write(*,*) "A SUBSOURCE IS OUTSIDE GRID"
                do j = 1, source(i)%nsubsource
                   write(filename,'(a,i3.3,a,i4.4,a)') trim(rootFilename),i,"_",j,".dat"
                   write(*,*) "filename ",trim(filename)
@@ -406,6 +415,7 @@
          enddo
          deallocate(sources)
       endif
+      nullify(sources)
     end subroutine freeSourceArray
 
     function ionizingFlux(source) result(flux)
@@ -558,6 +568,58 @@
          endif
       endif
     end subroutine randomSource
+
+    ! prob is not based on spectrum
+    subroutine randomSourceUniform(nSource, iSource)
+      integer :: nSource
+      integer, intent(out) :: iSource
+      real(double), allocatable :: prob(:)
+      real(double) :: r
+      integer :: i
+
+!$OMP THREADPRIVATE (prob)
+
+      if (nSource == 1) then
+         iSource = 1
+      else
+         ! allocate array
+         ALLOCATE(prob(1:nSource))
+         ! Create the prob. dist. function.
+         do i = 1, nSource
+            prob(i) = 1.d0  ! equal prob
+         enddo
+         prob(1:nSource) = prob(1:nSource)/SUM(prob(1:nSource))
+         if (nSource > 2) then
+            do i = 2, nSource
+               prob(i) = prob(i) + prob(i-1)
+            enddo
+            prob(1:nSource) = prob(1:nSource) / prob(nSource)
+         endif
+!        if (writeoutput) write(*,*) "prob ",prob(1:nSource)
+!        if (writeoutput) write(*,*) "source%prob ",source(1:nSource)%prob
+ 
+         if (nSource > 2) then
+!            do i = 1, nSource
+!               if (writeoutput) write(33,*) i,prob(i)
+!            enddo
+!            if (writeoutput) stop
+            call randomNumberGenerator(getDouble=r)
+            if (r < prob(1)) then
+               iSource = 1
+            else
+               call locate(prob, nSource, r, iSource)
+               iSource = iSource + 1
+            endif
+         else
+            call randomNumberGenerator(getDouble=r)
+            if (r < prob(1)) then
+               iSource = 1
+            else 
+               isource = 2
+            endif
+         endif
+      endif
+    end subroutine randomSourceUniform
 
 
 

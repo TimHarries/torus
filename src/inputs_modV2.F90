@@ -389,14 +389,31 @@ contains
             "Allow sources to move: ", "(a,1l,1x,a)", .true., ok, .false.)
 
        if (clusterSinks) then
+          call getString("population", populationMethod, cLine, fLine, nLines, &
+               "Cluster population method: ","(a,a,1x,a)","threshold", ok, .true.)
+
           call getDouble("criticalmass", criticalMass, mSol, cLine, fLine, nLines, &
-               "Critical mass for creating subsources (msol): ","(a,f6.1,a)", 300.d0, ok, .true.)
+               "Critical mass for creating subsources (msol): ","(a,f6.1,a)", 600.d0, ok, .false.)
+
+          call getLogical("readimf", readimf, cLine, fLine, nLines, &
+               "Read IMF from file: ", "(a,1l,1x,a)", .false., ok, .false.)
+
+          if (readIMF) then
+             call getString("imffile", imfFilename, cLine, fLine, nLines, &
+                  "Filename of IMF to read in: ","(a,a,1x,a)","imf.dat", ok, .true.)
+          else
+             call getDouble("popmass", populationMass, mSol, cLine, fLine, nLines, &
+                  "Total mass to generate in IMF list (msol): ","(a,e12.3,a)", 1.d5, ok, .false.)
+          endif
+
           call getString("imf", imfType, cLine, fLine, nLines, &
-               "Initial mass function: ","(a,a,1x,a)","salpeter", ok, .true.)
+               "Initial mass function: ","(a,a,1x,a)","chabrier", ok, .false.)
+
           call getDouble("imfmin", imfMin, 1.d0, cLine, fLine, nLines, &
-               "IMF minimum mass (msol): ","(a,f6.1,a)", 0.8d0, ok, .true.)
+               "IMF minimum mass (msol): ","(a,f6.1,a)", 0.8d0, ok, .false.)
+
           call getDouble("imfmax", imfMax, 1.d0, cLine, fLine, nLines, &
-               "IMF maximum mass (msol): ","(a,f6.1,a)", 120.d0, ok, .true.)
+               "IMF maximum mass (msol): ","(a,f6.1,a)", 120.d0, ok, .false.)
        endif
 
     endif
