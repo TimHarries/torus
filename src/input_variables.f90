@@ -279,7 +279,7 @@
 ! Atomic physics (co-moving frame, CMF)
 !---------------------------------------
 
-  logical :: cmf, sobolev
+  logical :: cmf, sobolev, sei
   logical :: opticallyThickContinuum
   logical :: lineOff
   logical :: statEq2d       ! whether statEq can be run in 2-D

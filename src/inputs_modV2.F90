@@ -2921,7 +2921,8 @@ contains
 
     call writeBanner("Atomic physics data","#",TRIVIAL)
 
-
+    call getLogical("sei", sei, cLine, fLine, nLines, &
+         "Perform Sobolev with Exact integration ","(a,1l,1x,a)", .true., ok, .false.)
 
     call getLogical("cmf", cmf, cLine, fLine, nLines, &
          "Perform co-moving frame calculation ","(a,1l,1x,a)", .false., ok, .true.)

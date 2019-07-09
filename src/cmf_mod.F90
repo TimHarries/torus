@@ -1329,7 +1329,7 @@ contains
 
   subroutine atomLoop(grid, nAtom, thisAtom, nSource, source)
 
-    use inputs_mod, only : debug, rcore, lte, vturb
+    use inputs_mod, only : debug, rcore, lte, vturb, sei
     use messages_mod, only : myRankIsZero
     use gridio_mod, only : writeAmrGrid
     use utils_mod, only : ngstep
@@ -1606,8 +1606,7 @@ contains
 
     nStage = 2
 
-    ! sobolevApprox = .true.
-    sobolevApprox = .FALSE.
+    sobolevApprox = sei
 
     dongStep = .true.
 
@@ -1786,6 +1785,7 @@ contains
                               nfreq, freq, iCont(iray,1:nFreq), sobolevApprox, dble(iray-1)/dble(nRay-1))
                          if (hitPhotosphere(iray)) nHit = nHit + 1
                       enddo
+                      print*,"got to end of getRay loop"
                       iter = 0
                       neiter = 0
                       popsConverged = .false.
