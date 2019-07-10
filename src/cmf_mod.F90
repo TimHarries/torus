@@ -1785,7 +1785,6 @@ contains
                               nfreq, freq, iCont(iray,1:nFreq), sobolevApprox, dble(iray-1)/dble(nRay-1))
                          if (hitPhotosphere(iray)) nHit = nHit + 1
                       enddo
-                      print*,"got to end of getRay loop"
                       iter = 0
                       neiter = 0
                       popsConverged = .false.
@@ -1796,6 +1795,7 @@ contains
                       firstCheckOnTau = .true.
 
                       do while (.not.popsConverged)
+                         print*,"the converge loop: ",iter
                          iter = iter + 1
                          mainoldpops = thisOctal%newatomLevel(subcell,1:nAtom,1:)
 
