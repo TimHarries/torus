@@ -1799,7 +1799,6 @@ END SUBROUTINE calculateJbar
                       firstCheckOnTau = .true.
 
                       do while (.not.popsConverged)
-                         print*,"the converge loop: ",iter
                          iter = iter + 1
                          mainoldpops = thisOctal%newatomLevel(subcell,1:nAtom,1:)
 
