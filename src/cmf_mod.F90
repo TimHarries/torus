@@ -1041,190 +1041,194 @@ contains
 
 
 
-  subroutine calculateJbar(grid, thisOctal, subcell, thisAtom, nRay, position, direction, rayDeltaV, &
-       ds,  i0, iTrans, jbar, nPops, &
-       weight,  tauAv)
-    type(GRIDTYPE) :: grid
-    type(VECTOR) :: position(:), direction(:), thisPosition, startVel, thisVel, endVel, endPosition
-    real(double) :: dds, dv, rayDeltaV(:)
-    integer :: ns
-    real(double) :: inu
-    integer :: i
-    real(double) :: weight(:)
-    type(OCTAL), pointer :: thisOctal
-    integer :: subcell
-    type(MODELATOM) :: thisAtom
-    integer :: nRay
-    Real(double) :: ds(:), i0(:), nPops(:)
-    integer :: iTrans
-    real(double) :: jbar
-    integer :: iRay
-    real(double) :: nLower, nUpper
-    real(double) :: jBarInternal, jBarExternal
-    real(double) :: alphanu, jnu, etaline
-    integer :: iUpper, iLower
-    real(double) :: tau, snu, sumWeight,inuAv
-    real(double) :: a, bul, blu
-    logical,save :: first = .true.
-    real(double) :: dtau, tauav, test
-    real(double) :: distanceForTauOfOne
-    real(double) :: currentS
-    logical :: debugOutput, split
-    !$OMP THREADPRIVATE (first)
+SUBROUTINE calculateJbar(grid, thisOctal, subcell, thisAtom, nRay, position, direction, rayDeltaV, &
+     ds,  i0, iTrans, jbar, nPops, &
+     weight,  tauAv)
+  USE parallel_mod, ONLY : torus_stop
+  TYPE(GRIDTYPE) :: grid
+  TYPE(VECTOR) :: position(:), direction(:), thisPosition, startVel, thisVel, endVel, endPosition
+  REAL(DOUBLE) :: dds, dv, rayDeltaV(:)
+  INTEGER (kind=8) :: ns
+  REAL(DOUBLE) :: inu
+  INTEGER :: i
+  REAL(DOUBLE) :: weight(:)
+  TYPE(OCTAL), POINTER :: thisOctal
+  INTEGER :: subcell
+  TYPE(MODELATOM) :: thisAtom
+  INTEGER :: nRay
+  REAL(DOUBLE) :: ds(:), i0(:), nPops(:)
+  INTEGER :: iTrans
+  REAL(DOUBLE) :: jbar
+  INTEGER :: iRay
+  REAL(DOUBLE) :: nLower, nUpper
+  REAL(DOUBLE) :: jBarInternal, jBarExternal
+  REAL(DOUBLE) :: alphanu, jnu, etaline
+  INTEGER :: iUpper, iLower
+  REAL(DOUBLE) :: tau, snu, sumWeight,inuAv
+  REAL(DOUBLE) :: a, bul, blu
+  LOGICAL,SAVE :: first = .TRUE.
+  REAL(DOUBLE) :: dtau, tauav, test
+  REAL(DOUBLE) :: distanceForTauOfOne
+  REAL(DOUBLE) :: currentS
+  LOGICAL :: debugOutput, split
+  !$OMP THREADPRIVATE (first)
 
-    jBarExternal = 0.d0
-    jBarInternal = 0.d0
-    a = 0.d0; bul = 0.d0; blu = 0.d0
-
-
-    if (thisAtom%transType(iTrans) == "RBB") then
-
-       iUpper = thisAtom%iUpper(iTrans)
-       iLower = thisAtom%iLower(iTrans)
-
-       debugOutput = .false.
-!           if ((thisAtom%name == "HeII").and.(ilower==1).and.(iupper==2)) &
-!                debugOutput = .true.
-
-       sumWeight = 0.d0
-       tauAv = 0.d0
-       inuAv = 0.d0
-       do iRay = 1, nRay
-          nLower = nPops(iLower)
-          nUpper = nPops(iUpper)
-
-          call returnEinsteinCoeffs(thisAtom, iTrans, a, Bul, Blu)
-
-          etaLine = hCgs * a * thisAtom%transFreq(iTrans)
-          etaLine = etaLine *  nPops(iUpper)
-
-          thisPosition = position(iray)
-          endPosition = thisPosition + (ds(iray)/1.d10)*direction(iray)
-          startVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = thisOctal, actualSubcell = subcell)
-
-          endVel = amrGridVelocity(grid%octreeRoot, endPosition, startOctal = thisOctal, &
-               actualSubcell = subcell)
-          dv = rayDeltaV(iray)
-
-          alphanu = (hCgs*thisAtom%transFreq(iTrans)/fourPi)
-          alphanu = alphanu * (nLower * Blu - nUpper * Bul) * &
-               phiProf(dv, thisOctal, subcell, &
-                        thisAtom%transfreq(itrans), thisAtom)/thisAtom%transFreq(iTrans)
-          distanceForTauOfOne = 0.1d0/(alphanu)
+  jBarExternal = 0.d0
+  jBarInternal = 0.d0
+  a = 0.d0; bul = 0.d0; blu = 0.d0
 
 
-          ns = max(5, nint(ds(iray)/max(ds(iray)/100.d0,distanceForTauOfOne)))
+  IF (thisAtom%transType(iTrans) == "RBB") THEN
+
+     iUpper = thisAtom%iUpper(iTrans)
+     iLower = thisAtom%iLower(iTrans)
+
+     debugOutput = .FALSE.
+     !           if ((thisAtom%name == "HeII").and.(ilower==1).and.(iupper==2)) &
+     !                debugOutput = .true.
+
+     sumWeight = 0.d0
+     tauAv = 0.d0
+     inuAv = 0.d0
+     DO iRay = 1, nRay
+        nLower = nPops(iLower)
+        nUpper = nPops(iUpper)
+
+        CALL returnEinsteinCoeffs(thisAtom, iTrans, a, Bul, Blu)
+
+        etaLine = hCgs * a * thisAtom%transFreq(iTrans)
+        etaLine = etaLine *  nPops(iUpper)
+
+        thisPosition = position(iray)
+        endPosition = thisPosition + (ds(iray)/1.d10)*direction(iray)
+        startVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = thisOctal, actualSubcell = subcell)
+
+        endVel = amrGridVelocity(grid%octreeRoot, endPosition, startOctal = thisOctal, &
+             actualSubcell = subcell)
+        dv = rayDeltaV(iray)
+
+        alphanu = (hCgs*thisAtom%transFreq(iTrans)/fourPi)
+        alphanu = alphanu * (nLower * Blu - nUpper * Bul) * &
+             phiProf(dv, thisOctal, subcell, &
+             thisAtom%transfreq(itrans), thisAtom)/thisAtom%transFreq(iTrans)
+        distanceForTauOfOne = 0.1d0/(alphanu)
 
 
-          split = .true.
-          do while(split)
-             dds = ds(iray)/dble(ns)
-             split = .false.
-             inu = 0.d0
-             tau = 0.d0
-             currentS = dds
-             thisPosition = position(iray)
+        ns = MAX(5, NINT(ds(iray)/MAX(ds(iray)/100.d0,distanceForTauOfOne)))
 
-             do i = 1, ns
-                thisPosition = thisPosition + dds * direction(iray)
-                !             thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = thisOctal, actualSubcell = subcell)
+        split = .TRUE.
+        DO WHILE(split)
+           dds = ds(iray)/DBLE(ns)
+           split = .FALSE.
+           inu = 0.d0
+           tau = 0.d0
+           currentS = dds
+           thisPosition = position(iray)
+           DO i = 1, ns
+              thisPosition = thisPosition + dds * direction(iray)
+              !             thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = thisOctal, actualSubcell = subcell)
 
-                thisVel = startVel + (currentS/ds(iray)) * (endVel - startVel)
-                thisVel= thisVel - startVel
+              thisVel = startVel + (currentS/ds(iray)) * (endVel - startVel)
+              thisVel= thisVel - startVel
 
-                dv = rayDeltaV(iray) - (thisVel .dot. direction(iray))
+              dv = rayDeltaV(iray) - (thisVel .dot. direction(iray))
 
-                alphanu = (hCgs*thisAtom%transFreq(iTrans)/fourPi)
-                alphanu = alphanu * (nLower * Blu - nUpper * Bul) * &
-                     phiProf(dv, thisOctal, subcell, &
-                        thisAtom%transfreq(itrans), thisAtom)/thisAtom%transFreq(iTrans)
-!                if (debugOutput) &
-!                     write(*,*) i, dv*cspeed/1.e5,tau,inu
-                if (alphanu < 0.d0) then
-                   alphanu = 0.d0
-                   if (first) then
-                      write(*,*) "negative opacity warning in calcjbar",iUpper,iLower,nLower,nUpper,thisAtom%name
-                      first = .false.
-                   endif
-                endif
+              alphanu = (hCgs*thisAtom%transFreq(iTrans)/fourPi)
+              alphanu = alphanu * (nLower * Blu - nUpper * Bul) * &
+                   phiProf(dv, thisOctal, subcell, &
+                   thisAtom%transfreq(itrans), thisAtom)/thisAtom%transFreq(iTrans)
+              !                if (debugOutput) &
+              !                     write(*,*) i, dv*cspeed/1.e5,tau,inu
+              IF (alphanu < 0.d0) THEN
+                 alphanu = 0.d0
+                 IF (first) THEN
+                    WRITE(*,*) "negative opacity warning in calcjbar",iUpper,iLower,nLower,nUpper,thisAtom%name
+                    first = .FALSE.
+                 ENDIF
+              ENDIF
 
-                dtau = alphaNu * dds
+              dtau = alphaNu * dds
 
-                if (dtau > 0.2d0) then
-                   split = .true.
-                   exit
-                endif
+              IF (dtau > 0.2d0) THEN
+                 split = .TRUE.
+                 EXIT
+              ENDIF
 
-                jnu = (etaLine/fourPi) * phiProf(dv, thisOctal, subcell, &
-                        thisAtom%transfreq(itrans), thisAtom)/thisAtom%transFreq(iTrans)
-
-
-                if (alphanu /= 0.d0) then
-                   snu = jnu/alphanu
-                else
-                   snu = tiny(snu)
-                endif
+              jnu = (etaLine/fourPi) * phiProf(dv, thisOctal, subcell, &
+                   thisAtom%transfreq(itrans), thisAtom)/thisAtom%transFreq(iTrans)
 
 
-                inu = inu + exp(-tau) * snu * (1.d0 - exp(-dtau))
+              IF (alphanu /= 0.d0) THEN
+                 snu = jnu/alphanu
+              ELSE
+                 snu = TINY(snu)
+              ENDIF
 
 
-                tau = tau + dtau
-                currentS = currentS + dds
-                if (tau > 100.d0) exit
-             enddo
-             if (split) then
-                dds = dds / 2.d0
-                ns = ns * 2
-             endif
-          enddo
+              inu = inu + EXP(-tau) * snu * (1.d0 - EXP(-dtau))
 
 
-          !          if ((thisAtom%name == "HeII").and.(ilower==1).and.(iupper==2)) &
-          !               write(*,*) "delta v ",raydeltaV(iray)*cspeed/1e5,tau,inu
-
-          tauAv = tauAv + tau * weight(iray)
-          jBarInternal = jbarInternal + inu  * weight(iray)
-          jBarExternal = jbarExternal + i0(iray) * exp(-tau) * weight(iray)
-          test = i0(iray) * exp(-tau) * weight(iray)
-          !          if ((thisAtom%name == "HeII").and.(ilower==1).and.(iupper==2).and.(test>0.d0)) &
-          !               write(*,*) "ext ",i0(iray),tau,weight(iray), exp(-tau)
-
-          inuAv = inuAv + inu * weight(iray)
-
-          sumWeight = sumWeight + weight(iRay)
-
-
-       enddo
-       tauAv = tauAv / sumWeight
-       inuAv = inuAv / sumWeight
-
-       if ((thisAtom%name == "HeII").and.(ilower==1).and.(iupper==2)) &
-            write(*,*) "tau cmf ",tauAv
+              tau = tau + dtau
+              currentS = currentS + dds
+              IF (tau > 100.d0) EXIT
+           ENDDO
+           IF (split) THEN
+              dds = dds / 2.d0
+              ns = ns * 2
+              IF (DBLE(ns) < 0.d0) THEN
+                 WRITE(*,*) "JCont not converged - out of integer length: Terminating program"
+                 CALL torus_stop
+              ENDIF
+           ENDIF
+        ENDDO
 
 
+        !          if ((thisAtom%name == "HeII").and.(ilower==1).and.(iupper==2)) &
+        !               write(*,*) "delta v ",raydeltaV(iray)*cspeed/1e5,tau,inu
 
-       jBarExternal = jBarExternal / sumWeight
-       jBarInternal = jBarInternal / sumWeight
+        tauAv = tauAv + tau * weight(iray)
+        jBarInternal = jbarInternal + inu  * weight(iray)
+        jBarExternal = jbarExternal + i0(iray) * EXP(-tau) * weight(iray)
+        test = i0(iray) * EXP(-tau) * weight(iray)
+        !          if ((thisAtom%name == "HeII").and.(ilower==1).and.(iupper==2).and.(test>0.d0)) &
+        !               write(*,*) "ext ",i0(iray),tau,weight(iray), exp(-tau)
+
+        inuAv = inuAv + inu * weight(iray)
+
+        sumWeight = sumWeight + weight(iRay)
+
+
+     ENDDO
+     tauAv = tauAv / sumWeight
+     inuAv = inuAv / sumWeight
+
+     IF ((thisAtom%name == "HeII").AND.(ilower==1).AND.(iupper==2)) &
+          WRITE(*,*) "tau cmf ",tauAv
 
 
 
-       jbar = (jBarExternal + jBarInternal)
-
-       if (debugoutput) then
-          write(*,*) "jbar ",jbar
-          write(*,*) "snu ",snu
-       endif
+     jBarExternal = jBarExternal / sumWeight
+     jBarInternal = jBarInternal / sumWeight
 
 
-       if ((thisAtom%name == "HeII").and.(ilower==1).and.(iupper==2)) then
-            write(*,*) "jbar cmf (int, ext) ",jbar, jbarinternal, jbarexternal
-         endif
+
+     jbar = (jBarExternal + jBarInternal)
+
+     IF (debugoutput) THEN
+        WRITE(*,*) "jbar ",jbar
+        WRITE(*,*) "snu ",snu
+     ENDIF
 
 
-    endif
+     IF ((thisAtom%name == "HeII").AND.(ilower==1).AND.(iupper==2)) THEN
+        WRITE(*,*) "jbar cmf (int, ext) ",jbar, jbarinternal, jbarexternal
+     ENDIF
 
-  end subroutine calculateJbar
+
+  ENDIF
+
+END SUBROUTINE calculateJbar
+
 
   subroutine calculateJbarCont(thisOctal, subcell, nAtom, thisAtom, ne, nray, ds, freq, nfreq, &
        iCont, jBarCont, weight)
