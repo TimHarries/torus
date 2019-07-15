@@ -80,8 +80,8 @@ source_mod.o: amr_utils_mod.o constants_mod.o gridtype_mod.o inputs_modV2.o \
 	octal_mod.o spectrum_mod.o surface_mod.o utils_mod.o vector_mod.o
 spectrum_mod.o: atom_mod.o constants_mod.o inputs_modV2.o messages_mod.o \
 	mpi_global_mod.o random_mod.o unix_mod.o utils_mod.o
-starburst_mod.o: constants_mod.o inputs_modV2.o kind_mod.o messages_mod.o \
-	source_mod.o unix_mod.o utils_mod.o
+starburst_mod.o: citations_mod.o constants_mod.o inputs_modV2.o kind_mod.o \
+	messages_mod.o parallel_mod.o source_mod.o unix_mod.o utils_mod.o
 surface_mod.o: constants_mod.o density_mod.o gridtype_mod.o inputs_modV2.o \
 	kind_mod.o magField.o messages_mod.o romanova_class.o spectrum_mod.o \
 	utils_mod.o vector_mod.o
@@ -217,7 +217,7 @@ outputs_mod.o: angularImage_mod.o angularImage_utils.o blob_mod.o cmf_mod.o \
 	lucy_mod.o modelatom_mod.o molecular_mod.o mpi_global_mod.o \
 	phaseloop_mod.o phasematrix_mod.o photoionAMR_mod.o photoion_mod.o \
 	photoion_utils_mod.o physics_mod.o sed_mod.o setupamr_mod.o \
-	source_mod.o surface_mod.o
+	source_mod.o surface_mod.o vtk_mod.o
 pah_mod.o: constants_mod.o inputs_modV2.o messages_mod.o random_mod.o \
 	spectrum_mod.o unix_mod.o utils_mod.o
 parallel_mod.o: kind_mod.o messages_mod.o mpi_global_mod.o utils_mod.o
@@ -271,11 +271,11 @@ random_mod.o: kind_mod.o messages_mod.o mpi_global_mod.o
 setupamr_mod.o: TTauri_mod.o amr_mod.o biophysics_mod.o cluster_class.o \
 	cmf_mod.o cmfgen_class.o constants_mod.o disc_class.o \
 	discwind_class.o gridFromFitsFile.o gridFromFlash.o grid_mod.o \
-	gridio_mod.o gridtype_mod.o inputs_modV2.o lucy_mod.o magnetic_mod.o \
-	memory_mod.o messages_mod.o mpi_amr_mod.o mpi_global_mod.o \
-	octal_mod.o parallel_mod.o photoionAMR_mod.o ramses_mod.o \
-	sph_data_class.o stateq_mod.o turbulence_mod.o utils_mod.o \
-	vector_mod.o vh1_mod.o vtk_mod.o
+	gridio_mod.o gridtype_mod.o image_mod.o inputs_modV2.o lucy_mod.o \
+	magnetic_mod.o memory_mod.o messages_mod.o mpi_amr_mod.o \
+	mpi_global_mod.o octal_mod.o parallel_mod.o photoionAMR_mod.o \
+	ramses_mod.o sph_data_class.o stateq_mod.o turbulence_mod.o \
+	utils_mod.o vector_mod.o vh1_mod.o vtk_mod.o
 setuppdr_mod.o: grid_mod.o healpix_modules.o inputs_modV2.o octal_mod.o \
 	unix_mod.o
 sph_data_class.o: amr_utils_mod.o angularImage_utils.o constants_mod.o \

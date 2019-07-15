@@ -402,12 +402,20 @@ contains
              fac =1.
           endif
           
+<<<<<<< HEAD
           allocate(allsca(1:nDustType))
+=======
+          allocate(allSca(1:nDustType))
+>>>>>>> b96f510b011b545832b041726eae94ca40b73c45
           call returnKappa(grid, currentOctal, currentSubcell, ilambda=i, allSca=allSca,&
                dir=thisPhoton%direction)
 
           k = randomIndex(allSca(1:nDustType), nDustType)
           deallocate(allSca)
+<<<<<<< HEAD
+=======
+
+>>>>>>> b96f510b011b545832b041726eae94ca40b73c45
           miePhaseTemp = miePhase(k, i, j) + fac * &
                   (miePhase(k, i, j+1) - miePhase(k, i, j))
 

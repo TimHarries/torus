@@ -56,6 +56,8 @@ module spectrum_mod
       allocate(spectrum%lambda(1:nLambda))
       allocate(spectrum%prob(1:nLambda))
       spectrum%prob = 0.d0
+      allocate(spectrum%ppw(1:nLambda))
+      spectrum%ppw = 1.d0
       allocate(spectrum%dlambda(1:nLambda))
       allocate(spectrum%LambdaBinStart(1:nLambda))
 
@@ -338,6 +340,26 @@ module spectrum_mod
 
       call probSpectrum(spectrum)
     end subroutine addToSpectrumBB
+
+    subroutine addSpectrum(spectrum, addition, weight)
+      type(SPECTRUMTYPE) :: spectrum, addition
+      integer :: i
+      real(double), optional :: weight
+
+      if (present(weight)) then
+         do i = 1, spectrum%nLambda
+            spectrum%flux(i) = spectrum%flux(i) + addition%flux(i)*weight 
+         enddo
+      else
+         do i = 1, spectrum%nLambda
+            spectrum%flux(i) = spectrum%flux(i) + addition%flux(i) 
+         enddo
+      endif
+
+      where(spectrum%flux(1:spectrum%nLambda) == 0.d0) spectrum%flux = 1.d-100
+
+      call probSpectrum(spectrum)
+    end subroutine addSpectrum
 
     subroutine addXray(spectrum, frac)
       type(SPECTRUMTYPE) :: spectrum

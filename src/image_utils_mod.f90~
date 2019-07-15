@@ -329,7 +329,6 @@ contains
 
   end function setImageViewVec
 
-
 ! Return the viewing vector for the ith image
   type(VECTOR) function getImageViewVec(i)
     integer, intent(in) :: i
