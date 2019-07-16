@@ -3530,7 +3530,7 @@ contains
          "ne         ", "jnu        ","haschild   ", &
          "inflow     ","temperature", "velocity   ", &
          "cornervel  ","level2     ", "level3     ", &
-         "blackbody  ","etaCont    "/))
+         "blackbody  ","etacont    "/))
 
 
     doCube = calcDataCube
@@ -3979,29 +3979,29 @@ contains
        !$OMP PARALLEL DEFAULT (NONE) &
        !$OMP PRIVATE (iomp, iy, nRay, xRay, yRay, area, iRay, rayPos, tmp, thisIntensity, totArea) &
        !$OMP SHARED (cube, viewVec, grid, ix,  xPoints, yPoints, nPoints) &
-       !$OMP SHARED (deltaV, source, nSource, myrankGlobal) &
-       !$OMP SHARED (iv, iv1, xproj, yproj, nMonte, dx, dy, thisAtom, itrans)
-       write(*,*) "in parallel sec"
+       !$OMP SHARED (iv, iv1, xproj, yproj, nMonte, dx, dy, thisAtom, itrans) &
+       !$OMP SHARED (deltaV, source, nSource, myrankGlobal) 
+!       write(*,*) "in parallel sec"
        iomp = 0
-       write(*,*) iomp
+!       write(*,*) iomp
 #ifdef _OPENMP
        iomp = omp_get_thread_num()
 #endif
 
-       write(*,*) "found iomp ",iomp
+!       write(*,*) "found iomp ",iomp
 
        !$OMP DO SCHEDULE(DYNAMIC,1)
           do iy = 1, cube%ny
-             write(*,*) myrankglobal, iomp," doing ray ",iv,ix,iy
+!             write(*,*) myrankglobal, iomp," doing ray ",iv,ix,iy
 
              call findRaysInPixel(cube%xAxis(ix),cube%yAxis(iy),dx,dy, xpoints, ypoints, &
                   nPoints,  nRay, xRay, yRay, area)
 
-             write(*,*) "find rays done"
+!             write(*,*) "find rays done"
              thisIntensity = 0.
              totArea = 0.
              do iRay = 1, nRay
-                write(*,*) "iray ",iray
+!                write(*,*) "iray ",iray
                 rayPos =  (xRay(iRay) * xProj) + (yRay(iRay) * yProj)
                 raypos = rayPos + ((-1.d0*grid%octreeRoot%subcellsize*30.d0) * Viewvec)
                 tmp = intensityAlongRayGeneric(rayPos, viewVec, grid,  &

@@ -18139,6 +18139,8 @@ END SUBROUTINE assignDensitiesStellarWind
        thisOctal%rho(subcell) = rho / dble(n)
        thisOctal%temperature(subcell) = temperature/real(n)
        thisOctal%velocity(subcell) = vel / dble(n)
+       write(*,*) "rho , t", thisOctal%rho(subcell), thisOctal%temperature(subcell)
+
        if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = 50.d5/cspeed!!!!!!!!!!!!!!!!!!!!
 
        if (subcell == thisOctal%maxchildren) then
