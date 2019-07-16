@@ -16431,9 +16431,9 @@ end function readparameterfrom2dmap
 
 RECURSIVE SUBROUTINE assignDensitiesStellarWind(grid, thisOctal)
   USE analytical_velocity_mod
-  USE inputs_mod, ONLY : SW_Mdot, SW_Rmin, SW_rmax, SW_temperature
+  USE inputs_mod, ONLY : SW_Rmin, SW_rmax, SW_temperature
   TYPE(GRIDTYPE) :: grid
-  REAL(DOUBLE) :: thisRho, r,  v, theta
+  REAL(DOUBLE) :: thisRho, r,  v
   TYPE(octal), POINTER   :: thisOctal
   TYPE(octal), POINTER  :: child
   TYPE(VECTOR) :: cellCentre
