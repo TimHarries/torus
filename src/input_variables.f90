@@ -346,6 +346,18 @@
   integer, protected :: observerpos ! position of observer in molecular_mod image generation
 
 
+!----------------------------
+! Williams & Best parameters |
+!----------------------------
+  
+  real(double) :: WB_Sigma0
+  real(double) :: WB_gamma
+  real(double) :: WB_q
+  real(double) :: WB_Rc
+  real(double) :: Tmid1AU
+  real(double) :: Tatm1AU
+  logical :: WBvel
+
 !-----------------------------
 ! Drabek model parameters    |
 !-----------------------------

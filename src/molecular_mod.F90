@@ -3053,8 +3053,9 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
 ! Write VTK file
       call writeinfo('Writing VTK', TRIVIAL)
-      call writeVTKfile(grid, "molResults.vtk", valueTypeString=(/"J=0       ",&
-           "J=1       ", "J=2       ", "J=3       ", "J=4       ", "J=5       ", "rho       "/))
+      call writeVTKfile(grid, "molResults.vtk", valueTypeString=(/ "molabundance", "J=0         ",&
+           "J=1         ", "J=2         ", "J=3         ", "J=4         ", & 
+	   "J=5         ", "rho         "/))
       call writeinfo('Done', TRIVIAL)
 
    endif
@@ -4828,6 +4829,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
        integer, optional :: subcell
 
        type(VECTOR), save :: oldposition, oldout = VECTOR(-8.8d88,-8.8d88,-8.8d88)
+
        integer, save :: savecounter = 0
 !$OMP THREADPRIVATE (oldposition, oldout, savecounter)
 
@@ -4852,10 +4854,10 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
           Out = ggtauvelocity(Position)
        else
           Out = amrGridVelocity(grid%octreeRoot, position, startOctal = startOctal, &
-                                actualSubcell = subcell, linearinterp = .false.)
+               actualSubcell = subcell, linearinterp = .false.)
        endif
 
-!       print *, "out", out
+!       print *, "out velocity", thisout, "km/s"
        oldout = out
        oldposition = position
 
