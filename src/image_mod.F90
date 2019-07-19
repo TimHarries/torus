@@ -750,19 +750,29 @@ module image_mod
                 enddo
              enddo
 
-          case("qr")
+          case("qphi")
              do i = 1, image%nx
                 do j = 1, image%ny
-                   phi = atan2(image%xAxisCentre(i), image%yAxisCentre(j)) + piby2
-                   array(i,j) = real(cos(2.d0*phi) * image%pixel(i,j)%q + sin(2.d0*phi)*image%pixel(i,j)%u)
+                   dx = image%xAxisCentre(2) - image%xAxisCentre(1)
+                   if (dx > 0.) then
+                      phi = atan2(image%yAxisCentre(j), image%xAxisCentre(i)) + piby2
+                   else
+                      phi = atan2(image%yAxisCentre(j), -image%xAxisCentre(i)) + piby2
+                   endif
+                   array(i,j) = real(-cos(2.d0*phi) * image%pixel(i,j)%q - sin(2.d0*phi)*image%pixel(i,j)%u)
                 enddo
              enddo
 
-          case("ur")
+          case("uphi")
              do i = 1, image%nx
                 do j = 1, image%ny
-                   phi = atan2(image%xAxisCentre(i), image%yAxisCentre(j)) + piby2
-                   array(i,j) = real(-sin(2.d0*phi) * image%pixel(i,j)%q + cos(2.d0*phi)*image%pixel(i,j)%u)
+                   dx = image%xAxisCentre(2) - image%xAxisCentre(1)
+                   if (dx > 0.) then
+                      phi = atan2(image%yAxisCentre(j), image%xAxisCentre(i)) + piby2
+                   else
+                      phi = atan2(image%yAxisCentre(j), -image%xAxisCentre(i)) + piby2
+                   endif
+                   array(i,j) = real(sin(2.d0*phi) * image%pixel(i,j)%q - cos(2.d0*phi)*image%pixel(i,j)%u)
                 enddo
              enddo
 
@@ -1082,19 +1092,19 @@ module image_mod
                 enddo
              enddo
 
-          case("qr")
+          case("qphi")
              do i = 1, image%nx
                 do j = 1, image%ny
                    phi = atan2(image%xAxisCentre(i), image%yAxisCentre(j)) + piby2
-                   array(i,j) = real(cos(2.d0*phi) * image%pixel(i,j)%q + sin(2.d0*phi)*image%pixel(i,j)%u)
+                   array(i,j) = real(-cos(2.d0*phi) * image%pixel(i,j)%q - sin(2.d0*phi)*image%pixel(i,j)%u)
                 enddo
              enddo
 
-          case("ur")
+          case("uphi")
              do i = 1, image%nx
                 do j = 1, image%ny
                    phi = atan2(image%xAxisCentre(i), image%yAxisCentre(j)) + piby2
-                   array(i,j) = real(-sin(2.d0*phi) * image%pixel(i,j)%q + cos(2.d0*phi)*image%pixel(i,j)%u)
+                   array(i,j) = real(sin(2.d0*phi) * image%pixel(i,j)%q - cos(2.d0*phi)*image%pixel(i,j)%u)
                 enddo
              enddo
 

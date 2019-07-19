@@ -16519,9 +16519,9 @@ end function readparameterfrom2dmap
 
 RECURSIVE SUBROUTINE assignDensitiesStellarWind(grid, thisOctal)
   USE analytical_velocity_mod
-  USE inputs_mod, ONLY : SW_Mdot, SW_Rmin, SW_rmax, SW_temperature
+  USE inputs_mod, ONLY : SW_Rmin, SW_rmax, SW_temperature
   TYPE(GRIDTYPE) :: grid
-  REAL(DOUBLE) :: thisRho, r,  v, theta
+  REAL(DOUBLE) :: thisRho, r,  v
   TYPE(octal), POINTER   :: thisOctal
   TYPE(octal), POINTER  :: child
   TYPE(VECTOR) :: cellCentre
@@ -18227,6 +18227,8 @@ END SUBROUTINE assignDensitiesStellarWind
        thisOctal%rho(subcell) = rho / dble(n)
        thisOctal%temperature(subcell) = temperature/real(n)
        thisOctal%velocity(subcell) = vel / dble(n)
+       write(*,*) "rho , t", thisOctal%rho(subcell), thisOctal%temperature(subcell)
+
        if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = 50.d5/cspeed!!!!!!!!!!!!!!!!!!!!
 
        if (subcell == thisOctal%maxchildren) then

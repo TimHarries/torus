@@ -1674,11 +1674,11 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
                  call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "polr2", &
                       getFluxUnits(imNum), getAxisUnits(imNum), real(lambda_eff))
 
-                 write(specFile,'(a,a)') trim(header)//"_qr.fits"
-                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "qr", &
+                 write(specFile,'(a,a)') trim(header)//"_qphi.fits"
+                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "qphi", &
                       getFluxUnits(imNum),  getAxisUnits(imNum), real(lambda_eff))
-                 write(specFile,'(a,a)') trim(header)//"_ur.fits"
-                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "ur", &
+                 write(specFile,'(a,a)') trim(header)//"_uphi.fits"
+                 call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "uphi", &
                       getFluxUnits(imNum), getAxisUnits(imNum),  real(lambda_eff))
 
                  write(specFile,'(a,a)') trim(header)//"_polr2.fits"

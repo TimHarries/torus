@@ -243,7 +243,7 @@ photoion_mod.o: amr_mod.o atom_mod.o constants_mod.o diffusion_mod.o \
 	dust_mod.o image_mod.o image_utils_mod.o inputs_modV2.o math_mod.o \
 	messages_mod.o mpi_global_mod.o octal_mod.o parallel_mod.o phfit2.o \
 	photoion_utils_mod.o photon_mod.o random_mod.o source_mod.o \
-	spectrum_mod.o timing.o unix_mod.o utils_mod.o vtk_mod.o
+	spectrum_mod.o timing.o unix_mod.o utils_mod.o vector_mod.o vtk_mod.o
 photoion_utils_mod.o: amr_mod.o atom_mod.o constants_mod.o diffusion_mod.o \
 	dust_mod.o grid_mod.o gridio_mod.o image_mod.o inputs_modV2.o \
 	ion_mod.o lucy_mod.o messages_mod.o mpi_amr_mod.o mpi_global_mod.o \
