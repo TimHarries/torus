@@ -356,6 +356,8 @@
   real(double) :: WB_Rc
   real(double) :: Tmid1AU
   real(double) :: Tatm1AU
+  real(double) :: ringR
+  real(double) :: ringdR
   logical :: WBvel
 
 !-----------------------------

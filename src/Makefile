@@ -142,7 +142,7 @@ ifeq ($(SYSTEM), gfortran)
     STARLIBS += -static-libgcc -static-libgfortran
     EXE = torus.gfortran
     KNOWN_SYSTEM = yes
-    CFITSIOLIBS = -L${HOME}/cfitsio/lib -lcfitsio
+    CFITSIOLIBS = -L/Users/thomashaworth/Software/cfitsio/lib -lcfitsio
     KROMELIBS = -L${HOME}/krome/build -lkrome
     ifeq ($(chemistry), yes)
        F95COMP+=-I${HOME}/krome/build

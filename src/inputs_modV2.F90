@@ -826,6 +826,10 @@ contains
        case("WB2014")
           call getLogical("WBvel", WBvel, cLine, fLine, nLines, &
                "Just use cell centered velocity ","(a,1l,1x,a)", .false., ok, .false.)
+          call getDouble("ringR", ringR, 1.d0, cLine, fLine, nLines, &
+               "Radius of ring (WB2014): ","(a,f7.1,1x,a)", 1.d2, ok, .false.)
+          call getDouble("ringdR", ringdR, 1.d0, cLine, fLine, nLines, &
+               "Width of ring (WB2014): ","(a,f7.1,1x,a)", 0.d0, ok, .false.)
           call getDouble("WB_Sigma0", WB_Sigma0, 1.d0, cLine, fLine, nLines, &
                "Surface density normalization (WB2014): ","(a,f7.1,1x,a)", 1.d2, ok, .false.)
           call getDouble("WB_gamma", WB_gamma, 1.d0, cLine, fLine, nLines, &
