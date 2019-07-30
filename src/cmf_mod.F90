@@ -1404,7 +1404,7 @@ END SUBROUTINE calculateJbar
     integer :: iAtom
     integer :: nHAtom, nHeIAtom, nHeIIatom !, ir, ifreq
     real(double) :: nstar, ratio, ntot
-    real(double), parameter :: convergeTol = 1.d-4, gridtolerance = 1.d-2
+    real(double), parameter :: convergeTol = 1.d-4, gridtolerance = 5.d-2
     integer :: neIter, itmp
     logical :: recalcJbar,  firstCheckonTau
     character(len=80) :: message, ifilename
@@ -2212,7 +2212,7 @@ END SUBROUTINE calculateJbar
                    close(69)
                 endif
 
-                if (percentageConverged > 99.d0) then
+                if (percentageConverged > (100.d0*(1.d0-gridtolerance))) then
                    gridConverged = .true.
                 endif
                 !          gridconverged = .true.
