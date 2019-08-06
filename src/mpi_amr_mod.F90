@@ -4266,6 +4266,7 @@ contains
     centre = grid%octreeRoot%centre
     halfGridSize = grid%octreeRoot%subcellSize
     cellSize = amrGridSize/dble(npix)
+    if (associated(image)) deallocate(image)
     allocate(image(1:npix, 1:npix))
     image = 0.d0
     do i = 1, nPix
@@ -4309,9 +4310,9 @@ contains
   
        currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
        if (myrankGlobal == thisOctal%mpiThread(subcell)) then
-          if (.not. thisOctal%ghostCell(subcell)) then
+!          if (.not. thisOctal%ghostCell(subcell)) then
              sigma = sigma + distToNextCell*1.d10*thisOctal%rho(subcell)
-          endif
+!          endif
        endif
 
     end do
@@ -4339,6 +4340,7 @@ contains
     centre = grid%octreeRoot%centre
     halfGridSize = grid%octreeRoot%subcellSize
     cellSize = amrGridSize/dble(npix)
+    if (associated(image)) deallocate(image)
     allocate(image(1:npix, 1:npix))
     image = 0.d0
     do i = 1, nPix
@@ -4413,6 +4415,7 @@ contains
     centre = grid%octreeRoot%centre
     halfGridSize = grid%octreeRoot%subcellSize
     cellSize = amrGridSize/dble(npix)
+    if (associated(image)) deallocate(image)
     allocate(image(1:npix, 1:npix))
     image = 0.d0
     do i = 1, nPix

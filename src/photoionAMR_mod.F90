@@ -75,7 +75,7 @@ contains
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
     use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics, amrUnrefineTolerance, smallestCellSize, dounrefine
     use inputs_mod, only : addSinkParticles, cylindricalHydro, vtuToGrid, timedependentRT,dorefine, alphaViscosity
-    use inputs_mod, only : UV_vector, spherical, forceminrho 
+    use inputs_mod, only : UV_vector, spherical, forceminrho, mergeBoundSinks
     use inputs_mod, only : sphereRadius, sphereMass, feedbackDelay, amrgridsize
     use starburst_mod
     use viscosity_mod, only : viscousTimescale,viscousTimescaleCylindrical
@@ -97,20 +97,20 @@ contains
     use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral
     use inputs_mod, only: densitySpectrum, cflNumber, useionparam, xrayonly, isothermal, supernovae, &
           burstType, burstAge, mstarburst, burstTime, starburst, inputseed, doSelfGrav, redoGravOnRead, nHydroperPhoto,mchistories 
-    use inputs_mod, only: clusterSinks, populationMethod
+    use inputs_mod, only: clusterSinks, populationMethod, nHydroPerSpectra
     use parallel_mod, only: torus_abort
     use mpi
     integer :: nMuMie
     type(PHASEMATRIX) :: miePhase(:,:,:)
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
-    integer :: nSource
+    integer :: nSource, oldnSource
     integer :: nLambda
     integer, parameter :: tagsne = 123
     real :: lamArray(:)
     character(len=80) :: mpiFilename, datFilename, mpifilenameB
 #ifdef USECFITSIO
-    real(double), pointer :: columnDensityImage(:,:)
+    real(double), pointer :: columnDensityImage(:,:)=>null()
 #endif
     real(double) :: dt, cfl, gamma, mu
     integer :: iUnrefine
@@ -139,9 +139,9 @@ contains
     integer :: niter, nHydroCounter
     real(double) :: epsoverdeltat, totalMass, tauSca, tauAbs, tff, rhosphere, feedbackStartTime
     real(double) :: ionizedVolume, ionizedMass, ke, jeansUnstableMass, maxRho, totalCreatedMass
-    real(double), allocatable :: imf(:)
+    real(double), pointer :: imf(:)=>null()
     integer :: iIMF, nIMF
-    logical :: sourcesCreated, doFeedback
+    logical :: sourcesCreated, doFeedback, doMorePhoto, populated(1:1000)
     nPhotoIter = 1
 !    real :: gridToVtu_value
 !    integer :: gridVtuCounter
@@ -149,6 +149,8 @@ contains
     dumpThisTime = .false.
     i = nsource
     sourcesCreated = .false. 
+    doMorePhoto = .false.
+    populated(:) = .false.
 
 
     call torus_mpi_barrier
@@ -164,9 +166,8 @@ contains
     if (clusterSinks) then
       iIMF = 0
       nIMF = 0
-      allocate(imf(1:1000000))
       call getStarList(imf, iIMF, nIMF)
-      if (writeoutput) write(*,*) "START iIMF, nIMF: ", iIMF, nIMF ! FIXME
+      if (writeoutput) write(*,*) "START iIMF, nIMF: ", iIMF, nIMF 
     endif
 
 
@@ -1269,12 +1270,14 @@ contains
           ! end of stellar feedback
 
 !add/merge sink particles where necessary
+       oldnSource = globalnSource
        if ((myrankGlobal /= 0).and.(.not.loadBalancingThreadGlobal)) then
-          if (myRankWorldGlobal == 1) call tune(6,"Added new sinks")
           if (nbodyPhysics.and.addSinkParticles) then 
-             call addSinks(grid, globalsourceArray, globalnSource)       
+             if (myRankWorldGlobal == 1) call tune(6,"Adding new sinks")
+             call addSinks(grid, globalsourceArray, globalnSource)
+             if (myRankWorldGlobal == 1) call tune(6,"Adding new sinks")
           endif
-          if (myRankWorldGlobal == 1) call tune(6,"Added new sinks")
+
 
 !xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 !          call freeglobalsourceArray()
@@ -1285,9 +1288,13 @@ contains
 !          globalSourceArray(1)%accretionRadius = 1.d10
 
 
-!          if (myRankWorldGlobal == 1) call tune(6,"Merging sinks")
-!          if (nbodyPhysics) call mergeSinks(grid, globalsourceArray, globalnSource)
-!          if (myRankWorldGlobal == 1) call tune(6,"Merging sinks")
+!          if (nbodyPhysics .and.mergeBoundSinks) then 
+!             if (myRankWorldGlobal == 1) call tune(6,"Merging sinks")
+!             call mergeSinks(grid, globalsourceArray, globalnSource)
+!             if (myRankWorldGlobal == 1) call tune(6,"Merging sinks")
+!          endif
+
+
           do i = 1, globalnSource
              call emptySurface(globalsourceArray(i)%surface)
              call buildSphereNbody(globalsourceArray(i)%position, globalsourceArray(i)%accretionRadius/1.d10, &
@@ -1311,40 +1318,61 @@ contains
              call randomNumberGenerator(syncIseed=.true.)
 
              if (myrankWorldglobal == 1) call tune(6, "Populating clusters")
-             call populateClusters(globalSourceArray, globalnSource, 0.d0, sourcesCreated, imf=imf, iIMF=iIMF, nIMF=nIMF) 
-             if (writeoutput) write(*,*) "iIMF is ", iIMF
+             call populateClusters(globalSourceArray, globalnSource, 0.d0, populated, doMorePhoto, & 
+               imf=imf, iIMF=iIMF, nIMF=nIMF) 
              if (myrankWorldglobal == 1) call tune(6, "Populating clusters")
 
              call randomNumberGenerator(randomSeed=.true.)
 
+             if (mod(nHydroCounter,nHydroPerSpectra) == 0) then
+                ! force spectrum calculation for all clusters
+                populated(1:globalnSource) = .true.
+             endif
              if (myrankWorldglobal == 1) call tune(6, "Setting cluster spectra")
-             call setClusterSpectra(globalSourceArray, globalnSource) 
+             call setClusterSpectra(globalSourceArray, globalnSource, populated) 
+             call freeSubsourceSpectra(globalSourceArray, globalnSource) 
              if (myrankWorldglobal == 1) call tune(6, "Setting cluster spectra")
 
-             if (sourcesCreated) then
+             if (doMorePhoto) then
                 nPhotoIter = maxPhotoionIter
              else
                 nPhotoIter = 1
              endif 
           else
+             ! set properties of newly added sinks
+             if (addSinkParticles .and. globalnSource > oldnSource) then
+                do i = oldnSource+1, globalnSource
+                   call updateSourceProperties(globalsourcearray(i))
+                enddo
+             endif
              ! sources have new M, Teff, L from updateSourceProperties -> recalculate spectra (rank 0 in particular)
              call setSourceSpectra(globalSourceArray, globalnSource) 
           endif
        endif
 
+
        ! FIXME
-       if (myrankglobal == 0) then!.or. myrankglobal == 1 .or. myrankglobal == 2 .or. myrankglobal == 65) then
+       if (myrankglobal == 0 .or. myrankGlobal == 70 .and. clusterSinks) then!.or. myrankglobal == 1 .or. myrankglobal == 2 .or. myrankglobal == 65) then
+       if (myrankglobal == 0) then
           write(*,*) "Cluster properties"
           write(*,'(a2,1x,a3,5x,a9,1x,a4,1x,a12,1x,a9,1x,a9)') "r", "i", "Mcl", "n*", "Mres", "age", "lum"
           do i = 1, globalnSource
              write(*,'(i2.2,1x,i3.3,5x,f9.2,1x,i4,1x,f12.5,1x,es9.2,1x,es9.2)') myrankglobal, i, globalSourceArray(i)%mass/msol, &
              globalSourceArray(i)%nSubsource, clusterReservoir(globalSourceArray(i))/msol, globalsourceArray(i)%age, &
              globalsourceArray(i)%luminosity/lsol
-             if (globalSourceArray(i)%nSubsource > 0) then
-                j = maxloc(globalsourceArray(i)%subsourceArray(1:globalsourceArray(i)%nsubsource)%mass,dim=1)
-                write(*,'(i2.2, 1x,i3.3, a5, f9.2,1x,i4,a14,es9.2,1x,es9.2)') myrankglobal, i, "_max ", &
-                   globalsourceArray(i)%subsourceArray(j)%mass/msol,globalSourceArray(i)%subsourceArray(j)%nSubsource," ",&
-                   globalSourceArray(i)%subsourceArray(j)%age, globalSourceArray(i)%subsourceArray(j)%luminosity/lsol
+          enddo
+       endif
+          if (myrankglobal == 70) then
+             i = globalnsource
+             write(*,'(i2.2,1x,i3.3,5x,f9.2,1x,i4,1x,f12.5,1x,es9.2,1x,es9.2)') myrankglobal, i, globalSourceArray(i)%mass/msol, &
+             globalSourceArray(i)%nSubsource, clusterReservoir(globalSourceArray(i))/msol, globalsourceArray(i)%age, &
+             globalsourceArray(i)%luminosity/lsol
+          endif
+!             if (globalSourceArray(i)%nSubsource > 0) then
+!                j = maxloc(globalsourceArray(i)%subsourceArray(1:globalsourceArray(i)%nsubsource)%mass,dim=1)
+!                write(*,'(i2.2, 1x,i3.3, a5, f9.2,1x,i4,a14,es9.2,1x,es9.2)') myrankglobal, i, "_max ", &
+!                   globalsourceArray(i)%subsourceArray(j)%mass/msol,globalSourceArray(i)%subsourceArray(j)%nSubsource," ",&
+!                   globalSourceArray(i)%subsourceArray(j)%age, globalSourceArray(i)%subsourceArray(j)%luminosity/lsol
 
 !                   ! write fluxes
 !                   totFlux = 0.d0
@@ -1373,8 +1401,7 @@ contains
 !                write(*,'(i2.2, 1x,i3.3, a5, f9.2,1x,i4,a14,es9.2,1x,es9.2)') myrankglobal, i, "_min ", &
 !                   globalsourceArray(i)%subsourceArray(j)%mass/msol,globalSourceArray(i)%subsourceArray(j)%nSubsource," ",&
 !                   globalSourceArray(i)%subsourceArray(j)%age, globalSourceArray(i)%subsourceArray(j)%teff
-             endif
-          enddo
+!             endif
        endif
 
        if (myRankWorldGlobal == 1) call tune(6,"Hydrodynamics step")
@@ -10383,6 +10410,7 @@ end subroutine putStarsInGridAccordingToDensity
     centre = grid%octreeRoot%centre
     halfGridSize = grid%octreeRoot%subcellSize
     cellSize = amrGridSize/dble(npix)
+    if (associated(image)) deallocate(image)
     allocate(image(1:npix, 1:npix))
     image = 0.d0
     do i = 1, nPix
@@ -10597,6 +10625,7 @@ end subroutine putStarsInGridAccordingToDensity
     centre = grid%octreeRoot%centre
     halfGridSize = grid%octreeRoot%subcellSize
     cellSize = amrGridSize/dble(npix)
+    if (associated(image)) deallocate(image)
     allocate(image(1:npix, 1:npix))
     image = 0.d0
     do i = 1, nPix
@@ -10772,6 +10801,7 @@ end subroutine putStarsInGridAccordingToDensity
     centre = grid%octreeRoot%centre
     halfGridSize = grid%octreeRoot%subcellSize
     cellSize = amrGridSize/dble(npix)
+    if (associated(image)) deallocate(image)
     allocate(image(1:npix, 1:npix))
     image = 0.d0
     do i = 1, nPix
@@ -10885,9 +10915,9 @@ end subroutine putStarsInGridAccordingToDensity
      do while(doing) 
         call randomNumberGenerator(randomSeed=.true.)
         call randomNumberGenerator(syncIseed=.true.)
-        call populateClusters(globalSourceArray, globalnSource, 0.d0, populated) 
+!        call populateClusters(globalSourceArray, globalnSource, 0.d0, populated) 
         call randomNumberGenerator(randomSeed=.true.)
-        call setClusterSpectra(globalSourceArray, globalnSource) 
+!        call setClusterSpectra(globalSourceArray, globalnSource) 
         call MPI_BARRIER(MPI_COMM_WORLD, ierr)
         if (writeoutput) then 
            i = i + 1

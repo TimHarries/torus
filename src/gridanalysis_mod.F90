@@ -414,7 +414,7 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
     real(double) :: tauAbs, tauSca, tauExt, columnDensity
 #ifdef MPI
 #ifdef USECFITSIO
-    real(double), pointer :: image(:,:), rmsImage(:,:)
+    real(double), pointer :: image(:,:)=>null(), rmsImage(:,:)=>null()
 #endif
     character(len=20) :: weighting
     integer :: i, ierr

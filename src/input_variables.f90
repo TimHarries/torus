@@ -222,6 +222,7 @@
   real(double) :: FeedbackStartMass   !Do not apply feedback till the star reaches this mass 
   real :: cflNumber                   !Courant-Friedrichs-Lewy constant
   integer :: nHydroPerPhoto           !number of hydroSteps per photoionization loop
+  integer :: nHydroPerSpectra         ! number of hydro steps per spectrum calculation (clustersinks)
   logical :: forcegascourant          !use the gas condition only
   real(double) :: rhoFloor            !min density in grid
   real(double) :: mu                  !mean molecular weight

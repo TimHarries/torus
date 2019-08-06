@@ -48,6 +48,7 @@
 
   type(SOURCETYPE), pointer :: globalSourceArray(:) => null()
   integer :: globalnSource
+  integer, parameter :: globalMaxNsubsource=500
 
   contains
 
@@ -307,10 +308,11 @@
       close(lunit)
     end subroutine readSourceArray
 
-    recursive subroutine writeSource(source, lunit)
+    recursive subroutine writeSource(source, lunit, writeSpectrum)
       use inputs_mod, only : clusterSinks
       type(SOURCETYPE) :: source
       integer :: lunit, i
+      logical, optional :: writeSpectrum
 
       write(lunit) source%position
       write(lunit) source%velocity
@@ -332,23 +334,33 @@
       write(lunit) source%accretionRadius
       write(lunit) source%time
       write(lunit) source%mdotwind
-      call writeSpectrumToDump(source%spectrum,lunit)
-      call writeSurface(source%surface, lunit)
+      write(lunit) source%pointSource
+
+      if (present(writeSpectrum)) then
+         if (writeSpectrum) then
+            call writeSpectrumToDump(source%spectrum,lunit)
+            call writeSurface(source%surface, lunit)
+         endif
+      else
+         call writeSpectrumToDump(source%spectrum,lunit)
+         call writeSurface(source%surface, lunit)
+      endif
 
       if (clusterSinks) then
          write(lunit) source%nSubsource
          if (source%nSubsource > 0) then
             do i = 1, source%nSubsource
-               call writeSource(source%subsourceArray(i), lunit)
+               call writeSource(source%subsourceArray(i), lunit, writeSpectrum=.false.)
             enddo
          endif
       endif
     end subroutine writeSource
 
-    recursive subroutine readSource(source, lunit)
+    recursive subroutine readSource(source, lunit, readSpectrum)
       use inputs_mod, only : clusterSinks
       type(SOURCETYPE) :: source
       integer :: lunit, i
+      logical, optional :: readSpectrum
 
       read(lunit) source%position
       read(lunit) source%velocity
@@ -370,17 +382,25 @@
       read(lunit) source%accretionRadius
       read(lunit) source%time
       read(lunit) source%mdotwind
+      read(lunit) source%pointSource
 
       call freeSpectrum(source%spectrum)
-      call readSpectrumFromDump(source%spectrum,lunit)
-      call readSurface(source%surface, lunit)
+      if (present(readSpectrum)) then
+         if (readSpectrum) then
+            call readSpectrumFromDump(source%spectrum,lunit)
+            call readSurface(source%surface, lunit)
+         endif
+      else
+         call readSpectrumFromDump(source%spectrum,lunit)
+         call readSurface(source%surface, lunit)
+      endif
 
       if (clusterSinks) then
          read(lunit) source%nSubsource
          if (source%nSubsource > 0) then
-            allocate(source%subsourceArray(1:source%nSubsource))
+            allocate(source%subsourceArray(1:globalMaxNsubsource))
             do i = 1, source%nSubsource
-               call readSource(source%subsourceArray(i), lunit)
+               call readSource(source%subsourceArray(i), lunit, readSpectrum=.false.)
             enddo
          endif
       else
@@ -573,7 +593,7 @@
     subroutine randomSourceUniform(nSource, iSource)
       integer :: nSource
       integer, intent(out) :: iSource
-      real(double), allocatable :: prob(:)
+      real(double), save, allocatable :: prob(:)
       real(double) :: r
       integer :: i
 
@@ -583,6 +603,9 @@
          iSource = 1
       else
          ! allocate array
+         if (allocated(prob)) then
+            deallocate(prob)
+         endif
          ALLOCATE(prob(1:nSource))
          ! Create the prob. dist. function.
          do i = 1, nSource

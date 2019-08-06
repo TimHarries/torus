@@ -20157,9 +20157,10 @@ end subroutine minMaxDepth
      real(double) :: sep, eGrav, eKinetic, dotProd
      integer :: n, ni, nj
      integer :: newNSource
-     logical :: converged
+     logical :: converged, sinksMerged
      logical :: merged(1000), bound
 
+     sinksMerged = .false.
      if (.not.mergeBoundSinks) goto 666
 
      converged = .false.
@@ -20199,19 +20200,44 @@ end subroutine minMaxDepth
                     newSource(newnSource)%stellar = .true.
                     newSource(newnSource)%diffuse = .false.
                     newSource(newnSource)%accretionRadius = source(i)%accretionRadius
-                    if (clusterSinks) then
-                        ni = source(i)%nSubsource
-                        nj = source(j)%nSubsource
-                        newSource(newNsource)%nSubsource = ni + nj 
-                        if (ni + nj > 0) then
-                           allocate(newSource(newNsource)%subsourceArray(1:1000))
-                           newSource(newNsource)%subsourceArray(1:ni) = source(i)%subsourceArray
-                           newSource(newNsource)%subsourceArray(ni+1:ni+nj) = source(j)%subsourceArray
-                        endif
+                    ni = source(i)%nSubsource
+                    nj = source(j)%nSubsource
+                    newSource(newNsource)%nSubsource = ni + nj 
+                    if (ni + nj > 0) then
+                       allocate(newSource(newNsource)%subsourceArray(1:globalMaxnSubsource))
+                       if (ni > 0) then
+                          if (writeoutput) write(*,*) "copying ", ni, " subsources of sink ", i
+                          newSource(newNSource)%subsourceArray(1:ni)%mass = source(i)%subsourceArray(1:ni)%mass
+                          newSource(newNSource)%subsourceArray(1:ni)%velocity = source(i)%subsourceArray(1:ni)%velocity
+                          newSource(newNSource)%subsourceArray(1:ni)%position = source(i)%subsourceArray(1:ni)%position
+                          newSource(newNSource)%subsourceArray(1:ni)%radius = source(i)%subsourceArray(1:ni)%radius
+                          newSource(newNSource)%subsourceArray(1:ni)%age = source(i)%subsourceArray(1:ni)%age
+                          newSource(newnSource)%subsourceArray(1:ni)%stellar = source(i)%subsourceArray(1:ni)%stellar!.true.
+                          newSource(newnSource)%subsourceArray(1:ni)%diffuse = source(i)%subsourceArray(1:ni)%diffuse!.false.
+                          newSource(newNSource)%subsourceArray(1:ni)%initialMass = source(i)%subsourceArray(1:ni)%initialMass
+                          newSource(newNSource)%subsourceArray(1:ni)%prob = source(i)%subsourceArray(1:ni)%prob
+                          newSource(newnSource)%subsourceArray(1:ni)%nSubsource = source(i)%subsourceArray(1:ni)%nSubsource
+                       endif
+                       if (nj > 0) then
+                          if (writeoutput) write(*,*) "copying ", nj, " subsources of sink ", j
+                          newSource(newNSource)%subsourceArray(ni+1:ni+nj)%mass = source(i)%subsourceArray(ni+1:ni+nj)%mass
+                          newSource(newNSource)%subsourceArray(ni+1:ni+nj)%velocity = source(i)%subsourceArray(ni+1:ni+nj)%velocity
+                          newSource(newNSource)%subsourceArray(ni+1:ni+nj)%position = source(i)%subsourceArray(ni+1:ni+nj)%position
+                          newSource(newNSource)%subsourceArray(ni+1:ni+nj)%radius = source(i)%subsourceArray(ni+1:ni+nj)%radius
+                          newSource(newNSource)%subsourceArray(ni+1:ni+nj)%age = source(i)%subsourceArray(ni+1:ni+nj)%age
+                          newSource(newnSource)%subsourceArray(ni+1:ni+nj)%stellar = source(i)%subsourceArray(ni+1:ni+nj)%stellar
+                          newSource(newnSource)%subsourceArray(ni+1:ni+nj)%diffuse = source(i)%subsourceArray(ni+1:ni+nj)%diffuse
+                          newSource(newNSource)%subsourceArray(ni+1:ni+nj)%initialMass = & 
+                             source(i)%subsourceArray(ni+1:ni+nj)%initialMass
+                          newSource(newNSource)%subsourceArray(ni+1:ni+nj)%prob = source(i)%subsourceArray(ni+1:ni+nj)%prob
+                          newSource(newnSource)%subsourceArray(ni+1:ni+nj)%nSubsource = & 
+                             source(i)%subsourceArray(ni+1:ni+nj)%nSubsource
+                       endif
                     endif
                     merged(i) = .true.
                     merged(j) = .true.
                     converged = .false.
+                    if (.not. sinksMerged) sinksMerged = .true.
                  endif
               endif
            enddo
@@ -20225,17 +20251,27 @@ end subroutine minMaxDepth
               newSource(newNSource)%position = source(i)%position
               newSource(newNSource)%radius = source(i)%radius
               newSource(newNSource)%age = source(i)%age
-              newSource(newnSource)%stellar = .true.
-              newSource(newnSource)%diffuse = .false.
+              newSource(newnSource)%stellar = source(i)%stellar!.true.
+              newSource(newnSource)%diffuse = source(i)%diffuse!.false.
+              newSource(newnSource)%pointSource = source(i)%pointSource
               newSource(newnSource)%accretionRadius = source(i)%accretionRadius
-              if (clusterSinks) then
-                 newSource(newnSource)%nSubsource = source(i)%nSubsource
-                 if (source(i)%nSubsource > 0) then
-                    allocate(newSource(newnSource)%subsourceArray(1:1000))
-                    newSource(newnSource)%subsourceArray = source(i)%subsourceArray
-                 endif
-              else 
-                 newSource(newnSource)%nSubsource = 0
+              newSource(newNSource)%initialMass = source(i)%initialMass
+              newSource(newNSource)%angMomentum = source(i)%angMomentum
+              newSource(newnSource)%prob = source(i)%prob
+              newSource(newnSource)%nSubsource = source(i)%nSubsource
+              if (source(i)%nSubsource > 0) then
+                 allocate(newSource(newnSource)%subsourceArray(1:globalMaxnSubsource))
+                 ni = source(i)%nSubsource
+                 newSource(newNSource)%subsourceArray(1:ni)%mass = source(i)%subsourceArray(1:ni)%mass
+                 newSource(newNSource)%subsourceArray(1:ni)%velocity = source(i)%subsourceArray(1:ni)%velocity
+                 newSource(newNSource)%subsourceArray(1:ni)%position = source(i)%subsourceArray(1:ni)%position
+                 newSource(newNSource)%subsourceArray(1:ni)%radius = source(i)%subsourceArray(1:ni)%radius
+                 newSource(newNSource)%subsourceArray(1:ni)%age = source(i)%subsourceArray(1:ni)%age
+                 newSource(newnSource)%subsourceArray(1:ni)%stellar = source(i)%subsourceArray(1:ni)%stellar!.true.
+                 newSource(newnSource)%subsourceArray(1:ni)%diffuse = source(i)%subsourceArray(1:ni)%diffuse!.false.
+                 newSource(newNSource)%subsourceArray(1:ni)%initialMass = source(i)%subsourceArray(1:ni)%initialMass
+                 newSource(newNSource)%subsourceArray(1:ni)%prob = source(i)%subsourceArray(1:ni)%prob
+                 newSource(newnSource)%subsourceArray(1:ni)%nSubsource = source(i)%subsourceArray(1:ni)%nSubsource
               endif
            endif
         enddo
@@ -20249,14 +20285,28 @@ end subroutine minMaxDepth
         source(1:nSource)%age = newSource(1:nSource)%age
         source(1:nSource)%stellar = newSource(1:nSource)%stellar
         source(1:nSource)%diffuse = newSource(1:nSource)%diffuse
+        source(1:nSource)%pointSource = newSource(1:nSource)%pointSource
+        source(1:nSource)%accretionRadius = newSource(1:nSource)%accretionRadius
+        source(1:nSource)%initialMass = newSource(1:nSource)%initialMass
         source(1:nSource)%angMomentum = newSource(1:nSource)%angMomentum
+        source(1:nSource)%prob = newSource(1:nSource)%prob
         source(1:nSource)%nSubsource = newSource(1:nSource)%nSubsource
         if (clusterSinks) then
            do i = 1, nSource
               call freeSourceArray(source(i)%subsourceArray)
               if (source(i)%nSubsource > 0) then
-                 allocate(source(i)%subsourceArray(1:1000))
-                 source(i)%subsourceArray = newSource(i)%subsourceArray
+                 allocate(source(i)%subsourceArray(1:globalMaxnSubsource))
+                 ni = source(i)%nSubsource
+                 source(i)%subsourceArray(1:ni)%mass = newSource(i)%subsourceArray(1:ni)%mass 
+                 source(i)%subsourceArray(1:ni)%velocity = newSource(i)%subsourceArray(1:ni)%velocity 
+                 source(i)%subsourceArray(1:ni)%position = newSource(i)%subsourceArray(1:ni)%position 
+                 source(i)%subsourceArray(1:ni)%radius = newSource(i)%subsourceArray(1:ni)%radius 
+                 source(i)%subsourceArray(1:ni)%age = newSource(i)%subsourceArray(1:ni)%age 
+                 source(i)%subsourceArray(1:ni)%stellar = newSource(i)%subsourceArray(1:ni)%stellar 
+                 source(i)%subsourceArray(1:ni)%diffuse = newSource(i)%subsourceArray(1:ni)%diffuse 
+                 source(i)%subsourceArray(1:ni)%initialMass = newSource(i)%subsourceArray(1:ni)%initialMass 
+                 source(i)%subsourceArray(1:ni)%prob = newSource(i)%subsourceArray(1:ni)%prob 
+                 source(i)%subsourceArray(1:ni)%nSubsource = newSource(i)%subsourceArray(1:ni)%nSubsource 
               endif
            enddo
         endif
@@ -20271,6 +20321,7 @@ end subroutine minMaxDepth
         endif
         deallocate(newSource)
      end do
+
      
 666  continue
 
@@ -20280,28 +20331,578 @@ end subroutine minMaxDepth
 
    subroutine addSinks(grid, source, nSource)
      use mpi
+     use inputs_mod, only : smallestCellSize, accretionRadius
      type(GRIDTYPE) :: grid
      type(SOURCETYPE) :: source(:)
-     real(double) :: rhomax
-     integer :: nSource
-     integer :: iThread
-     real :: startTime, endTime
+     type(SOURCETYPE), allocatable :: newSources(:)
+!     real(double) :: rhomax
+!     real :: startTime, endTime
+     integer :: nSource, oldnSource, iThread, i,j 
+     integer :: nPoints, ierr, maxPointsInRadius, n, nOther, myrankAMR
+     integer :: status(MPI_STATUS_SIZE)
+     integer, parameter :: tag = 65
+     type(VECTOR), allocatable, dimension(:) :: positionsOnThread, velOnThread, centres, centreVel
+     type(VECTOR), allocatable, dimension(:,:) :: position, vel
+     real(double), allocatable, dimension(:) :: massOnThread, phiOnThread, csOnThread, centreMass, centrePhi, centreCs
+     real(double), allocatable, dimension(:,:) :: mass, phi, cs
+     integer, allocatable, dimension(:) :: centreThread, nPointsInRadius
+     integer, dimension(1:nHydroThreadsGlobal) :: amrRank, temp, nPointsOnThread, nAdded
+!     character(len=80) :: fn
 
-     do iThread = 1, nHydroThreadsGlobal
-        if (myrankGlobal == iThread) then
-           rhomax = 0.d0
-           mpiTime = 0.
-           call wallTime(startTime)
-           call recursaddSinks(grid%octreeRoot, grid, source, nSource, rhomax)
-           call wallTime(endTime)
-           call shutdownRadiusServer()
-!           write(*,'(i4,a,3f12.3)') myrankglobal, " secs in recurseAddSinks, mpi, % ", endTime-startTime, mpiTime, &
-!              mpiTime/(endTime-startTime)*100.
-        else
-           call getPointsInAccretionRadiusServer(grid, nSource, source)
-        endif
-     enddo
-   end subroutine addSinks
+     call MPI_COMM_RANK(amrCommunicator, myrankAMR, ierr)
+     amrRank = 0
+     amrRank(myrankGlobal) = myrankAMR ! e.g. amrRank(1) gives the rank in AMRcommunicator for myrankGlobal==1
+     call MPI_ALLREDUCE(amrRank, temp, nHydroThreadsGlobal, MPI_INTEGER, MPI_SUM, amrCommunicator, ierr)
+     amrRank = temp
+
+!     if (myrankGlobal == 1) then
+!        write(*,*) "amrrank ", amrRank
+!     endif
+     if (myrankGlobal == 1) then
+        do iThread = 1, nHydroThreadsGlobal
+           if (amrRank(iThread) /= iThread - 1) then
+              write(*,*) "world rank = ", iThread, " amr rank = ", amrRank(iThread)
+              write(*,*) amrRank
+              stop
+           endif
+        enddo
+     endif
+        
+
+!     do iThread = 1, nHydroThreadsGlobal
+!        if (myrankGlobal == iThread) then
+!           rhomax = 0.d0
+!           mpiTime = 0.
+!           call wallTime(startTime)
+!           call recursaddSinks(grid%octreeRoot, grid, source, nSource, rhomax)
+!           call wallTime(endTime)
+!           call shutdownRadiusServer()
+!!           write(*,'(i4,a,3f12.3)') myrankglobal, " secs in recurseAddSinks, mpi, % ", endTime-startTime, mpiTime, &
+!!              mpiTime/(endTime-startTime)*100.
+!        else
+!           call getPointsInAccretionRadiusServer(grid, nSource, source)
+!        endif
+!     enddo
+
+      ! get positions of dense cells on domain
+      nPointsOnThread = 0
+      call findDenseCells(grid%octreeRoot, grid, nPointsOnThread(myRankGlobal))
+      allocate(positionsOnThread(1:nPointsOnThread(myRankGlobal)))
+      allocate(velOnThread(1:nPointsOnThread(myRankGlobal)))
+      allocate(massOnThread(1:nPointsOnThread(myRankGlobal)))
+      allocate(phiOnThread(1:nPointsOnThread(myRankGlobal)))
+      allocate(csOnThread(1:nPointsOnThread(myRankGlobal)))
+      nPointsOnThread = 0
+      call findDenseCells(grid%octreeRoot, grid, nPointsOnThread(myRankGlobal), positionsOnThread, velOnThread, massOnThread,&
+         phiOnThread, csOnThread) 
+
+      ! total number of dense cells on whole grid 
+      temp = 0
+      call MPI_ALLREDUCE(nPointsOnThread, temp, nHydroThreadsGlobal, MPI_INTEGER, MPI_SUM, amrCommunicator, ierr)
+      nPointsOnThread = temp
+      nPoints = sum(nPointsOnThread(1:nHydroThreadsGlobal))
+!      write(*,*) myrankglobal, " npoints before collate ", npoints
+      allocate(centres(1:nPoints))! positions of all dense cells on the grid
+      allocate(centreVel(1:nPoints))
+      allocate(centreMass(1:nPoints))
+      allocate(centrePhi(1:nPoints))
+      allocate(centreCs(1:nPoints))
+      allocate(centreThread(1:nPoints))
+      ! broadcast all centre values
+      call collateVector(centres, positionsOnThread, nPointsOnThread, nPoints, amrRank)
+      call collateVector(centreVel, velOnThread, nPointsOnThread, nPoints, amrRank)
+      call collateDoubleArray(centreMass, massOnThread, nPointsOnThread, nPoints, centreThread, amrRank)
+      call collateDoubleArray(centrePhi, phiOnThread, nPointsOnThread, nPoints, centreThread, amrRank)
+      call collateDoubleArray(centreCs, csOnThread, nPointsOnThread, nPoints, centreThread, amrRank)
+!      write(*,*) myrankglobal, " npoints after collate ", npoints
+
+      ! get the points inside accretion radius around central point
+      maxPointsInRadius = 100
+      allocate(nPointsInRadius(1:nPoints))
+      allocate(position(1:nPoints, 1:maxPointsInRadius))
+      allocate(vel(1:nPoints, 1:maxPointsInRadius))
+      allocate(mass(1:nPoints, 1:maxPointsInRadius))
+      allocate(phi(1:nPoints, 1:maxPointsInRadius))
+      allocate(cs(1:nPoints, 1:maxPointsInRadius))
+
+!      write(fn, '(a,i4.4,a)') "centres_rank",myrankglobal,".dat"
+!      open(100+myrankglobal, file=trim(fn), status="unknown", form="formatted")
+      do i = 1, nPoints
+         if (myrankGlobal == centreThread(i)) then
+            position(i,1) = centres(i) 
+            vel(i,1) = centreVel(i)
+            mass(i,1) = centreMass(i)
+            phi(i,1) = centrePhi(i)
+            cs(i,1) = centreCs(i)
+            nPointsInRadius(i) = 1
+         else
+            nPointsInRadius(i) = 0
+         endif
+         ! local
+!         if (i == 1 .and. myrankglobal == centrethread(i)) write(*,*) myrankglobal, " point 1 centre (on domain) ", centres(i)
+!         if (i == 1 .and. myrankglobal == centrethread(i)+1) write(*,*) myrankglobal, " point 1 centre (off domain) ", centres(i)
+!         write(100+myrankglobal, '(i4,i4,6(es13.5,1x))') i, centreThread(i), centres(i), position(i,1)
+         call getPointsInAccretionRadiusLocal(grid%octreeRoot, centres(i), accretionRadius*smallestCellSize, & 
+            grid, nPointsInRadius(i), position(i,:), vel(i,:), mass(i,:), phi(i,:), cs(i,:))
+      enddo
+!      close(100+myrankglobal)
+
+      ! other threads - send points to centre thread 
+      do i = 1, nPoints
+         call MPI_ALLGATHER(nPointsInRadius(i), 1, MPI_INTEGER, &
+            nPointsOnThread(1:nHydroThreadsGlobal), 1, MPI_INTEGER, amrCommunicator, ierr)
+         ! see if there are points on other threads
+         do iThread = 1, nHydroThreadsGlobal
+!            if (writeoutput .and. iThread == 1) write(*,*) "iPoint ", i
+!            if (i == 1 .and. myrankglobal==iThread) write(*,*) myrankglobal, " nPointsInRadius/OnThread ", & 
+!               nPointsInRadius(i), nPointsOnThread(myrankGlobal)
+            if (iThread /= centreThread(i) .and. nPointsOnThread(iThread) > 0) then
+               if (myRankGlobal == iThread) then
+                  n = nPointsInRadius(i)
+!                  write(*,*) myrankGlobal, " sending ", n, " points to ", centreThread(i)
+                  call MPI_SEND(position(i, 1:n)%x, n, MPI_DOUBLE_PRECISION, centreThread(i), tag, localWorldCommunicator, ierr)
+                  call MPI_SEND(position(i, 1:n)%y, n, MPI_DOUBLE_PRECISION, centreThread(i), tag, localWorldCommunicator, ierr)
+                  call MPI_SEND(position(i, 1:n)%z, n, MPI_DOUBLE_PRECISION, centreThread(i), tag, localWorldCommunicator, ierr)
+                  
+                  call MPI_SEND(vel(i, 1:n)%x, n, MPI_DOUBLE_PRECISION, centreThread(i), tag, localWorldCommunicator, ierr)
+                  call MPI_SEND(vel(i, 1:n)%y, n, MPI_DOUBLE_PRECISION, centreThread(i), tag, localWorldCommunicator, ierr)
+                  call MPI_SEND(vel(i, 1:n)%z, n, MPI_DOUBLE_PRECISION, centreThread(i), tag, localWorldCommunicator, ierr)
+                  
+                  call MPI_SEND(mass(i, 1:n), n, MPI_DOUBLE_PRECISION, centreThread(i), tag, localWorldCommunicator, ierr)
+                
+                  call MPI_SEND(phi(i, 1:n), n, MPI_DOUBLE_PRECISION, centreThread(i), tag, localWorldCommunicator, ierr)
+                  
+                  call MPI_SEND(cs(i, 1:n), n, MPI_DOUBLE_PRECISION, centreThread(i), tag, localWorldCommunicator, ierr)
+               elseif (myRankGlobal == centreThread(i)) then
+                  ! recv the positions, do the sink tests
+                  n = nPointsInRadius(i)
+                  nOther = nPointsOnThread(iThread)
+!                  write(*,*) myrankglobal, " recving ", nOther, " points from ", iThread
+                  call MPI_RECV(position(i, n+1:n+nOther)%x, nOther, MPI_DOUBLE_PRECISION, &
+                       iThread, tag, localWorldCommunicator, status, ierr)
+                  call MPI_RECV(position(i, n+1:n+nOther)%y, nOther, MPI_DOUBLE_PRECISION, &
+                       iThread, tag, localWorldCommunicator, status, ierr)
+                  call MPI_RECV(position(i, n+1:n+nOther)%z, nOther, MPI_DOUBLE_PRECISION, &
+                       iThread, tag, localWorldCommunicator, status, ierr)
+                  
+                  call MPI_RECV(vel(i, n+1:n+nOther)%x, nOther, MPI_DOUBLE_PRECISION, &
+                       iThread, tag, localWorldCommunicator, status, ierr)
+                  call MPI_RECV(vel(i, n+1:n+nOther)%y, nOther, MPI_DOUBLE_PRECISION, &
+                       iThread, tag, localWorldCommunicator, status, ierr)
+                  call MPI_RECV(vel(i, n+1:n+nOther)%z, nOther, MPI_DOUBLE_PRECISION, &
+                       iThread, tag, localWorldCommunicator, status, ierr)
+                  
+                  call MPI_RECV(mass(i, n+1:n+nOther), nOther, MPI_DOUBLE_PRECISION, &
+                       iThread, tag, localWorldCommunicator, status, ierr)
+                  
+                  call MPI_RECV(phi(i, n+1:n+nOther), nOther, MPI_DOUBLE_PRECISION, &
+                       iThread, tag, localWorldCommunicator, status, ierr)
+                  
+                  call MPI_RECV(cs(i, n+1:n+nOther), nOther, MPI_DOUBLE_PRECISION, &
+                       iThread, tag, localWorldCommunicator, status, ierr)
+
+                  nPointsInRadius(i) = nPointsInRadius(i) + nOther
+               endif
+            endif
+            call MPI_BARRIER(amrCommunicator, ierr)
+         enddo
+         if (myrankGlobal == centreThread(i)) then
+            if (nPointsInRadius(i) /= 81) then
+               write(*,*) myrankGlobal, " final nPoints for point ", i, " is ", nPointsInRadius(i)
+               stop
+            endif
+         endif
+      enddo
+
+      ! do the sink tests for each central point
+      oldnSource = nSource ! at this point, source and nsource are the same across all threads
+      nAdded(:) = 0
+      do i = 1, nPoints
+         if (myRankGlobal == centreThread(i)) then
+            n = nPointsInRadius(i)
+            call addSinksPoint(grid, source, nSource, position(i,1:n), vel(i,1:n), mass(i,1:n), phi(i,1:n), cs(i,1:n), n, &
+               nAdded(myRankGlobal))
+            ! source and nSource now different on threads (if new sinks were added)
+         endif
+      enddo
+      call MPI_ALLREDUCE(nAdded, temp, nHydroThreadsGlobal, MPI_INTEGER, MPI_SUM, amrCommunicator, ierr)
+      nAdded(1:nHydroThreadsGlobal) = temp(1:nHydroThreadsGlobal)
+
+      if (writeoutput) write(*,*) "Adding ", sum(nAdded(1:nHydroThreadsGlobal)), " new sinks"
+
+      if (any(nAdded(1:nHydroThreadsGlobal) > 0)) then
+         ! distribute new sinks to all threads
+         ! put new sinks in newSources, then append newSources to the original source array
+         allocate(newSources(1:sum(nAdded(1:nHydroThreadsGlobal))))
+         n = 0
+         do iThread = 1, nHydroThreadsGlobal
+            if (nAdded(iThread) > 0) then
+               if (iThread == myrankGlobal) then
+                  newSources(n+1:n+nAdded(iThread))%position = source(oldnSource+1:nSource)%position
+                  newSources(n+1:n+nAdded(iThread))%mass = source(oldnSource+1:nSource)%mass
+                  newSources(n+1:n+nAdded(iThread))%velocity = source(oldnSource+1:nSource)%velocity
+               endif
+               call MPI_BCAST(newSources(n+1:n+nAdded(iThread))%position%x, nAdded(iThread), &
+                  MPI_DOUBLE_PRECISION, amrRank(iThread), amrCommunicator, ierr)
+               call MPI_BCAST(newSources(n+1:n+nAdded(iThread))%position%y, nAdded(iThread), &
+                  MPI_DOUBLE_PRECISION, amrRank(iThread), amrCommunicator, ierr)
+               call MPI_BCAST(newSources(n+1:n+nAdded(iThread))%position%z, nAdded(iThread), &
+                  MPI_DOUBLE_PRECISION, amrRank(iThread), amrCommunicator, ierr)
+               call MPI_BCAST(newSources(n+1:n+nAdded(iThread))%mass, nAdded(iThread), &
+                  MPI_DOUBLE_PRECISION, amrRank(iThread), amrCommunicator, ierr)
+               call MPI_BCAST(newSources(n+1:n+nAdded(iThread))%velocity%x, nAdded(iThread), &
+                  MPI_DOUBLE_PRECISION, amrRank(iThread), amrCommunicator, ierr)
+               call MPI_BCAST(newSources(n+1:n+nAdded(iThread))%velocity%y, nAdded(iThread), &
+                  MPI_DOUBLE_PRECISION, amrRank(iThread), amrCommunicator, ierr)
+               call MPI_BCAST(newSources(n+1:n+nAdded(iThread))%velocity%z, nAdded(iThread), &
+                  MPI_DOUBLE_PRECISION, amrRank(iThread), amrCommunicator, ierr)
+               n = n + nAdded(iThread)
+            endif
+         enddo
+
+         ! update total nsource and append new sources
+         nSource = oldnSource + sum(nAdded(1:nHydroThreadsGlobal))
+         source(oldnSource+1:nSource)%position =  newSources(1:sum(nAdded(1:nHydroThreadsGlobal)))%position
+         source(oldnSource+1:nSource)%mass =  newSources(1:sum(nAdded(1:nHydroThreadsGlobal)))%mass
+         source(oldnSource+1:nSource)%velocity =  newSources(1:sum(nAdded(1:nHydroThreadsGlobal)))%velocity
+         source(oldnSource+1:nSource)%radius = rsol/1.d10
+         source(oldnSource+1:nSource)%accretionRadius = accretionRadius * smallestCellSize * 1.d10
+         source(oldnSource+1:nSource)%age = 0.d0
+         source(oldnSource+1:nSource)%angMomentum = VECTOR(0.d0, 0.d0, 0.d0)
+         source(oldnSource+1:nSource)%nSubsource = 0
+         source(oldnSource+1:nSource)%stellar = .true.
+         source(oldnSource+1:nSource)%diffuse = .false.
+         source(oldnSource+1:nSource)%initialMass = source(oldnSource+1:nSource)%mass/msol 
+         do i = oldnSource+1, nSource
+!            call emptySurface(source(i)%surface)
+!            call buildSphereNbody(source(i)%position, source(i)%accretionRadius/1.d10, source(i)%surface, 20)
+            write(*,'(i3,a,i4.4,a,f12.7,3(es10.2))') myrankglobal, " new mass(", i, ") is ", source(i)%mass/msol, source(i)%position
+            ! fixme
+            if (writeoutput) then
+               do j = oldnSource+1, nSource 
+                  if (i /= j) then
+                     if (modulus(source(j)%position - source(i)%position)*1.d10 < source(i)%accretionRadius) then
+                        write(*,*) "WARNING: addsinks says new sinks overlap ", i, j
+                        write(*,*) modulus(source(j)%position - source(i)%position)*1.d10, source(i)%accretionRadius
+                        write(*,*) modulus(source(j)%position - source(i)%position)*1.d10/source(i)%accretionRadius
+                     endif
+                  endif
+               enddo
+            endif
+         enddo
+         ! source(:) is now the same across all threads
+         deallocate(newSources)
+
+      endif
+
+  end subroutine addSinks
+
+  subroutine collateVector(vec, vecOnThread, nPointsOnThread, nPoints, amrRank)
+      use mpi
+      type(VECTOR) :: vec(:), vecOnThread(:)
+      integer :: status(MPI_STATUS_SIZE)
+      integer, parameter :: tag = 65
+      real(double), allocatable :: tempx(:), tempy(:), tempz(:)
+      integer :: iThread, i, nPointsOnThread(:), nPoints, ierr, amrRank(:)
+
+      if (myrankGlobal == 1) then
+         nPoints = nPointsOnThread(1)
+         vec(1:nPoints) = vecOnThread(1:nPoints)
+      endif
+      do iThread = 2, nHydroThreadsGlobal
+         if (myrankGlobal == iThread) then
+            allocate(tempx(1:nPointsOnThread(iThread)))
+            allocate(tempy(1:nPointsOnThread(iThread)))
+            allocate(tempz(1:nPointsOnThread(iThread)))
+            tempx = vecOnThread(1:nPointsOnThread(iThread))%x
+            tempy = vecOnThread(1:nPointsOnThread(iThread))%y
+            tempz = vecOnThread(1:nPointsOnThread(iThread))%z
+            call MPI_SEND(tempx, nPointsOnThread(iThread), MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, ierr)
+            call MPI_SEND(tempy, nPointsOnThread(iThread), MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, ierr)
+            call MPI_SEND(tempz, nPointsOnThread(iThread), MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, ierr)
+            deallocate(tempx, tempy, tempz)
+         elseif (myRankGlobal == 1) then
+            allocate(tempx(1:nPointsOnThread(iThread)))
+            allocate(tempy(1:nPointsOnThread(iThread)))
+            allocate(tempz(1:nPointsOnThread(iThread)))
+            call MPI_RECV(tempx, nPointsOnThread(iThread), MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+            call MPI_RECV(tempy, nPointsOnThread(iThread), MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+            call MPI_RECV(tempz, nPointsOnThread(iThread), MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+            do i = 1, nPointsOnThread(iThread)
+               nPoints = nPoints + 1
+               vec(nPoints) = VECTOR(tempx(i), tempy(i), tempz(i))
+            enddo
+            deallocate(tempx, tempy, tempz)
+         endif
+         call MPI_BARRIER(amrCommunicator, ierr)
+      enddo
+      allocate(tempx(1:nPoints))
+      allocate(tempy(1:nPoints))
+      allocate(tempz(1:nPoints))
+      if (myrankglobal == 1) then
+         tempx(:) = vec(:)%x
+         tempy(:) = vec(:)%y
+         tempz(:) = vec(:)%z
+      endif
+      call MPI_BCAST(tempx, nPoints, MPI_DOUBLE_PRECISION, amrRank(1), amrCommunicator, ierr)
+      call MPI_BCAST(tempy, nPoints, MPI_DOUBLE_PRECISION, amrRank(1), amrCommunicator, ierr)
+      call MPI_BCAST(tempz, nPoints, MPI_DOUBLE_PRECISION, amrRank(1), amrCommunicator, ierr)
+      if (myrankGlobal /= 1) then
+         do i = 1, nPoints
+            vec(i) = VECTOR(tempx(i), tempy(i), tempz(i))
+         enddo
+      endif
+      deallocate(tempx, tempy, tempz)
+  end subroutine collateVector
+  subroutine collateDoubleArray(array, arrayOnThread, nPointsOnThread, nPoints, centreThread, amrRank)
+      use mpi
+      integer :: status(MPI_STATUS_SIZE)
+      real(double) :: array(:), arrayOnThread(:)
+      integer :: iThread, i, nPointsOnThread(:), nPoints, centreThread(:), nOld, ierr, amrRank(:)
+      integer, parameter :: tag = 65
+
+      ! fill array in order from rank 1 to nHydroThreadsGlobal
+      nOld = nPointsOnThread(1)
+      if (myrankGlobal == 1) then
+         array(1:nOld) = arrayOnThread(1:nOld)
+      endif
+      centreThread(1:nOld) = 1
+      do iThread = 2, nHydroThreadsGlobal
+         if (myrankGlobal == iThread) then
+            call MPI_SEND(arrayOnThread(1:nPointsOnThread(iThread)), nPointsOnThread(iThread), & 
+               MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, ierr)
+         elseif (myRankGlobal == 1) then
+            call MPI_RECV(array(nOld+1:nOld+nPointsOnThread(iThread)), nPointsOnThread(iThread), & 
+               MPI_DOUBLE_PRECISION, iThread, tag, localWorldCommunicator, status, ierr)
+         endif
+         centreThread(nOld+1:nOld+nPointsOnThread(iThread)) = iThread
+         nOld = nOld + nPointsOnThread(iThread)
+         call MPI_BARRIER(amrCommunicator, ierr)
+      enddo
+      nPoints = sum(nPointsOnThread(1:nHydroThreadsGlobal))
+      call MPI_BCAST(array, nPoints, MPI_DOUBLE_PRECISION, amrRank(1), amrCommunicator, ierr)
+  end subroutine collateDoubleArray
+
+
+  recursive subroutine findDenseCells(thisOctal, grid, nPoints, positions, vel, mass, phi, cs )
+    use inputs_mod, only : rhoThreshold
+    type(OCTAL), pointer :: thisOctal, child
+    type(GRIDTYPE) :: grid
+    integer :: i, subcell
+    integer :: nPoints
+    real(double), optional ::  mass(:), phi(:), cs(:)
+    type(VECTOR), optional :: positions(:), vel(:)
+    type(VECTOR) :: rVec
+    real(double) :: r
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call findDenseCells(child, grid, nPoints, positions, vel, mass, phi, cs)
+                exit
+             end if
+          end do
+       else
+
+          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+          if (thisOctal%ghostCell(subcell)) cycle
+
+          if (thisOctal%rho(subcell) >= rhoThreshold) then
+             nPoints = nPoints + 1
+             if (present(positions)) then
+                rVec = subcellCentre(thisOctal, subcell) 
+
+                positions(nPoints) = rVec
+                if (.not.cylindricalHydro) then
+                   vel(nPoints) = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
+                        thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
+                        thisOctal%rhow(subcell)/thisOctal%rho(subcell))
+                else
+                   r = sqrt(rVec%x**2 + rVec%y**2) * gridDistanceScale
+                   vel(nPoints) = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
+                        thisOctal%rhov(subcell)/(thisOctal%rho(subcell)*r), &
+                        thisOctal%rhow(subcell)/thisOctal%rho(subcell))
+                endif
+                mass(nPoints) = cellVolume(thisOctal, subcell)*1.d30*thisOctal%rho(subcell)
+                phi(nPoints) = thisOctal%phi_i(subcell)
+                cs(nPoints) = soundSpeed(thisOctal, subcell)
+             endif
+          endif
+
+       endif
+    enddo
+  end subroutine findDenseCells
+
+  subroutine addSinksPoint(grid, source, nSource, position, vel, mass, phi, cs, nPoints, nAdded)
+    use mpi
+    use inputs_mod, only : rhoThreshold, smallestCellSize, accretionRadius
+    type(OCTAL), pointer :: thisOctal, child
+    type(GRIDTYPE) :: grid
+    type(SOURCETYPE) :: source(:)
+    type(VECTOR) :: centre
+    real(double) :: bigJ, e
+    real(double), allocatable :: eGrav(:), eKinetic(:), eThermal(:)
+    real(double) :: temp(15), racc
+    integer :: nSource, nAdded
+    integer :: i, subcell, ierr, ithread, tag
+    logical :: createSink
+    type(VECTOR) :: thisVel
+    integer :: npoints
+    type(VECTOR) :: position(:), vel(:),rVec, vcom
+    real(double) :: mass(:), phi(:), cs(:)
+    real(double) :: cellMass, r, divV, meanCs, meanRho
+    integer :: iPoint
+
+          tag = 65
+
+          call findSubcellTD(position(1), grid%octreeRoot, thisOctal,subcell)
+
+
+          if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) goto 666
+
+
+          if (thisOctal%ghostCell(subcell)) goto 666
+
+          centre = subcellCEntre(thisOctal, subcell)
+          vel = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
+               thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
+               thisOctal%rhow(subcell)/thisOctal%rho(subcell))
+          bigJ = 0.25d0
+          cs = soundSpeed(thisOctal, subcell)
+          
+          createSink = .true.
+
+          if (thisOctal%rho(subcell) < rhoThreshold) then
+             createSink = .false.
+             write(*,*) myrankglobal, " rho < rhoThreshold" ! this should always be rho >= rhothresh
+             stop
+          endif
+
+          ! receive pos/mass/vel of all cells inside accretion radius (including cells on other threads)
+!          call getPointsInAccretionRadius(thisOctal, subcell, accretionRadius*smallestCellSize, grid, npoints, position, & 
+!            vel, mass, phi, cs, bounds)
+
+!          if (createSink) write(*,*) "Source creating passed jeans test ",thisOctal%rho(subcell)/rhoThreshold
+!          rhomax = max(rhomax, thisOctal%rho(subcell)/rhoThreshold)
+
+          cellMass = thisOctal%rho(subcell) * cellVolume(thisOctal, subcell) * 1.d30
+          allocate(eKinetic(1:nPoints), eGrav(1:nPoints), eThermal(1:nPoints))
+
+          vcom = VECTOR(0.d0,0.d0,0.d0)
+          do iPoint = 1, nPoints
+             vcom = vcom + (mass(iPoint)*vel(iPoint))
+          enddo
+          vcom = vcom / SUM(mass(1:nPoints))
+
+          do iPoint = 1, nPoints
+             eKinetic(iPoint) = 0.5d0 * mass(iPoint)* modulus(vel(ipoint)-vcom)**2
+          enddo
+          eGrav(1:nPoints) = mass(1:npoints) * phi(1:nPoints)
+          eThermal(1:nPoints) = 0.5d0 * mass(1:nPoints) * cs(1:nPoints)**2
+
+          if (SUM(eKinetic) + SUM(eGrav) + SUM(eThermal) > 0.d0) then
+             createSink = .false.
+             write(*,*) "bound test failed ",SUM(eKinetic)+SUM(eGrav)+SUM(eThermal),SUM(eKinetic), SUM(eGrav), SUM(eThermal)
+             if (SUM(eKinetic)+SUM(eGrav)+SUM(eThermal) > 1.d60) then
+                do iPoint = 1, nPoints
+                   write(*,*) iPoint, " pos ",position(iPoint), " vel ",vel(iPoint), " mass ",mass(ipoint), &
+                        " phi ",phi(iPoint), " cs ",cs(iPoint)
+                enddo
+             endif
+          endif
+
+!          endif
+          if (abs(SUM(eGrav))< (2.d0*SUM(eThermal))) then
+             createSink = .false.
+!             write(*,*) "virial test failed ",abs(SUM(eGrav)),2.d0*SUM(ethermal)
+          endif
+
+          deallocate(eGrav, eKinetic, eThermal) 
+          if (.not.createSink) goto 666
+
+!          if (createSink) write(*,*) "Source creating passed virial test ",abs(eGrav),2.d0*eThermal
+          do i = 1, nSource
+             racc = source(i)%accretionRadius
+             if (modulus(centre - source(i)%position)*1.d10 < racc) then
+                createsink = .false.
+                exit
+             endif
+          enddo
+          if (.not.createSink) goto 666
+!          if (createSink) write(*,*) "Source creating passed accretion radius test "
+
+          if (createSink) then
+             if (MINVAL(phi(2:nPoints)) < phi(1)) then
+                createSink = .false.
+!                write(*,*) "not phi minumum ",phi(1),minval(phi(1:nPoints))
+                goto 666
+             endif
+          endif
+
+
+
+          if (createSink) then
+             divV = 0.d0
+             do iPoint = 2, nPoints
+                rVec = position(iPoint) - position(1)
+                r = modulus(rVec)
+                call normalize(rVec)
+                if (r < smallestCellSize*1.01d0) then
+                   divV = divV + (rVec.dot.(vel(iPoint)-vel(1)))
+                   if ((rVec.dot.(vel(iPoint)-vel(1))) > 0.d0) then
+                      createSink = .false.
+                      write(*,*) "not converging ",rVec.dot.((vel(ipoint)-vel(1))),rVec
+                   endif
+                endif
+             enddo
+             if (.not.createSink) then
+                write(*,*) "Create source failed on converging flow test"
+             endif
+             if (divV < 0.d0) then
+                write(*,*) "Source passed divV < 0 test so creating away!"
+                createSink = .true.
+             endif
+          endif
+
+          if (createSink) then
+             nSource = nSource + 1
+             nAdded = nAdded + 1
+             source(nSource)%position = subcellCentre(thisOctal, subcell)
+             source(nsource)%velocity%x = thisOctal%rhou(subcell)/thisOctal%rho(subcell)
+             source(nsource)%velocity%y = thisOctal%rhov(subcell)/thisOctal%rho(subcell)
+             source(nsource)%velocity%z = thisOctal%rhow(subcell)/thisOctal%rho(subcell)             
+             source(nsource)%mass = (thisOctal%rho(subcell) - rhoThreshold)*thisOctal%subcellSize**3*1.d30
+             meanRho = sum(mass(1:nPoints))/(thisOctal%subcellSize**3*1.d30)/nPoints
+             meanCs = sum(cs(1:nPoints))/nPoints/1e5
+             write(*,*) "rank ", myrankGlobal, " created source number ",nsource, " M ", source(nsource)%mass/msol, " mean rho ", &
+             meanRho, " mean cs ", meancs
+!             source(nsource)%radius = rsol/1.d10
+!             source(nSource)%accretionRadius = accretionRadius * smallestCellSize * 1.d10
+!             source(nSource)%age = 0.d0
+!             source(nSource)%angMomentum = VECTOR(0.d0, 0.d0, 0.d0)
+!             source(nSource)%nSubsource = 0
+!             source(nSource)%stellar = .true.
+!             source(nSource)%diffuse = .false.
+!             call buildSphereNbody(source(nsource)%position, grid%halfSmallestSubcell, source(nsource)%surface, 20)
+
+             thisvel = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
+                  thisOctal%rhow(subcell)/thisOctal%rho(subcell))
+             e = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
+             thisOctal%rho(subcell) =  rhoThreshold
+             thisOctal%rhou(subcell) = rhoThreshold * thisvel%x
+             thisOctal%rhov(subcell) = rhoThreshold * thisvel%y
+             thisOctal%rhow(subcell) = rhoThreshold * thisvel%z
+             thisOctal%rhoe(subcell) = rhoThreshold * e
+
+             
+          endif
+
+
+666 continue
+  end subroutine addSinksPoint
           
 
   recursive subroutine recursaddSinks(thisOctal, grid, source, nSource, rhomax)
@@ -20457,6 +21058,8 @@ end subroutine minMaxDepth
              source(nSource)%age = 0.d0
              source(nSource)%angMomentum = VECTOR(0.d0, 0.d0, 0.d0)
              source(nSource)%nSubsource = 0
+             source(nSource)%stellar = .true.
+             source(nSource)%diffuse = .false.
              call buildSphereNbody(source(nsource)%position, grid%halfSmallestSubcell, source(nsource)%surface, 20)
 
              thisvel = VECTOR(thisOctal%rhou(subcell)/thisOctal%rho(subcell), thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
@@ -20483,6 +21086,7 @@ end subroutine minMaxDepth
              temp(13) = source(nsource)%angMomentum%z
              temp(14) = source(nsource)%age
              temp(15) = dble(source(nsource)%nsubsource)
+
              
              do iThread = 1, nHydroThreadsGlobal
                 if (iThread /= myRankGlobal) then
@@ -20556,9 +21160,13 @@ end subroutine minMaxDepth
      if (clusterSinks) then
         if (myrankGlobal /= 0) then
            do i = 1, nSource
-              call freeSourceArray(source(i)%subsourceArray)
+!              call freeSourceArray(source(i)%subsourceArray)
               if (source(i)%nSubsource > 0) then
-                 allocate(source(i)%subsourceArray(1:1000))
+                 if (.not.associated(source(i)%subsourceArray)) then
+                    allocate(source(i)%subsourceArray(1:globalMaxnSubsource))
+                    write(*,'(i4, a, i4, i4)') myrankglobal, " broadcastSinks allocated subsourceArray for sink ", i, & 
+                       source(i)%nSubsource
+                 endif
               endif
            enddo
         endif
@@ -20583,6 +21191,7 @@ end subroutine broadcastSinks
      call mpi_recv(nSource, 1, MPI_INTEGER, 1, tag, localWorldCommunicator, status, ierr)
  
 !       do iSource = 1, nSource
+       if (nSource > 0) then
           call mpi_recv(source(1:nSource)%position%x, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%position%y, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%position%z, nSource, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, status, ierr)
@@ -20610,6 +21219,7 @@ end subroutine broadcastSinks
           call mpi_recv(source(1:nSource)%diffuse, nSource, MPI_LOGICAL, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%pointSource, nSource, MPI_LOGICAL, 1, tag, localWorldCommunicator, status, ierr)
           call mpi_recv(source(1:nSource)%nSubsource, nSource, MPI_INTEGER, 1, tag, localWorldCommunicator, status, ierr)
+       endif
 !       enddo
   
     endif
@@ -20619,6 +21229,7 @@ end subroutine broadcastSinks
        call mpi_send(nSource, 1, MPI_INTEGER, 0, tag, localWorldCommunicator, ierr)
   
 !       do iSource = 1, nSource
+       if (nSource > 0) then
           call mpi_send(source(1:nSource)%position%x, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%position%y, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%position%z, nSource, MPI_DOUBLE_PRECISION, 0, tag, localWorldCommunicator, ierr)
@@ -20642,6 +21253,7 @@ end subroutine broadcastSinks
           call mpi_send(source(1:nSource)%diffuse, nSource, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%pointSource, nSource, MPI_LOGICAL, 0, tag, localWorldCommunicator, ierr)
           call mpi_send(source(1:nSource)%nSubsource, nSource, MPI_INTEGER, 0, tag, localWorldCommunicator, ierr)
+       endif
 !       enddo
     endif
 
@@ -20649,9 +21261,12 @@ end subroutine broadcastSinks
     if (clusterSinks) then
        if (myrankGlobal == 0) then
           do i = 1, nSource
-             call freeSourceArray(source(i)%subsourceArray)
+!             call freeSourceArray(source(i)%subsourceArray)
              if (source(i)%nSubsource > 0) then
-                allocate(source(i)%subsourceArray(1:1000))
+                if (.not.associated(source(i)%subsourceArray)) then 
+                   allocate(source(i)%subsourceArray(1:globalMaxnSubsource))
+                   write(*,'(i4, a, i4, i4)') myrankglobal, " sendSinks allocated subsourceArray for sink ", i, source(i)%nSubsource
+                endif
              endif
           enddo
        endif
@@ -20664,6 +21279,7 @@ end subroutine broadcastSinks
        endif
     endif
   end subroutine sendSinksToZerothThread
+
 
 !  subroutine returnControlVolumeCells(grid, sendToThisThread, pos, radius)
 !    use mpi
@@ -21930,34 +22546,15 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     real(double) :: mass(:), phi(:), cs(:), r
     type(OCTAL), pointer :: thisOctal, neighbourOctal
     real(double) :: temp(13)
-    integer :: iThread, i, nDir
+    integer :: iThread, i
     integer :: subcell, neighbourSubcell
     integer :: ierr
     integer, parameter :: tag = 65
     integer :: nOther
     integer :: status(MPI_STATUS_SIZE)
-    type(VECTOR) :: locator, dir(6), cen
+    type(VECTOR) :: locator, cen
     logical :: poll
     real :: startTime, endTime
-    if (thisOctal%oneD) then
-       nDir = 2
-       dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
-       dir(2) = VECTOR(-1.d0, 0.d0, 0.d0)
-    else if (thisOctal%twoD) then
-       nDir = 4
-       dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
-       dir(2) = VECTOR(-1.d0, 0.d0, 0.d0)
-       dir(3) = VECTOR(0.d0, 0.d0, 1.d0)
-       dir(4) = VECTOR(0.d0, 0.d0,-1.d0)
-    else if (thisOctal%threed) then
-       nDir = 6
-       dir(1) = VECTOR(1.d0, 0.d0, 0.d0)
-       dir(2) = VECTOR(-1.d0, 0.d0, 0.d0)
-       dir(3) = VECTOR(0.d0, 0.d0, 1.d0)
-       dir(4) = VECTOR(0.d0, 0.d0,-1.d0)
-       dir(5) = VECTOR(0.d0, 1.d0, 0.d0)
-       dir(6) = VECTOR(0.d0,-1.d0, 0.d0)
-    endif
 
     ! record current subcell (centre of sink) 
     npoints = 1
@@ -21979,29 +22576,30 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     ! record other cells inside accretion radius (on this thread) 
     call getPointsInAccretionRadiusLocal(grid%octreeRoot, position(1), radius, grid, npoints, position, vel, mass, phi, cs)
 
-    ! check if any cells in radius are off-thread
-    if (nPoints < 81) then 
-       poll = .true.
-    elseif (nPoints == 81) then
-       poll = .false.
-    else
-       write(*,*) "??? npoints ", npoints
-       stop
-    endif
-!    do i = 1, nDir
-!       locator = position(1) + (radius + 0.01d0*smallestCellSize)*dir(i)
-!       if (inOctal(grid%octreeRoot, locator)) then
-!          neighbourOctal => thisOctal
-!          call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
-!          if (.not.octalOnThread(neighbourOctal, neighbourSubcell, myrankGlobal)) then
-!             cen = subcellCentre(neighbourOctal, neighbourSubcell)
-!             if (modulus(cen - position(1)) < radius) then
-!                poll = .true.
-!                exit
-!             endif
-!          endif
-!       endif
-!    enddo
+
+
+!    if (nPoints < 81) then 
+!       poll = .true.
+!    elseif (nPoints == 81) then
+!       poll = .false.
+!    else
+!       write(*,*) "??? npoints ", npoints
+!       stop
+!    endif
+!!    do i = 1, nDir
+!!       locator = position(1) + (radius + 0.01d0*smallestCellSize)*dir(i)
+!!       if (inOctal(grid%octreeRoot, locator)) then
+!!          neighbourOctal => thisOctal
+!!          call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+!!          if (.not.octalOnThread(neighbourOctal, neighbourSubcell, myrankGlobal)) then
+!!             cen = subcellCentre(neighbourOctal, neighbourSubcell)
+!!             if (modulus(cen - position(1)) < radius) then
+!!                poll = .true.
+!!                exit
+!!             endif
+!!          endif
+!!       endif
+!!    enddo
 
     if (poll) then
        temp(1) = 2.d0

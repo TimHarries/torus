@@ -566,6 +566,11 @@ contains
     call getInteger("nhydroperphoto", nHydroPerPhoto, cLine, fLine, nLines, &
          "Number of hydro steps per photoionisation loop: ","(a,i4,a)", 1, ok, .false.)
 
+    if (clusterSinks) then
+       call getInteger("nhydroperspectra", nHydroPerSpectra, cLine, fLine, nLines, &
+            "Number of hydro steps per spectrum calculation: ","(a,i4,a)", 1, ok, .false.)
+    endif
+
     call getLogical("doselfgrav", doselfgrav, cLine, fLine, nLines, &
          "Use self gravity: ","(a,1l,1x,a)", .false., ok, .false.)
 
