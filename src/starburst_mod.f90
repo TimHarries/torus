@@ -147,7 +147,7 @@ contains
         iList = 1
         call randomNumberGenerator(randomSeed=.true.)
         if (writeoutput) write(*,*) "GETSTARLIST initialised ", total/msol, " msol"
-        if (writeoutput) call writeStarList(starList, iList, nList, "imfdump.dat")
+!        if (writeoutput) call writeStarList(starList, iList, nList, "imfdump.dat")
      endif
 
 666  continue
@@ -316,7 +316,7 @@ contains
 !    type(SPECTRUMTYPE) :: newspec, refspec, oldspec
 !    logical, save :: firsttime=.true., firsttotalspec=.true.
     real(double), allocatable :: newFlux(:), newLambda(:)
-    logical :: setForCluster(:)
+    logical :: setForCluster(:), hasMassiveStar(1:nClusters)
     character(len=80) :: fn, mpiFilename
     logical :: debug
 
@@ -326,9 +326,17 @@ contains
        debug = .false.
     endif
 
+    hasMassiveStar(:) = .false.
+
+
+    ! if cluster has just been populated, and if it contains a massive star, then calculate the cluster spectrum
+    ! by calculating and adding up its subsources' spectra
     do i = 1, nClusters
        if (clusters(i)%nSubsource > 0) then
-          if (setForCluster(i)) then
+          if (any(clusters(i)%subsourceArray(1:clusters(i)%nSubsource)%mass > 8.d0*msol)) then
+             hasMassiveStar(i) = .true.
+          endif
+          if (setForCluster(i) .and. hasMassiveStar(i)) then
              if (writeoutput) write(*,*) "setting spectra for cluster ", i
              ! recalculate subsource spectra
              call setSourceSpectra(clusters(i)%subsourceArray, clusters(i)%nSubsource)
@@ -465,7 +473,17 @@ contains
 
           endif
 
-       else ! no subsources
+          ! has subsources but none are massive
+          if (.not. hasMassiveStar(i)) then
+             ! zero flux
+             if (writeoutput) write(*,*) "zeroing luminosity of cluster ", i
+             call freeSpectrum(clusters(i)%spectrum)
+             call newSpectrum(clusters(i)%spectrum, 100.d0, 1.d7, 1000)
+             clusters(i)%luminosity = 0.d0
+          endif
+
+       ! no subsources
+       else 
           ! zero flux
           call freeSpectrum(clusters(i)%spectrum)
           call newSpectrum(clusters(i)%spectrum, 100.d0, 1.d7, 1000)
@@ -1230,16 +1248,32 @@ contains
      end subroutine readSchallerModel
 
      subroutine readMistModel(thisTable, nMass, thisfile)
+       use inputs_mod, only : stellarMetallicity
        type(TRACKTABLE) :: thisTable
        integer :: nMass
        character(len=*) :: thisfile
        character(len=200) :: tFile, datadirectory
        integer :: nt, i
        character(len=254) :: cLine, junk
+       logical, save :: firstTime=.true.
 
        call unixGetenv("TORUS_DATA", dataDirectory, i)
        ! nb: rotation is available with vvcrit0.4
-       write(tfile, '(a,a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_p0.00_afe_p0.0_vvcrit0.0_EEPS/", trim(thisFile)
+       if (stellarMetallicity == 1.) then
+          write(tfile, '(a,a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_p0.00_afe_p0.0_vvcrit0.0_EEPS/", trim(thisFile)
+       elseif (stellarMetallicity == 0.1) then
+          write(tfile, '(a,a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_m1.00_afe_p0.0_vvcrit0.0_EEPS/", trim(thisFile)
+       elseif (stellarMetallicity == 0.01) then
+          write(tfile, '(a,a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_m2.00_afe_p0.0_vvcrit0.0_EEPS/", trim(thisFile)
+       else
+         if (writeoutput) write(*,*) "mist files not found for metallicity ", stellarMetallicity
+         stop
+       endif
+
+       if (firstTime) then
+          if (writeoutput) write(*,*) tfile
+          firstTime = .false.
+       endif
 
        open(31, file=tfile, status="old", form="formatted")
        read(31,'(a)',end=55) cline

@@ -193,7 +193,8 @@
          
          if (source(i)%nSubsource > 0) then
             do j = 1, source(i)%nSubsource
-               fromSpec = sumSourceLuminosity(source(i)%subsourceArray(j:j), 1, 1.0, 1.e30)
+!               fromSpec = sumSourceLuminosity(source(i)%subsourceArray(j:j), 1, 1.0, 1.e30)
+               fromSpec = 0.d0
                if (writeoutput) &
                     write(*, &
                '(a4,i3.3,1x,i4.4, f8.3, f8.3, 1p, e12.3, e12.3, e12.3, e12.3,e12.3,e12.3,e12.3,e12.3,e12.3)') &

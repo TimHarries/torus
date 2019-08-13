@@ -1352,8 +1352,7 @@ contains
 
 
        ! FIXME
-       if (myrankglobal == 0 .or. myrankGlobal == 70 .and. clusterSinks) then!.or. myrankglobal == 1 .or. myrankglobal == 2 .or. myrankglobal == 65) then
-       if (myrankglobal == 0) then
+       if (myrankglobal == 0 .and. clusterSinks) then!.or. myrankglobal == 1 .or. myrankglobal == 2 .or. myrankglobal == 65) then
           write(*,*) "Cluster properties"
           write(*,'(a2,1x,a3,5x,a9,1x,a4,1x,a12,1x,a9,1x,a9)') "r", "i", "Mcl", "n*", "Mres", "age", "lum"
           do i = 1, globalnSource
@@ -1361,13 +1360,6 @@ contains
              globalSourceArray(i)%nSubsource, clusterReservoir(globalSourceArray(i))/msol, globalsourceArray(i)%age, &
              globalsourceArray(i)%luminosity/lsol
           enddo
-       endif
-          if (myrankglobal == 70) then
-             i = globalnsource
-             write(*,'(i2.2,1x,i3.3,5x,f9.2,1x,i4,1x,f12.5,1x,es9.2,1x,es9.2)') myrankglobal, i, globalSourceArray(i)%mass/msol, &
-             globalSourceArray(i)%nSubsource, clusterReservoir(globalSourceArray(i))/msol, globalsourceArray(i)%age, &
-             globalsourceArray(i)%luminosity/lsol
-          endif
 !             if (globalSourceArray(i)%nSubsource > 0) then
 !                j = maxloc(globalsourceArray(i)%subsourceArray(1:globalsourceArray(i)%nsubsource)%mass,dim=1)
 !                write(*,'(i2.2, 1x,i3.3, a5, f9.2,1x,i4,a14,es9.2,1x,es9.2)') myrankglobal, i, "_max ", &
@@ -1476,6 +1468,15 @@ contains
              totalMass = totalMass + globalsourceArray(i)%mass
           enddo
           write(*,*) "Total mass in sinks (msol) is ", totalmass/mSol
+       endif
+       if (writeoutput .and. nbodyPhysics .and. clusterSinks) then
+          totalMass = 0.d0
+          do i = 1, globalnSource
+             do j = 1, globalSourceArray(i)%nSubsource
+                totalMass = totalMass + globalsourceArray(i)%subsourceArray(j)%mass
+             enddo
+          enddo
+          write(*,*) "Total mass in stars (msol) is ", totalmass/mSol
        endif
 
 
@@ -1635,8 +1636,8 @@ contains
              globalSourceArray(:)%time = grid%currentTime
              if (clusterSinks) then
                 do i = 1, globalnSource
-                   if (associated(globalSourceArray(i)%subsourceArray)) then
-                      globalSourceArray(i)%subsourceArray(:)%time = grid%currentTime
+                   if (globalSourceArray(i)%nSubsource > 0) then
+                      globalSourceArray(i)%subsourceArray(1:globalSourceArray(i)%nSubsource)%time = grid%currentTime
                    endif
                 enddo
              endif
@@ -1963,7 +1964,8 @@ end subroutine radiationHydro
     
     if (globalnSource == 0) goto 666
     if (clusterSinks) then
-       if (.not. any(globalSourceArray(1:globalnSource)%nSubsource > 0)) goto 666
+!       if (.not. any(globalSourceArray(1:globalnSource)%nSubsource > 0)) goto 666
+       if (.not. any(globalSourceArray(1:globalnSource)%luminosity > 0.d0)) goto 666
     endif
 
     allocate(efficiencyArray(1:nThreadsGlobal-1))
@@ -4105,15 +4107,15 @@ end subroutine radiationHydro
     firstTime = .false.
     if (myrankWorldGlobal == 1) call tune(6, "Temperature/ion corrections")
 
-    if (maxiter > 1) then
-       if (niter == 1 .or. niter == maxiter) then
-          write(mpiFilename, '(a,i4.4,a,i4.4,a)') "afterbalance_",grid%idump,"_",niter,".vtk"
-          call writeVtkFile(grid, mpiFilename, &
-                 valueTypeString=(/"rho        ","HI         " ,"temperature", &
-                                   "ncrossings ","ioncross   " ,"tdust      ", &
-                                   "tempconv   ","scatters   "/))!"etacont", "jnu", "bias"/))
-       endif
-    endif
+!    if (maxiter > 1) then
+!       if (niter == 1 .or. niter == maxiter) then
+!          write(mpiFilename, '(a,i4.4,a,i4.4,a)') "afterbalance_",grid%idump,"_",niter,".vtk"
+!          call writeVtkFile(grid, mpiFilename, &
+!                 valueTypeString=(/"rho        ","HI         " ,"temperature", &
+!                                   "ncrossings ","ioncross   " ,"tdust      ", &
+!                                   "tempconv   ","scatters   "/))!"etacont", "jnu", "bias"/))
+!       endif
+!    endif
 
 
     if(grid%geometry == "lexington" .or. grid%geometry == "lexpdr") then

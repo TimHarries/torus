@@ -924,6 +924,10 @@ module spectrum_mod
             open(31, file=trim(dataDirectory)//"/tlusty/zsol/filelist.dat", form="formatted", status="old")
          elseif(stellarMetallicity == 2.0) then
             open(31, file=trim(dataDirectory)//"/tlusty/z2sol/filelist.dat", form="formatted", status="old")
+         elseif(stellarMetallicity == 0.1) then
+            open(31, file=trim(dataDirectory)//"/tlusty/z0p1sol/filelist.dat", form="formatted", status="old")
+         elseif(stellarMetallicity == 0.01) then
+            open(31, file=trim(dataDirectory)//"/tlusty/z0p01sol/filelist.dat", form="formatted", status="old")
          else
             print *, "can only have 0.5, 1.0 or 2.0 times solar metallicity at present"
             stop
@@ -1039,14 +1043,27 @@ module spectrum_mod
        integer :: i
        character(len=*) thisfile, thisLabel
        character(len=80) :: fluxfile, dataDirectory
+       character(len=1) :: prefix
        
        call unixGetenv("TORUS_DATA", dataDirectory, i)
+
+       if(stellarMetallicity == 0.5) then
+          prefix = 'L'
+       elseif(stellarMetallicity == 1.0) then
+          prefix = 'G'
+       elseif(stellarMetallicity == 2.0) then
+          prefix = 'C'
+       elseif(stellarMetallicity == 0.1) then
+          prefix = 'T'
+       elseif(stellarMetallicity == 0.01) then
+          prefix = 'X'
+       endif
        
        
        if (teff < 10000.) then
-          write(fluxfile,'(a,i4,a,i3.3,a)') "G",int(teff),"g",int(logg),"v10.flux"
+          write(fluxfile,'(a,i4,a,i3.3,a)') prefix,int(teff),"g",int(logg),"v10.flux"
        else
-          write(fluxfile,'(a,i5,a,i3.3,a)') "G",int(teff),"g",int(logg),"v10.flux"          
+          write(fluxfile,'(a,i5,a,i3.3,a)') prefix,int(teff),"g",int(logg),"v10.flux"
        endif
        thisLabel = fluxfile
        if(stellarMetallicity == 0.5) then
@@ -1055,6 +1072,10 @@ module spectrum_mod
           thisFile = trim(dataDirectory)//"/tlusty/zsol/"//trim(fluxfile)
        elseif(stellarMetallicity == 2.0) then
           thisFile = trim(dataDirectory)//"/tlusty/z2sol/"//trim(fluxfile)
+       elseif(stellarMetallicity == 0.1) then
+          thisFile = trim(dataDirectory)//"/tlusty/z0p1sol/"//trim(fluxfile)
+       elseif(stellarMetallicity == 0.01) then
+          thisFile = trim(dataDirectory)//"/tlusty/z0p01sol/"//trim(fluxfile)
        endif
      end subroutine createTlustyFileName
 
@@ -1099,11 +1120,15 @@ module spectrum_mod
 
        call writeInfo("Reading Tlusty grid...",TRIVIAL)
        if(stellarmetallicity == 0.5) then
-          tfile = trim(dataDirectory)//"/tlusty/z0p5sol/files.dat"                 
-       elseif(stellarmetallicity == 1.0) then             
-          tfile = trim(dataDirectory)//"/tlusty/zsol/files.dat"       
-       elseif(stellarmetallicity == 2.0) then             
-          tfile = trim(dataDirectory)//"/tlusty/z2sol/files.dat"       
+          tfile = trim(dataDirectory)//"/tlusty/z0p5sol/files.dat"
+       elseif(stellarmetallicity == 1.0) then
+          tfile = trim(dataDirectory)//"/tlusty/zsol/files.dat"
+       elseif(stellarmetallicity == 2.0) then
+          tfile = trim(dataDirectory)//"/tlusty/z2sol/files.dat"
+       elseif(stellarmetallicity == 0.1) then
+          tfile = trim(dataDirectory)//"/tlusty/z0p1sol/files.dat"
+       elseif(stellarmetallicity == 0.01) then
+          tfile = trim(dataDirectory)//"/tlusty/z0p01sol/files.dat"
       else
          print *, "can only have 0.5, 1.0 or 2.0 times solar metallicity at present"
          stop
@@ -1119,6 +1144,10 @@ module spectrum_mod
              tfile = trim(dataDirectory)//"/tlusty/zsol/"//trim(fluxfile)
           elseif(stellarmetallicity == 2.0) then
              tfile = trim(dataDirectory)//"/tlusty/z2sol/"//trim(fluxfile)
+          elseif(stellarmetallicity == 0.1) then
+             tfile = trim(dataDirectory)//"/tlusty/z0p1sol/"//trim(fluxfile)
+          elseif(stellarmetallicity == 0.01) then
+             tfile = trim(dataDirectory)//"/tlusty/z0p01sol/"//trim(fluxfile)
           endif
 
           call readTlustySpectrumini(spectrum(i), tfile, ok)
