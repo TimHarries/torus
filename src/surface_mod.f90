@@ -372,7 +372,7 @@ end subroutine readSurface
     integer :: i 
 
     if (associated(surface%element)) then
-       do i = 1, surface%nelements
+       do i = 1, size(surface%element) !surface%nelements
           if (associated(surface%element(i)%hotFlux)) then
              deallocate(surface%element(i)%hotFlux)
           end if

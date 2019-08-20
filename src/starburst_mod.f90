@@ -221,7 +221,7 @@ contains
              if (iIMF > nIMF) then
                 write(*,*) "WARNING: iIMF ", iIMF, " exceeded nIMF ", nIMF 
                 done = .true.
-                stop
+!                stop
                 exit
              endif
              thisMass = imf(iImf) ! [g]
@@ -515,7 +515,7 @@ contains
   end subroutine freeSubsourceSpectra
 
   subroutine createSources(nSource, source, burstType, burstAge, burstMass, sfRate, totMass,zeroNsource,list, nlist)
-    use inputs_mod, only : imfType, imfMin, imfMax, clusterSinks
+    use inputs_mod, only : imfType, imfMin, imfMax, clusterSinks, stellarMetallicity
     integer :: nSource, thisNsource, initialNsource
     type(SOURCETYPE), pointer :: source(:)
 !    type(SOURCETYPE), pointer :: tempSourceArray(:)
@@ -529,15 +529,18 @@ contains
     real(double), optional :: list(:) ! Msol
     integer, optional :: nlist
     logical, optional :: zeroNsource
-    integer :: i, j
+    integer :: i, j, iz
     integer :: nDead, nSupernova, nOB
 !    integer, parameter :: nKurucz=69 !nKurucz = 410
     logical :: thirtyFound, converged
 !    type(SPECTRUMTYPE) :: kSpectrum(nKurucz)
 !    character(len=80) :: klabel(nKurucz)
     character(len=80) :: filename
-    type(TRACKTABLE),save :: thisTable
+    type(TRACKTABLE),save :: thisTable, nextTable
     logical,save :: firstTime = .true.
+    real :: logZarray(5)
+    real :: metallicity1, metallicity2
+    logical :: interpZ
 
    
 !    call  readKuruczGrid(klabel, kspectrum, nKurucz)
@@ -694,9 +697,20 @@ contains
       endif
 
       ! now get actual masses, temps, and luminosities, and radii for age from evolution tracks
+      logZarray= (/ -2., -1., -0.5, 0., 0.5 /)
+      if (any(log10(stellarMetallicity) == logZarray)) then
+         interpZ = .false. 
+         metallicity1 = stellarMetallicity
+      else
+         interpZ = .true.
+         call locate(logZarray, size(logZarray), log10(stellarMetallicity), iz)
+         metallicity1 = 10.e0 ** logZarray(iz)
+         metallicity2 = 10.e0 ** logZarray(iz+1)
+      endif
 
       if (firstTime) then
-         call readinTracks("mist", thisTable)
+         call readinTracks("mist", thisTable, metallicity1)
+         if (interpZ) call readinTracks("mist", nextTable, metallicity2)
          firstTime = .false.
          call writeInfo("MIST tracks successfully read", FORINFO)
       endif
@@ -706,7 +720,7 @@ contains
       i = initialnSource+1
       do while (i <= nSource)
          if (source(i)%nSubsource == 0) then 
-            if (.not.isSourceDead(source(i), thisTable)) then
+            if (.not.isSourceDead(source(i), thisTable, nextTable)) then
 !               write(message, '(a,i4)') "Setting properties of source ", i
 !               call writeInfo(message, TRIVIAL)
                call setSourceProperties(source(i))
@@ -803,27 +817,64 @@ contains
          
 
 
-    logical function isSourceDead(source, thisTable) result (dead)
+    logical function isSourceDead(source, thisTable, nextTable) result (dead)
+      use inputs_mod, only : stellarMetallicity
       type(SOURCETYPE) :: source
-      type(TRACKTABLE) :: thisTable
-      real(double) :: t, t1, t2, deadAge
-      integer :: i
+      type(TRACKTABLE) :: thisTable, nextTable
+      real(double) :: t, t1, t2, deadAge, z2deadAge
+      integer :: i, iz
+      real :: logZarray(5)
+      real :: metallicity1, metallicity2, zfac
+      logical :: interpZ
+
+      logZarray= (/ -2., -1., -0.5, 0., 0.5 /)
+      if (any(log10(stellarMetallicity) == logZarray)) then
+         interpZ = .false. 
+         metallicity1 = stellarMetallicity
+      else
+         interpZ = .true.
+         call locate(logZarray, size(logZarray), log10(stellarMetallicity), iz)
+         metallicity1 = 10.e0 ** logZarray(iz)
+         if (iz == size(logZarray)) then
+            if (writeoutput) write(*,*) "end of mist Z"
+            stop
+         endif
+         metallicity2 = 10.e0 ** logZarray(iz+1)
+      endif
+
       call locate(thisTable%initialMass, thisTable%nMass, source%initialMass, i)
       t1 = thisTable%age(i,thisTable%nAges(i))
       t2 = thisTable%age(i+1,thisTable%nAges(i+1))
 
       t = (source%initialMass - thisTable%initialMass(i))/(thisTable%initialMass(i+1) - thisTable%initialMass(i))
       deadAge = t1 + t * (t2 - t1)
+
+      if (interpZ) then
+         ! upper metallicity table
+         call locate(nextTable%initialMass, nextTable%nMass, source%initialMass, i)
+         t1 = nextTable%age(i,nextTable%nAges(i))
+         t2 = nextTable%age(i+1,nextTable%nAges(i+1))
+
+         t = (source%initialMass - nextTable%initialMass(i))/(nextTable%initialMass(i+1) - nextTable%initialMass(i))
+         z2deadAge = t1 + t * (t2 - t1)
+
+         zfac = (stellarMetallicity - metallicity1)/(metallicity2 - metallicity1)
+         deadAge = deadAge + zfac * (z2deadAge - deadAge)
+      endif
+
       if (source%age > deadAge) then
          dead = .true.
       else
          dead = .false.
       endif
+
+      if (writeoutput .and. source%initialMass > 30.d0) write(*,*) " Mini (msol) ", source%initialMass, " tSN (Myr) ", deadAge/1e6
     end function isSourceDead
 
 
     subroutine checkSourceSupernova(nSource, source, nSupernova, supernovaIndex, ejectaMass, ke)
 
+      use inputs_mod, only : stellarMetallicity
       ! checks if any sources have gone supernova, looping through all sources                                                            
       ! requires sources to be dead and initially above 8 solar masses                                                                    
       ! counts number gone supernova, tabulates each supernova source index                                                               
@@ -838,7 +889,7 @@ contains
 
 
       if (firstTime) then
-         call readinTracks("mist", thisTable)
+         call readinTracks("mist", thisTable, stellarMetallicity)
          firstTime = .false.
       endif
 
@@ -858,6 +909,7 @@ contains
 
          t = (source(i)%initialMass - thisTable%initialMass(j))/(thisTable%initialMass(j+1) - thisTable%initialMass(j))
          deadAge = t1 + t * (t2 - t1)
+         ! TODO metallicity interpolation (see function isSourceDead)
          if (source(i)%initialMass > 8.d0 .and. writeoutput) then
            write(*,'(a, i4, a, 1pe12.5)') "Source ", i, " Time until supernova (yr): ", deadAge-source(i)%age
          endif
@@ -966,18 +1018,39 @@ contains
     end subroutine setSourceProperties
 
     subroutine updateSourceProperties(source)
-      use inputs_mod, only : clusterSinks
+      use inputs_mod, only : clusterSinks, stellarMetallicity
       type(SOURCETYPE) :: source
-      type(TRACKTABLE),save :: thisTable
+      type(TRACKTABLE),save :: thisTable, nextTable
       logical,save :: firstTime = .true.
-      integer :: i, j
+      integer :: i, j, iz
       real(double) :: t, u, mass1, logL1, logT1, logmdot1
       real(double) :: mass2, logL2, logT2, logmdot2
+      real(double) :: z1mass, z1luminosity, z1teff, z1mdotWind
+      real(double) :: z2mass, z2luminosity, z2teff, z2mdotWind
+      real :: logZarray(5)
+      real :: metallicity1, metallicity2, zfac
+      logical :: interpZ
+
+      logZarray= (/ -2., -1., -0.5, 0., 0.5 /)
+      if (any(log10(stellarMetallicity) == logZarray)) then
+         interpZ = .false. 
+         metallicity1 = stellarMetallicity
+      else
+         interpZ = .true.
+         call locate(logZarray, size(logZarray), log10(stellarMetallicity), iz)
+         metallicity1 = 10.e0 ** logZarray(iz)
+         if (iz == size(logZarray)) then
+            if (writeoutput) write(*,*) "end of mist Z"
+            stop
+         endif
+         metallicity2 = 10.e0 ** logZarray(iz+1)
+      endif
 
 
       if (firstTime) then
-         call readinTracks("mist", thisTable)
-         firstTime = .false.
+         ! get lower-bound metallicity table
+         call readinTracks("mist", thisTable, metallicity1)
+!         firstTime = .false.
          call writeInfo("MIST tracks successfully read", FORINFO)
       endif
 
@@ -1011,18 +1084,88 @@ contains
 
       ! interpolate between the two files and set source properties
       u = (source%initialmass - thisTable%initialMass(i))/(thisTable%initialMass(i+1) - thisTable%initialMass(i))
-      
-      source%mass = (mass1 + (mass2 - mass1) * u) * mSol
-      source%luminosity = logL1 + (logL2 - logL1) * u
-      source%luminosity = (10.d0**source%luminosity) * lSol
-      source%teff = logT1 + (logT2  - logT1) * u
-      source%teff = 10.d0**source%teff
-      source%radius = sqrt(source%luminosity / (fourPi * stefanBoltz * source%teff**4))/1.d10
-      source%mdotWind = 0.d0
-      if (.not.ANY(thisTable%mdot(i:i+1,j:j+1) == 0.d0)) then
-         source%mdotWind = 10.d0**(logmdot1 + (logmdot2  - logmdot1) * u)
-         source%mDotWind = source%mDotWind * msol/(365.25*24.d0*3600.d0)
+
+      if (.not. interpZ) then
+         source%mass = (mass1 + (mass2 - mass1) * u) * mSol
+         source%luminosity = logL1 + (logL2 - logL1) * u
+         source%luminosity = (10.d0**source%luminosity) * lSol
+         source%teff = logT1 + (logT2  - logT1) * u
+         source%teff = 10.d0**source%teff
+         source%radius = sqrt(source%luminosity / (fourPi * stefanBoltz * source%teff**4))/1.d10
+         source%mdotWind = 0.d0
+         if (.not.ANY(thisTable%mdot(i:i+1,j:j+1) == 0.d0)) then
+            source%mdotWind = 10.d0**(logmdot1 + (logmdot2  - logmdot1) * u)
+            source%mDotWind = source%mDotWind * msol/(365.25*24.d0*3600.d0)
+         endif
+      else
+         z1mass = mass1 + (mass2 - mass1) * u 
+         z1luminosity = logL1 + (logL2 - logL1) * u
+         z1teff = logT1 + (logT2  - logT1) * u
+         z1mdotWind = 0.d0
+         if (.not.ANY(thisTable%mdot(i:i+1,j:j+1) == 0.d0)) then
+            z1mdotWind = logmdot1 + (logmdot2  - logmdot1) * u
+         endif
+
+         if (firstTime) then
+            ! get upper-bound metallicity table
+            call readinTracks("mist", nextTable, metallicity2)
+            call writeInfo("MIST tracks successfully read", FORINFO)
+         endif
+
+         ! find relevant track file given source's initial mass 
+         call locate(nextTable%initialMass, nextTable%nMass, source%initialmass, i)
+         
+         ! interpolate between rows j,j+1 in lower mass boundary file (i)
+         call locate(nextTable%age(i,1:nextTable%nAges(i)), nextTable%nAges(i), source%age, j)
+         t = (source%age - nextTable%age(i, j))/(nextTable%age(i,j+1)-nextTable%age(i,j))
+         mass1 = nextTable%massAtAge(i,j) + t * (nextTable%massAtAge(i,j+1)-nextTable%massAtAge(i,j))
+         logL1 = nextTable%logL(i,j) + t * (nextTable%logL(i,j+1)-nextTable%logL(i,j))
+         logT1 = nextTable%logTeff(i,j) + t * (nextTable%logTeff(i,j+1)-nextTable%logTeff(i,j))
+         logMdot1 = nextTable%mdot(i,j) + t * (nextTable%mdot(i,j+1)-nextTable%mdot(i,j))
+
+         ! interpolate between rows j,j+1 in upper mass boundary file (i+1)
+         call locate(nextTable%age(i+1,1:nextTable%nAges(i+1)), nextTable%nAges(i+1), source%age, j)
+         if (source%age < nextTable%age(i+1, nextTable%nAges(i+1))) then
+            ! if source age < final age of reference star, interpolate as normal
+            t = (source%age - nextTable%age(i+1, j))/(nextTable%age(i+1,j+1)-nextTable%age(i+1,j))
+            mass2 = nextTable%massAtAge(i+1,j) + t * (nextTable%massAtAge(i+1,j+1)-nextTable%massAtAge(i+1,j))
+            logL2 = nextTable%logL(i+1,j) + t * (nextTable%logL(i+1,j+1)-nextTable%logL(i+1,j))
+            logT2 = nextTable%logTeff(i+1,j) + t * (nextTable%logTeff(i+1,j+1)-nextTable%logTeff(i+1,j))
+            logMdot2 = nextTable%mdot(i+1,j) + t * (nextTable%mdot(i+1,j+1)-nextTable%mdot(i+1,j))
+         else
+            ! otherwise just set to final values (EOF) 
+            mass2 = nextTable%massAtAge(i+1, nextTable%nAges(i+1)) 
+            logL2 = nextTable%logL(i+1, nextTable%nAges(i+1)) 
+            logT2 = nextTable%logTeff(i+1, nextTable%nAges(i+1)) 
+            logMdot2 = nextTable%mdot(i+1, nextTable%nAges(i+1)) 
+         endif
+
+         ! interpolate between the two files and set source properties
+         u = (source%initialmass - nextTable%initialMass(i))/(nextTable%initialMass(i+1) - nextTable%initialMass(i))
+         
+         z2mass = mass1 + (mass2 - mass1) * u 
+         z2luminosity = logL1 + (logL2 - logL1) * u
+         z2teff = logT1 + (logT2  - logT1) * u
+         z2mdotWind = 0.d0
+         if (.not.ANY(nextTable%mdot(i:i+1,j:j+1) == 0.d0)) then
+            z2mdotWind = logmdot1 + (logmdot2  - logmdot1) * u
+         endif
+
+         ! interpolate between metallicities
+         zfac = (stellarMetallicity - metallicity1)/(metallicity2 - metallicity1)
+         source%mass = (z1mass + (z2mass - z1mass) * zfac) * mSol
+         source%luminosity = z1luminosity + (z2luminosity - z1luminosity) * zfac
+         source%luminosity = (10.d0**source%luminosity) * lSol
+         source%teff = z1teff + (z2teff  - z1teff) * zfac
+         source%teff = 10.d0**source%teff
+         source%radius = sqrt(source%luminosity / (fourPi * stefanBoltz * source%teff**4))/1.d10
+         source%mdotWind = 0.d0
+         if (z1mdotWind*z2mdotWind /= 0.d0) then
+            source%mdotWind = 10.d0**(z1mdotWind + (z2mdotWind  - z1mdotWind) * zfac)
+            source%mDotWind = source%mDotWind * msol/(365.25*24.d0*3600.d0)
+         endif
       endif
+
 
 !     ! update spectrum. If tlusty spectrum is not found for a source, kurucz spectrum is used instead
 !     call fillSpectrumTlusty(source%spectrum, source%teff, source%mass, source%radius*1.d10)
@@ -1032,6 +1175,7 @@ contains
          call buildSphereNBody(source%position, source%accretionRadius/1.d10, source%surface, 20)
       endif
 
+      firstTime = .false.
     end subroutine updateSourceProperties
 
     subroutine setSourceArrayProperties(source, nSource, fractionOfAccretionLum)
@@ -1109,11 +1253,12 @@ contains
       
 
 
-    subroutine readinTracks(tracks, thisTable)
+    subroutine readinTracks(tracks, thisTable, metallicity)
       character(len=*) :: tracks
       type(TRACKTABLE) :: thisTable
       character(len=200) :: tfile, thisFile, dataDirectory
       integer :: i
+      real :: metallicity
 
       select case(tracks)
          case("schaller")
@@ -1168,7 +1313,7 @@ contains
 10 continue
             read(30,*,end=55) thisFile 
             i = i + 1
-            call readMistModel(thisTable, i, trim(thisFile))
+            call readMistModel(thisTable, i, trim(thisFile), metallicity)
             goto 10
 55 continue
             close(30)
@@ -1247,8 +1392,7 @@ contains
        thisTable%nAges(nMass) = nt
      end subroutine readSchallerModel
 
-     subroutine readMistModel(thisTable, nMass, thisfile)
-       use inputs_mod, only : stellarMetallicity
+     subroutine readMistModel(thisTable, nMass, thisfile, metallicity)
        type(TRACKTABLE) :: thisTable
        integer :: nMass
        character(len=*) :: thisfile
@@ -1256,23 +1400,28 @@ contains
        integer :: nt, i
        character(len=254) :: cLine, junk
        logical, save :: firstTime=.true.
+       real :: metallicity
 
        call unixGetenv("TORUS_DATA", dataDirectory, i)
-       ! nb: rotation is available with vvcrit0.4
-       if (stellarMetallicity == 1.) then
+       if (writeoutput .and. nMass ==1) write(*,*) " reading Z ", metallicity, " logZ ", log10(metallicity) ! FIXME
+       if (metallicity == 1.) then
           write(tfile, '(a,a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_p0.00_afe_p0.0_vvcrit0.0_EEPS/", trim(thisFile)
-       elseif (stellarMetallicity == 0.1) then
+       elseif (metallicity == 0.1) then
           write(tfile, '(a,a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_m1.00_afe_p0.0_vvcrit0.0_EEPS/", trim(thisFile)
-       elseif (stellarMetallicity == 0.01) then
+       elseif (metallicity == 0.01) then
           write(tfile, '(a,a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_m2.00_afe_p0.0_vvcrit0.0_EEPS/", trim(thisFile)
+       elseif (metallicity == 10.**(-0.5)) then
+          write(tfile, '(a,a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_m0.50_afe_p0.0_vvcrit0.0_EEPS/", trim(thisFile)
+       elseif (metallicity == 10.**(0.5)) then
+          write(tfile, '(a,a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_p0.50_afe_p0.0_vvcrit0.0_EEPS/", trim(thisFile)
        else
-         if (writeoutput) write(*,*) "mist files not found for metallicity ", stellarMetallicity
+         if (writeoutput) write(*,*) "mist files not found for metallicity ", metallicity
          stop
        endif
 
-       if (firstTime) then
+       if (nMass == 1) then
           if (writeoutput) write(*,*) tfile
-          firstTime = .false.
+!          firstTime = .false.
        endif
 
        open(31, file=tfile, status="old", form="formatted")
@@ -1475,23 +1624,33 @@ contains
 !     end subroutine readKuruczSpectrum
 
    subroutine testTracks
+      
       real(double) :: t, dt, totalCreatedMass
       integer :: i, j
       character(len=100) :: fn
       type(SOURCETYPE), pointer :: src=>null()
+       real(double), pointer :: imf(:)=>null()
+       integer :: iIMF, nIMF
+       logical :: sourcesCreated, doFeedback, doMorePhoto, populated(1:1000)
+
+      iIMF = 0
+      nIMF = 0
+      call getStarList(imf, iIMF, nIMF)
 
       ! create sources
       call freeglobalsourcearray()
-      globalnsource = 2
+      globalnsource = 1
       allocate(globalsourceArray(1:globalnsource))
       globalSourcearray(1:globalnsource)%mass = 500.d0 * msol
       globalSourcearray(1:globalnsource)%age = 0.d0
 
-      do i = 1, globalnsource
-         call createSources(globalsourceArray(i)%nSubsource, globalsourceArray(i)%subsourceArray, "instantaneous", & 
-            0.d0, 120.d0, 0.d0, totalCreatedMass, zeroNsource=.false.)
-         if (writeoutput) write(*,*) i, " ... created ", totalCreatedMass, " Msol" 
-      enddo
+!      do i = 1, globalnsource
+!         call createSources(globalsourceArray(i)%nSubsource, globalsourceArray(i)%subsourceArray, "instantaneous", & 
+!            0.d0, 120.d0, 0.d0, totalCreatedMass, zeroNsource=.false.)
+!         if (writeoutput) write(*,*) i, " ... created ", totalCreatedMass, " Msol" 
+!      enddo
+      call populateClusters(globalSourceArray, globalnSource, 0.d0, populated, doMorePhoto, & 
+        imf=imf, iIMF=iIMF, nIMF=nIMF) 
 
       ! write headers
       if (writeoutput) then

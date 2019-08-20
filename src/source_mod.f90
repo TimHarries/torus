@@ -48,7 +48,7 @@
 
   type(SOURCETYPE), pointer :: globalSourceArray(:) => null()
   integer :: globalnSource
-  integer, parameter :: globalMaxNsubsource=500
+  integer, parameter :: globalMaxNsubsource=1000
 
   contains
 

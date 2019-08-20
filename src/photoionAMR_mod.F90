@@ -1352,11 +1352,11 @@ contains
 
 
        ! FIXME
-       if (myrankglobal == 0 .and. clusterSinks) then!.or. myrankglobal == 1 .or. myrankglobal == 2 .or. myrankglobal == 65) then
+       if (myrankglobal == 0 .and. clusterSinks .and. globalnsource > 0) then
           write(*,*) "Cluster properties"
-          write(*,'(a2,1x,a3,5x,a9,1x,a4,1x,a12,1x,a9,1x,a9)') "r", "i", "Mcl", "n*", "Mres", "age", "lum"
+          write(*,'(a2,1x,a4,5x,a12,1x,a4,1x,a12,1x,a12,1x,a12)') "r", "i", "Mcl", "n*", "Mres", "age", "lum"
           do i = 1, globalnSource
-             write(*,'(i2.2,1x,i3.3,5x,f9.2,1x,i4,1x,f12.5,1x,es9.2,1x,es9.2)') myrankglobal, i, globalSourceArray(i)%mass/msol, &
+             write(*,'(i2.2,1x,i4.4,5x,f12.5,1x,i4,1x,f12.5,1x,es12.5,1x,es12.5)') myrankglobal, i, globalSourceArray(i)%mass/msol, &
              globalSourceArray(i)%nSubsource, clusterReservoir(globalSourceArray(i))/msol, globalsourceArray(i)%age, &
              globalsourceArray(i)%luminosity/lsol
           enddo
