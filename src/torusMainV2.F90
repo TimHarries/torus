@@ -245,117 +245,117 @@ program torus
 
 contains 
 
-  subroutine calculategrid()
-    implicit none
-    integer :: iMass, iRinner, iRadius, iLum, iAcc, iRouter, iMassStar
-    integer :: nMass, nRinner, nRadius, nLum, nAcc, nRouter, nMassStar
-
-    real(double) :: massStart, massEnd
-    real(double) :: massStarStart, massStarEnd
-    real(double) :: AccStart, accEnd
-    real(double) :: rInnerStart, rInnerEnd
-    real(double) :: lumStart, lumEnd
-    real(double) :: radiusStart, radiusEnd
-    real(double) :: rOuterStart, rOuterEnd
-    real(double) :: massStar, lum, lacc, tacc
-    
-    massStart = 1.d0; massEnd = 1.d0; nMass = 1
-    massStarStart  = 1.d0*mSol; massStarEnd = 1.d0*mSol; nMassStar = 1
-    radiusStart = 3.58d0 * rSol; radiusEnd = 3.58d0 * rSol; nRadius = 1
-    lumStart = 11.6d0*lSol; lumEnd = 11.6d0 * lSol; nLum = 1
-    accStart = 1.d-20; accEnd = 1.d-20; nAcc = 1
-    rOuterStart = 4.d4; rOuterEnd = 4.d4; nrouter = 1
-    rInnerStart = 400.d0; RinnerEnd = 400.d0; nRinner = 1
-    
-    
-    do iMass = 1, nMass
-       do iRinner = 1, nRinner
-          do iRadius = 1, nRadius
-             do iLum = 1, nLum
-                do iAcc = 1, nAcc
-                   do iRouter = 1, nRouter
-                      do iMassStar = 1, nMassStar
-
-                      massEnvelope =  real(getGridValue(iMass, massStart, massEnd, nMass, .false.)*mSol)
-                      rInner =  real(getGridValue(iRinner, rinnerStart, rinnerEnd, nrInner, .true.)*autocm/1.d10)
-                      rOuter = real(getGridValue(irOuter, rOuterStart, rOuterEnd, nrOuter, .false.)*autocm/1.d10)
+!  subroutine calculategrid()
+!    implicit none
+!    integer :: iMass, iRinner, iRadius, iLum, iAcc, iRouter, iMassStar
+!    integer :: nMass, nRinner, nRadius, nLum, nAcc, nRouter, nMassStar
 !
-                      massStar =  getGridValue(iMassStar, massStarStart, massStarEnd, nMassStar, .false.)
-                      lum = getGridValue(iLum, lumStart, lumEnd, nlum, .true.)
-                      radius = real(getGridValue(iRadius, radiusStart, radiusEnd, nRadius, .false.))
-                      mDot = real(getGridValue(iAcc, accStart, accEnd, nAcc, .true.)*msol / (365.25d0*24.d0*3600.d0))
-                      teff = real((lum / (fourPi * radius**2 * stefanBoltz))**0.25d0)
-
-                      lAcc = bigG * mDot * massStar / radius
-                      tAcc = (lAcc / (fourPi * radius**2 * stefanBoltz))**0.25d0
-                      
-
-                      if (associated(globalsourceArray)) then
-                         deallocate(globalSourceArray)
-                      endif
-
-                      globalNSource = 1
-                      allocate(globalsourceArray(1:1))
-
-
-                      call fillSpectrumBB(globalsourceArray(1)%spectrum, dble(teff), 120.d0, 1.d7, 100)
-                      call addToSpectrumBB(globalsourceArray(1)%spectrum, tAcc, 1.d0)
-                      globalsourceArray(1)%stellar = .true.
-                      globalsourceArray(1)%mass = massStar
-                      globalsourceArray(1)%radius = radius/1.d10
-                      globalsourceArray(1)%luminosity = lum + lAcc
-                      globalsourceArray(1)%teff = teff
-                      globalSourceArray(1)%position = VECTOR(0.d0, 0.d0, 0.d0)
-                      call testRandomSource(globalsourceArray, globalnsource)
-                      call writeSourceList(globalSourceArray, globalnSource)
-                      
-                      amrGridSize = rOuter
-                      amrgridCentreX = rOuter/2.d0
-                      call  setupamrgrid(grid)
-
-                      call writeVtkFile(grid, "rho.vtk")
-
-                      call randomNumberGenerator(randomSeed=.true.)
-
-                      call doPhysics(grid)
-
-                      write(radialFilename, &
-                           '(a,sp,f6.3,a,f6.3,a,f6.3,a,f6.3,a,f6.3,a,f6.3,a,f8.3,a)') &
-                           "menv_",log10(massEnvelope/msol), &
-                           "_rinner_",log10(rinner*1.d10/autocm), &
-                           "_router_",log10(router*1.d10/autocm), &
-                           "_mstar_",log10(massStar/msol), &
-                           "_rstar_",log10(radius/rsol), &
-                           "_lum_",log10(lum/lsol), &
-                           "_mdot_",log10(mdot*365.25d0*24.d0*3600.d0/mSol), &
-                           ".dat"
-
-                          
-
-                      call doOutputs(grid)
-
-
-                      call torus_mpi_barrier
-                      if (associated(grid%octreeRoot)) then
-                         call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
-                      else
-                         call writewarning("Want to delete grid but octreeroot not associated")
-                      endif
-
-
-                      call freeGrid(grid)
-                      call freeGlobalSourceArray()
-
-                   enddo
-                enddo
-             enddo
-          enddo
-       enddo
-    enddo
- end do
-
- 
-end subroutine calculategrid
+!    real(double) :: massStart, massEnd
+!    real(double) :: massStarStart, massStarEnd
+!    real(double) :: AccStart, accEnd
+!    real(double) :: rInnerStart, rInnerEnd
+!    real(double) :: lumStart, lumEnd
+!    real(double) :: radiusStart, radiusEnd
+!    real(double) :: rOuterStart, rOuterEnd
+!    real(double) :: massStar, lum, lacc, tacc
+!    
+!    massStart = 1.d0; massEnd = 1.d0; nMass = 1
+!    massStarStart  = 1.d0*mSol; massStarEnd = 1.d0*mSol; nMassStar = 1
+!    radiusStart = 3.58d0 * rSol; radiusEnd = 3.58d0 * rSol; nRadius = 1
+!    lumStart = 11.6d0*lSol; lumEnd = 11.6d0 * lSol; nLum = 1
+!    accStart = 1.d-20; accEnd = 1.d-20; nAcc = 1
+!    rOuterStart = 4.d4; rOuterEnd = 4.d4; nrouter = 1
+!    rInnerStart = 400.d0; RinnerEnd = 400.d0; nRinner = 1
+!    
+!    
+!    do iMass = 1, nMass
+!       do iRinner = 1, nRinner
+!          do iRadius = 1, nRadius
+!             do iLum = 1, nLum
+!                do iAcc = 1, nAcc
+!                   do iRouter = 1, nRouter
+!                      do iMassStar = 1, nMassStar
+!
+!                      massEnvelope =  real(getGridValue(iMass, massStart, massEnd, nMass, .false.)*mSol)
+!                      rInner =  real(getGridValue(iRinner, rinnerStart, rinnerEnd, nrInner, .true.)*autocm/1.d10)
+!                      rOuter = real(getGridValue(irOuter, rOuterStart, rOuterEnd, nrOuter, .false.)*autocm/1.d10)
+!!
+!                      massStar =  getGridValue(iMassStar, massStarStart, massStarEnd, nMassStar, .false.)
+!                      lum = getGridValue(iLum, lumStart, lumEnd, nlum, .true.)
+!                      radius = real(getGridValue(iRadius, radiusStart, radiusEnd, nRadius, .false.))
+!                      mDot = real(getGridValue(iAcc, accStart, accEnd, nAcc, .true.)*msol / (365.25d0*24.d0*3600.d0))
+!                      teff = real((lum / (fourPi * radius**2 * stefanBoltz))**0.25d0)
+!
+!                      lAcc = bigG * mDot * massStar / radius
+!                      tAcc = (lAcc / (fourPi * radius**2 * stefanBoltz))**0.25d0
+!                      
+!
+!                      if (associated(globalsourceArray)) then
+!                         deallocate(globalSourceArray)
+!                      endif
+!
+!                      globalNSource = 1
+!                      allocate(globalsourceArray(1:1))
+!
+!
+!                      call fillSpectrumBB(globalsourceArray(1)%spectrum, dble(teff), 120.d0, 1.d7, 100)
+!                      call addToSpectrumBB(globalsourceArray(1)%spectrum, tAcc, 1.d0)
+!                      globalsourceArray(1)%stellar = .true.
+!                      globalsourceArray(1)%mass = massStar
+!                      globalsourceArray(1)%radius = radius/1.d10
+!                      globalsourceArray(1)%luminosity = lum + lAcc
+!                      globalsourceArray(1)%teff = teff
+!                      globalSourceArray(1)%position = VECTOR(0.d0, 0.d0, 0.d0)
+!                      call testRandomSource(globalsourceArray, globalnsource)
+!                      call writeSourceList(globalSourceArray, globalnSource)
+!                      
+!                      amrGridSize = rOuter
+!                      amrgridCentreX = rOuter/2.d0
+!                      call  setupamrgrid(grid)
+!
+!                      call writeVtkFile(grid, "rho.vtk")
+!
+!                      call randomNumberGenerator(randomSeed=.true.)
+!
+!                      call doPhysics(grid)
+!
+!                      write(radialFilename, &
+!                           '(a,sp,f6.3,a,f6.3,a,f6.3,a,f6.3,a,f6.3,a,f6.3,a,f8.3,a)') &
+!                           "menv_",log10(massEnvelope/msol), &
+!                           "_rinner_",log10(rinner*1.d10/autocm), &
+!                           "_router_",log10(router*1.d10/autocm), &
+!                           "_mstar_",log10(massStar/msol), &
+!                           "_rstar_",log10(radius/rsol), &
+!                           "_lum_",log10(lum/lsol), &
+!                           "_mdot_",log10(mdot*365.25d0*24.d0*3600.d0/mSol), &
+!                           ".dat"
+!
+!                          
+!
+!                      call doOutputs(grid)
+!
+!
+!                      call torus_mpi_barrier
+!                      if (associated(grid%octreeRoot)) then
+!                         call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
+!                      else
+!                         call writewarning("Want to delete grid but octreeroot not associated")
+!                      endif
+!
+!
+!                      call freeGrid(grid)
+!                      call freeGlobalSourceArray()
+!
+!                   enddo
+!                enddo
+!             enddo
+!          enddo
+!       enddo
+!    enddo
+! end do
+!
+! 
+!end subroutine calculategrid
 
 
 

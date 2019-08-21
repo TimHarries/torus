@@ -155,9 +155,8 @@ module image_mod
 #endif
 
 #ifdef PHOTOION
-   subroutine addPhotonToPhotoionImage(observerDirection, xAxis, yAxis, thisImage, thisPhoton, totalFlux)
+   subroutine addPhotonToPhotoionImage(xAxis, yAxis, thisImage, thisPhoton, totalFlux)
 
-     type(VECTOR), intent(in) :: observerDirection
      type(IMAGETYPE), intent(inout) :: thisImage
      type(PHOTON), intent(in) :: thisPhoton
      real(double), intent(inout) :: totalFlux
@@ -190,7 +189,7 @@ module image_mod
    end subroutine addPhotonToPhotoionImage
 #endif
 
-   subroutine addPhotonToImage(viewVec, xAxis, yAxis, rotationAxis, thisImageSet, nImage, thisPhoton, &
+   subroutine addPhotonToImage(xAxis, yAxis, thisImageSet, nImage, thisPhoton, &
                                thisVel, weight, filters, positionAngle, lambda0_cont)
      use inputs_mod, only : imageOrigin
      use filter_set_class
@@ -199,7 +198,7 @@ module image_mod
      integer, intent(in) :: nImage  ! number of images in a set
      type(IMAGETYPE), intent(inout) :: thisImageSet(nImage)
      type(PHOTON) :: thisPhoton
-     type(VECTOR) :: viewVec,  xAxis, yAxis, rotationAxis
+     type(VECTOR) :: xAxis, yAxis
      real :: xDist, yDist
      real(double) :: positionAngle!, ang
 !     real :: r

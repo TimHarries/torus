@@ -2022,7 +2022,7 @@ CONTAINS
                  o6yArray(j) = o6yArray(j) + obs_weight
                  thisVel = (thisLam-lamLine)/lamLine
 
-                 call addPhotonToImage(viewVec, xAxisImage, yAxisImage, rotationAxis,o6Image(1), 1, &
+                 call addPhotonToImage(xAxisImage, yAxisImage, o6Image(1), 1, &
                       thisPhoton, thisVel, obs_weight, filters, positionAngle)
               endif
            endif
@@ -2184,7 +2184,7 @@ CONTAINS
                  endif
                  if (stokesImage) then
                     thisVel = 0. ! no velocity for dust continuum
-                    call addPhotonToImage(viewVec, xAxisImage, yAxisImage, rotationAxis, obsImageSet, nImageLocal, thisPhoton,&
+                    call addPhotonToImage(xAxisImage, yAxisImage, obsImageSet, nImageLocal, thisPhoton,&
                          thisVel, obs_weight, filters, positionAngle)
 
                  endif
@@ -2211,7 +2211,7 @@ CONTAINS
 
                     thisVel = (observedLambda-lamLine)/lamLine
                     if (stokesImage) then
-                       call addPhotonToImage(viewVec, xAxisImage, yAxisImage, rotationAxis, obsImageSet, nImageLocal, &
+                       call addPhotonToImage(xAxisImage, yAxisImage, obsImageSet, nImageLocal, &
                             thisPhoton, thisVel, obs_weight, filters, positionAngle)
                     endif
 
@@ -2282,7 +2282,7 @@ CONTAINS
                        wtot0_cont = real(wtot0_cont + thisPhoton%stokes%i*obs_weight)
                        thisVel = (observedLambda-lamLine)/lamLine
                        if (stokesImage) then
-                          call addPhotonToImage(viewVec, xAxisImage, yAxisImage, rotationAxis,obsImageSet, nImageLocal, &
+                          call addPhotonToImage(xAxisImage, yAxisImage, obsImageSet, nImageLocal, &
                                thisPhoton, thisVel, obs_weight, filters, positionAngle, grid%lamArray(iLambda))
                        endif
 
@@ -2446,7 +2446,7 @@ CONTAINS
 !                    write(*,*) iStep, lambda(istep),obs_weight,tauExt(istep),tauExtObs(nTauObs)
                     if (stokesImage) then
                        thisVel = 0. ! no velocity for dust continuum emission
-                       call addPhotonToImage(viewVec, xAxisImage, yAxisImage, rotationAxis, obsImageSet, nImageLocal,  &
+                       call addPhotonToImage(xAxisImage, yAxisImage,  obsImageSet, nImageLocal,  &
                             obsPhoton, thisVel, obs_weight, filters, positionAngle)
                     endif
                  enddo
@@ -2716,7 +2716,7 @@ CONTAINS
 
                     if (stokesImage) then
                        thisVel = 0. ! no velocity for dust continuum emission
-                       call addPhotonToImage(viewVec, xAxisImage, yAxisImage, rotationAxis, obsImageSet, nImageLocal,  &
+                       call addPhotonToImage(xAxisImage, yAxisImage, obsImageSet, nImageLocal,  &
                             obsPhoton, thisVel, obs_weight, filters, positionAngle)
                     endif
 
@@ -2747,7 +2747,7 @@ CONTAINS
                        thisVel = observedLambda
                        thisVel = (observedLambda-lamLine)/lamLine
                        if (stokesImage) then
-                          call addPhotonToImage(viewVec, xAxisImage, yAxisImage, rotationAxis, obsImageSet, nImageLocal, &
+                          call addPhotonToImage(xAxisImage, yAxisImage, obsImageSet, nImageLocal, &
                                obsPhoton, thisVel, obs_weight, filters, positionAngle)
                        endif
 
@@ -2848,7 +2848,7 @@ CONTAINS
 
                           thisVel = (observedlambda-lamLine)/lamLine
                           if (stokesImage) then
-                             call addPhotonToImage(viewVec, xAxisImage, yAxisImage,  rotationAxis, obsImageSet, nImageLocal, &
+                             call addPhotonToImage(xAxisImage, yAxisImage, obsImageSet, nImageLocal, &
                                   obsPhoton, thisVel, obs_weight, filters, positionAngle, grid%lamArray(iLambda))
                           endif
 

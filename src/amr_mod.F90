@@ -1330,13 +1330,13 @@ CONTAINS
       end subroutine calcRunaway
 
 #ifdef USECFITSIO
-      subroutine calcPion(thisOctal, subcell)
-        use gridFromFitsFile, only : assign_from_fitsfile_interp
-        type(OCTAL) :: thisOctal
-        integer :: subcell
-
-        call assign_from_fitsfile_interp(thisOctal, subcell)
-      end subroutine calcPion
+!      subroutine calcPion(thisOctal, subcell)
+!        use gridFromFitsFile, only : assign_from_fitsfile_interp
+!        type(OCTAL) :: thisOctal
+!        integer :: subcell
+!
+!        call assign_from_fitsfile_interp(thisOctal, subcell)
+!      end subroutine calcPion
 #endif
   END SUBROUTINE calcValuesAMR
 
@@ -1546,7 +1546,7 @@ CONTAINS
     logical, optional, intent(in) :: amrHydroInterp
     logical :: doAmrHydroInterp
 !   logical, save :: firstTimeMem = .true.
-    character(len=80) :: message
+!    character(len=80) :: message
     type(VECTOR) :: rVec
     ! array of octals that may be needed for temporarily storing child octals
 
@@ -16668,7 +16668,7 @@ END SUBROUTINE assignDensitiesStellarWind
 
 
   recursive subroutine assignDensitiesMahdavi(grid, thisOctal, astar, mdot, minrCubedRhoSquared)
-    use inputs_mod, only :  vturb, isothermTemp, ttauriRstar
+    use inputs_mod, only :  vturb, isothermTemp
     use inputs_mod, only : TTauriDiskHeight
     use magnetic_mod, only : inflowMahdavi, velocityMahdavi, densityHartmann
     real(double) :: astar, mdot, thisR, thisRho, thisV, minRcubedRhoSquared

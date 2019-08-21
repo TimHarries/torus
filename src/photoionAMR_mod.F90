@@ -8981,8 +8981,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
                 newThread = -1
                 call propagateObserverPhoton(grid, thisPhoton, addToImage, newThread, freeFreeImage, lambdaImage)
                 if (addToImage) then
-                   call addPhotonToPhotoionImage(observerDirection, &
-                        xAxis, yAxis, thisImage, thisPhoton, totalFluxArray(myRankGlobal))
+                   call addPhotonToPhotoionImage(xAxis, yAxis, thisImage, thisPhoton, totalFluxArray(myRankGlobal))
                    goto 777
                 else
                    call sendPhoton(thisPhoton, newThread, endLoop = .false.)
@@ -9010,8 +9009,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
                    newThread = -2
                    call propagateObserverPhoton(grid, observerPhoton, addToImage, newThread, freeFreeImage, lambdaImage)
                    if (addToImage) then
-                      call addPhotonToPhotoionImage(observerDirection, &
-                           xAxis, yAxis, thisImage, observerPhoton, totalFluxArray(myRankGlobal))
+                      call addPhotonToPhotoionImage(xAxis, yAxis, thisImage, observerPhoton, totalFluxArray(myRankGlobal))
                    else
                       call sendPhoton(observerPhoton, newThread, endLoop = .false.)
                    endif
