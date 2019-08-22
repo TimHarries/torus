@@ -3053,8 +3053,9 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
 ! Write VTK file
       call writeinfo('Writing VTK', TRIVIAL)
-      call writeVTKfile(grid, "molResults.vtk", valueTypeString=(/"J=0       ",&
-           "J=1       ", "J=2       ", "J=3       ", "J=4       ", "J=5       ", "rho       "/))
+      call writeVTKfile(grid, "molResults.vtk", valueTypeString=(/ "molabundance", "J=0         ",&
+           "J=1         ", "J=2         ", "J=3         ", "J=4         ", & 
+	   "J=5         ", "rho         "/))
       call writeinfo('Done', TRIVIAL)
 
    endif
@@ -4733,7 +4734,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
            imagebasis(2) = rotateY(imagebasis(2), imageBasisPrerotate * degtorad)
 
 ! This line controls inclination in a 2D geometry (e.g. IRAS04158, shakara) - ANTI-CLOCKWISE ROTATION           
-           viewvec = rotateX(viewvec, -rotateViewAboutX * degtorad) 
+           viewvec = rotateX(viewvec, rotateViewAboutX * degtorad) 
 ! Image bases are necessarily orthonormal and linearly independent
            imagebasis(1) = rotateX(imagebasis(1), rotateViewAboutX * degtorad) 
            imagebasis(2) = rotateX(imagebasis(2), rotateViewAboutX * degtorad)
@@ -4828,6 +4829,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
        integer, optional :: subcell
 
        type(VECTOR), save :: oldposition, oldout = VECTOR(-8.8d88,-8.8d88,-8.8d88)
+
        integer, save :: savecounter = 0
 !$OMP THREADPRIVATE (oldposition, oldout, savecounter)
 
@@ -4852,10 +4854,10 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
           Out = ggtauvelocity(Position)
        else
           Out = amrGridVelocity(grid%octreeRoot, position, startOctal = startOctal, &
-                                actualSubcell = subcell, linearinterp = .false.)
+               actualSubcell = subcell, linearinterp = .false.)
        endif
 
-!       print *, "out", out
+!       print *, "out velocity", thisout, "km/s"
        oldout = out
        oldposition = position
 
@@ -5680,6 +5682,8 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
 
         thisPosition = currentPosition
 
+        ! The "velocity" function comes from molecular_mod and returns an analytical velocity or
+        ! result from amrGridVelocity
         startVel = Velocity(currentPosition, grid, startoctal = thisoctal, subcell = subcell)       
         endposition = currentposition + (1.d0 - 1d-10) * tval * direction
 

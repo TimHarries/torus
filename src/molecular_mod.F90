@@ -1567,11 +1567,11 @@ grid_conv_loop: do while (.not. gridConverged)
 
                 !$OMP PARALLEL DEFAULT(NONE) &
                 !$OMP PRIVATE(iOctal, thisOctal, iray, warned_neg_dtau, dirweight) &
-		!$OMP PRIVATE(nh, ne, nhe, nprotons, collMatrix, subcell) &
-		!$OMP PRIVATE(ctot, ds, phi, direction, i0temp, i0, position, iter, popsconverged) &
-		!$OMP PRIVATE(oldpops1, oldpops2, oldpops3, oldpops4, error, maxlocerror, maxerrorloc, fac) &
-		!$OMP SHARED(grid, iOctal_beg, iOctal_end, octalArray, maxlevel, thisMolecule, nray,maxtrans) &
-		!$OMP SHARED(fixedRays, debug, ng, minlevel, mintrans,  Warncount, accstep, fixedRaySeed, myRankGlobal) &
+                !$OMP PRIVATE(nh, ne, nhe, nprotons, collMatrix, subcell) &
+                !$OMP PRIVATE(ctot, ds, phi, direction, i0temp, i0, position, iter, popsconverged) &
+                !$OMP PRIVATE(oldpops1, oldpops2, oldpops3, oldpops4, error, maxlocerror, maxerrorloc, fac) &
+                !$OMP SHARED(grid, iOctal_beg, iOctal_end, octalArray, maxlevel, thisMolecule, nray,maxtrans) &
+                !$OMP SHARED(fixedRays, debug, ng, minlevel, mintrans,  Warncount, accstep, fixedRaySeed, myRankGlobal) &
                 !$OMP SHARED(forceIniRay)
             
 
@@ -1927,20 +1927,20 @@ end subroutine molecularLoop
      logical :: tostar
      real(double) :: di0(maxtrans), dirWeight
      real(double), intent(out) :: ds, phi, i0(:)
-	 	 
+                 
      integer, parameter :: maxSamplePoints = 100
-	 
+         
      logical :: antithetic
 
      logical, save :: firsttime = .true.
      logical, save :: conj = .false.
      type(VECTOR), save :: possave, dirsave
      real(double), save :: rsave, s
-	 	 	 
+                         
      real(double), allocatable, save :: OneArray(:)
      real(double), save :: OneOverNTauArray(maxsamplePoints)
      real(double), save :: BnuBckGrnd(600)
-	 
+         
      integer :: subcell
 
      integer :: nTau     
@@ -1949,7 +1949,7 @@ end subroutine molecularLoop
      real(double) :: alphanu(maxtrans,2), alpha(maxtrans),  snu(maxtrans), jnu(maxtrans)
      real(double) :: tau(maxtrans), dTau(maxtrans), localradiationfield(maxtrans), attenuation(maxtrans), kappaAbs
      real(double) :: balance(maxtrans), spontaneous(maxtrans)
-	 	  
+                  
      type(VECTOR) :: position, currentPosition, thisPosition, endposition, direction, halfstep
      type(VECTOR) :: startVel, endVel, thisVel, rayvel
 
@@ -2116,7 +2116,7 @@ end subroutine molecularLoop
 ! Find distance to edge of cell
         call findSubcellLocal(currentPosition, thisOctal, subcell)
         call distanceToCellBoundary(grid, currentPosition, direction, tVal, soctal = thisoctal)
-		
+                
 ! Determine how many velocity samples should be taken per grid cell.
 ! If fixedrays then always check.
 ! If ever greater than 2 then always calculate in this cell for rest of calculation
@@ -2150,8 +2150,8 @@ end subroutine molecularLoop
         dds = tval * cellEdgeInterval ! determine line segment length
         halfstep = dds * 0.5 * direction ! find point halfway between start and end to take representative velocity
         dist = 0.d0
-					
-! Calculate absorption from (various types of) dust 		
+                                        
+! Calculate absorption from (various types of) dust             
         if(useDust) then     
            if(realdust) then
               do itrans = 1, maxtrans               
@@ -2201,7 +2201,7 @@ end subroutine molecularLoop
         end where
 ! Calculate total emission and absorption over entire cell (sum over all line segments)
         do itau = 2, nTau
-! Get next position	
+! Get next position     
            dist = dist + dds
            thisPosition = currentPosition + dist * direction
 ! Get velocity at midpoint   
@@ -3055,7 +3055,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
       call writeinfo('Writing VTK', TRIVIAL)
       call writeVTKfile(grid, "molResults.vtk", valueTypeString=(/ "molabundance", "J=0         ",&
            "J=1         ", "J=2         ", "J=3         ", "J=4         ", & 
-	   "J=5         ", "rho         "/))
+           "J=5         ", "rho         "/))
       call writeinfo('Done', TRIVIAL)
 
    endif
