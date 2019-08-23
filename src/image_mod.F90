@@ -174,12 +174,19 @@ module image_mod
 
      call pixelLocate(thisImage, xDist, yDist, xPix, yPix)
 
+!     write(*,*) "xaxis ",xaxis, " yaxis ", yaxis, " pos ",thisPhoton%position
+!     write(*,*) "xdist, ydist" , xdist,ydist
+!     write(*,*) "image x ",thisImage%xAxiscentre(1), thisImage%xAxisCentre(thisImage%nx)
+!     write(*,*) "image y ",thisImage%yAxiscentre(1), thisImage%yAxisCentre(thisImage%ny)
+!     write(*,*) xpix,ypix
+
      if ( (xPix >= 1)            .and.(yPix >= 1) .and. &
           (xPix <= thisImage%nx) .and.(yPix <= thisImage%ny)) then
 
         thisImage%pixel(xPix, yPix) = thisImage%pixel(xPix, yPix)  &
              + thisPhoton%stokes * oneOnFourPi * exp(-thisPhoton%tau) * thisPhoton%weight
 
+!        write(*,*) thisImage%pixel(xpix,ypix)%i
         thisImage%nSamples(xPix, yPix) = thisImage%nSamples(xPix, yPix) + 1
 
      endif

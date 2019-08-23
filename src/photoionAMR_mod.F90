@@ -8795,9 +8795,11 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     outputImageType = getImageType(imageNum)
     imageFilename   = getImageFilename(imageNum)
     observerDirection = getImageViewVec(imageNum)
-
+    write(*,*) "observer direction ",observerDirection
     inclination = getImageInc(imageNum)
 
+    xAxis = VECTOR(1.d0, 0.d0, 0.d0)
+    yAxis = VECTOR(0.d0, 1.d0, 0.d0)
     xAxis = rotateX(xAxis, inclination)
     yAxis = rotateX(yAxis, inclination)
 
