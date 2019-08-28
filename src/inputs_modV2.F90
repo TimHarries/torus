@@ -395,6 +395,9 @@ contains
           call getDouble("criticalmass", criticalMass, mSol, cLine, fLine, nLines, &
                "Critical mass for creating subsources (msol): ","(a,f6.1,a)", 600.d0, ok, .false.)
 
+          call getDouble("sfe", starFormationEfficiency, 1.d0, cLine, fLine, nLines, &
+               "Clustersink star formation efficiency: ","(a,f6.1,a)", 1.d0, ok, .false.)
+
           call getLogical("readimf", readimf, cLine, fLine, nLines, &
                "Read IMF from file: ", "(a,1l,1x,a)", .false., ok, .false.)
 

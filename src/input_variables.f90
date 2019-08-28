@@ -232,6 +232,7 @@
   real(double) :: tStart, tEnd, tDump !Start, end and dump interval times
   real(double) :: rhoThreshold        ! threshold density for sink creation
   real(double) :: criticalMass        ! critical reservoir mass above which cluster sink particles sample IMF 
+  real(double) :: starFormationEfficiency ! cluster sink SFE
   real(double) :: hydroSpeedLimit     ! fudge to limit hydrodynamic advection speed
   logical :: hydrovelocityConv        !Convert input velocity vector into simulation velocities 
   logical :: doRefine, doUnrefine     !Allow the AMR grid to refine/unrefine

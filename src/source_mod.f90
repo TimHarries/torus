@@ -48,7 +48,7 @@
 
   type(SOURCETYPE), pointer :: globalSourceArray(:) => null()
   integer :: globalnSource
-  integer, parameter :: globalMaxNsubsource=1000
+  integer, parameter :: globalMaxNsubsource=5000
 
   contains
 
@@ -362,6 +362,7 @@
       type(SOURCETYPE) :: source
       integer :: lunit, i
       logical, optional :: readSpectrum
+      character(len=120) :: message
 
       read(lunit) source%position
       read(lunit) source%velocity
@@ -399,6 +400,10 @@
       if (clusterSinks) then
          read(lunit) source%nSubsource
          if (source%nSubsource > 0) then
+            if (source%nSubsource > globalMaxNsubsource) then
+               write(message,*) "readSource: nSubsource ", source%nSubsource, " exceeds globalMaxNsubsource ", globalMaxNsubsource
+               call writeFatal(message)
+            endif
             allocate(source%subsourceArray(1:globalMaxNsubsource))
             do i = 1, source%nSubsource
                call readSource(source%subsourceArray(i), lunit, readSpectrum=.false.)
@@ -1369,12 +1374,14 @@
   end function insideSource
 
   real(double) function clusterReservoir(cluster) ! [g]
+    use inputs_mod, only : starFormationEfficiency
     type(SOURCETYPE) :: cluster
     if (cluster%nsubsource > 0) then
        clusterReservoir = cluster%mass - sum(cluster%subsourceArray(1:cluster%nSubsource)%mass) 
     else
        clusterReservoir = cluster%mass
     endif
+    clusterReservoir = clusterReservoir * starFormationEfficiency
   end function clusterReservoir
 
 

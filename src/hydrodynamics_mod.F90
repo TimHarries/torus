@@ -20335,8 +20335,6 @@ end subroutine minMaxDepth
      type(GRIDTYPE) :: grid
      type(SOURCETYPE) :: source(:)
      type(SOURCETYPE), allocatable :: newSources(:)
-!     real(double) :: rhomax
-!     real :: startTime, endTime
      integer :: nSource, oldnSource, iThread, i,j 
      integer :: nPoints, ierr, maxPointsInRadius, n, nOther, myrankAMR
      integer :: status(MPI_STATUS_SIZE)
@@ -20347,7 +20345,16 @@ end subroutine minMaxDepth
      real(double), allocatable, dimension(:,:) :: mass, phi, cs
      integer, allocatable, dimension(:) :: centreThread, nPointsInRadius
      integer, dimension(1:nHydroThreadsGlobal) :: amrRank, temp, nPointsOnThread, nAdded
-!     character(len=80) :: fn
+
+!     do iThread = 1, nHydroThreadsGlobal
+!        if (myrankGlobal == iThread) then
+!           call recursaddSinks(grid%octreeRoot, grid, source, nSource, rhomax)
+!           call shutdownRadiusServer()
+!        else
+!           call getPointsInAccretionRadiusServer(grid, nSource, source)
+!        endif
+!     enddo
+
 
      call MPI_COMM_RANK(amrCommunicator, myrankAMR, ierr)
      amrRank = 0
@@ -20355,9 +20362,6 @@ end subroutine minMaxDepth
      call MPI_ALLREDUCE(amrRank, temp, nHydroThreadsGlobal, MPI_INTEGER, MPI_SUM, amrCommunicator, ierr)
      amrRank = temp
 
-!     if (myrankGlobal == 1) then
-!        write(*,*) "amrrank ", amrRank
-!     endif
      if (myrankGlobal == 1) then
         do iThread = 1, nHydroThreadsGlobal
            if (amrRank(iThread) /= iThread - 1) then
@@ -20368,22 +20372,6 @@ end subroutine minMaxDepth
         enddo
      endif
         
-
-!     do iThread = 1, nHydroThreadsGlobal
-!        if (myrankGlobal == iThread) then
-!           rhomax = 0.d0
-!           mpiTime = 0.
-!           call wallTime(startTime)
-!           call recursaddSinks(grid%octreeRoot, grid, source, nSource, rhomax)
-!           call wallTime(endTime)
-!           call shutdownRadiusServer()
-!!           write(*,'(i4,a,3f12.3)') myrankglobal, " secs in recurseAddSinks, mpi, % ", endTime-startTime, mpiTime, &
-!!              mpiTime/(endTime-startTime)*100.
-!        else
-!           call getPointsInAccretionRadiusServer(grid, nSource, source)
-!        endif
-!     enddo
-
       ! get positions of dense cells on domain
       nPointsOnThread = 0
       call findDenseCells(grid%octreeRoot, grid, nPointsOnThread(myRankGlobal))
@@ -20425,8 +20413,6 @@ end subroutine minMaxDepth
       allocate(phi(1:nPoints, 1:maxPointsInRadius))
       allocate(cs(1:nPoints, 1:maxPointsInRadius))
 
-!      write(fn, '(a,i4.4,a)') "centres_rank",myrankglobal,".dat"
-!      open(100+myrankglobal, file=trim(fn), status="unknown", form="formatted")
       do i = 1, nPoints
          if (myrankGlobal == centreThread(i)) then
             position(i,1) = centres(i) 
@@ -20441,11 +20427,9 @@ end subroutine minMaxDepth
          ! local
 !         if (i == 1 .and. myrankglobal == centrethread(i)) write(*,*) myrankglobal, " point 1 centre (on domain) ", centres(i)
 !         if (i == 1 .and. myrankglobal == centrethread(i)+1) write(*,*) myrankglobal, " point 1 centre (off domain) ", centres(i)
-!         write(100+myrankglobal, '(i4,i4,6(es13.5,1x))') i, centreThread(i), centres(i), position(i,1)
          call getPointsInAccretionRadiusLocal(grid%octreeRoot, centres(i), accretionRadius*smallestCellSize, & 
             grid, nPointsInRadius(i), position(i,:), vel(i,:), mass(i,:), phi(i,:), cs(i,:))
       enddo
-!      close(100+myrankglobal)
 
       ! other threads - send points to centre thread 
       do i = 1, nPoints
@@ -20453,9 +20437,6 @@ end subroutine minMaxDepth
             nPointsOnThread(1:nHydroThreadsGlobal), 1, MPI_INTEGER, amrCommunicator, ierr)
          ! see if there are points on other threads
          do iThread = 1, nHydroThreadsGlobal
-!            if (writeoutput .and. iThread == 1) write(*,*) "iPoint ", i
-!            if (i == 1 .and. myrankglobal==iThread) write(*,*) myrankglobal, " nPointsInRadius/OnThread ", & 
-!               nPointsInRadius(i), nPointsOnThread(myrankGlobal)
             if (iThread /= centreThread(i) .and. nPointsOnThread(iThread) > 0) then
                if (myRankGlobal == iThread) then
                   n = nPointsInRadius(i)
@@ -20573,12 +20554,11 @@ end subroutine minMaxDepth
          source(oldnSource+1:nSource)%stellar = .true.
          source(oldnSource+1:nSource)%diffuse = .false.
          source(oldnSource+1:nSource)%initialMass = source(oldnSource+1:nSource)%mass/msol 
-         do i = oldnSource+1, nSource
-!            call emptySurface(source(i)%surface)
-!            call buildSphereNbody(source(i)%position, source(i)%accretionRadius/1.d10, source(i)%surface, 20)
-            write(*,'(i3,a,i4.4,a,f12.7,3(es10.2))') myrankglobal, " new mass(", i, ") is ", source(i)%mass/msol, source(i)%position
-            ! fixme
-            if (writeoutput) then
+         ! source(:) is now the same across all threads
+
+         if (writeoutput) then
+            do i = oldnSource+1, nSource
+               write(*,'(a,i4.4,a,f12.7,3(es10.2))') "new mass(", i, ") is ", source(i)%mass/msol, source(i)%position
                do j = oldnSource+1, nSource 
                   if (i /= j) then
                      if (modulus(source(j)%position - source(i)%position)*1.d10 < source(i)%accretionRadius) then
@@ -20588,9 +20568,8 @@ end subroutine minMaxDepth
                      endif
                   endif
                enddo
-            endif
-         enddo
-         ! source(:) is now the same across all threads
+            enddo
+         endif
          deallocate(newSources)
 
       endif

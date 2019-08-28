@@ -10824,6 +10824,7 @@ end subroutine putStarsInGridAccordingToDensity
   end subroutine createEmissionMeasureImage
   subroutine emissionMeasureAlongPathAMR(grid, rVec, direction, sigma)
     use mpi
+    use inputs_mod, only : vtkIncludeGhosts
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, direction, currentPosition
     real(double) :: sigma, distToNextCell
@@ -10847,7 +10848,13 @@ end subroutine putStarsInGridAccordingToDensity
   
        currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
        if (myrankGlobal == thisOctal%mpiThread(subcell)) then
-          sigma = sigma + (distToNextCell*1.d10/pctocm) * thisOctal%ne(subcell)**2
+          if (vtkIncludeGhosts) then
+             sigma = sigma + (distToNextCell*1.d10/pctocm) * thisOctal%ne(subcell)**2
+          else
+             if (.not. thisOctal%ghostCell(subcell)) then
+                sigma = sigma + (distToNextCell*1.d10/pctocm) * thisOctal%ne(subcell)**2
+             endif
+          endif
        endif
 
     end do

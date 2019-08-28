@@ -4287,6 +4287,7 @@ contains
 
   subroutine columnAlongPathAMR(grid, rVec, direction, sigma)
     use mpi
+    use inputs_mod, only : vtkIncludeGhosts
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, direction, currentPosition
     real(double) :: sigma, distToNextCell
@@ -4310,9 +4311,13 @@ contains
   
        currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
        if (myrankGlobal == thisOctal%mpiThread(subcell)) then
-!          if (.not. thisOctal%ghostCell(subcell)) then
+          if (vtkIncludeGhosts) then
              sigma = sigma + distToNextCell*1.d10*thisOctal%rho(subcell)
-!          endif
+          else
+             if (.not. thisOctal%ghostCell(subcell)) then
+                sigma = sigma + distToNextCell*1.d10*thisOctal%rho(subcell)
+             endif
+          endif
        endif
 
     end do
