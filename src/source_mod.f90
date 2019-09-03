@@ -1377,11 +1377,10 @@
     use inputs_mod, only : starFormationEfficiency
     type(SOURCETYPE) :: cluster
     if (cluster%nsubsource > 0) then
-       clusterReservoir = cluster%mass - sum(cluster%subsourceArray(1:cluster%nSubsource)%mass) 
+       clusterReservoir = cluster%mass * starFormationEfficiency - sum(cluster%subsourceArray(1:cluster%nSubsource)%mass) 
     else
-       clusterReservoir = cluster%mass
+       clusterReservoir = cluster%mass * starFormationEfficiency
     endif
-    clusterReservoir = clusterReservoir * starFormationEfficiency
   end function clusterReservoir
 
 

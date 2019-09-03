@@ -1330,7 +1330,7 @@ contains
              endif
              if (myrankWorldglobal == 1) call tune(6, "Setting cluster spectra")
              call setClusterSpectra(globalSourceArray, globalnSource, populated) 
-             call freeSubsourceSpectra(globalSourceArray, globalnSource) 
+!             call freeSubsourceSpectra(globalSourceArray, globalnSource) 
              if (myrankWorldglobal == 1) call tune(6, "Setting cluster spectra")
 
              if (doMorePhoto) then

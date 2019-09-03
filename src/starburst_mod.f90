@@ -320,7 +320,6 @@ contains
     character(len=80) :: fn, mpiFilename
     logical :: debug
 
-    !FIXME
     debug = .false.
     if (writeoutput) then
        debug = .false.
@@ -482,6 +481,12 @@ contains
              clusters(i)%luminosity = 0.d0
           endif
 
+          ! free subsource spectra
+          do j = 1, clusters(i)%nSubsource
+             call freeSpectrum(clusters(i)%subsourceArray(j)%spectrum)
+             call emptySurface(clusters(i)%subsourceArray(j)%surface)
+          enddo
+
        ! no subsources
        else 
           ! zero flux
@@ -489,6 +494,8 @@ contains
           call newSpectrum(clusters(i)%spectrum, 100.d0, 1.d7, 1000)
           clusters(i)%luminosity = 0.d0
        endif
+
+       
     enddo
   end subroutine setClusterSpectra
 
@@ -1307,7 +1314,20 @@ contains
             thisTable%label = "MIST"
             ! read filename from list, read the track from each file 
             call unixGetenv("TORUS_DATA", dataDirectory)
-            write(tfile, '(a,a)') trim(dataDirectory), "/mist/filelist.txt"
+            if (metallicity == 1.) then
+               write(tfile, '(a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_p0.00_afe_p0.0_vvcrit0.0_EEPS/filelist.txt"
+            elseif (metallicity == 0.1) then
+               write(tfile, '(a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_m1.00_afe_p0.0_vvcrit0.0_EEPS/filelist.txt"
+            elseif (metallicity == 0.01) then
+               write(tfile, '(a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_m2.00_afe_p0.0_vvcrit0.0_EEPS/filelist.txt"
+            elseif (metallicity == 10.**(-0.5)) then
+               write(tfile, '(a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_m0.50_afe_p0.0_vvcrit0.0_EEPS/filelist.txt"
+            elseif (metallicity == 10.**(0.5)) then
+               write(tfile, '(a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_p0.50_afe_p0.0_vvcrit0.0_EEPS/filelist.txt"
+            else
+              if (writeoutput) write(*,*) "mist filelist not found for metallicity ", metallicity
+              stop
+            endif
             open(30, file=tfile, status="old", form="formatted")
             i = 0
 10 continue
@@ -1317,6 +1337,7 @@ contains
             goto 10
 55 continue
             close(30)
+            thisTable%nMass = i
       end select
 
      end subroutine readinTracks
