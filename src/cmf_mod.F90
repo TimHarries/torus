@@ -2417,7 +2417,7 @@ END SUBROUTINE calculateJbar
     enddo
   end subroutine removeInnerEtaChi
 
-  recursive  subroutine  calcChiLine(thisOctal, thisAtom, nAtom, iAtom, iTrans)
+  recursive  subroutine calcChiLine(thisOctal, thisAtom, nAtom, iAtom, iTrans,fp)
     type(MODELATOM) :: thisAtom(:)
     integer :: nAtom
     integer :: iTrans
@@ -2427,6 +2427,7 @@ END SUBROUTINE calculateJbar
     real(double) :: a, bul, blu
     real(double) :: alphaNu
     integer :: ilower
+    integer, intent(in) :: fp
     real(double) :: nlower, nupper
     a = 0.d0; blu = 0.d0; bul = 0.d0
     do subcell = 1, thisOctal%maxChildren
@@ -2435,7 +2436,7 @@ END SUBROUTINE calculateJbar
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call calcChiLine(child, thisAtom, nAtom, iAtom, iTrans)
+                call calcChiLine(child, thisAtom, nAtom, iAtom, iTrans, fp)
                 exit
              end if
           end do
@@ -2453,6 +2454,7 @@ END SUBROUTINE calculateJbar
 
              alphanu = alphanu * (nLower * Blu - nUpper * Bul)
              thisOctal%chiLine(subcell) = alphanu * 1.d10
+             write(fp,*) thisOctal%chiLine(subcell), iUpper, nUpper, iLower, nLower
           endif
 !          write(45,*) modulus(subcellCentre(thisOctal,subcell)), thisOctal%chiline(subcell)
 
@@ -3486,6 +3488,7 @@ END FUNCTION intensityAlongRayGeneric
     real(double) :: freqArray(maxFreq), broadBandFreq, transitionFreq
     logical :: doCube, doSpec
     logical :: storeLineoff
+    integer :: fp !removeme
 #ifdef USECFITSIO
     character(len=80) :: tempFilename
 #endif
@@ -3515,7 +3518,9 @@ END FUNCTION intensityAlongRayGeneric
        call identifyTransitionCmf(dble(lamLine), thisAtom, iAtom, iTrans)
        transitionFreq = thisAtom(iAtom)%transfreq(iTrans)
 !       open(45,file="chiline.dat",form="formatted",status="unknown")
-       call calcChiLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
+       open (UNIT=fp, FILE="chiLine.dat",ACTION="WRITE")
+       call calcChiLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans, fp)
+       close(fp)
 !       close(45)
 !       open(45,file="etaline.dat",form="formatted",status="unknown")
        call calcEtaLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
