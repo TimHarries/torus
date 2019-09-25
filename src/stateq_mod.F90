@@ -4235,6 +4235,11 @@ contains
 
              if (octalArray(iOctal)%content%etaLine(iSubcell) < 0.0) then
                 octalArray(iOctal)%content%etaLine(iSubcell) = 1.e-20
+                open(23,file="chiEta_qstateq.dat",action="write",form="formatted",status="unknown", position="append")
+                write(23,*) fac, chil, octalArray(iOctal)%content%etaLine(iSubcell), &
+                    octalArray(iOctal)%content%N(iSubcell,nLower), &
+                    octalArray(iOctal)%content%N(iSubcell,nUpper)
+                close(23)
                 print *, ' in amrStatEq, negative etaline value fixed!'
              end if
 
