@@ -3521,7 +3521,7 @@ END FUNCTION intensityAlongRayGeneric
        call calcEtaLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
 !       close(45)
        call calcContinuumOpacities(grid%octreeRoot, thisAtom, nAtom, transitionfreq)
-       call removeInnerEtaChi(grid%octreeRoot, source(1)%radius*1.1)
+       call removeInnerEtaChi(grid%octreeRoot, source(1)%radius*1.01d0)
     endif
 
     call setMicroturb(grid%octreeRoot, dble(vTurb))
