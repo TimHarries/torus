@@ -5140,8 +5140,9 @@ contains
              end if
           end do
        else
-          if (thisOctal%temperature(subcell) > 3000.) then
+          if ((thisOctal%temperature(subcell) > 3000.) .or. thisOctal%inFlow(subcell)) then
              thisOctal%inFlow(subcell) = .true.
+             thisOctal%inUse(subcell) = .true.
           else
              thisOctal%inFlow(subcell) = .false.
           endif
