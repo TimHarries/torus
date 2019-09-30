@@ -4202,7 +4202,8 @@ contains
 
     do iOctal = 1, SIZE(octalArray), 1
        do iSubcell = 1, octalArray(iOctal)%content%maxChildren
-          if (octalArray(iOctal)%inUse(iSubcell).and.octalArray(iOctal)%content%inFlow(isubcell)) then
+          ! if (octalArray(iOctal)%inUse(iSubcell).and.octalArray(iOctal)%content%inFlow(isubcell)) then
+          if (octalArray(iOctal)%content%inFlow(isubcell)) then
              octalArray(iOctal)%content%kappaSca(iSubcell,1) = &
                 octalArray(iOctal)%content%Ne(iSubcell) * sigmae * 1.e10
 
@@ -5135,9 +5136,8 @@ contains
              end if
           end do
        else
-          if ((thisOctal%temperature(subcell) > 3000.) .or. thisOctal%inFlow(subcell)) then
+          if (thisOctal%temperature(subcell) > 3000.) then
              thisOctal%inFlow(subcell) = .true.
-             thisOctal%inUse(subcell) = .true.
           else
              thisOctal%inFlow(subcell) = .false.
           endif
