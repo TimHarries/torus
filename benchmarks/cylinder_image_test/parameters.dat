@@ -38,7 +38,7 @@ npixels 201
 
 
 inclination 90.0
-positionangle 90.0
+positionangle 0.0
 
 ! Source parameters 
 

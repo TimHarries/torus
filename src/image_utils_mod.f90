@@ -312,13 +312,6 @@ contains
     integer, intent(in) :: i
     TYPE(vector) :: setImageViewVec, tempVec
 
-! Make a unit vector with the required inclination
-! Inclination is spherical polar theta
-
-    
-! Now apply the required position angle
-! Position angle is spherical polar phi
-    setImageViewVec = rotateZ(tempVec,dble(myImages(i)%positionAngle))
 
     tempVec%x = sin(myImages(i)%positionAngle) * sin(myImages(i)%inclination)
     tempVec%y = cos(myImages(i)%positionAngle) * sin(myImages(i)%inclination)

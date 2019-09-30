@@ -823,6 +823,31 @@ contains
 
     select case(geometry)
 
+       case("WB2014")
+          call getLogical("WBvel", WBvel, cLine, fLine, nLines, &
+               "Just use cell centered velocity ","(a,1l,1x,a)", .false., ok, .false.)
+          call getDouble("ringR", ringR, 1.d0, cLine, fLine, nLines, &
+               "Radius of ring (WB2014): ","(a,f7.1,1x,a)", 1.d2, ok, .false.)
+          call getDouble("ringdR", ringdR, 1.d0, cLine, fLine, nLines, &
+               "Width of ring (WB2014): ","(a,f7.1,1x,a)", 0.d0, ok, .false.)
+          call getDouble("WB_Sigma0", WB_Sigma0, 1.d0, cLine, fLine, nLines, &
+               "Surface density normalization (WB2014): ","(a,f7.1,1x,a)", 1.d2, ok, .false.)
+          call getDouble("WB_gamma", WB_gamma, 1.d0, cLine, fLine, nLines, &
+               "Surface density power law (WB2014): ","(a,f7.1,1x,a)", 2.d0, ok, .false.)
+          call getDouble("WB_Rc", WB_Rc, 1.d0, cLine, fLine, nLines, &
+               "Characteristic radius (WB2014): ","(a,f7.1,1x,a)", 100.d0, ok, .false.)
+          call getDouble("WB_q", WB_q, 1.d0, cLine, fLine, nLines, &
+               "Temperature power law (WB2014): ","(a,f7.1,1x,a)", 0.d5, ok, .false.)
+          call getDouble("Tmid1AU", Tmid1AU, 1.d0, cLine, fLine, nLines, &
+               "Mid-plane temperature normalization (WB2014): ","(a,f7.1,1x,a)", 100.d0, ok, .false.)
+          call getDouble("Tatm1AU", Tatm1AU, 1.d0, cLine, fLine, nLines, &
+               "Atmospheric temperature normalization (WB2014): ","(a,f7.1,1x,a)", 300.d0, ok, .false.)
+
+!  real(double) :: WB_Sigma0
+!  real(double) :: WB_gamma
+!  real(double) :: WB_q
+!  real(double) :: Tmid1AU
+!  real(double) :: Tatm1AU
        case("protobin")
        call getReal("beta", beta, 1., cLine, fLine, nLines, &
             "Rotation energy to grav enery: ","(a,f7.0,a)", 1., ok, .true.)

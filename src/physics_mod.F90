@@ -578,6 +578,7 @@ contains
 #ifdef MOLECULAR
      if (molecularPhysics.and.(statisticalEquilibrium.or.setupMolecularLteOnly)) then
 #ifdef MPI
+
         if (grid%splitOverMPI.and.hydrovelocityconv) then
            call setallUnchanged(grid%octreeRoot)
            call hydroVelocityConvert(grid%octreeRoot)

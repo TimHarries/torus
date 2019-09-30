@@ -1099,6 +1099,10 @@ CONTAINS
     CASE ("RHDDisc")
        CALL RHDDisc(thisOctal, subcell)
 
+!TJHaworth -- williams & best 2014 parametric disc model (St Andrews MC Summer School)
+    CASE ("WB2014")
+       call WilliamsAndBest2014(thisOctal, subcell)
+
     CASE ("simpledisc")
        CALL simpledisc(thisOctal, subcell)
 
@@ -1326,13 +1330,13 @@ CONTAINS
       end subroutine calcRunaway
 
 #ifdef USECFITSIO
-      subroutine calcPion(thisOctal, subcell)
-        use gridFromFitsFile, only : assign_from_fitsfile_interp
-        type(OCTAL) :: thisOctal
-        integer :: subcell
-
-        call assign_from_fitsfile_interp(thisOctal, subcell)
-      end subroutine calcPion
+!      subroutine calcPion(thisOctal, subcell)
+!        use gridFromFitsFile, only : assign_from_fitsfile_interp
+!        type(OCTAL) :: thisOctal
+!        integer :: subcell
+!
+!        call assign_from_fitsfile_interp(thisOctal, subcell)
+!      end subroutine calcPion
 #endif
   END SUBROUTINE calcValuesAMR
 
@@ -1542,7 +1546,7 @@ CONTAINS
     logical, optional, intent(in) :: amrHydroInterp
     logical :: doAmrHydroInterp
 !   logical, save :: firstTimeMem = .true.
-    character(len=80) :: message
+!    character(len=80) :: message
     type(VECTOR) :: rVec
     ! array of octals that may be needed for temporarily storing child octals
 
@@ -1550,8 +1554,8 @@ CONTAINS
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
 
     if (globalMemoryChecking.and.(globalMemoryFootprint > maxMemoryAvailable)) then
-       write(message,'(a)') "Child added while memory exceeded for grid :"//humanReadableMemory(globalMemoryFootprint)
-       call writeWarning(message)
+!       write(message,'(a)') "Child added while memory exceeded for grid :"//humanReadableMemory(globalMemoryFootprint)
+!       call writeWarning(message)
     endif
 
     doAMRhydroInterp = .false.
@@ -4762,6 +4766,10 @@ CONTAINS
           elseif(modulus(rvec) < 100.*autocm/1.d10) then
              if(thisOctal%ndepth < maxdepthamr-4) split = .true.
           endif
+
+
+       case("WB2014")
+          if(thisOctal%ndepth < mindepthamr) split = .true.
 
 
        case("simpledisc")
@@ -11248,12 +11256,114 @@ logical function insideCone(position, binarySep, momRatio)
        thisOctal%velocity(subcell) = vector(0.d0, 0.d0, 0.d0)/cspeed
 
     endif
+    if(.not. associated(thisOctal%nh2)) then
+       allocate(thisOctal%nh2(thisOctal%maxChildren))
+    endif
     thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.d0*mhydrogen)
 
   end subroutine HLtauDiscDensity
 
 
+  subroutine WilliamsAndBest2014(thisOctal, subcell)
+    !TJHaworth may modify so user specifies disc mass and Rc
+    use inputs_mod, only : WB_Rc, Tmid1AU, Tatm1AU, sourcemass, WB_gamma, WB_q
+    use inputs_mod, only : WB_Sigma0
+    use inputs_mod, only : ringR, ringdR
+    type(octal), intent(inout) :: thisoctal
+    integer, intent(in) :: subcell
+    type(vector) :: rvec
+    real(double) :: tmid, tatm
+    real(double) :: zq
+    real(double) :: cs, omega, H, bigRAU, HAU
+    real(double) :: sigma, rhoMid, vkep
 
+    !Williams & Best 2014 parametric disc model
+    !Added by TJHaworth for the 2019 st andrews monte carlo summer school
+
+    !find the centre of the cell on the grid that we are setting up
+    rvec = subcellcentre(thisoctal, subcell)
+    !radial coord in AU
+    bigRAU = abs(rvec%x)*1.d10/autocm
+    
+    !mid plane temperature
+    Tmid = max(Tmid1AU*(abs(rvec%x)*1.d10/autocm)**(-WB_q), 10.d0)
+    !upper temperature
+    Tatm = max(Tatm1AU*(abs(rvec%x)*1.d10/autocm)**(-WB_q), 10.d0)
+
+    
+    !sound speed
+    cs = (kerg*Tmid/2.0/mHydrogen)**0.5
+
+    !angular frequency
+    omega = (bigG*sourcemass(1)/(abs(rvec%x)*1.d10)**3)**0.5
+    !scale height
+    H = cs / omega
+    HAU=H/autocm
+    zq = 4.d0*H
+
+!    print *, "RAU, HAU ", bigRAU, HAU
+    
+    !set up the temperature
+    if(abs(rvec%z) < zq) then
+       !in the disc
+       thisOctal%temperature(subcell) = Tmid + (Tatm-Tmid)*sin(pi*rvec%z/2.0/zq)
+    else
+       !above the disc
+       thisOctal%temperature(subcell) = Tatm
+    endif
+    if(.not. associated(thisOctal%dust_t)) then
+       allocate(thisOctal%dust_t(thisOctal%maxChildren))
+    endif
+    if(.not. associated(thisOctal%tdust)) then
+       allocate(thisOctal%tdust(thisOctal%maxChildren))
+    endif
+    thisOctal%dust_t(subcell)= thisoctal%temperature(subcell)
+    thisOctal%tdust(subcell)= thisoctal%temperature(subcell)
+
+    !work out the surface density
+    Sigma = WB_Sigma0 * (bigRAU/WB_rC)**(-WB_gamma) * exp(-(bigRAU/WB_rC)**(2.0-WB_gamma))
+
+    !mid plane density 
+    rhoMid = Sigma/H
+ 
+    !density at this cell coordinate
+    thisOCtal%rho(subcell) = max(rhoMid*exp(-rvec%z**2*1.d20/2.0/H**2), 1.d-30)
+
+    if(((rvec%x*1.d10/autocm)**2 - ringR**2)**0.5 < ringdR) then
+       !in a ring
+!       print *, "IN RING"
+       thisOctal%rho(subcell) = thisOctal%rho(subcell)/1.d6
+      
+    endif
+
+!    print *, "sigma, rhomid, rho ", Sigma, rhoMid, thisOCtal%rho(subcell)
+ 
+    !have density and temperature, also need velocity
+    !only Keplerian rotation
+    vKep = (bigG*sourcemass(1)/rvec%x/1.d10)**0.5
+ 
+    thisOctal%velocity(subcell) = vector(0.d0, vkep, 0.d0)/cspeed
+
+!    if(.not. associated(thisOctal%rhou)) then
+  !     allocate(thisOctal%rhou(thisOctal%maxChildren))
+ !   endif
+ !   if(.not. associated(thisOctal%rhov)) then
+!       allocate(thisOctal%rhov(thisOctal%maxChildren))
+  !  endif
+!    if(.not. associated(thisOctal%rhow)) then
+ !      allocate(thisOctal%rhow(thisOctal%maxChildren))
+  !  endif
+!    thisOctal%rhou(subcell)=0.d0
+ !   thisOctal%rhov(subcell)=vkep*thisOctal%rho(subcell)
+  !  thisOctal%rhow(subcell)=0.d0
+    if(.not. associated(thisOctal%nh2)) then
+       allocate(thisOctal%nh2(thisOctal%maxChildren))
+    endif
+    thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.d0*mhydrogen)
+!    thisOctal%nh(subcell) = thisOctal%rho(subcell)/mhydrogen
+!    thisOctal%nh2(subcell) = thisOctal%rho(subcell)/2.0/mhydrogen
+
+  end subroutine WilliamsAndBest2014
 
   subroutine simpleDisc(thisOctal,subcell)
     use inputs_mod, ONLY : rho !, rInner, rOuter, height
@@ -16558,7 +16668,7 @@ END SUBROUTINE assignDensitiesStellarWind
 
 
   recursive subroutine assignDensitiesMahdavi(grid, thisOctal, astar, mdot, minrCubedRhoSquared)
-    use inputs_mod, only :  vturb, isothermTemp, ttauriRstar
+    use inputs_mod, only :  vturb, isothermTemp
     use inputs_mod, only : TTauriDiskHeight
     use magnetic_mod, only : inflowMahdavi, velocityMahdavi, densityHartmann
     real(double) :: astar, mdot, thisR, thisRho, thisV, minRcubedRhoSquared
@@ -18139,6 +18249,8 @@ END SUBROUTINE assignDensitiesStellarWind
        thisOctal%rho(subcell) = rho / dble(n)
        thisOctal%temperature(subcell) = temperature/real(n)
        thisOctal%velocity(subcell) = vel / dble(n)
+       write(*,*) "rho , t", thisOctal%rho(subcell), thisOctal%temperature(subcell)
+
        if (associated(thisOctal%microturb)) thisOctal%microturb(subcell) = 50.d5/cspeed!!!!!!!!!!!!!!!!!!!!
 
        if (subcell == thisOctal%maxchildren) then

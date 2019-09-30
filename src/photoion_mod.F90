@@ -3257,7 +3257,7 @@ end subroutine readHeIIrecombination
        observerPhoton%direction = observerDirection
        
        call propagateObserverPhoton(grid, observerPhoton)
-       call addPhotonToPhotoionImage(observerDirection, xAxis, yAxis, thisImage, observerPhoton, totalFlux)
+       call addPhotonToPhotoionImage(xAxis, yAxis, thisImage, observerPhoton, totalFlux)
 
        scatterloop: do 
           call moveToNextScattering(grid, thisPhoton, escaped, absorbed)      
@@ -3269,7 +3269,7 @@ end subroutine readHeIIrecombination
           observerPhoton%tau = 0.d0
           observerPhoton%direction = observerDirection
           call propagateObserverPhoton(grid, observerPhoton)          
-          call addPhotonToPhotoionImage(observerDirection, xAxis, yAxis, thisImage, observerPhoton, totalFlux)
+          call addPhotonToPhotoionImage(xAxis, yAxis, thisImage, observerPhoton, totalFlux)
        end do scatterloop
 
     end do mainloop
