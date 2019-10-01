@@ -4202,8 +4202,7 @@ contains
 
     do iOctal = 1, SIZE(octalArray), 1
        do iSubcell = 1, octalArray(iOctal)%content%maxChildren
-          ! if (octalArray(iOctal)%inUse(iSubcell).and.octalArray(iOctal)%content%inFlow(isubcell)) then
-          if (octalArray(iOctal)%content%inFlow(isubcell)) then
+          if (octalArray(iOctal)%inUse(iSubcell).and.octalArray(iOctal)%content%inFlow(isubcell)) then
              octalArray(iOctal)%content%kappaSca(iSubcell,1) = &
                 octalArray(iOctal)%content%Ne(iSubcell) * sigmae * 1.e10
 
