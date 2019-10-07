@@ -2970,7 +2970,6 @@ contains
     end if
     ! Initialize the data arrays (lambdaTrans, bEinstein, fStrength) defined at the top of this module.
     call map_transition_arrays(maxLevels)
-
     starCentre = globalSourceArray(1)%position
 
       nNu1 = starSurface%nNuHotFlux
@@ -3539,6 +3538,7 @@ contains
     use surface_mod, only: SURFACETYPE
     USE amr_mod
     USE inputs_mod, ONLY: LyContThick, statEq1stOctant, lamLine
+    USE inputs_mod, ONLY: ttauriRstar !! so that rStar can be set to non zero value
     use parallel_mod
 #ifdef MPI
     use mpi
@@ -3604,7 +3604,7 @@ contains
     if ( trim(grid%geometry) == "binary" ) isBinary = .true.
 
     numLTEsubcells = 0
-
+    grid%rStar1 = tTauriRstar / 1.d10
     if (LyContThick) then
       print *, '**************************************************'
       print *, 'Lyman Continuum Thick!'
