@@ -941,8 +941,7 @@ contains
                   write(lunit, *) real(thisOctal%scatteredIntensity(subcell,5,3))
 
                case("habing")
-                  ! note this is in units of 1e-10 Habing
-                  write(lunit, *) real(thisOctal%habingFlux(subcell))
+                  write(lunit, *) real(thisOctal%habingFlux(subcell)*1.e10)
 
                case("hydrovelocity")
                   if (thisOctal%threeD) then
@@ -1376,7 +1375,7 @@ contains
   end subroutine writeVTKfileSource
 
   subroutine writeVTKfileNbody(nSource, source, vtkFilename)
-    use inputs_mod, only : donBodyOnly, amr3d
+    use inputs_mod, only : donBodyOnly, amr3d, clusterSinks
     use source_mod
     use mpi_global_mod
     integer :: nSource
@@ -1478,14 +1477,25 @@ contains
        enddo
     enddo
 
-    write(lunit,'(a,a,a)') "SCALARS ","teff"," float"
-    write(lunit, '(a)') "LOOKUP_TABLE default"
+    if (clusterSinks) then
+       write(lunit,'(a,a,a)') "SCALARS ","luminosity"," float"
+       write(lunit, '(a)') "LOOKUP_TABLE default"
 
-    do iSource = 1, nSource
-       do i = 1, source(iSource)%surface%nElements
-          write(lunit,*) source(isource)%teff
+       do iSource = 1, nSource
+          do i = 1, source(iSource)%surface%nElements
+             write(lunit,*) source(isource)%luminosity/lsol
+          enddo
        enddo
-    enddo
+    else
+       write(lunit,'(a,a,a)') "SCALARS ","teff"," float"
+       write(lunit, '(a)') "LOOKUP_TABLE default"
+
+       do iSource = 1, nSource
+          do i = 1, source(iSource)%surface%nElements
+             write(lunit,*) source(isource)%teff
+          enddo
+       enddo
+    endif
  else
     nPoints = nSource * 100
     nElements = nPoints
@@ -3238,8 +3248,7 @@ end subroutine writeXMLVtkFileAMR
                      rArray(3, n) = real(thisOctal%surfaceNormal(subcell)%z)
 
                case("habing")
-                  ! note this is in units of 1e-10 Habing
-                  rArray(1, n) = real(thisOctal%habingFlux(subcell))
+                  rArray(1, n) = real(thisOctal%habingFlux(subcell)*1.e10)
 
                case("radforce")
                      v = cellVolume(thisOctal, subcell)*1.d30

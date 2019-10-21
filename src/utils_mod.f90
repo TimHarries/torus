@@ -1889,26 +1889,6 @@ contains
       yArray(1:newNx) = newYArray(1:newNx)
     end subroutine linearResample_dble
 
-
-    ! resample yarray onto newYarray (given bins in newXarray which are finer/coarser than xArray)
-    subroutine linearResample2(xArray, yArray, nX, newXarray, newYarray, newNx)
-      real(double), intent(in) :: xArray(:), yArray(:)
-      integer, intent(in) :: nx, newNx
-      real(double), intent(in) :: newXarray(:)
-      real(double), intent(out) :: newYarray(:)
-      integer :: i, j
-
-      do i = 1, newNx
-         call locate(xArray, nx, newXarray(i), j)
-         if (xArray(j+1) /= xArray(j)) then
-            newYarray(i) = yArray(j) + (yArray(j+1)-yArray(j))*(newXarray(i)-xArray(j))/(xArray(j+1)-xArray(j))
-         else
-            newYarray(i) = yArray(j)
-         endif
-      enddo
-    end subroutine linearResample2
-
-
   SUBROUTINE trapzd(func,a,b,s,n)
     IMPLICIT NONE
     REAL, INTENT(IN) :: a,b

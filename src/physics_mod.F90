@@ -365,8 +365,10 @@ contains
        endif
 
     endif
-    call findMultiFilename("sources_at_setup_****.vtk", iModel, thisFile)
-    call writeVtkFile(nsource, source, thisFile)
+    if (.not.sourceHistory) then
+       call findMultiFilename("sources_at_setup_****.vtk", iModel, thisFile)
+       call writeVtkFile(nsource, source, thisFile)
+    endif
 
   end subroutine setupSources
 

@@ -91,142 +91,410 @@ contains
     mass = 10.d0**mass
   end function randomMassFromIMF
 
-  subroutine populateClusters(clusters, nClusters, age) 
+  subroutine getStarList(starList, iList, nList)
+     use inputs_mod, only : readIMF, imfFilename, imfType, imfMin, imfMax, populationMass, populationMethod
+     real(double), pointer :: starList(:)
+     real(double), allocatable :: tempList(:)
+     integer :: iList
+     real(double) :: total
+     integer :: i, nList
+     character(len=80) :: junk
+
+     if (populationMethod /= "list") then
+        if (associated(starList)) starlist(:) = 0.d0 
+        goto 666
+     endif
+
+
+     if (readIMF) then
+        call writeInfo("Reading IMF from file", TRIVIAL)
+        open(77, file=imfFilename, status="old", form="formatted")
+        read(77,*) junk, iList, nList ! header
+        if (associated(starList)) deallocate(starList)
+        allocate(starList(1:nList))
+        total = 0.d0
+        do i = 1, nList
+           read(77,*) starList(i) ! [msol]
+           starList(i) = starList(i) * msol ! [g]
+           total = total + starList(i)
+        enddo
+        close(77)
+        if (writeoutput) write(*,*) "GETSTARLIST read ", total/msol, " msol"
+        
+     else
+        ! generate a new IMF
+        call randomNumberGenerator(randomSeed=.true.)
+        call randomNumberGenerator(syncIseed=.true.)
+        if (associated(starList)) deallocate(starList)
+        allocate(starList(1:1000000))
+        nList = 0
+        total = 0.d0
+        starList = 0.d0
+        do while (total < populationMass) ! [g]
+           if (nList+1 > size(starList)) then
+              allocate(tempList(1:nList))
+              tempList(1:nList) = starList(1:nList)
+              deallocate(starList)
+              allocate(starList(1:nList*10))
+              starList = 0.d0
+              starList(1:nList) = tempList(1:nList)
+              deallocate(tempList)
+           endif
+           nList = nList + 1
+           starList(nList) = randomMassFromIMF(imfType, imfMin, imfMax) * msol ! [g]
+           total = total + starList(nList)
+        enddo
+        iList = 1
+        call randomNumberGenerator(randomSeed=.true.)
+        if (writeoutput) write(*,*) "GETSTARLIST initialised ", total/msol, " msol"
+!        if (writeoutput) call writeStarList(starList, iList, nList, "imfdump.dat")
+     endif
+
+666  continue
+  end subroutine getStarList
+
+  subroutine writeStarList(starList, iList, nList, fn)
+     real(double), intent(in) :: starList(:)
+     integer, intent(in) :: iList, nList
+     character(len=*), intent(in) :: fn
+     integer :: i
+
+     open(67,file=trim(fn),status="unknown",form="formatted")
+     write(67, '(a,i6,1x,i6)') "# ", iList, nList 
+     do i = 1, nList 
+        write(67, *) starList(i)/msol 
+     enddo
+  end subroutine writeStarList
+
+  subroutine populateClusters(clusters, nClusters, age, populated, doMorePhoto, imf, iIMF, nIMF) 
     use inputs_mod, only : criticalMass ! [g]
+    use inputs_mod, only : populationMethod
+    use source_mod, only : clusterReservoir
     type(SOURCETYPE), pointer :: clusters(:)
-    real(double) :: totalCreatedMass ! [msol]
-    real(double) :: reservoir  ! [g]
+    logical, intent(out) :: populated(:), doMorePhoto
+    real(double), optional :: imf(:) ! [g]
+    real(double) :: createdMass ! [msol]
+    real(double) :: reservoir ! [g] 
     real(double) :: age ! [yr]
-    integer :: nClusters, i
+    integer, optional :: iImf, nIMF
+    integer :: nClusters, i, iEligible, nEligible
+    real(double) :: thisMass, starsForCluster(1:nClusters, 100000), reservoirs(1:nClusters) ! [g]
+    integer, dimension(1:nClusters) :: nStarsForCluster, eligibleClusters
+    logical :: done
+    character(len=80) :: message
+
+    createdMass = 0.d0
+    populated(:) = .false.
+    doMorePhoto = .false.
+
+    if (nClusters == 0) goto 666
+
+    select case (populationMethod)
+       ! when a sink's reservoir exceeds a specified threshold mass, convert mass to stars
+       case ("threshold")
+          do i = 1, nClusters
+             reservoir = clusterReservoir(clusters(i))
+             if (reservoir >= criticalMass) then
+                if (writeoutput) write(*,*) "Creating subsources for cluster ", i
+                call createSources(clusters(i)%nSubsource, clusters(i)%subsourceArray, "instantaneous", age, reservoir/msol, 0.d0, &
+                      createdMass, zeroNsource=.false.)
+                if (writeoutput) write(*,*) " ... created ", createdMass, " Msol" 
+                populated(i) = .true. 
+                doMorePhoto = .true.
+             endif
+          enddo
+
+       ! add the next star on a pre-calculated list to a random sink (provided it's massive enough)
+       case ("list")
+
+          ! initial reservoirs
+          do i = 1, nClusters
+             reservoirs(i) = clusterReservoir(clusters(i)) ! [g]
+          enddo
+
+          ! check if clusters can take the next star off the list
+          nStarsForCluster(:) = 0
+          starsForCluster(:,:) = 0.d0
+          done = .false.
+          do while (.not. done) 
+             if (iIMF > nIMF) then
+                write(*,*) "WARNING: iIMF ", iIMF, " exceeded nIMF ", nIMF 
+                done = .true.
+!                stop
+                exit
+             endif
+             thisMass = imf(iImf) ! [g]
+             ! pick out the clusters with massive enough reservoirs
+             nEligible = 0
+             eligibleClusters(:) = 0
+             do i = 1, nClusters
+                if (reservoirs(i) >= thisMass) then
+                   nEligible = nEligible + 1
+                   eligibleClusters(nEligible) = i 
+                endif
+             enddo
+             if (nEligible > 0) then
+                ! randomly select a cluster from the eligible list
+                call randomSourceUniform(nEligible, iEligible)
+                i = eligibleClusters(iEligible)
+                ! save the star to add in later
+                nStarsForCluster(i) = nStarsForCluster(i) + 1
+                starsForCluster(i, nStarsForCluster(i)) = thisMass/msol ! [msol]
+                reservoirs(i) = reservoirs(i) - thisMass
+                populated(i) = .true.  ! tell radhydro routine to calculate spectra for cluster i
+                if (thisMass/Msol >= 8.d0) then
+                   doMorePhoto = .true. ! tell radhydro routine to do additional photoion iterations
+                endif
+                ! go to next star in list
+                done = .false.
+                iImf = iImf + 1
+             else
+                if (writeoutput) write(*,*) "stopped at iIMF ", iIMF, thisMass/msol, " Msol"
+                done = .true.
+             endif
+          enddo
+
+          ! now actually put the stars in the clusters
+          do i = 1, nClusters
+             if (nStarsForCluster(i) > 0) then
+                if (writeoutput) write(*,*) "Creating subsources for cluster ", i
+                call createSources(clusters(i)%nSubsource, clusters(i)%subsourceArray, "list", age, & 
+                      clusterReservoir(clusters(i))/msol, 0.d0, createdMass, zeroNsource=.false., &
+                      list=starsForCluster(i, 1:nStarsForCluster(i)), nlist=nStarsForCluster(i))
+                if (writeoutput) write(*,*) " ... created ", createdMass, " Msol" 
+                call writeClusterIMF(clusters(i), i)
+             endif
+          enddo
+             
+
+       case DEFAULT
+          write(message,'(a,a)') "Population method not recognised: ", trim(populationMethod)
+          call writefatal(message)
+    end select
 
     do i = 1, nClusters
-       reservoir = clusterReservoir(clusters(i))
-       if (reservoir >= criticalMass) then
-          if (writeoutput) write(*,*) "Creating subsources for cluster ", i
-          call createSources(clusters(i)%nSubsource, clusters(i)%subsourceArray, "instantaneous", age, reservoir/msol, 0.d0, &
-                totalCreatedMass, zeroNsource=.false.)
-          if (writeoutput) write(*,*) " ... created ", totalCreatedMass, " Msol" 
-!          if (totalCreatedMass > 0.d0) write(*,*) myrankglobal, " CREATED ", clusters(i)%subsourceArray(:)%mass/msol
-
+       if (clusters(i)%nSubsource > 0) then
           clusters(i)%subsourceArray(1:clusters(i)%nSubsource)%position = clusters(i)%position
           clusters(i)%subsourceArray(1:clusters(i)%nSubsource)%velocity = clusters(i)%velocity
 
-          call writeClusterIMF(clusters, nClusters)
+          clusters(i)%stellar = .true.
+          clusters(i)%viscosity = .false.
+          clusters(i)%pointSource = .true.
+          clusters(i)%diffuse = .false.
+          clusters(i)%outsideGrid = .false.
+          clusters(i)%prob = 0.d0
        endif
     enddo
 
-
+666 continue 
   end subroutine populateClusters
 
-  subroutine writeClusterIMF(clusters, nClusters) 
-    type(SOURCETYPE), pointer :: clusters(:)
-    integer :: nClusters, i, j
+  subroutine writeClusterIMF(cluster, i)
+    type(SOURCETYPE) :: cluster
+    integer :: i, j
     character(len=80) :: fn
 
     if (writeoutput) then
-       do i = 1, nClusters
-          if (clusters(i)%nSubsource > 0) then
-             write(fn, '(a,i4.4,a)') "imf_", i, ".dat"
-             open(67,file=trim(fn),status="replace",form="formatted")
-             write(67, '(a4,a9,a12)') "#i", "M(msol)", "age(yr)"
-             do j = 1, clusters(i)%nSubsource
-                write(67, '(i4.4,f9.3,es12.5)') j, clusters(i)%subsourceArray(j)%mass/msol, clusters(i)%subsourceArray(j)%age
-             enddo
-             close(67)
-          endif
-       enddo
+       if (cluster%nSubsource > 0) then
+          write(fn, '(a,i4.4,a)') "imf_", i, ".dat"
+          open(67,file=trim(fn),status="unknown",form="formatted")
+          write(67, '(a4,a9,a12)') "#i", "Mini(msol)", "age(yr)"
+          do j = 1, cluster%nSubsource
+             write(67, '(i4.4,f9.3,es12.5)') j, cluster%subsourceArray(j)%initialMass, cluster%subsourceArray(j)%age
+          enddo
+          close(67)
+          write(*,*) "Written IMF to ", trim(fn)
+       endif
     endif
   end subroutine writeClusterIMF
   
   ! calculate cluster spectrum from already calculated subsource spectra
-  subroutine setClusterSpectra(clusters, nClusters)
+  subroutine setClusterSpectra(clusters, nClusters, setForCluster)
     type(SOURCETYPE), pointer :: clusters(:)
-    integer :: i, j, nClusters, k
-    type(SPECTRUMTYPE) :: newspec
-    type(SPECTRUMTYPE), pointer :: refspec, oldspec
-    logical, save :: firsttime=.true.
+    integer :: i, j, nClusters, k, newnLambda, oldnLambda, jRef
+!    type(SPECTRUMTYPE) :: newspec, refspec, oldspec
+!    logical, save :: firsttime=.true., firsttotalspec=.true.
+    real(double), allocatable :: newFlux(:), newLambda(:)
+    logical :: setForCluster(:), hasMassiveStar(1:nClusters)
+    character(len=80) :: fn, mpiFilename
+    logical :: debug
 
+    debug = .false.
+    if (writeoutput) then
+       debug = .false.
+    endif
+
+    hasMassiveStar(:) = .false.
+
+
+    ! if cluster has just been populated, and if it contains a massive star, then calculate the cluster spectrum
+    ! by calculating and adding up its subsources' spectra
     do i = 1, nClusters
        if (clusters(i)%nSubsource > 0) then
-          ! update subsource spectra
-          call setSourceSpectra(clusters(i)%subsourceArray, clusters(i)%nSubsource)
-          ! now do cluster spectrum, where cluster%spectrum%flux is L_lambda 
-          call freeSpectrum(clusters(i)%spectrum)
-          call copySpectrum(clusters(i)%spectrum, clusters(i)%subsourceArray(1)%spectrum)
-          clusters(i)%spectrum%flux = clusters(i)%spectrum%flux * fourPi*(clusters(i)%subsourceArray(1)%radius*1.d10)**2
-          if (clusters(i)%nSubsource > 1) then
-             do j = 2, clusters(i)%nSubsource
-                ! rebin ith spectrum (oldspec) so it has the same wavelength binning as 1st spectrum (refspec)
-                refspec => clusters(i)%subsourceArray(1)%spectrum
-                newspec%nlambda = refspec%nlambda
-                allocate(newspec%lambda(1:refspec%nlambda))
-                allocate(newspec%flux(1:refspec%nlambda))
-                newspec%lambda = refspec%lambda
+          if (any(clusters(i)%subsourceArray(1:clusters(i)%nSubsource)%mass > 8.d0*msol)) then
+             hasMassiveStar(i) = .true.
+          endif
+          if (setForCluster(i) .and. hasMassiveStar(i)) then
+             if (writeoutput) write(*,*) "setting spectra for cluster ", i
+             ! recalculate subsource spectra
+             call setSourceSpectra(clusters(i)%subsourceArray, clusters(i)%nSubsource)
+             ! now do cluster spectrum, where cluster%spectrum%flux is L_lambda 
+             ! NB subsource fluxes retain actual fluxes. Cluster "flux" is luminosity
+             call freeSpectrum(clusters(i)%spectrum)
+             if (clusters(i)%nSubsource == 1) then
+                call copySpectrum(clusters(i)%spectrum, clusters(i)%subsourceArray(1)%spectrum)
+                clusters(i)%spectrum%flux = clusters(i)%spectrum%flux * fourPi*(clusters(i)%subsourceArray(1)%radius*1.d10)**2
+             elseif (clusters(i)%nSubsource > 1) then
+                jRef = maxloc(clusters(i)%subsourceArray(1:clusters(i)%nsubsource)%mass,dim=1) ! ref spectrum is subsource with highest mass
+                call copySpectrum(clusters(i)%spectrum, clusters(i)%subsourceArray(jRef)%spectrum)
+                clusters(i)%spectrum%flux = clusters(i)%spectrum%flux * fourPi*(clusters(i)%subsourceArray(jRef)%radius*1.d10)**2
 
-                oldspec => clusters(i)%subsourceArray(j)%spectrum
-                call linearResample2(oldspec%lambda, oldspec%flux, oldspec%nlambda, newspec%lambda, newspec%flux, newspec%nlambda)
-                where(newspec%lambda < minval(oldspec%lambda))
-                   newspec%flux = 1.d-30
-                elsewhere(newspec%lambda > maxval(oldspec%lambda))
-                   newspec%flux = 1.d-30
-                endwhere
-
-                ! add it onto the cluster spectrum
-                ! NB subsource fluxes retain actual fluxes. Cluster "flux" is luminosity
-                call addSpectrum(clusters(i)%spectrum, newspec, fourPi*(clusters(i)%subsourceArray(j)%radius*1.d10)**2)
-                
-                ! FIXME
-                if (firstTime) then
-                   ! original spectrum of subsource
-                   open(68,file="oldspec",status="replace",form="formatted")
-                   do k = 1, clusters(i)%subsourceArray(j)%spectrum%nlambda
-                      write(68,*) (clusters(i)%subsourceArray(j)%spectrum%lambda(k)),&
-                       clusters(i)%subsourceArray(j)%spectrum%flux(k)*fourPi*(clusters(i)%subsourceArray(j)%radius*1.d10)**2
-                   enddo
-                   close(68)
-
-                   ! resampled spectrum of subsource (match bins to subsource 1)
-                   open(68,file="newspec",status="replace",form="formatted")
-                   do k = 1, newspec%nlambda
-                      write(68,*) (newspec%lambda(k)), newspec%flux(k)*fourPi*(clusters(i)%subsourceArray(j)%radius*1.d10)**2
-                   enddo
-                   close(68)
-
-                   ! subsource 1 spectrum (bins to match to)
-                   open(68,file="refspec",status="replace",form="formatted")
-                   do k = 1, refspec%nlambda
-                      write(68,*) (refspec%lambda(k)), refspec%flux(k)*fourPi*(clusters(i)%subsourceArray(j)%radius*1.d10)**2
-                   enddo
-                   close(68)
-
-                   ! cluster spectrum (addition of subsources 1 and 2)
-                   open(68,file="combinedspec",status="replace",form="formatted")
+                if (debug) then
+                   if (jRef /= 1) then 
+                      write(*,*) "jref ", jref
+                      stop
+                   endif
+                   write(mpiFilename, '(a,i4.4,a,i4.4,a)') "cumulativespectrum_", i, "_", jRef, ".dat"
+                   open(68,file=mpiFilename,status="replace",form="formatted")
                    do k = 1, clusters(i)%spectrum%nlambda
-                      write(68,*) (clusters(i)%spectrum%lambda(k)), clusters(i)%spectrum%flux(k)* & 
-                      fourPi*(clusters(i)%subsourceArray(j)%radius*1.d10)**2
+                      write(68,*) clusters(i)%spectrum%lambda(k), clusters(i)%spectrum%flux(k)
                    enddo
                    close(68)
-
-                   firsttime = .false.
                 endif
 
-             enddo
+   !             refspec = clusters(i)%subsourceArray(1)%spectrum
+                newNlambda = clusters(i)%subsourceArray(jRef)%spectrum%nlambda
+                allocate(newLambda(1:newNlambda))
+                newLambda = clusters(i)%subsourceArray(jRef)%spectrum%lambda
+                allocate(newFlux(1:newNlambda))
+                do j = 1, clusters(i)%nSubsource
+                   if (j /= jRef) then
+      !                oldspec = clusters(i)%subsourceArray(j)%spectrum
+                      ! calculate flux in the wavelength bins of ref subsource
+                      oldNlambda = clusters(i)%subsourceArray(j)%spectrum%nlambda
+                      do k = 1, newNlambda
+                         if (newLambda(k) < clusters(i)%subsourceArray(j)%spectrum%lambda(1)) then 
+                            newFlux(k) = 1.d-30
+                         else if (newLambda(k) > clusters(i)%subsourceArray(j)%spectrum%lambda(oldNlambda)) then
+                            newFlux(k) = 1.d-30
+                         else
+                            newFlux(k) = loginterp_dble(clusters(i)%subsourceArray(j)%spectrum%flux, &
+                              oldNlambda, clusters(i)%subsourceArray(j)%spectrum%lambda, newLambda(k))
+                         endif
+                      enddo
+                      ! deallocate oldspec
+
+                      ! add new flux to the cluster spectrum
+      !                call addSpectrum(clusters(i)%spectrum, newspec, fourPi*(clusters(i)%subsourceArray(j)%radius*1.d10)**2)
+                      do k = 1, clusters(i)%spectrum%nLambda
+                         clusters(i)%spectrum%flux(k) = clusters(i)%spectrum%flux(k) + &
+                            newFlux(k)*fourPi*(clusters(i)%subsourceArray(j)%radius*1.d10)**2
+                      enddo
+
+                      if (debug) then
+                         write(mpiFilename, '(a,i4.4,a,i4.4,a)') "cumulativespectrum_", i, "_", j, ".dat"
+                         open(68,file=mpiFilename,status="replace",form="formatted")
+                         do k = 1, clusters(i)%spectrum%nlambda
+                            write(68,*) clusters(i)%spectrum%lambda(k), clusters(i)%spectrum%flux(k)
+                         enddo
+                         close(68)
+                      endif
+                      
+   !                   if (firstTime) then
+   !                      ! original spectrum of subsource
+   !                      open(68,file="oldspec.dat",status="replace",form="formatted")
+   !                      do k = 1, clusters(i)%subsourceArray(j)%spectrum%nlambda
+   !                         write(68,*) (clusters(i)%subsourceArray(j)%spectrum%lambda(k)),&
+   !                          clusters(i)%subsourceArray(j)%spectrum%flux(k)*fourPi*(clusters(i)%subsourceArray(j)%radius*1.d10)**2
+   !                      enddo
+   !                      close(68)
+   !
+   !                      ! resampled spectrum of subsource (match bins to subsource 1)
+   !                      open(68,file="newspec.dat",status="replace",form="formatted")
+   !                      do k = 1, newNlambda
+   !                         write(68,*) newLambda(k), newFlux(k)*fourPi*(clusters(i)%subsourceArray(j)%radius*1.d10)**2
+   !                      enddo
+   !                      close(68)
+   !
+   !                      ! subsource 1 spectrum (bins to match to)
+   !                      open(68,file="refspec.dat",status="replace",form="formatted")
+   !                      do k = 1, clusters(i)%subsourceArray(jRef)%spectrum%nlambda
+   !                         write(68,*) (clusters(i)%subsourceArray(jRef)%spectrum%lambda(k)),&
+   !                          clusters(i)%subsourceArray(jRef)%spectrum%flux(k)*fourPi*(clusters(i)%subsourceArray(jRef)%radius*1.d10)**2
+   !                      enddo
+   !                      close(68)
+   !
+   !                      ! cluster spectrum (addition of subsources 1 and 2)
+   !                      open(68,file="combinedspec.dat",status="replace",form="formatted")
+   !                      do k = 1, clusters(i)%spectrum%nlambda
+   !                         write(68,*) (clusters(i)%spectrum%lambda(k)), clusters(i)%spectrum%flux(k)
+   !                      enddo
+   !                      close(68)
+   !
+   !                      firsttime = .false.
+   !                   endif
+      !                call freeSpectrum(oldspec)
+                   endif
+                enddo
+                ! deallocate refspec, newspec
+   !             call freeSpectrum(newspec)
+   !             call freeSpectrum(refspec)
+                deallocate(newLambda, newFlux)
+
+             endif
+             clusters(i)%luminosity = sum(clusters(i)%subsourceArray(1:clusters(i)%nsubsource)%luminosity)
+
+             call probSpectrum(clusters(i)%spectrum)
+             call normalizedSpectrum(clusters(i)%spectrum)
+
+             ! routines which calculate L = 4 pi R^2 F will get back L = "F" (which is really L)
+             clusters(i)%radius = 1.d0/(1.d10 * sqrt(fourPi))
+             clusters(i)%teff = 0.d0
+
+   !          if (firstTotalSpec) then
+   !             write(fn,'(a,i4.4,a)') "totalspec_", i, ".dat"
+   !             open(68,file=fn,status="replace",form="formatted")
+   !             do k = 1, clusters(i)%spectrum%nlambda
+   !                write(68,'(2(es13.5))') (clusters(i)%spectrum%lambda(k)), clusters(i)%spectrum%flux(k)
+   !             enddo
+   !             close(68)
+   !             firsttotalspec = .false.
+   !          endif
+             if (debug) then
+                write(mpiFilename, '(a,i4.4,a)') "totalspectrum_", i, ".dat"
+                open(68,file=mpiFilename,status="replace",form="formatted")
+                do k = 1, clusters(i)%spectrum%nlambda
+                   write(68,*) clusters(i)%spectrum%lambda(k), clusters(i)%spectrum%flux(k)
+                enddo
+                close(68)
+             endif
+
           endif
-          clusters(i)%luminosity = sum(clusters(i)%subsourceArray(1:clusters(i)%nsubsource)%luminosity)
 
-          call probSpectrum(clusters(i)%spectrum)
-          call normalizedSpectrum(clusters(i)%spectrum)
+          ! has subsources but none are massive
+          if (.not. hasMassiveStar(i)) then
+             ! zero flux
+             if (writeoutput) write(*,*) "zeroing luminosity of cluster ", i
+             call freeSpectrum(clusters(i)%spectrum)
+             call newSpectrum(clusters(i)%spectrum, 100.d0, 1.d7, 1000)
+             clusters(i)%luminosity = 0.d0
+          endif
 
-           ! routines which calculate L = 4 pi R^2 F will get back L = "F" (which is really L)
-           clusters(i)%radius = 1.d0/(1.d10 * sqrt(fourPi))
-           clusters(i)%teff = 0.d0
+          ! free subsource spectra
+          do j = 1, clusters(i)%nSubsource
+             call freeSpectrum(clusters(i)%subsourceArray(j)%spectrum)
+             call emptySurface(clusters(i)%subsourceArray(j)%surface)
+          enddo
 
-       else
+       ! no subsources
+       else 
           ! zero flux
           call freeSpectrum(clusters(i)%spectrum)
           call newSpectrum(clusters(i)%spectrum, 100.d0, 1.d7, 1000)
           clusters(i)%luminosity = 0.d0
        endif
+
+       
     enddo
   end subroutine setClusterSpectra
 
@@ -240,21 +508,23 @@ contains
     enddo
   end subroutine setSourceSpectra
 
-  real(double) function clusterReservoir(cluster) ! [g]
-    type(SOURCETYPE) :: cluster
-    if (cluster%nsubsource > 0) then
-       clusterReservoir = cluster%mass - sum(cluster%subsourceArray(1:cluster%nSubsource)%mass) 
-    else
-       clusterReservoir = cluster%mass
-    endif
-  end function clusterReservoir
+  subroutine freeSubsourceSpectra(clusters, nClusters)
+    type(SOURCETYPE), pointer :: clusters(:)
+    integer :: i, j, nClusters
 
-  subroutine createSources(nSource, source, burstType, burstAge, burstMass, sfRate, totMass,zeroNsource)
-    use inputs_mod, only : imfType, imfMin, imfMax, clusterSinks
+    do i = 1, nClusters
+       do j = 1, clusters(i)%nSubsource
+          call freeSpectrum(clusters(i)%subsourceArray(j)%spectrum)
+          call emptySurface(clusters(i)%subsourceArray(j)%surface)
+       enddo
+    enddo
+  end subroutine freeSubsourceSpectra
+
+  subroutine createSources(nSource, source, burstType, burstAge, burstMass, sfRate, totMass,zeroNsource,list, nlist)
+    use inputs_mod, only : imfType, imfMin, imfMax, clusterSinks, stellarMetallicity
     integer :: nSource, thisNsource, initialNsource
     type(SOURCETYPE), pointer :: source(:)
-    type(SOURCETYPE), allocatable :: tempSourceArray(:)
-    type(TRACKTABLE) :: thisTable
+!    type(SOURCETYPE), pointer :: tempSourceArray(:)
     character(len=80) :: message
     character(len=*) :: burstType
     real(double) :: burstAge  ! yr
@@ -262,14 +532,21 @@ contains
     real(double) :: thisMass, totMass    ! Msol
     real(double) :: sfRate    ! Msol/yr
     real(double), allocatable :: initialMasses(:), temp(:) ! Msol
+    real(double), optional :: list(:) ! Msol
+    integer, optional :: nlist
     logical, optional :: zeroNsource
-    integer :: i, j
+    integer :: i, j, iz
     integer :: nDead, nSupernova, nOB
 !    integer, parameter :: nKurucz=69 !nKurucz = 410
     logical :: thirtyFound, converged
 !    type(SPECTRUMTYPE) :: kSpectrum(nKurucz)
 !    character(len=80) :: klabel(nKurucz)
     character(len=80) :: filename
+    type(TRACKTABLE),save :: thisTable, nextTable
+    logical,save :: firstTime = .true.
+    real :: logZarray(5)
+    real :: metallicity1, metallicity2
+    logical :: interpZ
 
    
 !    call  readKuruczGrid(klabel, kspectrum, nKurucz)
@@ -325,26 +602,68 @@ contains
                 endif
              enddo
           enddo
-          allocate(temp(1:thisNsource))
-          temp = initialMasses(1:thisNsource) 
-          call sort(thisNsource, temp) ! sort in ascending order
-          temp = temp(thisNsource:1:-1) ! reverse, i.e. sort in descending order
+          if (thisNsource > 1) then
+             allocate(temp(1:thisNsource))
+             temp = initialMasses(1:thisNsource) 
+             call sort(thisNsource, temp) ! sort in ascending order
+             initialMasses(1:thisNsource) = temp(thisNsource:1:-1) ! reverse, i.e. sort in descending order
+          endif
 
-          if (writeoutput) write(*,*) "TEMP SOURCE ", temp
+!          if (writeoutput) write(*,*) "TEMP SOURCE ", temp
           if (.not.associated(source)) then
-             allocate(source(1:thisNsource))
+!             allocate(source(1:thisNsource))
+             allocate(source(1:globalMaxNSubsource))
              if (writeoutput) write(*,*) "ALLOCATING ", size(source)
           endif
-          ! extend source array if necessary
+!          ! extend source array if necessary
+!          if ((initialnSource+thisNsource) > size(source)) then
+!             if (writeoutput) write(*,*) "RESIZING (A) ", initialnsource, thisNsource
+!             allocate(tempSourceArray(1:initialnSource))
+!             tempSourceArray(1:initialnSource) = source(1:initialnSource)
+!             call freeSourceArray(source)
+!             allocate(source(1:initialnSource+thisNsource))
+!             source(1:initialnSource) = tempSourceArray(1:initialnSource)
+!             deallocate(tempSourceArray)
+!!             if (writeoutput) write(*,*) "RESIZED ", size(source)
+!          endif
+
+          ! update nSource
+          nSource = nSource + thisNsource
+          if (writeoutput) write(*,*) "NEW NSOURCE", nSource, thisNsource
+          
+          ! add to actual source array
+          source(initialNsource+1:nSource)%initialMass = initialMasses(1:thisNsource) 
+          source(initialNsource+1:nSource)%age = burstAge
+
+          if (writeoutput) write(*,*) "NEW SOURCE ARRAY ", source(1:nSource)%initialMass
+          
+       case("list")
+          thisNsource = nlist
+          totMass = sum(list(1:nlist))
+          if (thisNsource > 1) then
+             allocate(temp(1:thisNsource))
+             temp = list(1:thisNsource) 
+             call sort(thisNsource, temp) ! sort in ascending order
+             list(1:thisNsource) = temp(thisNsource:1:-1) ! reverse, i.e. sort in descending order
+          endif
+
+!          if (writeoutput) write(*,*) "TEMP SOURCE ", temp
+          if (.not.associated(source)) then
+!             allocate(source(1:thisNsource))
+             allocate(source(1:globalMaxNsubsource))
+             if (writeoutput) write(*,*) "ALLOCATING ", size(source)
+          endif
+!          ! extend source array if necessary
           if ((initialnSource+thisNsource) > size(source)) then
-             if (writeoutput) write(*,*) "RESIZING (A) ", initialnsource, thisNsource, size(source)
-             allocate(tempSourceArray(1:initialnSource))
-             tempSourceArray(1:initialnSource) = source(1:initialnSource)
-             deallocate(source)
-             allocate(source(1:initialnSource+thisNsource))
-             source(1:initialnSource) = tempSourceArray(1:initialnSource)
-             deallocate(tempSourceArray)
-             if (writeoutput) write(*,*) "RESIZED ", size(source)
+             if (writeoutput) write(*,*) "RESIZING (A) ", initialnsource, thisNsource
+             stop ! FIXME
+!             allocate(tempSourceArray(1:initialnSource))
+!             tempSourceArray(1:initialnSource) = source(1:initialnSource)
+!             call freeSourceArray(source)
+!             allocate(source(1:initialnSource+thisNsource))
+!             source(1:initialnSource) = tempSourceArray(1:initialnSource)
+!             deallocate(tempSourceArray)
+!!             if (writeoutput) write(*,*) "RESIZED ", size(source)
           endif
 
           ! update nSource
@@ -352,13 +671,11 @@ contains
           if (writeoutput) write(*,*) "NEW NSOURCE", nSource, thisNsource
           
           ! add to actual source array
-          source(initialNsource+1:nSource)%initialMass = temp(1:thisNsource) 
+          source(initialNsource+1:nSource)%initialMass = list(1:thisNsource) 
           source(initialNsource+1:nSource)%age = burstAge
 
-          if (writeoutput) write(*,*) "NEW SOURCE ARRAY ", source(:)%initialMass
-          deallocate(initialMasses)
-          deallocate(temp)
-          
+!          if (writeoutput) write(*,*) "NEW SOURCE ARRAY ", source(1:nsource)%initialMass
+          if (writeoutput) write(*,*) "NEW SOURCES ADDED ", source(initialNsource+1:nsource)%initialMass
        case("supernovatest")
              nSource = 1
              source(1)%initialMass = 40.d0
@@ -386,15 +703,30 @@ contains
       endif
 
       ! now get actual masses, temps, and luminosities, and radii for age from evolution tracks
+      logZarray= (/ -2., -1., -0.5, 0., 0.5 /)
+      if (any(log10(stellarMetallicity) == logZarray)) then
+         interpZ = .false. 
+         metallicity1 = stellarMetallicity
+      else
+         interpZ = .true.
+         call locate(logZarray, size(logZarray), log10(stellarMetallicity), iz)
+         metallicity1 = 10.e0 ** logZarray(iz)
+         metallicity2 = 10.e0 ** logZarray(iz+1)
+      endif
 
-      call readinTracks("mist", thisTable)
-      call writeInfo("MIST tracks successfully read", FORINFO)
+      if (firstTime) then
+         call readinTracks("mist", thisTable, metallicity1)
+         if (interpZ) call readinTracks("mist", nextTable, metallicity2)
+         firstTime = .false.
+         call writeInfo("MIST tracks successfully read", FORINFO)
+      endif
+
       nDead = 0
       nSupernova = 0
       i = initialnSource+1
       do while (i <= nSource)
          if (source(i)%nSubsource == 0) then 
-            if (.not.isSourceDead(source(i), thisTable)) then
+            if (.not.isSourceDead(source(i), thisTable, nextTable)) then
 !               write(message, '(a,i4)') "Setting properties of source ", i
 !               call writeInfo(message, TRIVIAL)
                call setSourceProperties(source(i))
@@ -462,7 +794,7 @@ contains
       source(initialnSource+1:nSource)%diffuse = .false.
       source(initialnSource+1:nSource)%outsideGrid = .false.
       source(initialnSource+1:nSource)%prob = 0.d0 ! 1.d0/dble(nsource)
-      call writeInfo("Photons will be sampled according to source luminosity", TRIVIAL)
+!      call writeInfo("Photons will be sampled according to source luminosity", TRIVIAL)
     end subroutine createSources
 
     subroutine dumpSources(source, nsource, label)
@@ -491,27 +823,64 @@ contains
          
 
 
-    logical function isSourceDead(source, thisTable) result (dead)
+    logical function isSourceDead(source, thisTable, nextTable) result (dead)
+      use inputs_mod, only : stellarMetallicity
       type(SOURCETYPE) :: source
-      type(TRACKTABLE) :: thisTable
-      real(double) :: t, t1, t2, deadAge
-      integer :: i
+      type(TRACKTABLE) :: thisTable, nextTable
+      real(double) :: t, t1, t2, deadAge, z2deadAge
+      integer :: i, iz
+      real :: logZarray(5)
+      real :: metallicity1, metallicity2, zfac
+      logical :: interpZ
+
+      logZarray= (/ -2., -1., -0.5, 0., 0.5 /)
+      if (any(log10(stellarMetallicity) == logZarray)) then
+         interpZ = .false. 
+         metallicity1 = stellarMetallicity
+      else
+         interpZ = .true.
+         call locate(logZarray, size(logZarray), log10(stellarMetallicity), iz)
+         metallicity1 = 10.e0 ** logZarray(iz)
+         if (iz == size(logZarray)) then
+            if (writeoutput) write(*,*) "end of mist Z"
+            stop
+         endif
+         metallicity2 = 10.e0 ** logZarray(iz+1)
+      endif
+
       call locate(thisTable%initialMass, thisTable%nMass, source%initialMass, i)
       t1 = thisTable%age(i,thisTable%nAges(i))
       t2 = thisTable%age(i+1,thisTable%nAges(i+1))
 
       t = (source%initialMass - thisTable%initialMass(i))/(thisTable%initialMass(i+1) - thisTable%initialMass(i))
       deadAge = t1 + t * (t2 - t1)
+
+      if (interpZ) then
+         ! upper metallicity table
+         call locate(nextTable%initialMass, nextTable%nMass, source%initialMass, i)
+         t1 = nextTable%age(i,nextTable%nAges(i))
+         t2 = nextTable%age(i+1,nextTable%nAges(i+1))
+
+         t = (source%initialMass - nextTable%initialMass(i))/(nextTable%initialMass(i+1) - nextTable%initialMass(i))
+         z2deadAge = t1 + t * (t2 - t1)
+
+         zfac = (stellarMetallicity - metallicity1)/(metallicity2 - metallicity1)
+         deadAge = deadAge + zfac * (z2deadAge - deadAge)
+      endif
+
       if (source%age > deadAge) then
          dead = .true.
       else
          dead = .false.
       endif
+
+      if (writeoutput .and. source%initialMass > 30.d0) write(*,*) " Mini (msol) ", source%initialMass, " tSN (Myr) ", deadAge/1e6
     end function isSourceDead
 
 
     subroutine checkSourceSupernova(nSource, source, nSupernova, supernovaIndex, ejectaMass, ke)
 
+      use inputs_mod, only : stellarMetallicity
       ! checks if any sources have gone supernova, looping through all sources                                                            
       ! requires sources to be dead and initially above 8 solar masses                                                                    
       ! counts number gone supernova, tabulates each supernova source index                                                               
@@ -526,7 +895,7 @@ contains
 
 
       if (firstTime) then
-         call readinTracks("mist", thisTable)
+         call readinTracks("mist", thisTable, stellarMetallicity)
          firstTime = .false.
       endif
 
@@ -546,6 +915,7 @@ contains
 
          t = (source(i)%initialMass - thisTable%initialMass(j))/(thisTable%initialMass(j+1) - thisTable%initialMass(j))
          deadAge = t1 + t * (t2 - t1)
+         ! TODO metallicity interpolation (see function isSourceDead)
          if (source(i)%initialMass > 8.d0 .and. writeoutput) then
            write(*,'(a, i4, a, 1pe12.5)') "Source ", i, " Time until supernova (yr): ", deadAge-source(i)%age
          endif
@@ -654,17 +1024,39 @@ contains
     end subroutine setSourceProperties
 
     subroutine updateSourceProperties(source)
+      use inputs_mod, only : clusterSinks, stellarMetallicity
       type(SOURCETYPE) :: source
-      type(TRACKTABLE),save :: thisTable
+      type(TRACKTABLE),save :: thisTable, nextTable
       logical,save :: firstTime = .true.
-      integer :: i, j
+      integer :: i, j, iz
       real(double) :: t, u, mass1, logL1, logT1, logmdot1
       real(double) :: mass2, logL2, logT2, logmdot2
+      real(double) :: z1mass, z1luminosity, z1teff, z1mdotWind
+      real(double) :: z2mass, z2luminosity, z2teff, z2mdotWind
+      real :: logZarray(5)
+      real :: metallicity1, metallicity2, zfac
+      logical :: interpZ
+
+      logZarray= (/ -2., -1., -0.5, 0., 0.5 /)
+      if (any(log10(stellarMetallicity) == logZarray)) then
+         interpZ = .false. 
+         metallicity1 = stellarMetallicity
+      else
+         interpZ = .true.
+         call locate(logZarray, size(logZarray), log10(stellarMetallicity), iz)
+         metallicity1 = 10.e0 ** logZarray(iz)
+         if (iz == size(logZarray)) then
+            if (writeoutput) write(*,*) "end of mist Z"
+            stop
+         endif
+         metallicity2 = 10.e0 ** logZarray(iz+1)
+      endif
 
 
       if (firstTime) then
-         call readinTracks("mist", thisTable)
-         firstTime = .false.
+         ! get lower-bound metallicity table
+         call readinTracks("mist", thisTable, metallicity1)
+!         firstTime = .false.
          call writeInfo("MIST tracks successfully read", FORINFO)
       endif
 
@@ -698,25 +1090,98 @@ contains
 
       ! interpolate between the two files and set source properties
       u = (source%initialmass - thisTable%initialMass(i))/(thisTable%initialMass(i+1) - thisTable%initialMass(i))
-      
-      source%mass = (mass1 + (mass2 - mass1) * u) * mSol
-      source%luminosity = logL1 + (logL2 - logL1) * u
-      source%luminosity = (10.d0**source%luminosity) * lSol
-      source%teff = logT1 + (logT2  - logT1) * u
-      source%teff = 10.d0**source%teff
-      source%radius = sqrt(source%luminosity / (fourPi * stefanBoltz * source%teff**4))/1.d10
-      source%mdotWind = 0.d0
-      if (.not.ANY(thisTable%mdot(i:i+1,j:j+1) == 0.d0)) then
-         source%mdotWind = 10.d0**(logmdot1 + (logmdot2  - logmdot1) * u)
-         source%mDotWind = source%mDotWind * msol/(365.25*24.d0*3600.d0)
+
+      if (.not. interpZ) then
+         source%mass = (mass1 + (mass2 - mass1) * u) * mSol
+         source%luminosity = logL1 + (logL2 - logL1) * u
+         source%luminosity = (10.d0**source%luminosity) * lSol
+         source%teff = logT1 + (logT2  - logT1) * u
+         source%teff = 10.d0**source%teff
+         source%radius = sqrt(source%luminosity / (fourPi * stefanBoltz * source%teff**4))/1.d10
+         source%mdotWind = 0.d0
+         if (.not.ANY(thisTable%mdot(i:i+1,j:j+1) == 0.d0)) then
+            source%mdotWind = 10.d0**(logmdot1 + (logmdot2  - logmdot1) * u)
+            source%mDotWind = source%mDotWind * msol/(365.25*24.d0*3600.d0)
+         endif
+      else
+         z1mass = mass1 + (mass2 - mass1) * u 
+         z1luminosity = logL1 + (logL2 - logL1) * u
+         z1teff = logT1 + (logT2  - logT1) * u
+         z1mdotWind = 0.d0
+         if (.not.ANY(thisTable%mdot(i:i+1,j:j+1) == 0.d0)) then
+            z1mdotWind = logmdot1 + (logmdot2  - logmdot1) * u
+         endif
+
+         if (firstTime) then
+            ! get upper-bound metallicity table
+            call readinTracks("mist", nextTable, metallicity2)
+            call writeInfo("MIST tracks successfully read", FORINFO)
+         endif
+
+         ! find relevant track file given source's initial mass 
+         call locate(nextTable%initialMass, nextTable%nMass, source%initialmass, i)
+         
+         ! interpolate between rows j,j+1 in lower mass boundary file (i)
+         call locate(nextTable%age(i,1:nextTable%nAges(i)), nextTable%nAges(i), source%age, j)
+         t = (source%age - nextTable%age(i, j))/(nextTable%age(i,j+1)-nextTable%age(i,j))
+         mass1 = nextTable%massAtAge(i,j) + t * (nextTable%massAtAge(i,j+1)-nextTable%massAtAge(i,j))
+         logL1 = nextTable%logL(i,j) + t * (nextTable%logL(i,j+1)-nextTable%logL(i,j))
+         logT1 = nextTable%logTeff(i,j) + t * (nextTable%logTeff(i,j+1)-nextTable%logTeff(i,j))
+         logMdot1 = nextTable%mdot(i,j) + t * (nextTable%mdot(i,j+1)-nextTable%mdot(i,j))
+
+         ! interpolate between rows j,j+1 in upper mass boundary file (i+1)
+         call locate(nextTable%age(i+1,1:nextTable%nAges(i+1)), nextTable%nAges(i+1), source%age, j)
+         if (source%age < nextTable%age(i+1, nextTable%nAges(i+1))) then
+            ! if source age < final age of reference star, interpolate as normal
+            t = (source%age - nextTable%age(i+1, j))/(nextTable%age(i+1,j+1)-nextTable%age(i+1,j))
+            mass2 = nextTable%massAtAge(i+1,j) + t * (nextTable%massAtAge(i+1,j+1)-nextTable%massAtAge(i+1,j))
+            logL2 = nextTable%logL(i+1,j) + t * (nextTable%logL(i+1,j+1)-nextTable%logL(i+1,j))
+            logT2 = nextTable%logTeff(i+1,j) + t * (nextTable%logTeff(i+1,j+1)-nextTable%logTeff(i+1,j))
+            logMdot2 = nextTable%mdot(i+1,j) + t * (nextTable%mdot(i+1,j+1)-nextTable%mdot(i+1,j))
+         else
+            ! otherwise just set to final values (EOF) 
+            mass2 = nextTable%massAtAge(i+1, nextTable%nAges(i+1)) 
+            logL2 = nextTable%logL(i+1, nextTable%nAges(i+1)) 
+            logT2 = nextTable%logTeff(i+1, nextTable%nAges(i+1)) 
+            logMdot2 = nextTable%mdot(i+1, nextTable%nAges(i+1)) 
+         endif
+
+         ! interpolate between the two files and set source properties
+         u = (source%initialmass - nextTable%initialMass(i))/(nextTable%initialMass(i+1) - nextTable%initialMass(i))
+         
+         z2mass = mass1 + (mass2 - mass1) * u 
+         z2luminosity = logL1 + (logL2 - logL1) * u
+         z2teff = logT1 + (logT2  - logT1) * u
+         z2mdotWind = 0.d0
+         if (.not.ANY(nextTable%mdot(i:i+1,j:j+1) == 0.d0)) then
+            z2mdotWind = logmdot1 + (logmdot2  - logmdot1) * u
+         endif
+
+         ! interpolate between metallicities
+         zfac = (stellarMetallicity - metallicity1)/(metallicity2 - metallicity1)
+         source%mass = (z1mass + (z2mass - z1mass) * zfac) * mSol
+         source%luminosity = z1luminosity + (z2luminosity - z1luminosity) * zfac
+         source%luminosity = (10.d0**source%luminosity) * lSol
+         source%teff = z1teff + (z2teff  - z1teff) * zfac
+         source%teff = 10.d0**source%teff
+         source%radius = sqrt(source%luminosity / (fourPi * stefanBoltz * source%teff**4))/1.d10
+         source%mdotWind = 0.d0
+         if (z1mdotWind*z2mdotWind /= 0.d0) then
+            source%mdotWind = 10.d0**(z1mdotWind + (z2mdotWind  - z1mdotWind) * zfac)
+            source%mDotWind = source%mDotWind * msol/(365.25*24.d0*3600.d0)
+         endif
       endif
+
 
 !     ! update spectrum. If tlusty spectrum is not found for a source, kurucz spectrum is used instead
 !     call fillSpectrumTlusty(source%spectrum, source%teff, source%mass, source%radius*1.d10)
       
-      call emptySurface(source%surface)
-      call buildSphereNBody(source%position, source%accretionRadius/1.d10, source%surface, 20)
+      if (.not. clusterSinks) then
+         call emptySurface(source%surface)
+         call buildSphereNBody(source%position, source%accretionRadius/1.d10, source%surface, 20)
+      endif
 
+      firstTime = .false.
     end subroutine updateSourceProperties
 
     subroutine setSourceArrayProperties(source, nSource, fractionOfAccretionLum)
@@ -794,11 +1259,12 @@ contains
       
 
 
-    subroutine readinTracks(tracks, thisTable)
+    subroutine readinTracks(tracks, thisTable, metallicity)
       character(len=*) :: tracks
       type(TRACKTABLE) :: thisTable
       character(len=200) :: tfile, thisFile, dataDirectory
       integer :: i
+      real :: metallicity
 
       select case(tracks)
          case("schaller")
@@ -847,16 +1313,30 @@ contains
             thisTable%label = "MIST"
             ! read filename from list, read the track from each file 
             call unixGetenv("TORUS_DATA", dataDirectory)
-            write(tfile, '(a,a)') trim(dataDirectory), "/mist/filelist.txt"
+            if (metallicity == 1.) then
+               write(tfile, '(a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_p0.00_afe_p0.0_vvcrit0.0_EEPS/filelist.txt"
+            elseif (metallicity == 0.1) then
+               write(tfile, '(a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_m1.00_afe_p0.0_vvcrit0.0_EEPS/filelist.txt"
+            elseif (metallicity == 0.01) then
+               write(tfile, '(a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_m2.00_afe_p0.0_vvcrit0.0_EEPS/filelist.txt"
+            elseif (metallicity == 10.**(-0.5)) then
+               write(tfile, '(a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_m0.50_afe_p0.0_vvcrit0.0_EEPS/filelist.txt"
+            elseif (metallicity == 10.**(0.5)) then
+               write(tfile, '(a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_p0.50_afe_p0.0_vvcrit0.0_EEPS/filelist.txt"
+            else
+              if (writeoutput) write(*,*) "mist filelist not found for metallicity ", metallicity
+              stop
+            endif
             open(30, file=tfile, status="old", form="formatted")
             i = 0
 10 continue
             read(30,*,end=55) thisFile 
             i = i + 1
-            call readMistModel(thisTable, i, trim(thisFile))
+            call readMistModel(thisTable, i, trim(thisFile), metallicity)
             goto 10
 55 continue
             close(30)
+            thisTable%nMass = i
       end select
 
      end subroutine readinTracks
@@ -932,17 +1412,37 @@ contains
        thisTable%nAges(nMass) = nt
      end subroutine readSchallerModel
 
-     subroutine readMistModel(thisTable, nMass, thisfile)
+     subroutine readMistModel(thisTable, nMass, thisfile, metallicity)
        type(TRACKTABLE) :: thisTable
        integer :: nMass
        character(len=*) :: thisfile
        character(len=200) :: tFile, datadirectory
        integer :: nt, i
        character(len=254) :: cLine, junk
+       logical, save :: firstTime=.true.
+       real :: metallicity
 
        call unixGetenv("TORUS_DATA", dataDirectory, i)
-       ! nb: rotation is available with vvcrit0.4
-       write(tfile, *) trim(dataDirectory), "/mist/MIST_v1.2_feh_p0.00_afe_p0.0_vvcrit0.0_EEPS/", trim(thisFile)
+       if (writeoutput .and. nMass ==1) write(*,*) " reading Z ", metallicity, " logZ ", log10(metallicity) ! FIXME
+       if (metallicity == 1.) then
+          write(tfile, '(a,a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_p0.00_afe_p0.0_vvcrit0.0_EEPS/", trim(thisFile)
+       elseif (metallicity == 0.1) then
+          write(tfile, '(a,a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_m1.00_afe_p0.0_vvcrit0.0_EEPS/", trim(thisFile)
+       elseif (metallicity == 0.01) then
+          write(tfile, '(a,a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_m2.00_afe_p0.0_vvcrit0.0_EEPS/", trim(thisFile)
+       elseif (metallicity == 10.**(-0.5)) then
+          write(tfile, '(a,a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_m0.50_afe_p0.0_vvcrit0.0_EEPS/", trim(thisFile)
+       elseif (metallicity == 10.**(0.5)) then
+          write(tfile, '(a,a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_p0.50_afe_p0.0_vvcrit0.0_EEPS/", trim(thisFile)
+       else
+         if (writeoutput) write(*,*) "mist files not found for metallicity ", metallicity
+         stop
+       endif
+
+       if (nMass == 1) then
+          if (writeoutput) write(*,*) tfile
+!          firstTime = .false.
+       endif
 
        open(31, file=tfile, status="old", form="formatted")
        read(31,'(a)',end=55) cline
@@ -991,6 +1491,7 @@ contains
        nSource = nSource - 1
        ! todo clustersinks
        do i = 1, nSource
+          call emptySurface(source(i)%surface)
           call buildSphereNBody(source(i)%position, 2.5d0*smallestCellSize, source(i)%surface, 20)
 !          call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)
           call fillSpectrumTlusty(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)
@@ -1143,26 +1644,33 @@ contains
 !     end subroutine readKuruczSpectrum
 
    subroutine testTracks
+      
       real(double) :: t, dt, totalCreatedMass
       integer :: i, j
       character(len=100) :: fn
       type(SOURCETYPE), pointer :: src=>null()
+       real(double), pointer :: imf(:)=>null()
+       integer :: iIMF, nIMF
+       logical :: sourcesCreated, doFeedback, doMorePhoto, populated(1:1000)
+
+      iIMF = 0
+      nIMF = 0
+      call getStarList(imf, iIMF, nIMF)
 
       ! create sources
-      if (associated(globalSourceArray)) then
-         deallocate(globalSourceArray)
-         globalSourceArray => null()
-      endif
-      globalnsource = 2
+      call freeglobalsourcearray()
+      globalnsource = 1
       allocate(globalsourceArray(1:globalnsource))
       globalSourcearray(1:globalnsource)%mass = 500.d0 * msol
       globalSourcearray(1:globalnsource)%age = 0.d0
 
-      do i = 1, globalnsource
-         call createSources(globalsourceArray(i)%nSubsource, globalsourceArray(i)%subsourceArray, "instantaneous", & 
-            0.d0, 120.d0, 0.d0, totalCreatedMass, zeroNsource=.false.)
-         if (writeoutput) write(*,*) i, " ... created ", totalCreatedMass, " Msol" 
-      enddo
+!      do i = 1, globalnsource
+!         call createSources(globalsourceArray(i)%nSubsource, globalsourceArray(i)%subsourceArray, "instantaneous", & 
+!            0.d0, 120.d0, 0.d0, totalCreatedMass, zeroNsource=.false.)
+!         if (writeoutput) write(*,*) i, " ... created ", totalCreatedMass, " Msol" 
+!      enddo
+      call populateClusters(globalSourceArray, globalnSource, 0.d0, populated, doMorePhoto, & 
+        imf=imf, iIMF=iIMF, nIMF=nIMF) 
 
       ! write headers
       if (writeoutput) then
@@ -1214,65 +1722,184 @@ contains
       enddo
       stop
    end subroutine testTracks
+
    
   subroutine testClusterSpectra
-     real(double) :: thissourceflux, tot
-     integer :: i, j, k
-     character(len=80) :: mpifilename
+     real(double) :: thissourceflux, tot, burstMass
+     integer :: i, j, k, iImf, nIMF
+     character(len=80) :: mpifilename, fn
+     logical :: populated(1000), domorephoto
+     real(double), pointer :: imf(:)
 
-     if (associated(globalSourceArray)) then
-        deallocate(globalSourceArray)
-        globalSourceArray => null()
-     endif
-     globalnsource = 1
+     iIMF = 0
+     nimf = 0
+     call getStarList(imf, iIMF, nIMF)
+     if (writeoutput) write(*,*) "START iIMF, nIMF: ", iIMF, nIMF
+
+     ! populate clusters continuously given a pre-tabulated IMF
+     if (associated(globalSourceArray)) deallocate(globalSourceArray)
+
+     globalnsource = 10
      allocate(globalsourcearray(1:globalnsource))
-     globalSourceArray(1:globalNsource)%mass = 601.d0*msol
+     do i = 1, globalnSource
+        globalSourceArray(i)%mass = 600.d0 * msol
+        globalSourceArray(i)%position = VECTOR(0.d0, 0.d0, 0.d0)
+     enddo
+
      call randomNumberGenerator(randomSeed=.true.)
      call randomNumberGenerator(syncIseed=.true.)
-     call populateClusters(globalSourceArray, globalnSource, 0.d0) 
+
+     call populateClusters(globalSourceArray, globalnSource, 0.d0, populated, doMorePhoto, & 
+       imf=imf, iIMF=iIMF, nIMF=nIMF) 
+
      call randomNumberGenerator(randomSeed=.true.)
-     call setClusterSpectra(globalSourceArray, globalnSource) 
 
-     do i = 1, globalnsource
-        do j = 1, 10
-           write(mpiFilename, '(a,i3.3,a,i3.3,a)') "lamspectrum_", i, "_", j, ".dat"
-           open(68,file=mpiFilename,status="replace",form="formatted")
-           do k = 1, globalSourceArray(i)%subsourceArray(j)%spectrum%nlambda
-              write(68,*) (globalSourceArray(i)%subsourceArray(j)%spectrum%lambda(k)),&
-               globalSourceArray(i)%subsourceArray(j)%spectrum%flux(k)
-           enddo
-        enddo 
-        write(mpiFilename, '(a,i3.3,a)') "lamspectrum_", i, ".dat"
-        open(68,file=mpiFilename,status="replace",form="formatted")
-        do k = 1, globalSourceArray(i)%spectrum%nlambda
-           write(68,*) (globalSourceArray(i)%spectrum%lambda(k)),&
-            globalSourceArray(i)%spectrum%flux(k)
-        enddo
-     enddo
+     populated(1:globalnSource) = .true.
+     call setClusterSpectra(globalSourceArray, globalnSource, populated) 
 
-     ! integrate cluster spectrum
-     tot = 0.d0
-     do i = 1, globalnsource
-        thisSourceFlux = ionizingFlux(globalsourcearray(i))
-        tot = tot + thisSourceFlux
-        if (writeoutput) then
-          write(*,'(a, i3.3, 1pe12.5)') "Ionizing photons per sec for cluster ", i, thisSourceFlux 
-        endif 
-     enddo
-     write(*,'(a,1pe12.5)') "Total ionizing photons per second ", tot
+     stop
 
-     ! integrate subsource spectra, then sum 
-     do i = 1, globalnsource
-        tot = 0.d0
-        do j = 1, globalsourceArray(i)%nsubsource
-           thisSourceFlux = ionizingFlux(globalsourcearray(i)%subsourcearray(j))
-           tot = tot + thisSourceFlux
-           if (writeoutput .and. j <= 20) then
-             write(*,'(a, i3.3,a,i3.3, 1x, 1pe12.5)') "Ionizing photons per sec for subsource ", i, "_", j, thisSourceFlux 
-           endif 
-        enddo
-        write(*,'(a,i3.3,1x,1pe12.5)') "Total ionizing photons per second for cluster ", i, tot
-     enddo
+!     if (writeoutput) then
+!        do i = 1, globalnsource
+!           do j = 1, globalsourcearray(i)%nsubsource
+!              write(mpiFilename, '(a,i4.4,a,i4.4,a)') "lamspectrum_", i, "_", j, ".dat"
+!              open(68,file=mpiFilename,status="replace",form="formatted")
+!              do k = 1, globalSourceArray(i)%subsourceArray(j)%spectrum%nlambda
+!                 write(68,*) (globalSourceArray(i)%subsourceArray(j)%spectrum%lambda(k)),&
+!                  globalSourceArray(i)%subsourceArray(j)%spectrum%flux(k)
+!              enddo
+!              close(68)
+!           enddo 
+!
+!           write(mpiFilename, '(a,i4.4,a)') "lamspectrum_", i, "_0000.dat"
+!           open(68,file=mpiFilename,status="replace",form="formatted")
+!           do k = 1, globalSourceArray(i)%spectrum%nlambda
+!              write(68,*) (globalSourceArray(i)%spectrum%lambda(k)),&
+!               globalSourceArray(i)%spectrum%flux(k)
+!           enddo
+!           close(68)
+!        enddo
+!        stop
+!     endif
+
+
+!     j = 0
+!     if (writeoutput) then
+!        do i = 1, globalnSource
+!           write(fn,'(a,i4.4,a)') "msink_",i,".dat"
+!           open(68,file=fn,status="replace",form="formatted")
+!           write(68,'(i6,1x,2(es12.3,1x),i6)') j, globalSourceArray(i)%mass/msol, clusterReservoir(globalSourceArray(i))/msol, &
+!              globalSourcearray(i)%nsubsource
+!           close(68)
+!        enddo
+!     endif
+!
+!     do j = 1, 200
+!        if (writeoutput) write(*,*) "iter ", j
+!
+!        do i = 1, globalnSource
+!           globalSourceArray(i)%mass = globalSourceArray(i)%mass + dble(i) * 1.d-3 * msol * 1.d2
+!        enddo
+!
+!        call randomNumberGenerator(randomSeed=.true.)
+!        call randomNumberGenerator(syncIseed=.true.)
+!!        call populateClusters(globalSourceArray, globalnSource, dble(j)*1.d2, populated, imf=imf(1:nimf), iImf=iImf, nIMF=nIMF) 
+!        call randomNumberGenerator(randomSeed=.true.)
+!
+!        if (writeoutput) then
+!           do i = 1, globalnSource
+!              write(fn,'(a,i4.4,a)') "msink_",i,".dat"
+!              open(68,file=fn,status="old",position="append",form="formatted")
+!              write(68,'(i6,1x,2(es12.3,1x),i6)') j, globalSourceArray(i)%mass/msol, clusterReservoir(globalSourceArray(i))/msol, &
+!                  globalSourceArray(i)%nsubsource
+!              close(68)
+!           enddo
+!        endif
+!     enddo
+!
+!     if (writeoutput) then
+!        write(fn,'(a)') "nstars.dat"
+!        open(68,file=fn,status="replace",form="formatted")
+!        do i = 1, globalnSource
+!           write(68,'(2(i6,1x))') i, globalSourceArray(i)%nSubsource 
+!        enddo
+!        close(68)
+!        write(*,*) iIMF-1, " out of ", nIMF, " stars were allocated to clusters"
+!        call writeStarList(imf, iIMF, nIMF, "imfdump_end.dat")
+!     endif
+!     stop
+
+
+!     call setClusterSpectra(globalSourceArray, globalnSource) 
+!     if (writeoutput) then
+!        do i = 1, globalnsource
+!          write(fn,'(a,i4.4,a)') "totalspec_", i, ".dat"
+!          open(68,file=fn,status="replace",form="formatted")
+!          do k = 1, globalSourceArray(i)%spectrum%nlambda
+!             write(68,'(2(es13.5))') globalSourceArray(i)%spectrum%lambda(k), globalSourceArray(i)%spectrum%flux(k)
+!          enddo
+!          close(68)
+!        enddo
+!     endif
+
+!     do i = 1, globalnsource
+!        do j = 1, 10
+!           write(mpiFilename, '(a,i3.3,a,i3.3,a)') "lamspectrum_", i, "_", j, ".dat"
+!           open(68,file=mpiFilename,status="replace",form="formatted")
+!           do k = 1, globalSourceArray(i)%subsourceArray(j)%spectrum%nlambda
+!              write(68,*) (globalSourceArray(i)%subsourceArray(j)%spectrum%lambda(k)),&
+!               globalSourceArray(i)%subsourceArray(j)%spectrum%flux(k)
+!           enddo
+!        enddo 
+!        write(mpiFilename, '(a,i3.3,a)') "lamspectrum_", i, ".dat"
+!        open(68,file=mpiFilename,status="replace",form="formatted")
+!        do k = 1, globalSourceArray(i)%spectrum%nlambda
+!           write(68,*) (globalSourceArray(i)%spectrum%lambda(k)),&
+!            globalSourceArray(i)%spectrum%flux(k)
+!        enddo
+!     enddo
+
+!     ! cluster luminosity
+!     if (writeoutput) then
+!        do i =1, globalnsource
+!           write(*,'(a,i3.3,es13.5)') "Luminosity for cluster ", i, globalsourceArray(i)%luminosity
+!           tot = 0.d0
+!           do j = 1, globalsourceArray(i)%nsubsource
+!              thisSourceFlux = sumSourceLuminosity(globalsourcearray(i)%subsourcearray(j:j), 1, 1.e2, 1.e8)
+!              tot = tot + thisSourceFlux
+!   !           if (writeoutput .and. j <= 20) then
+!   !             write(*,'(a, i3.3,a,i3.3, 1x, 1pe12.5)') "Lum for subsource ", i, "_", j, thisSourceFlux 
+!   !           endif 
+!           enddo
+!           write(*,'(a,i3.3,1x,1pe12.5)') "   summed integrated lum for cluster ", i, tot
+!        enddo
+!
+!        ! integrate cluster spectrum
+!        tot = 0.d0
+!        do i = 1, globalnsource
+!           thisSourceFlux = ionizingFlux(globalsourcearray(i))
+!           tot = tot + thisSourceFlux
+!           if (writeoutput) then
+!             write(*,'(a, i3.3, 1pe12.5)') "Ionizing photons per sec for cluster ", i, thisSourceFlux 
+!           endif 
+!        enddo
+!        write(*,'(a,1pe12.5)') "Total ionizing photons per second ", tot
+!
+!        ! integrate subsource spectra, then sum 
+!        do i = 1, globalnsource
+!           tot = 0.d0
+!           do j = 1, globalsourceArray(i)%nsubsource
+!              thisSourceFlux = ionizingFlux(globalsourcearray(i)%subsourcearray(j))
+!              tot = tot + thisSourceFlux
+!              if (writeoutput .and. j <= 20) then
+!                write(*,'(a, i3.3,a,i3.3, 1x, 1pe12.5)') "Ionizing photons per sec for subsource ", i, "_", j, thisSourceFlux 
+!              endif 
+!           enddo
+!           write(*,'(a,i3.3,1x,1pe12.5)') "Total ionizing photons per second for cluster ", i, tot
+!        enddo
+!     endif
+
+
   end subroutine testClusterSpectra
 
 

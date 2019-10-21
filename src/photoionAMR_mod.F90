@@ -39,7 +39,7 @@ public :: photoIonizationloopAMR, createImagesplitgrid, ionizeGrid, &
      neutralGrid, resizePhotoionCoeff, resetNH, hasPhotoionAllocations, allocatePhotoionAttributes, &
      computeProbDistAMRMpi, putStarsInGridAccordingToDensity, testBranchCopying, createtemperaturecolumnimage,&
      writeLuminosities, calculateAverageTemperature, createtdustColumnImage, calculateAverageTdust, &
-     createEmissionMeasureImage
+     createEmissionMeasureImage, testSpectraMemory
 
 
 #ifdef HYDRO
@@ -75,7 +75,7 @@ contains
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
     use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics, amrUnrefineTolerance, smallestCellSize, dounrefine
     use inputs_mod, only : addSinkParticles, cylindricalHydro, vtuToGrid, timedependentRT,dorefine, alphaViscosity
-    use inputs_mod, only : UV_vector, spherical, forceminrho 
+    use inputs_mod, only : UV_vector, spherical, forceminrho, mergeBoundSinks
     use inputs_mod, only : sphereRadius, sphereMass, feedbackDelay, amrgridsize
     use starburst_mod
     use viscosity_mod, only : viscousTimescale,viscousTimescaleCylindrical
@@ -97,20 +97,20 @@ contains
     use inputs_mod, only: singleMegaPhoto, stellarwinds, useTensorViscosity, hosokawaTracks, startFromNeutral
     use inputs_mod, only: densitySpectrum, cflNumber, useionparam, xrayonly, isothermal, supernovae, &
           burstType, burstAge, mstarburst, burstTime, starburst, inputseed, doSelfGrav, redoGravOnRead, nHydroperPhoto,mchistories 
-    use inputs_mod, only: clusterSinks
+    use inputs_mod, only: clusterSinks, populationMethod, nHydroPerSpectra
     use parallel_mod, only: torus_abort
     use mpi
     integer :: nMuMie
     type(PHASEMATRIX) :: miePhase(:,:,:)
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
-    integer :: nSource
+    integer :: nSource, oldnSource
     integer :: nLambda
     integer, parameter :: tagsne = 123
     real :: lamArray(:)
     character(len=80) :: mpiFilename, datFilename, mpifilenameB
 #ifdef USECFITSIO
-    real(double), pointer :: columnDensityImage(:,:)
+    real(double), pointer :: columnDensityImage(:,:)=>null()
 #endif
     real(double) :: dt, cfl, gamma, mu
     integer :: iUnrefine
@@ -139,7 +139,9 @@ contains
     integer :: niter, nHydroCounter
     real(double) :: epsoverdeltat, totalMass, tauSca, tauAbs, tff, rhosphere, feedbackStartTime
     real(double) :: ionizedVolume, ionizedMass, ke, jeansUnstableMass, maxRho, totalCreatedMass
-    logical :: sourcesCreated, doFeedback
+    real(double), pointer :: imf(:)=>null()
+    integer :: iIMF, nIMF
+    logical :: sourcesCreated, doFeedback, doMorePhoto, populated(1:1000)
     nPhotoIter = 1
 !    real :: gridToVtu_value
 !    integer :: gridVtuCounter
@@ -147,6 +149,8 @@ contains
     dumpThisTime = .false.
     i = nsource
     sourcesCreated = .false. 
+    doMorePhoto = .false.
+    populated(:) = .false.
 
 
     call torus_mpi_barrier
@@ -157,6 +161,13 @@ contains
           open(57, file="pos.dat", status="unknown", form="formatted")
           close(57)
        endif
+    endif
+
+    if (clusterSinks) then
+      iIMF = 0
+      nIMF = 0
+      call getStarList(imf, iIMF, nIMF)
+      if (writeoutput) write(*,*) "START iIMF, nIMF: ", iIMF, nIMF 
     endif
 
 
@@ -942,12 +953,8 @@ contains
                       ! don't need to redo the 10
                       if (readgrid .and. (grid%currentTime >= feedbackStartTime + 1.5d0*deltaTforDump)) then
                          nPhotoIter = 1
-!                         firstFeedbackIter = .false.
-!                         if (writeoutput) write(*,*) "firstFeedbackIter: ", firstFeedbackIter, nPhotoIter, feedbackStartTime
                       else
                          nPhotoIter = maxPhotoionIter 
-!                         if (writeoutput) write(*,*) "firstFeedbackIter: ", firstFeedbackIter, nPhotoIter, feedbackStartTime
-!                         firstFeedbackIter = .false.
                       endif
                       ! if we're using updateHistories, do 10 initially regardless
                       if (mchistories) then
@@ -1263,10 +1270,14 @@ contains
           ! end of stellar feedback
 
 !add/merge sink particles where necessary
+       oldnSource = globalnSource
        if ((myrankGlobal /= 0).and.(.not.loadBalancingThreadGlobal)) then
           if (nbodyPhysics.and.addSinkParticles) then 
-             call addSinks(grid, globalsourceArray, globalnSource)       
+             if (myRankWorldGlobal == 1) call tune(6,"Adding new sinks")
+             call addSinks(grid, globalsourceArray, globalnSource)
+             if (myRankWorldGlobal == 1) call tune(6,"Adding new sinks")
           endif
+
 
 !xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 !          call freeglobalsourceArray()
@@ -1277,9 +1288,13 @@ contains
 !          globalSourceArray(1)%accretionRadius = 1.d10
 
 
-!          if (myRankWorldGlobal == 1) call tune(6,"Merging sinks")
-!          if (nbodyPhysics) call mergeSinks(grid, globalsourceArray, globalnSource)
-!          if (myRankWorldGlobal == 1) call tune(6,"Merging sinks")
+!          if (nbodyPhysics .and.mergeBoundSinks) then 
+!             if (myRankWorldGlobal == 1) call tune(6,"Merging sinks")
+!             call mergeSinks(grid, globalsourceArray, globalnSource)
+!             if (myRankWorldGlobal == 1) call tune(6,"Merging sinks")
+!          endif
+
+
           do i = 1, globalnSource
              call emptySurface(globalsourceArray(i)%surface)
              call buildSphereNbody(globalsourceArray(i)%position, globalsourceArray(i)%accretionRadius/1.d10, &
@@ -1288,40 +1303,68 @@ contains
 
        endif
 
+
+       if (myRankWorldGlobal == 1) call tune(6,"Syncing sinks")
        call sendSinksToZerothThread(globalnSource, globalsourceArray)
        call broadcastSinks(globalnSource, globalsourceArray)
+       if (myRankWorldGlobal == 1) call tune(6,"Syncing sinks")
 
        if (nbodyPhysics) then
           if (hosokawaTracks) then
              call setSourceArrayProperties(globalsourceArray, globalnSource, fractionOfAccretionLum)
           elseif (clusterSinks) then
              ! after addSinks and accretion (i.e. sink masses have been updated)
-             if (myrankWorldglobal == 1) call tune(6, "Setting cluster properties")
              call randomNumberGenerator(randomSeed=.true.)
              call randomNumberGenerator(syncIseed=.true.)
-             call populateClusters(globalSourceArray, globalnSource, 0.d0) 
+
+             if (myrankWorldglobal == 1) call tune(6, "Populating clusters")
+             call populateClusters(globalSourceArray, globalnSource, 0.d0, populated, doMorePhoto, & 
+               imf=imf, iIMF=iIMF, nIMF=nIMF) 
+             if (myrankWorldglobal == 1) call tune(6, "Populating clusters")
+
              call randomNumberGenerator(randomSeed=.true.)
-             call setClusterSpectra(globalSourceArray, globalnSource) 
-             if (myrankWorldglobal == 1) call tune(6, "Setting cluster properties")
+
+             if (mod(nHydroCounter,nHydroPerSpectra) == 0) then
+                ! force spectrum calculation for all clusters
+                populated(1:globalnSource) = .true.
+             endif
+             if (myrankWorldglobal == 1) call tune(6, "Setting cluster spectra")
+             call setClusterSpectra(globalSourceArray, globalnSource, populated) 
+!             call freeSubsourceSpectra(globalSourceArray, globalnSource) 
+             if (myrankWorldglobal == 1) call tune(6, "Setting cluster spectra")
+
+             if (doMorePhoto) then
+                nPhotoIter = maxPhotoionIter
+             else
+                nPhotoIter = 1
+             endif 
           else
+             ! set properties of newly added sinks
+             if (addSinkParticles .and. globalnSource > oldnSource) then
+                do i = oldnSource+1, globalnSource
+                   call updateSourceProperties(globalsourcearray(i))
+                enddo
+             endif
              ! sources have new M, Teff, L from updateSourceProperties -> recalculate spectra (rank 0 in particular)
              call setSourceSpectra(globalSourceArray, globalnSource) 
           endif
        endif
 
+
        ! FIXME
-       if (myrankglobal == 0) then!.or. myrankglobal == 1 .or. myrankglobal == 2 .or. myrankglobal == 65) then
+       if (myrankglobal == 0 .and. clusterSinks .and. globalnsource > 0) then
           write(*,*) "Cluster properties"
-          write(*,'(a2,1x,a3,5x,a9,1x,a4,1x,a12,1x,a9,1x,a9)') "r", "i", "Mcl", "n*", "Mres", "age", "teff"
+          write(*,'(a2,1x,a4,5x,a12,1x,a4,1x,a12,1x,a12,1x,a12)') "r", "i", "Mcl", "n*", "Mres", "age", "lum"
           do i = 1, globalnSource
-             write(*,'(i2.2,1x,i3.3,5x,f9.2,1x,i4,1x,f12.5,1x,es9.2,1x,es9.2)') myrankglobal, i, globalSourceArray(i)%mass/msol, &
+             write(*,'(i2.2,1x,i4.4,5x,f12.5,1x,i4,1x,f12.5,1x,es12.5,1x,es12.5)') myrankglobal, i, globalSourceArray(i)%mass/msol, &
              globalSourceArray(i)%nSubsource, clusterReservoir(globalSourceArray(i))/msol, globalsourceArray(i)%age, &
-             globalsourceArray(i)%teff
-             if (globalSourceArray(i)%nSubsource > 0) then
-                j = maxloc(globalsourceArray(i)%subsourceArray(1:globalsourceArray(i)%nsubsource)%mass,dim=1)
-                write(*,'(i2.2, 1x,i3.3, a5, f9.2,1x,i4,a14,es9.2,1x,es9.2)') myrankglobal, i, "_max ", &
-                   globalsourceArray(i)%subsourceArray(j)%mass/msol,globalSourceArray(i)%subsourceArray(j)%nSubsource," ",&
-                   globalSourceArray(i)%subsourceArray(j)%age, globalSourceArray(i)%subsourceArray(j)%teff
+             globalsourceArray(i)%luminosity/lsol
+          enddo
+!             if (globalSourceArray(i)%nSubsource > 0) then
+!                j = maxloc(globalsourceArray(i)%subsourceArray(1:globalsourceArray(i)%nsubsource)%mass,dim=1)
+!                write(*,'(i2.2, 1x,i3.3, a5, f9.2,1x,i4,a14,es9.2,1x,es9.2)') myrankglobal, i, "_max ", &
+!                   globalsourceArray(i)%subsourceArray(j)%mass/msol,globalSourceArray(i)%subsourceArray(j)%nSubsource," ",&
+!                   globalSourceArray(i)%subsourceArray(j)%age, globalSourceArray(i)%subsourceArray(j)%luminosity/lsol
 
 !                   ! write fluxes
 !                   totFlux = 0.d0
@@ -1350,8 +1393,7 @@ contains
 !                write(*,'(i2.2, 1x,i3.3, a5, f9.2,1x,i4,a14,es9.2,1x,es9.2)') myrankglobal, i, "_min ", &
 !                   globalsourceArray(i)%subsourceArray(j)%mass/msol,globalSourceArray(i)%subsourceArray(j)%nSubsource," ",&
 !                   globalSourceArray(i)%subsourceArray(j)%age, globalSourceArray(i)%subsourceArray(j)%teff
-             endif
-          enddo
+!             endif
        endif
 
        if (myRankWorldGlobal == 1) call tune(6,"Hydrodynamics step")
@@ -1420,6 +1462,23 @@ contains
        call findIonizedVolumeOverAllThreads(grid, ionizedVolume, ionizedMass)
        if (writeoutput) write(*,*) "Total ionized volume (>mincrossings) (pc^3): ", ionizedVolume/(pctocm**3)
        if (writeoutput) write(*,*) "Total ionized mass (msol): ", ionizedMass/msol
+       if (writeoutput .and. nbodyPhysics) then
+          totalMass = 0.d0
+          do i = 1, globalnSource
+             totalMass = totalMass + globalsourceArray(i)%mass
+          enddo
+          write(*,*) "Total mass in sinks (msol) is ", totalmass/mSol
+       endif
+       if (writeoutput .and. nbodyPhysics .and. clusterSinks) then
+          totalMass = 0.d0
+          do i = 1, globalnSource
+             do j = 1, globalSourceArray(i)%nSubsource
+                totalMass = totalMass + globalsourceArray(i)%subsourceArray(j)%mass
+             enddo
+          enddo
+          write(*,*) "Total mass in stars (msol) is ", totalmass/mSol
+       endif
+
 
        
        if (myRankWorldGlobal == 1) write(*,*) "Current time: ",grid%currentTime
@@ -1497,14 +1556,25 @@ contains
 
           if (myrankglobal /= 0) call computepressureGeneral(grid, grid%octreeRoot, .false.)
           write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".vtk"
-          call writeVtkFile(grid, mpiFilename, &
-               valueTypeString=(/"rho          ","HI           " , "temperature  ", &
-               "hydrovelocity","sourceCont   ","pressure     ","radmom       ",     "radforce     ", &
-               "diff         ","dust         ","tdust        ","u_i          ",  &
-               "phi          ","rhou         ","rhov         ","rhow         ","rhoe         ", &
-               "vphi         ","jnu          ","mu           ", &
-               "scatters     ","ioncross     ","tempconv     ","habing       ",&
-               "fvisc1       ","fvisc2       ","fvisc3       ","crossings    ","mpithread    "/))
+          if (cylindricalHydro) then
+             call writeVtkFile(grid, mpiFilename, &
+                  valueTypeString=(/"rho          ","HI           " , "temperature  ", &
+                  "hydrovelocity","sourceCont   ","pressure     ","radmom       ",     "radforce     ", &
+                  "diff         ","dust         ","tdust        ","u_i          ",  &
+                  "phi          ","rhou         ","rhov         ","rhow         ","rhoe         ", &
+                  "vphi         ","jnu          ","mu           ", &
+                  "scatters     ","ioncross     ","tempconv     ","habing       ",&
+                  "fvisc1       ","fvisc2       ","fvisc3       ","ncrossings   ","mpithread    "/))
+          else
+             call writeVtkFile(grid, mpiFilename, &
+                  valueTypeString=(/"rho          ","HI           " , "temperature  ", &
+                  "hydrovelocity","sourceCont   ","pressure     ","radmom       ",     "radforce     ", &
+                  "diff         ","dust         ","tdust        ",  &
+                  "phi          ","rhou         ","rhov         ","rhow         ","rhoe         ", &
+                  "mu           ", &
+                  "scatters     ","ioncross     ","tempconv     ","habing       ",&
+                  "ncrossings   ","mpithread    "/))
+          endif
 
 #ifdef USECFITSIO
           if (grid%octreeRoot%threeD) then
@@ -1518,6 +1588,18 @@ contains
 
              write(mpiFilename,'(a, i4.4, a)') "columnx_", grid%iDump,".fits"
              call createColumnDensityImage(grid, VECTOR(1.d0, 0.d0, 0.d0), columnDensityImage)
+             if (writeoutput) call writeFitsColumnDensityImage(columnDensityImage, trim(mpiFilename))
+
+             write(mpiFilename,'(a, i4.4, a)') "emissionMeasurez_", grid%iDump,".fits"
+             call createEmissionMeasureImage(grid, VECTOR(0.d0, 0.d0, 1.d0), columnDensityImage)
+             if (writeoutput) call writeFitsColumnDensityImage(columnDensityImage, trim(mpiFilename))
+
+             write(mpiFilename,'(a, i4.4, a)') "emissionMeasurey_", grid%iDump,".fits"
+             call createEmissionMeasureImage(grid, VECTOR(0.d0, 1.d0, 0.d0), columnDensityImage)
+             if (writeoutput) call writeFitsColumnDensityImage(columnDensityImage, trim(mpiFilename))
+
+             write(mpiFilename,'(a, i4.4, a)') "emissionMeasurex_", grid%iDump,".fits"
+             call createEmissionMeasureImage(grid, VECTOR(1.d0, 0.d0, 0.d0), columnDensityImage)
              if (writeoutput) call writeFitsColumnDensityImage(columnDensityImage, trim(mpiFilename))
           endif
 #else
@@ -1554,12 +1636,19 @@ contains
              globalSourceArray(:)%time = grid%currentTime
              if (clusterSinks) then
                 do i = 1, globalnSource
-                   if (associated(globalSourceArray(i)%subsourceArray)) then
-                      globalSourceArray(i)%subsourceArray(:)%time = grid%currentTime
+                   if (globalSourceArray(i)%nSubsource > 0) then
+                      globalSourceArray(i)%subsourceArray(1:globalSourceArray(i)%nSubsource)%time = grid%currentTime
                    endif
                 enddo
              endif
              call writeSourceArray(mpifilename)
+          endif
+
+          if (clusterSinks .and. writeoutput) then
+             if (populationMethod == "list") then
+                write(mpiFilename,'(a,i4.4,a)') "imfdump_",grid%idump,".dat"
+                call writeStarList(imf, iIMF, nIMF, mpiFilename) 
+             endif
           endif
 
 !          if (spherical) then
@@ -1875,7 +1964,8 @@ end subroutine radiationHydro
     
     if (globalnSource == 0) goto 666
     if (clusterSinks) then
-       if (.not. any(globalSourceArray(1:globalnSource)%nSubsource > 0)) goto 666
+!       if (.not. any(globalSourceArray(1:globalnSource)%nSubsource > 0)) goto 666
+       if (.not. any(globalSourceArray(1:globalnSource)%luminosity > 0.d0)) goto 666
     endif
 
     allocate(efficiencyArray(1:nThreadsGlobal-1))
@@ -2547,7 +2637,6 @@ end subroutine radiationHydro
                    ionizingPhoton = .true.
                 endif
                 
-
                 call findSubcellTD(rVec, grid%octreeRoot,thisOctal, subcell)
                 
                 
@@ -3713,10 +3802,8 @@ end subroutine radiationHydro
           tempCell = 0.
           allocate(tempIon(1:nOctal,1:maxChild,1:grid%nIon))
           tempIon = 0.
-          if (decoupleGasDustTemperature) then
-             allocate(tempDust(1:nOctal,1:maxChild))
-             tempDust = 0.
-          endif
+          allocate(tempDust(1:nOctal,1:maxChild))
+          tempDust = 0.
           allocate(tempConverged(1:nOctal,1:maxChild))
           tempConverged = 0.
        endif
@@ -3742,10 +3829,8 @@ end subroutine radiationHydro
           tempCell = 0.
           allocate(tempIon(1:nOctal,1:maxChild,1:grid%nIon))
           tempIon = 0.
-          if (decoupleGasDustTemperature) then
-             allocate(tempDust(1:nOctal,1:maxChild))
-             tempDust = 0.
-          endif
+          allocate(tempDust(1:nOctal,1:maxChild))
+          tempDust = 0.
           allocate(tempConverged(1:nOctal,1:maxChild))
           tempConverged = 0.
 !          allocate(tempprop1(1:nOctal,1:maxChild))
@@ -3839,7 +3924,7 @@ end subroutine radiationHydro
                 enddo
 
                 if (.not.decoupleGasDustTemperature) then
-                   thisOctal%tDust(1:thisOctal%maxChildren) = thisOctal%temperature(1:thisOctal%maxChildren)
+                   thisOctal%tDust(1:thisOctal%maxChildren) = dble(thisOctal%temperature(1:thisOctal%maxChildren))
                 endif
              end if
 
@@ -3850,9 +3935,7 @@ end subroutine radiationHydro
           if (nHydroSetsGlobal > 1) then
              tempCell(iOctal,1:thisOctal%maxChildren) = thisOctal%temperature(1:thisOctal%maxChildren)
              tempIon(iOctal,1:thisOctal%maxChildren,:) = real(thisOctal%ionFrac(1:thisOctal%maxChildren,:))
-             if (decoupleGasDustTemperature) then
-                tempDust(iOctal,1:thisOctal%maxChildren) = real(thisOctal%tDust(1:thisOctal%maxChildren))
-             endif
+             tempDust(iOctal,1:thisOctal%maxChildren) = real(thisOctal%tDust(1:thisOctal%maxChildren))
              where(thisOctal%temperatureConv(1:thisOctal%maxChildren)) 
                 tempConverged(iOctal,1:thisOctal%maxChildren) = 1.  
              elsewhere
@@ -3863,9 +3946,7 @@ end subroutine radiationHydro
           if (loadBalancing) then
              tempCell(iOctal,1:thisOctal%maxChildren) = thisOctal%temperature(1:thisOctal%maxChildren)
              tempIon(iOctal,1:thisOctal%maxChildren,:) = real(thisOctal%ionFrac(1:thisOctal%maxChildren,:))
-             if (decoupleGasDustTemperature) then
-                tempDust(iOctal,1:thisOctal%maxChildren) = real(thisOctal%tDust(1:thisOctal%maxChildren))
-             endif
+             tempDust(iOctal,1:thisOctal%maxChildren) = real(thisOctal%tDust(1:thisOctal%maxChildren))
              where(thisOctal%temperatureConv(1:thisOctal%maxChildren)) 
                 tempConverged(iOctal,1:thisOctal%maxChildren) = 1.  
              elsewhere
@@ -3892,16 +3973,14 @@ end subroutine radiationHydro
           enddo
           deallocate(temp1, temp2, tempCell)
 
-          if (decoupleGasDustTemperature) then
-             allocate(temp1(1:(nOctal*maxChild)), temp2(1:nOctal*maxChild))
-             temp1 = RESHAPE(tempDust, (/SIZE(temp1)/))
-             call MPI_ALLREDUCE(temp1, temp2, SIZE(temp1), MPI_REAL, MPI_SUM, amrParallelCommunicator(myRankGlobal),ierr)
-             tempDust = RESHAPE(temp2,SHAPE(tempDust))
-             do iOctal = 1, nOctal
-                octalArray(iOctal)%content%tDust(1:maxChild) = tempDust(iOctal,1:maxChild)
-             enddo
-             deallocate(temp1, temp2, tempDust)
-          endif
+          allocate(temp1(1:(nOctal*maxChild)), temp2(1:nOctal*maxChild))
+          temp1 = RESHAPE(tempDust, (/SIZE(temp1)/))
+          call MPI_ALLREDUCE(temp1, temp2, SIZE(temp1), MPI_REAL, MPI_SUM, amrParallelCommunicator(myRankGlobal),ierr)
+          tempDust = RESHAPE(temp2,SHAPE(tempDust))
+          do iOctal = 1, nOctal
+             octalArray(iOctal)%content%tDust(1:maxChild) = tempDust(iOctal,1:maxChild)
+          enddo
+          deallocate(temp1, temp2, tempDust)
 
           allocate(temp1(1:(nOctal*maxChild*grid%nIon)), temp2(1:nOctal*maxChild*grid%nion))
           temp1 = RESHAPE(tempIon, (/SIZE(temp1)/))
@@ -3937,16 +4016,14 @@ end subroutine radiationHydro
           enddo
           deallocate(temp1, temp2, tempCell)
 
-          if (decoupleGasDustTemperature) then
-             allocate(temp1(1:(nOctal*maxChild)), temp2(1:nOctal*maxChild))
-             temp1 = RESHAPE(tempDust, (/SIZE(temp1)/))
-             call MPI_ALLREDUCE(temp1, temp2, SIZE(temp1), MPI_REAL, MPI_SUM, loadBalanceCommunicator(copyOfThread),ierr)
-             tempDust = RESHAPE(temp2,SHAPE(tempDust))
-             do iOctal = 1, nOctal
-                octalArray(iOctal)%content%tDust(1:maxChild) = tempDust(iOctal,1:maxChild)
-             enddo
-             deallocate(temp1, temp2, tempDust)
-          endif
+          allocate(temp1(1:(nOctal*maxChild)), temp2(1:nOctal*maxChild))
+          temp1 = RESHAPE(tempDust, (/SIZE(temp1)/))
+          call MPI_ALLREDUCE(temp1, temp2, SIZE(temp1), MPI_REAL, MPI_SUM, loadBalanceCommunicator(copyOfThread),ierr)
+          tempDust = RESHAPE(temp2,SHAPE(tempDust))
+          do iOctal = 1, nOctal
+             octalArray(iOctal)%content%tDust(1:maxChild) = tempDust(iOctal,1:maxChild)
+          enddo
+          deallocate(temp1, temp2, tempDust)
 
           allocate(temp1(1:(nOctal*maxChild*grid%nIon)), temp2(1:nOctal*maxChild*grid%nion))
           temp1 = RESHAPE(tempIon, (/SIZE(temp1)/))
@@ -4031,11 +4108,13 @@ end subroutine radiationHydro
     if (myrankWorldGlobal == 1) call tune(6, "Temperature/ion corrections")
 
 !    if (maxiter > 1) then
-!       write(mpiFilename, '(a,i4.4,a,i4.4,a)') "balance_",grid%idump,"_",niter,".vtk"
-!       call writeVtkFile(grid, mpiFilename, &
-!              valueTypeString=(/"rho        ","HI         " ,"temperature", &
-!                                "crossings  ","ioncross   " ,"tdust      ", &
-!                                "tempconv   ","scatters   "/))!"etacont", "jnu", "bias"/))
+!       if (niter == 1 .or. niter == maxiter) then
+!          write(mpiFilename, '(a,i4.4,a,i4.4,a)') "afterbalance_",grid%idump,"_",niter,".vtk"
+!          call writeVtkFile(grid, mpiFilename, &
+!                 valueTypeString=(/"rho        ","HI         " ,"temperature", &
+!                                   "ncrossings ","ioncross   " ,"tdust      ", &
+!                                   "tempconv   ","scatters   "/))!"etacont", "jnu", "bias"/))
+!       endif
 !    endif
 
 
@@ -8734,7 +8813,10 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
 
   subroutine createImageSplitGrid(grid, nSource, source, imageNum)
-    use inputs_mod, only: nPhotImage, gridDistance, excludeScatteredLight
+    use inputs_mod, only: nPhotImage, excludeScatteredLight
+#ifdef USECFITSIO
+    use inputs_mod, only: gridDistance
+#endif
     use hydrodynamics_mod, only: setupEdges
     use image_utils_mod
     use mpi
@@ -10339,6 +10421,7 @@ end subroutine putStarsInGridAccordingToDensity
     centre = grid%octreeRoot%centre
     halfGridSize = grid%octreeRoot%subcellSize
     cellSize = amrGridSize/dble(npix)
+    if (associated(image)) deallocate(image)
     allocate(image(1:npix, 1:npix))
     image = 0.d0
     do i = 1, nPix
@@ -10553,6 +10636,7 @@ end subroutine putStarsInGridAccordingToDensity
     centre = grid%octreeRoot%centre
     halfGridSize = grid%octreeRoot%subcellSize
     cellSize = amrGridSize/dble(npix)
+    if (associated(image)) deallocate(image)
     allocate(image(1:npix, 1:npix))
     image = 0.d0
     do i = 1, nPix
@@ -10728,6 +10812,7 @@ end subroutine putStarsInGridAccordingToDensity
     centre = grid%octreeRoot%centre
     halfGridSize = grid%octreeRoot%subcellSize
     cellSize = amrGridSize/dble(npix)
+    if (associated(image)) deallocate(image)
     allocate(image(1:npix, 1:npix))
     image = 0.d0
     do i = 1, nPix
@@ -10741,7 +10826,6 @@ end subroutine putStarsInGridAccordingToDensity
           if (myrankGlobal /= 0) then
              call emissionMeasureAlongPathAMR(grid, pos, direction, sigma)
           endif
-          ! image is <T> = sum(T*weight*dV)/sum(weight*dV) (along column) 
           call MPI_ALLREDUCE(sigma, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
           image(i,j) = tempDouble
        enddo
@@ -10749,6 +10833,7 @@ end subroutine putStarsInGridAccordingToDensity
   end subroutine createEmissionMeasureImage
   subroutine emissionMeasureAlongPathAMR(grid, rVec, direction, sigma)
     use mpi
+    use inputs_mod, only : vtkIncludeGhosts
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, direction, currentPosition
     real(double) :: sigma, distToNextCell
@@ -10772,7 +10857,13 @@ end subroutine putStarsInGridAccordingToDensity
   
        currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
        if (myrankGlobal == thisOctal%mpiThread(subcell)) then
-          sigma = sigma + (distToNextCell*1.d10/pctocm) * thisOctal%ne(subcell)**2
+          if (vtkIncludeGhosts) then
+             sigma = sigma + (distToNextCell*1.d10/pctocm) * thisOctal%ne(subcell)**2
+          else
+             if (.not. thisOctal%ghostCell(subcell)) then
+                sigma = sigma + (distToNextCell*1.d10/pctocm) * thisOctal%ne(subcell)**2
+             endif
+          endif
        endif
 
     end do
@@ -10819,6 +10910,42 @@ end subroutine putStarsInGridAccordingToDensity
     endif
 
   end subroutine writeLuminosities
+
+  subroutine testSpectraMemory
+    use starburst_mod
+    use hydrodynamics_mod, only : sendsinkstozeroththread, broadcastsinks
+     real(double) :: thissourceflux, tot, burstMass
+     integer :: i, j, k, ierr
+     character(len=80) :: mpifilename
+     logical :: doing, populated
+
+     if (associated(globalSourceArray)) then
+        deallocate(globalSourceArray)
+        globalSourceArray => null()
+     endif
+     globalnsource = 10
+     allocate(globalsourcearray(1:globalnsource))
+     globalSourceArray(1:globalnSource)%mass = 101.d0*msol
+     globalSourceArray(1:3)%mass = 601.d0*msol
+
+     doing = .true.
+     i = 0
+     do while(doing) 
+        call randomNumberGenerator(randomSeed=.true.)
+        call randomNumberGenerator(syncIseed=.true.)
+!        call populateClusters(globalSourceArray, globalnSource, 0.d0, populated) 
+        call randomNumberGenerator(randomSeed=.true.)
+!        call setClusterSpectra(globalSourceArray, globalnSource) 
+        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+        if (writeoutput) then 
+           i = i + 1
+           if (mod(i,1)==0) write(*,*) "did ", i
+        endif
+     enddo
+!     call setClusterSpectra(globalSourceArray, globalnSource) 
+!        call sendSinksToZerothThread(globalnSource, globalsourceArray)
+!        call broadcastSinks(globalnSource, globalsourceArray)
+  end subroutine testSpectraMemory
 
 
 #endif

@@ -48,44 +48,112 @@
 
   type(SOURCETYPE), pointer :: globalSourceArray(:) => null()
   integer :: globalnSource
+  integer, parameter :: globalMaxNsubsource=5000
 
   contains
 
     subroutine writeSourceHistory(rootfilename, source, nSource, oldMass, oldAge)
-      use inputs_mod, only : iModel
+      use inputs_mod, only : iModel, subsourceHistory
       type(SOURCETYPE) :: source(:)
       character(len=*) :: rootFilename
       character(len=80) :: filename
       integer :: nSource
       real(double) :: oldMass, mdot, oldAge
-      integer :: i
-      logical, save :: firstTime = .true.
+      integer :: i, j
+      logical, save :: firstTime(1:1000,0:1000) = .true.
       if (writeoutput) then
+         if (any(source(1:nSource)%outsideGrid)) write(*,*) "A SOURCE IS OUTSIDE GRID"
+         if (any(.not.source(1:nSource)%stellar)) write(*,*) "A SOURCE IS NOT STELLAR" 
+         if (any(.not.source(1:nSource)%pointSource)) write(*,*) "A SOURCE IS NOT POINT" 
+
          do i = 1, nSource
             write(filename,'(a,i3.3,a)') trim(rootFilename),i,".dat"
             write(*,*) "filename ",trim(filename)
-            if (firstTime) then
+            if (source(i)%outsideGrid) write(*,*) "source outside ", source(i)%outsideGrid
+            if (.not. source(i)%stellar) write(*,*) "source stellar ", source(i)%stellar
+            if (.not. source(i)%pointsource) write(*,*) "source pointsource ", source(i)%pointsource
+            if (firstTime(i,0)) then
                open(22, file=filename, status="unknown", form="formatted")
-               write(22,'(a4,a12,a9,a9,a9,a12,a12,a12,a12,a12,a12,a12,a12,a12,a12,a12)') &
-                    "#  N","Age (yr)","Mass","Radius","Teff","Lum","Mdot","mdotav","x","y","z","vx","vy","vz"
+               write(22,'(a4,a12,a10,a9,a9,a12,a12,a12,a12,a12,a12,a12,a12,a12,a12,a6,a12)') &
+                    "#  N","Time(yr)","Mass","Radius","Teff","Lum","Mdot","mdotav","x","y","z","vx","vy","vz","Age(yr)",&
+                    "Nsub","Mres"
             else
                open(22, file=filename, status="old", form="formatted", position="append")
             endif
-            mdot = (source(i)%mass - oldMass)/(source(i)%time - oldAge)
+            ! mdot only works when there's one source (with multimodel)
+            if (nSource == 1) then 
+               mdot = (source(i)%mass - oldMass)/(source(i)%time - oldAge)
+            else
+               mdot = 0.d0
+            endif
             write(*,*) "mdot", mdot
-            write(22,'(i4.4, 1p, e12.3, 0p, f9.4, f9.4, f9.1, 1p, e12.3, e12.3, e12.3, 10e12.3)') &
-                 iModel,source(i)%time*secstoYears, &
+            write(22,'(i4.4, 1p, e12.3, 0p, f10.4, f9.4, f9.1, 1p, e12.3, e12.3, e12.3, 7e12.3,i6,es12.3)') &
+                 iModel,&
+                 source(i)%time*secstoYears, &
                  source(i)%mass/msol, &
-                 source(i)%radius*1.d10/rsol, source(i)%teff, source(i)%luminosity/lsol, source(i)%mdot/msol/secstoyears,&
+                 source(i)%radius*1.d10/rsol, &
+                 source(i)%teff, &
+                 source(i)%luminosity/lsol, &
+                 source(i)%mdot/msol/secstoyears,&
                  mdot/msol/secstoyears, &
                  source(i)%position%x, &
-                 source(i)%position%y,source(i)%position%z, source(i)%velocity%x/1.d5,source(i)%velocity%y/1.d5, &
-                 source(i)%velocity%z/1.d5
+                 source(i)%position%y, &
+                 source(i)%position%z, &
+                 source(i)%velocity%x/1.d5, &
+                 source(i)%velocity%y/1.d5, &
+                 source(i)%velocity%z/1.d5, &
+                 source(i)%age, &
+                 source(i)%nsubsource, &
+                 clusterReservoir(source(i))/msol
             close(22)
             oldMass = source(i)%mass
             oldAge = source(i)%time
+
+            if (subsourceHistory .and. source(i)%nsubsource > 0) then
+               if (any(source(i)%subsourceArray(1:source(i)%nsubsource)%outsideGrid)) write(*,*) "A SUBSOURCE IS OUTSIDE GRID"
+               do j = 1, source(i)%nsubsource
+                  write(filename,'(a,i3.3,a,i4.4,a)') trim(rootFilename),i,"_",j,".dat"
+                  write(*,*) "filename ",trim(filename)
+                  if (firstTime(i,j))  then
+                     open(22, file=filename, status="unknown", form="formatted")
+                     write(22,'(a4,a12,a10,a9,a9,a12,a12,a12,a12,a12,a12,a12,a12,a12,a12)') &
+                          "#  N","Time(yr)","Mass","Radius","Teff","Lum","Mdot","mdotav","x","y","z","vx","vy","vz","Age(yr)"
+                  else
+                     open(22, file=filename, status="old", form="formatted", position="append")
+                  endif
+                  if (nSource == 1 .and. source(i)%nSubsource == 1) then 
+                     mdot = (source(i)%mass - oldMass)/(source(i)%time - oldAge)
+                  else
+                     mdot = 0.d0
+                  endif
+                  ! mdot only works when there's one source (with multimodel)
+                  write(*,*) "mdot", mdot
+                  write(22,'(i4.4, 1p, e12.3, 0p, f10.4, f9.4, f9.1, 1p, e12.3, e12.3, e12.3, 7e12.3)') &
+                       iModel, &
+                       source(i)%subsourceArray(j)%time*secstoYears, &
+                       source(i)%subsourceArray(j)%mass/msol, &
+                       source(i)%subsourceArray(j)%radius*1.d10/rsol,& 
+                       source(i)%subsourceArray(j)%teff, &
+                       source(i)%subsourceArray(j)%luminosity/lsol, &
+                       source(i)%subsourceArray(j)%mdot/msol/secstoyears,&
+                       mdot/msol/secstoyears, &
+                       source(i)%subsourceArray(j)%position%x, &
+                       source(i)%subsourceArray(j)%position%y, &
+                       source(i)%subsourceArray(j)%position%z, &
+                       source(i)%subsourceArray(j)%velocity%x/1.d5, &
+                       source(i)%subsourceArray(j)%velocity%y/1.d5, &
+                       source(i)%subsourceArray(j)%velocity%z/1.d5, &
+                       source(i)%subsourceArray(j)%age
+!                       source(i)%subsourceArray(j)%nsubsource, &
+!                       clusterReservoir(source(i)%subsourceArray(j))/msol
+                  close(22)
+                  oldMass = source(i)%subsourceArray(j)%mass
+                  oldAge = source(i)%subsourceArray(j)%time
+               enddo
+               firstTime(i,1:source(i)%nSubsource) = .false.
+            endif
          enddo
-         if (firstTime) firstTime = .false.
+         firstTime(1:nSource,0) = .false.
       endif
     end subroutine writeSourceHistory
 
@@ -125,7 +193,8 @@
          
          if (source(i)%nSubsource > 0) then
             do j = 1, source(i)%nSubsource
-               fromSpec = sumSourceLuminosity(source(i)%subsourceArray(j:j), 1, 1.0, 1.e30)
+!               fromSpec = sumSourceLuminosity(source(i)%subsourceArray(j:j), 1, 1.0, 1.e30)
+               fromSpec = 0.d0
                if (writeoutput) &
                     write(*, &
                '(a4,i3.3,1x,i4.4, f8.3, f8.3, 1p, e12.3, e12.3, e12.3, e12.3,e12.3,e12.3,e12.3,e12.3,e12.3)') &
@@ -240,10 +309,11 @@
       close(lunit)
     end subroutine readSourceArray
 
-    recursive subroutine writeSource(source, lunit)
+    recursive subroutine writeSource(source, lunit, writeSpectrum)
       use inputs_mod, only : clusterSinks
       type(SOURCETYPE) :: source
       integer :: lunit, i
+      logical, optional :: writeSpectrum
 
       write(lunit) source%position
       write(lunit) source%velocity
@@ -265,23 +335,34 @@
       write(lunit) source%accretionRadius
       write(lunit) source%time
       write(lunit) source%mdotwind
-      call writeSpectrumToDump(source%spectrum,lunit)
-      call writeSurface(source%surface, lunit)
+      write(lunit) source%pointSource
+
+      if (present(writeSpectrum)) then
+         if (writeSpectrum) then
+            call writeSpectrumToDump(source%spectrum,lunit)
+            call writeSurface(source%surface, lunit)
+         endif
+      else
+         call writeSpectrumToDump(source%spectrum,lunit)
+         call writeSurface(source%surface, lunit)
+      endif
 
       if (clusterSinks) then
          write(lunit) source%nSubsource
          if (source%nSubsource > 0) then
             do i = 1, source%nSubsource
-               call writeSource(source%subsourceArray(i), lunit)
+               call writeSource(source%subsourceArray(i), lunit, writeSpectrum=.false.)
             enddo
          endif
       endif
     end subroutine writeSource
 
-    recursive subroutine readSource(source, lunit)
+    recursive subroutine readSource(source, lunit, readSpectrum)
       use inputs_mod, only : clusterSinks
       type(SOURCETYPE) :: source
       integer :: lunit, i
+      logical, optional :: readSpectrum
+      character(len=120) :: message
 
       read(lunit) source%position
       read(lunit) source%velocity
@@ -303,17 +384,29 @@
       read(lunit) source%accretionRadius
       read(lunit) source%time
       read(lunit) source%mdotwind
+      read(lunit) source%pointSource
 
       call freeSpectrum(source%spectrum)
-      call readSpectrumFromDump(source%spectrum,lunit)
-      call readSurface(source%surface, lunit)
+      if (present(readSpectrum)) then
+         if (readSpectrum) then
+            call readSpectrumFromDump(source%spectrum,lunit)
+            call readSurface(source%surface, lunit)
+         endif
+      else
+         call readSpectrumFromDump(source%spectrum,lunit)
+         call readSurface(source%surface, lunit)
+      endif
 
       if (clusterSinks) then
          read(lunit) source%nSubsource
          if (source%nSubsource > 0) then
-            allocate(source%subsourceArray(1:source%nSubsource))
+            if (source%nSubsource > globalMaxNsubsource) then
+               write(message,*) "readSource: nSubsource ", source%nSubsource, " exceeds globalMaxNsubsource ", globalMaxNsubsource
+               call writeFatal(message)
+            endif
+            allocate(source%subsourceArray(1:globalMaxNsubsource))
             do i = 1, source%nSubsource
-               call readSource(source%subsourceArray(i), lunit)
+               call readSource(source%subsourceArray(i), lunit, readSpectrum=.false.)
             enddo
          endif
       else
@@ -332,19 +425,24 @@
       endif
     end subroutine freeGlobalSourceArray
 
-    subroutine freeSource(source)
+    recursive subroutine freeSource(source)
       type(SOURCETYPE) :: source
       call freeSpectrum(source%spectrum)
       call emptySurface(source%surface)
-      call freeSubsources(source)
+      call freeSourceArray(source%subsourceArray)
     end subroutine freeSource
 
-    subroutine freeSubsources(source)
-      type(SOURCETYPE) :: source
-      if (associated(source%subsourceArray)) deallocate(source%subsourceArray)
-      source%subsourceArray => null()
-      source%nSubsource = 0
-    end subroutine freeSubsources
+    recursive subroutine freeSourceArray(sources)
+      type(SOURCETYPE), pointer :: sources(:)
+      integer :: i
+      if (associated(sources)) then 
+         do i = 1, size(sources)
+            call freeSource(sources(i))
+         enddo
+         deallocate(sources)
+      endif
+      nullify(sources)
+    end subroutine freeSourceArray
 
     function ionizingFlux(source) result(flux)
       type(sourcetype) :: source
@@ -496,6 +594,61 @@
          endif
       endif
     end subroutine randomSource
+
+    ! prob is not based on spectrum
+    subroutine randomSourceUniform(nSource, iSource)
+      integer :: nSource
+      integer, intent(out) :: iSource
+      real(double), save, allocatable :: prob(:)
+      real(double) :: r
+      integer :: i
+
+!$OMP THREADPRIVATE (prob)
+
+      if (nSource == 1) then
+         iSource = 1
+      else
+         ! allocate array
+         if (allocated(prob)) then
+            deallocate(prob)
+         endif
+         ALLOCATE(prob(1:nSource))
+         ! Create the prob. dist. function.
+         do i = 1, nSource
+            prob(i) = 1.d0  ! equal prob
+         enddo
+         prob(1:nSource) = prob(1:nSource)/SUM(prob(1:nSource))
+         if (nSource > 2) then
+            do i = 2, nSource
+               prob(i) = prob(i) + prob(i-1)
+            enddo
+            prob(1:nSource) = prob(1:nSource) / prob(nSource)
+         endif
+!        if (writeoutput) write(*,*) "prob ",prob(1:nSource)
+!        if (writeoutput) write(*,*) "source%prob ",source(1:nSource)%prob
+ 
+         if (nSource > 2) then
+!            do i = 1, nSource
+!               if (writeoutput) write(33,*) i,prob(i)
+!            enddo
+!            if (writeoutput) stop
+            call randomNumberGenerator(getDouble=r)
+            if (r < prob(1)) then
+               iSource = 1
+            else
+               call locate(prob, nSource, r, iSource)
+               iSource = iSource + 1
+            endif
+         else
+            call randomNumberGenerator(getDouble=r)
+            if (r < prob(1)) then
+               iSource = 1
+            else 
+               isource = 2
+            endif
+         endif
+      endif
+    end subroutine randomSourceUniform
 
 
 
@@ -1219,6 +1372,17 @@
        endif
     enddo
   end function insideSource
+
+  real(double) function clusterReservoir(cluster) ! [g]
+    use inputs_mod, only : starFormationEfficiency
+    type(SOURCETYPE) :: cluster
+    if (cluster%nsubsource > 0) then
+       clusterReservoir = cluster%mass * starFormationEfficiency - sum(cluster%subsourceArray(1:cluster%nSubsource)%mass) 
+    else
+       clusterReservoir = cluster%mass * starFormationEfficiency
+    endif
+  end function clusterReservoir
+
 
 
 
