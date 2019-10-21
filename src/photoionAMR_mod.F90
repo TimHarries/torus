@@ -1356,7 +1356,7 @@ contains
           write(*,*) "Cluster properties"
           write(*,'(a2,1x,a4,5x,a12,1x,a4,1x,a12,1x,a12,1x,a12)') "r", "i", "Mcl", "n*", "Mres", "age", "lum"
           do i = 1, globalnSource
-             write(*,'(i2.2,1x,i4.4,5x,f12.5,1x,i4,1x,f12.5,1x,es12.5,1x,es12.5)') myrankglobal, i, globalSourceArray(i)%mass/msol, &
+             write(*,'(i2.2,1x,i4.4,5x,f12.5,1x,i4,1x,f12.5,1x,es12.5,1x,es12.5)') myrankglobal, i, globalSourceArray(i)%mass/msol,&
              globalSourceArray(i)%nSubsource, clusterReservoir(globalSourceArray(i))/msol, globalsourceArray(i)%age, &
              globalsourceArray(i)%luminosity/lsol
           enddo
