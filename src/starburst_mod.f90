@@ -183,12 +183,11 @@ contains
     logical :: done
     character(len=80) :: message
 
-
-    if (nClusters == 0) goto 666
-
     createdMass = 0.d0
     populated(:) = .false.
     doMorePhoto = .false.
+
+    if (nClusters == 0) goto 666
 
     select case (populationMethod)
        ! when a sink's reservoir exceeds a specified threshold mass, convert mass to stars
