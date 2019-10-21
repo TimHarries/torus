@@ -39,7 +39,7 @@ public :: photoIonizationloopAMR, createImagesplitgrid, ionizeGrid, &
      neutralGrid, resizePhotoionCoeff, resetNH, hasPhotoionAllocations, allocatePhotoionAttributes, &
      computeProbDistAMRMpi, putStarsInGridAccordingToDensity, testBranchCopying, createtemperaturecolumnimage,&
      writeLuminosities, calculateAverageTemperature, createtdustColumnImage, calculateAverageTdust, &
-     createEmissionMeasureImage, testSpectraMemory
+     createEmissionMeasureImage
 
 
 #ifdef HYDRO
@@ -75,7 +75,7 @@ contains
     use inputs_mod, only : iDump, doselfgrav, readGrid, maxPhotoIonIter, tdump, tend, justDump !, hOnly
     use inputs_mod, only : dirichlet, amrtolerance, nbodyPhysics, amrUnrefineTolerance, smallestCellSize, dounrefine
     use inputs_mod, only : addSinkParticles, cylindricalHydro, vtuToGrid, timedependentRT,dorefine, alphaViscosity
-    use inputs_mod, only : UV_vector, spherical, forceminrho, mergeBoundSinks
+    use inputs_mod, only : UV_vector, spherical, forceminrho
     use inputs_mod, only : sphereRadius, sphereMass, feedbackDelay, amrgridsize
     use starburst_mod
     use viscosity_mod, only : viscousTimescale,viscousTimescaleCylindrical
@@ -10911,41 +10911,41 @@ end subroutine putStarsInGridAccordingToDensity
 
   end subroutine writeLuminosities
 
-  subroutine testSpectraMemory
-    use starburst_mod
-    use hydrodynamics_mod, only : sendsinkstozeroththread, broadcastsinks
-     real(double) :: thissourceflux, tot, burstMass
-     integer :: i, j, k, ierr
-     character(len=80) :: mpifilename
-     logical :: doing, populated
-
-     if (associated(globalSourceArray)) then
-        deallocate(globalSourceArray)
-        globalSourceArray => null()
-     endif
-     globalnsource = 10
-     allocate(globalsourcearray(1:globalnsource))
-     globalSourceArray(1:globalnSource)%mass = 101.d0*msol
-     globalSourceArray(1:3)%mass = 601.d0*msol
-
-     doing = .true.
-     i = 0
-     do while(doing) 
-        call randomNumberGenerator(randomSeed=.true.)
-        call randomNumberGenerator(syncIseed=.true.)
-!        call populateClusters(globalSourceArray, globalnSource, 0.d0, populated) 
-        call randomNumberGenerator(randomSeed=.true.)
-!        call setClusterSpectra(globalSourceArray, globalnSource) 
-        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-        if (writeoutput) then 
-           i = i + 1
-           if (mod(i,1)==0) write(*,*) "did ", i
-        endif
-     enddo
-!     call setClusterSpectra(globalSourceArray, globalnSource) 
-!        call sendSinksToZerothThread(globalnSource, globalsourceArray)
-!        call broadcastSinks(globalnSource, globalsourceArray)
-  end subroutine testSpectraMemory
+!  subroutine testSpectraMemory
+!    use starburst_mod
+!    use hydrodynamics_mod, only : sendsinkstozeroththread, broadcastsinks
+!     real(double) :: thissourceflux, tot, burstMass
+!     integer :: i, j, k, ierr
+!     character(len=80) :: mpifilename
+!     logical :: doing, populated
+!
+!     if (associated(globalSourceArray)) then
+!        deallocate(globalSourceArray)
+!        globalSourceArray => null()
+!     endif
+!     globalnsource = 10
+!     allocate(globalsourcearray(1:globalnsource))
+!     globalSourceArray(1:globalnSource)%mass = 101.d0*msol
+!     globalSourceArray(1:3)%mass = 601.d0*msol
+!
+!     doing = .true.
+!     i = 0
+!     do while(doing) 
+!        call randomNumberGenerator(randomSeed=.true.)
+!        call randomNumberGenerator(syncIseed=.true.)
+!!        call populateClusters(globalSourceArray, globalnSource, 0.d0, populated) 
+!        call randomNumberGenerator(randomSeed=.true.)
+!!        call setClusterSpectra(globalSourceArray, globalnSource) 
+!        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+!        if (writeoutput) then 
+!           i = i + 1
+!           if (mod(i,1)==0) write(*,*) "did ", i
+!        endif
+!     enddo
+!!     call setClusterSpectra(globalSourceArray, globalnSource) 
+!!        call sendSinksToZerothThread(globalnSource, globalsourceArray)
+!!        call broadcastSinks(globalnSource, globalsourceArray)
+!  end subroutine testSpectraMemory
 
 
 #endif

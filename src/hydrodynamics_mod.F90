@@ -20637,7 +20637,7 @@ end subroutine minMaxDepth
       use mpi
       integer :: status(MPI_STATUS_SIZE)
       real(double) :: array(:), arrayOnThread(:)
-      integer :: iThread, i, nPointsOnThread(:), nPoints, centreThread(:), nOld, ierr, amrRank(:)
+      integer :: iThread, nPointsOnThread(:), nPoints, centreThread(:), nOld, ierr, amrRank(:)
       integer, parameter :: tag = 65
 
       ! fill array in order from rank 1 to nHydroThreadsGlobal
@@ -20717,16 +20717,16 @@ end subroutine minMaxDepth
 
   subroutine addSinksPoint(grid, source, nSource, position, vel, mass, phi, cs, nPoints, nAdded)
     use mpi
-    use inputs_mod, only : rhoThreshold, smallestCellSize, accretionRadius
-    type(OCTAL), pointer :: thisOctal, child
+    use inputs_mod, only : rhoThreshold, smallestCellSize
+    type(OCTAL), pointer :: thisOctal
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
     type(VECTOR) :: centre
     real(double) :: bigJ, e
     real(double), allocatable :: eGrav(:), eKinetic(:), eThermal(:)
-    real(double) :: temp(15), racc
+    real(double) :: racc
     integer :: nSource, nAdded
-    integer :: i, subcell, ierr, ithread, tag
+    integer :: i, subcell
     logical :: createSink
     type(VECTOR) :: thisVel
     integer :: npoints
@@ -20735,7 +20735,6 @@ end subroutine minMaxDepth
     real(double) :: cellMass, r, divV, meanCs, meanRho
     integer :: iPoint
 
-          tag = 65
 
           call findSubcellTD(position(1), grid%octreeRoot, thisOctal,subcell)
 
@@ -22523,15 +22522,15 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
     integer :: nPoints
     type(VECTOR) :: position(:), vel(:), rVec
     real(double) :: mass(:), phi(:), cs(:), r
-    type(OCTAL), pointer :: thisOctal, neighbourOctal
+    type(OCTAL), pointer :: thisOctal!, neighbourOctal
     real(double) :: temp(13)
-    integer :: iThread, i
-    integer :: subcell, neighbourSubcell
+    integer :: iThread
+    integer :: subcell!, neighbourSubcell
     integer :: ierr
     integer, parameter :: tag = 65
     integer :: nOther
     integer :: status(MPI_STATUS_SIZE)
-    type(VECTOR) :: locator, cen
+!    type(VECTOR) :: locator, cen
     logical :: poll
     real :: startTime, endTime
 

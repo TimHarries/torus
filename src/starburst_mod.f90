@@ -316,7 +316,7 @@ contains
 !    logical, save :: firsttime=.true., firsttotalspec=.true.
     real(double), allocatable :: newFlux(:), newLambda(:)
     logical :: setForCluster(:), hasMassiveStar(1:nClusters)
-    character(len=80) :: fn, mpiFilename
+    character(len=80) :: mpiFilename
     logical :: debug
 
     debug = .false.
@@ -1419,11 +1419,10 @@ contains
        character(len=200) :: tFile, datadirectory
        integer :: nt, i
        character(len=254) :: cLine, junk
-       logical, save :: firstTime=.true.
        real :: metallicity
 
        call unixGetenv("TORUS_DATA", dataDirectory, i)
-       if (writeoutput .and. nMass ==1) write(*,*) " reading Z ", metallicity, " logZ ", log10(metallicity) ! FIXME
+       if (writeoutput .and. nMass ==1) write(*,*) " reading Z ", metallicity, " logZ ", log10(metallicity)
        if (metallicity == 1.) then
           write(tfile, '(a,a,a)') trim(dataDirectory), "/mist/MIST_v1.2_feh_p0.00_afe_p0.0_vvcrit0.0_EEPS/", trim(thisFile)
        elseif (metallicity == 0.1) then
@@ -1441,7 +1440,6 @@ contains
 
        if (nMass == 1) then
           if (writeoutput) write(*,*) tfile
-!          firstTime = .false.
        endif
 
        open(31, file=tfile, status="old", form="formatted")
@@ -1643,121 +1641,121 @@ contains
 !       enddo
 !     end subroutine readKuruczSpectrum
 
-   subroutine testTracks
-      
-      real(double) :: t, dt, totalCreatedMass
-      integer :: i, j
-      character(len=100) :: fn
-      type(SOURCETYPE), pointer :: src=>null()
-       real(double), pointer :: imf(:)=>null()
-       integer :: iIMF, nIMF
-       logical :: sourcesCreated, doFeedback, doMorePhoto, populated(1:1000)
-
-      iIMF = 0
-      nIMF = 0
-      call getStarList(imf, iIMF, nIMF)
-
-      ! create sources
-      call freeglobalsourcearray()
-      globalnsource = 1
-      allocate(globalsourceArray(1:globalnsource))
-      globalSourcearray(1:globalnsource)%mass = 500.d0 * msol
-      globalSourcearray(1:globalnsource)%age = 0.d0
-
-!      do i = 1, globalnsource
-!         call createSources(globalsourceArray(i)%nSubsource, globalsourceArray(i)%subsourceArray, "instantaneous", & 
-!            0.d0, 120.d0, 0.d0, totalCreatedMass, zeroNsource=.false.)
-!         if (writeoutput) write(*,*) i, " ... created ", totalCreatedMass, " Msol" 
+!   subroutine testTracks
+!      
+!      real(double) :: t, dt, totalCreatedMass
+!      integer :: i, j
+!      character(len=100) :: fn
+!      type(SOURCETYPE), pointer :: src=>null()
+!       real(double), pointer :: imf(:)=>null()
+!       integer :: iIMF, nIMF
+!       logical :: sourcesCreated, doFeedback, doMorePhoto, populated(1:1000)
+!
+!      iIMF = 0
+!      nIMF = 0
+!      call getStarList(imf, iIMF, nIMF)
+!
+!      ! create sources
+!      call freeglobalsourcearray()
+!      globalnsource = 1
+!      allocate(globalsourceArray(1:globalnsource))
+!      globalSourcearray(1:globalnsource)%mass = 500.d0 * msol
+!      globalSourcearray(1:globalnsource)%age = 0.d0
+!
+!!      do i = 1, globalnsource
+!!         call createSources(globalsourceArray(i)%nSubsource, globalsourceArray(i)%subsourceArray, "instantaneous", & 
+!!            0.d0, 120.d0, 0.d0, totalCreatedMass, zeroNsource=.false.)
+!!         if (writeoutput) write(*,*) i, " ... created ", totalCreatedMass, " Msol" 
+!!      enddo
+!      call populateClusters(globalSourceArray, globalnSource, 0.d0, populated, doMorePhoto, & 
+!        imf=imf, iIMF=iIMF, nIMF=nIMF) 
+!
+!      ! write headers
+!      if (writeoutput) then
+!         do i = 1, globalnSource
+!            do j = 1, globalsourceArray(i)%nSubsource
+!               write(fn, '(a,i4.4,a,i4.4,a)') "track_", i, "_", j, ".dat"
+!               open(400, file=trim(fn), status="replace", form="formatted")
+!               write(400, '(6(a12,1x))') "# age", "mass", "mdot", "logL", "logTeff", "logR"
+!               close(400)
+!             enddo
+!         enddo
+!      endif
+!
+!      ! update ages
+!      t = 0.d0
+!      dt = 1.d4
+!      do while (t <= 3.d6)
+!         ! update from track
+!         do i = 1, globalnSource
+!            do j = 1, globalsourceArray(i)%nSubsource
+!               call updateSourceProperties(globalsourcearray(i)%subsourceArray(j))
+!            enddo
+!         enddo
+!         
+!
+!         ! write out 
+!         if (writeoutput) then
+!            do i = 1, globalnSource
+!               do j = 1, globalsourceArray(i)%nSubsource
+!                  write(fn, '(a,i4.4,a,i4.4,a)') "track_", i, "_", j, ".dat"
+!                  open(400, file=trim(fn), status="old", position="append", form="formatted")
+!                  src => globalsourcearray(i)%subsourcearray(j)
+!                  write(400, '(6(es12.5,1x))') src%age, src%mass/msol, src%mdotwind/msol/secstoyears,&
+!                      log10(src%luminosity/lsol), log10(src%teff), log10(src%radius*1.d10/rsol)
+!                  close(400)
+!               enddo
+!            enddo
+!         endif
+!
+!         ! evolve
+!         globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + dt
+!         do i = 1, globalnSource
+!            if (globalSourceArray(i)%nSubsource > 0) then 
+!               globalSourceArray(i)%subsourceArray(1:globalSourceArray(i)%nSubsource)%age = & 
+!               globalSourceArray(i)%subsourceArray(1:globalSourceArray(i)%nSubsource)%age + dt 
+!            endif
+!         enddo
+!         t = t + dt
 !      enddo
-      call populateClusters(globalSourceArray, globalnSource, 0.d0, populated, doMorePhoto, & 
-        imf=imf, iIMF=iIMF, nIMF=nIMF) 
-
-      ! write headers
-      if (writeoutput) then
-         do i = 1, globalnSource
-            do j = 1, globalsourceArray(i)%nSubsource
-               write(fn, '(a,i4.4,a,i4.4,a)') "track_", i, "_", j, ".dat"
-               open(400, file=trim(fn), status="replace", form="formatted")
-               write(400, '(6(a12,1x))') "# age", "mass", "mdot", "logL", "logTeff", "logR"
-               close(400)
-             enddo
-         enddo
-      endif
-
-      ! update ages
-      t = 0.d0
-      dt = 1.d4
-      do while (t <= 3.d6)
-         ! update from track
-         do i = 1, globalnSource
-            do j = 1, globalsourceArray(i)%nSubsource
-               call updateSourceProperties(globalsourcearray(i)%subsourceArray(j))
-            enddo
-         enddo
-         
-
-         ! write out 
-         if (writeoutput) then
-            do i = 1, globalnSource
-               do j = 1, globalsourceArray(i)%nSubsource
-                  write(fn, '(a,i4.4,a,i4.4,a)') "track_", i, "_", j, ".dat"
-                  open(400, file=trim(fn), status="old", position="append", form="formatted")
-                  src => globalsourcearray(i)%subsourcearray(j)
-                  write(400, '(6(es12.5,1x))') src%age, src%mass/msol, src%mdotwind/msol/secstoyears,&
-                      log10(src%luminosity/lsol), log10(src%teff), log10(src%radius*1.d10/rsol)
-                  close(400)
-               enddo
-            enddo
-         endif
-
-         ! evolve
-         globalSourceArray(1:globalnSource)%age = globalSourceArray(1:globalnSource)%age + dt
-         do i = 1, globalnSource
-            if (globalSourceArray(i)%nSubsource > 0) then 
-               globalSourceArray(i)%subsourceArray(1:globalSourceArray(i)%nSubsource)%age = & 
-               globalSourceArray(i)%subsourceArray(1:globalSourceArray(i)%nSubsource)%age + dt 
-            endif
-         enddo
-         t = t + dt
-      enddo
-      stop
-   end subroutine testTracks
+!      stop
+!   end subroutine testTracks
 
    
-  subroutine testClusterSpectra
-     real(double) :: thissourceflux, tot, burstMass
-     integer :: i, j, k, iImf, nIMF
-     character(len=80) :: mpifilename, fn
-     logical :: populated(1000), domorephoto
-     real(double), pointer :: imf(:)
-
-     iIMF = 0
-     nimf = 0
-     call getStarList(imf, iIMF, nIMF)
-     if (writeoutput) write(*,*) "START iIMF, nIMF: ", iIMF, nIMF
-
-     ! populate clusters continuously given a pre-tabulated IMF
-     if (associated(globalSourceArray)) deallocate(globalSourceArray)
-
-     globalnsource = 10
-     allocate(globalsourcearray(1:globalnsource))
-     do i = 1, globalnSource
-        globalSourceArray(i)%mass = 600.d0 * msol
-        globalSourceArray(i)%position = VECTOR(0.d0, 0.d0, 0.d0)
-     enddo
-
-     call randomNumberGenerator(randomSeed=.true.)
-     call randomNumberGenerator(syncIseed=.true.)
-
-     call populateClusters(globalSourceArray, globalnSource, 0.d0, populated, doMorePhoto, & 
-       imf=imf, iIMF=iIMF, nIMF=nIMF) 
-
-     call randomNumberGenerator(randomSeed=.true.)
-
-     populated(1:globalnSource) = .true.
-     call setClusterSpectra(globalSourceArray, globalnSource, populated) 
-
-     stop
+!  subroutine testClusterSpectra
+!     real(double) :: thissourceflux, tot, burstMass
+!     integer :: i, j, k, iImf, nIMF
+!     character(len=80) :: mpifilename, fn
+!     logical :: populated(1000), domorephoto
+!     real(double), pointer :: imf(:)
+!
+!     iIMF = 0
+!     nimf = 0
+!     call getStarList(imf, iIMF, nIMF)
+!     if (writeoutput) write(*,*) "START iIMF, nIMF: ", iIMF, nIMF
+!
+!     ! populate clusters continuously given a pre-tabulated IMF
+!     if (associated(globalSourceArray)) deallocate(globalSourceArray)
+!
+!     globalnsource = 10
+!     allocate(globalsourcearray(1:globalnsource))
+!     do i = 1, globalnSource
+!        globalSourceArray(i)%mass = 600.d0 * msol
+!        globalSourceArray(i)%position = VECTOR(0.d0, 0.d0, 0.d0)
+!     enddo
+!
+!     call randomNumberGenerator(randomSeed=.true.)
+!     call randomNumberGenerator(syncIseed=.true.)
+!
+!     call populateClusters(globalSourceArray, globalnSource, 0.d0, populated, doMorePhoto, & 
+!       imf=imf, iIMF=iIMF, nIMF=nIMF) 
+!
+!     call randomNumberGenerator(randomSeed=.true.)
+!
+!     populated(1:globalnSource) = .true.
+!     call setClusterSpectra(globalSourceArray, globalnSource, populated) 
+!
+!     stop
 
 !     if (writeoutput) then
 !        do i = 1, globalnsource
@@ -1898,9 +1896,9 @@ contains
 !           write(*,'(a,i3.3,1x,1pe12.5)') "Total ionizing photons per second for cluster ", i, tot
 !        enddo
 !     endif
-
-
-  end subroutine testClusterSpectra
+!
+!
+!  end subroutine testClusterSpectra
 
 
 end module starburst_mod
