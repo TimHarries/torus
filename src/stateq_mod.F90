@@ -14,32 +14,32 @@ module stateq_mod
   use jets_mod, only: dv_dn_jets
   use hyd_col_coeff, only: omegaij, omegaik, tempTable
   use utils_mod, only: locate, hunt, logInterp_dble, logint, solvequaddble
-				   
+
   implicit none
 !  public
 
 !  public initGridStateq, expint, gii, giia, beta_mn, cijt
- 
+
   integer, private :: level
 
-  real(double) :: bEinstein(20, 20) 
-  
+  real(double) :: bEinstein(20, 20)
+
   real(double), parameter :: eTrans(23) =                      &
-       (/ (hydE0eVdb*(1.0d0 - 1.0d0/level**2),level=1,SIZE(eTrans)) /) 
+       (/ (hydE0eVdb*(1.0d0 - 1.0d0/level**2),level=1,SIZE(eTrans)) /)
 !       (/ (hydE0eVdb - hydE0eVdb/level**2,level=1,SIZE(eTrans)) /)
-  
+
   real(double), parameter :: gDegen(23) = &
        (/ (2.0_db*level**2,level=1,SIZE(gDegen)) /)
-       
-  ! data from: 
+
+  ! data from:
   !   W. L. Wiese, M. W. Smith, and B. M. Glennon
   !   Atomic transition probabilities : a critical data compilation
-  !   National standard reference data series NSRDS-NBS / 
+  !   National standard reference data series NSRDS-NBS /
   !     United States. National Bureau of Standards ; 4, 22
-  
-  real(double), parameter :: aEinstein(20,20) = reshape( source=&                 
-    (/ 0.000d0, 4.699d8, 5.575d7, 1.278d7, 4.125d6, 1.644d6, 7.568d5, 3.869d5, 2.143d5, 1.263d5, & 
-       7.834d4, 5.066d4, 3.393d4, 2.341d4, 1.657d4, 1.200d4, 8858.d0, 6654.d0, 5077.d0, 3928.d0, & 
+
+  real(double), parameter :: aEinstein(20,20) = reshape( source=&
+    (/ 0.000d0, 4.699d8, 5.575d7, 1.278d7, 4.125d6, 1.644d6, 7.568d5, 3.869d5, 2.143d5, 1.263d5, &
+       7.834d4, 5.066d4, 3.393d4, 2.341d4, 1.657d4, 1.200d4, 8858.d0, 6654.d0, 5077.d0, 3928.d0, &
        0.000d0, 0.000d0, 4.410d7, 8.419d6, 2.530d6, 9.732d5, 4.389d5, 2.215d5, 1.216d5, 7.122d4, &
        4.397d4, 2.834d4, 1.893d4, 1.303d4, 9210.d0, 6658.d0, 4910.d0, 3685.d0, 2809.d0, 2172.d0, &
        0.000d0, 0.000d0, 0.000d0, 8.986d6, 2.201d6, 7.783d5, 3.358d5, 1.651d5, 8.905d4, 5.156d4, &
@@ -69,16 +69,16 @@ module stateq_mod
        0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, &
        0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 6429.d0, 2864.d0, 1620.d0, 1023.d0, 690.3d0, &
        0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, &
-       0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 4720.d0, 2130.d0, 1217.d0, 776.7d0, & 
+       0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 4720.d0, 2130.d0, 1217.d0, 776.7d0, &
        0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, &
        0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 3530.d0, 1610.d0, 929.6d0, &
        0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, &
        0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 2680.d0, 1235.d0, &
        0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, &
-       0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 2067.d0, & 
+       0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 2067.d0, &
        0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0 /), shape=(/20,20/))
-  
-  real(double) :: fStrength(20,20) = reshape( source=& 
+
+  real(double) :: fStrength(20,20) = reshape( source=&
     (/ 0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,                    &
        4.162d-1, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, &
        0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, &
@@ -90,7 +90,7 @@ module stateq_mod
        0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, &
        7.799d-3, 2.209d-2, 5.584d-2, 1.793d-1, 1.231d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, &
        0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, &
-       4.814d-3, 1.270d-2, 2.768d-2, 6.549d-2, 2.069d-1, 1.424d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, & 
+       4.814d-3, 1.270d-2, 2.768d-2, 6.549d-2, 2.069d-1, 1.424d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, &
        0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, &
        3.183d-3, 8.036d-3, 1.604d-2, 3.230d-2, 7.448d-2, 2.340d-1, 1.616d00, 0.000d00, 0.000d00, 0.000d00, &
        0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, &
@@ -111,58 +111,58 @@ module stateq_mod
        3.856d-4, 8.764d-4, 1.443d-3, 2.131d-3, 3.014d-3, 4.207d-3, 5.905d-3, 8.456d-3, 1.254d-2, 1.958d-2, &
        3.298d-2, 6.228d-2, 1.412d-1, 4.467d-1, 3.145d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, &
        3.211d-4, 7.270d-4, 1.188d-3, 1.739d-3, 2.425d-3, 3.324d-3, 4.556d-3, 6.323d-3, 8.995d-3, 1.328d-2, &
-       2.070d-2, 3.486d-2, 6.584d-2, 1.494d-1, 4.731d-1, 3.336d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, & 
+       2.070d-2, 3.486d-2, 6.584d-2, 1.494d-1, 4.731d-1, 3.336d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, &
        2.702d-4, 6.099d-4, 9.916d-4, 1.439d-3, 1.984d-3, 2.679d-3, 3.602d-3, 4.877d-3, 6.719d-3, 9.515d-3, &
        1.402d-2, 2.182d-2, 3.672d-2, 6.938d-2, 1.575d-1, 4.995d-1, 3.527d-1, 0.000d00, 0.000d00, 0.000d00, &
        2.296d-4, 5.167d-4, 8.361d-4, 1.204d-3, 1.646d-3, 2.196d-3, 2.905d-3, 3.856d-3, 5.180d-3, 7.099d-3, &
        1.002d-2, 1.474d-2, 2.292d-2, 3.858d-2, 7.292d-2, 1.657d-1, 5.259d-1, 3.718d00, 0.000d00, 0.000d00, &
        1.967d-4, 4.416d-4, 7.118d-4, 1.019d-3, 1.382d-3, 1.825d-3, 2.383d-3, 3.112d-3, 4.094d-3, 5.468d-3, &
        7.468d-3, 1.052d-2, 1.545d-2, 2.402d-2, 4.043d-2, 7.644d-2, 1.738d-1, 5.523d-1, 3.909d00, 0.000d00 /), shape=(/20,20/))
- 
+
   real(double) :: lambdaTrans(20,20) = reshape( source=&
     (/ 000000.d-8,1215.67d-8,1025.72d-8,992.537d-8,949.743d-8,937.803d-8,930.748d-8,926.226d-8,923.150d-8,920.963d00,&
-       919.352d-8,918.129d-8,917.181d-8,916.429d-8,915.824d-8,915.329d-8,914.919d-8,914.576d-8,914.286d-8,914.039d-8,&  
+       919.352d-8,918.129d-8,917.181d-8,916.429d-8,915.824d-8,915.329d-8,914.919d-8,914.576d-8,914.286d-8,914.039d-8,&
        0.00000d-8,0000000d-8,6562.80d-8,4861.32d-8,4340.36d-8,4101.73d-8,3970.07d-8,3889.05d-8,3835.38d-8,3797.90d-8,&
-       3770.63d-8,3750.15d-8,3734.37d-8,3721.94d-8,3711.97d-8,3703.85d-8,3697.15d-8,3691.55d-8,3686.83d-8,3682.81d-8,&  
+       3770.63d-8,3750.15d-8,3734.37d-8,3721.94d-8,3711.97d-8,3703.85d-8,3697.15d-8,3691.55d-8,3686.83d-8,3682.81d-8,&
        0.00000d-8,0.00000d-8,0000000d-8,18751.0d-8,12818.1d-8,10938.1d-8,10049.4d-8,9545.98d-8,9229.02d-8,9014.91d-8,&
-       8862.79d-8,8750.47d-8,8665.02d-8,8598.39d-8,8545.39d-8,8502.49d-8,8467.26d-8,8437.96d-8,8413.32d-8,8392.40d-8,&  
+       8862.79d-8,8750.47d-8,8665.02d-8,8598.39d-8,8545.39d-8,8502.49d-8,8467.26d-8,8437.96d-8,8413.32d-8,8392.40d-8,&
        0.00000d-8,0.00000d-8,0.00000d-8,0000000d-8,40512.0d-8,26252.0d-8,21655.0d-8,19445.6d-8,18174.1d-8,17362.1d-8,&
-       16806.5d-8,16407.2d-8,16109.3d-8,15880.5d-8,15700.7d-8,15556.5d-8,15438.9d-8,15341.8d-8,15260.6d-8,15191.8d-8,&  
+       16806.5d-8,16407.2d-8,16109.3d-8,15880.5d-8,15700.7d-8,15556.5d-8,15438.9d-8,15341.8d-8,15260.6d-8,15191.8d-8,&
        0.00000d-8,0.00000d-8,0.00000d-8,0.00000d-8,0000000d-8,74578.0d-8,46525.0d-8,37395.0d-8,32961.0d-8,30384.0d-8,&
-       28722.0d-8,27575.0d-8,26744.0d-8,26119.0d-8,25636.0d-8,25254.0d-8,24946.0d-8,24693.0d-8,24483.0d-8,24307.0d-8,&  
+       28722.0d-8,27575.0d-8,26744.0d-8,26119.0d-8,25636.0d-8,25254.0d-8,24946.0d-8,24693.0d-8,24483.0d-8,24307.0d-8,&
        0.00000d-8,0.00000d-8,0.00000d-8,0.00000d-8,0.00000d-8,0.00000d-8,123680.d-8,75005.0d-8,59066.0d-8,51273.0d-8,&
-       46712.0d-8,43753.0d-8,41697.0d-8,40198.0d-8,39065.0d-8,38184.0d-8,37484.0d-8,36916.0d-8,36449.0d-8,36060.0d-8,&  
+       46712.0d-8,43753.0d-8,41697.0d-8,40198.0d-8,39065.0d-8,38184.0d-8,37484.0d-8,36916.0d-8,36449.0d-8,36060.0d-8,&
        0.00000d-8,0000000d-8,0000000d-8,0000000d-8,0000000d-8,0.00000d-8,0000000d-8,190570.d-8,113060.d-8,87577.0d-8,&
-       75061.0d-8,67701.0d-8,62902.0d-8,59552.0d-8,57099.0d-8,55237.0d-8,53783.0d-8,52622.5d-8,51679.0d-8,50899.0d-8,&  
+       75061.0d-8,67701.0d-8,62902.0d-8,59552.0d-8,57099.0d-8,55237.0d-8,53783.0d-8,52622.5d-8,51679.0d-8,50899.0d-8,&
        0.00000d-8,0000000d-8,0000000d-8,0000000d-8,0000000d-8,0.00000d-8,0000000d-8,0000000d-8,277960.d-8,162050.d-8,&
-       123840.d-8,105010.d-8,93894.0d-8,86621.0d-8,81527.0d-8,77782.0d-8,74930.0d-8,72696.0d-8,70908.0d-8,69448.0d-8,&  
-       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,388590.d-8,&  
-       223340.d-8,168760.d-8,141790.d-8,125840.d-8,115360.d-8,108010.d-8,102580.d-8,98443.0d-8,95191.0d-8,92579.0d-8,&  
-       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
-       525200.d-8,298310.d-8,223250.d-8,186100.d-8,164070.d-8,149580.d-8,139380.d-8,131840.d-8,126080.d-8,121530.d-8,&  
-       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
-       000000.d-8,690500.d-8,388320.d-8,288230.d-8,238620.d-8,209150.d-8,189730.d-8,176030.d-8,165900.d-8,158120.d-8,&  
-       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
-       000000.d-8,000000.d-8,887300.d-8,494740.d-8,364610.d-8,300020.d-8,261610.d-8,236260.d-8,218360.d-8,205090.d-8,&  
-       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
-       000000.d-8,000000.d-8,000000.d-8,111800.d-7,619000.d-8,453290.d-8,371000.d-8,322000.d-8,289640.d-8,266740.d-8,&  
-       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
-       000000.d-8,000000.d-8,000000.d-8,000000.d-8,138600.d-7,762300.d-8,555200.d-8,452220.d-8,390880.d-8,350300.d-8,&  
-       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
-       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,169400.d-7,926100.d-8,671200.d-8,544400.d-8,468760.d-8,&  
-       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
-       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,204400.d-7,111200.d-7,802300.d-8,648200.d-8,&  
-       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
-       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,243800.d-7,132100.d-7,949200.d-8,&  
-       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
-       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,288200.d-7,155400.d-7,&  
-       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&  
-       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,337400.d-7,&  
+       123840.d-8,105010.d-8,93894.0d-8,86621.0d-8,81527.0d-8,77782.0d-8,74930.0d-8,72696.0d-8,70908.0d-8,69448.0d-8,&
+       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,388590.d-8,&
+       223340.d-8,168760.d-8,141790.d-8,125840.d-8,115360.d-8,108010.d-8,102580.d-8,98443.0d-8,95191.0d-8,92579.0d-8,&
+       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&
+       525200.d-8,298310.d-8,223250.d-8,186100.d-8,164070.d-8,149580.d-8,139380.d-8,131840.d-8,126080.d-8,121530.d-8,&
+       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&
+       000000.d-8,690500.d-8,388320.d-8,288230.d-8,238620.d-8,209150.d-8,189730.d-8,176030.d-8,165900.d-8,158120.d-8,&
+       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&
+       000000.d-8,000000.d-8,887300.d-8,494740.d-8,364610.d-8,300020.d-8,261610.d-8,236260.d-8,218360.d-8,205090.d-8,&
+       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&
+       000000.d-8,000000.d-8,000000.d-8,111800.d-7,619000.d-8,453290.d-8,371000.d-8,322000.d-8,289640.d-8,266740.d-8,&
+       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&
+       000000.d-8,000000.d-8,000000.d-8,000000.d-8,138600.d-7,762300.d-8,555200.d-8,452220.d-8,390880.d-8,350300.d-8,&
+       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&
+       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,169400.d-7,926100.d-8,671200.d-8,544400.d-8,468760.d-8,&
+       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&
+       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,204400.d-7,111200.d-7,802300.d-8,648200.d-8,&
+       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&
+       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,243800.d-7,132100.d-7,949200.d-8,&
+       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&
+       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,288200.d-7,155400.d-7,&
+       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,&
+       000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,000000.d-8,337400.d-7,&
        0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0 /), shape=(/20,20/))
 
 
   !
-  ! Used this to switch between the original routine  (xxx_v1) and 
+  ! Used this to switch between the original routine  (xxx_v1) and
   ! new routine (experimental xxx_v2).
   interface mnewt_stateq
      module procedure mnewt_stateq_v1
@@ -205,8 +205,8 @@ contains
     integer, intent(in)          :: i1, i2, i3
     integer, intent(in)          :: m,n
     type(OCTAL), pointer,optional:: thisOctal
-    integer, intent(in),optional :: thisSubcell 
-    
+    integer, intent(in),optional :: thisSubcell
+
     type(VECTOR)      :: direction
     integer           :: i, j
     real              :: theta, phi
@@ -217,11 +217,11 @@ contains
     real(double)              :: escprob,  tau_mn
     type(VECTOR) :: rVecOctal
     type(OCTAL),pointer:: octalCopy
-    
+
     dtheta = real(pi) / real(ntheta-1)
     beta_mn = 0.
     totomega = 0.
-    
+
     do i = 1, ntheta
        theta = real(pi*real(i-1)/real(ntheta-1))
        nphi = max(2,nint(real(ntheta)*sin(theta)))
@@ -261,11 +261,11 @@ contains
                                    (grid%n(i1,i2,i3,n)/gDegen(n))) ! eq 5.
              tau_mn = tau_mn / (directionalderiv(grid,rvec,i1,i2,i3,direction)/1.e10)
           end if
-          
+
           tau_mn = tau_mn *  lambdaTrans(m,n) / cSpeed_dbl
 
           if (tau_mn < 1.e-20) then
-             tau_mn = 1.e-20 
+             tau_mn = 1.e-20
           endif
 
           if (tau_mn < 0.1) then
@@ -279,7 +279,7 @@ contains
 
        enddo
     enddo
-    beta_mn = beta_mn / totOmega 
+    beta_mn = beta_mn / totOmega
 
 !   if ((m == 1).and.(n == 2)) beta_mn = beta_mn * 100.
 !    write(*,*) totOmega/fourPi
@@ -299,8 +299,8 @@ contains
     integer, parameter          :: nphi=10
     integer, intent(in)         :: nstar
     type(OCTAL),pointer,optional:: thisOctal
-    integer,intent(in),optional :: thisSubcell 
-    
+    integer,intent(in),optional :: thisSubcell
+
     real(double) :: r, thetatostar, phiTostar
     real :: totomega, disttooccult
     integer :: i, j
@@ -383,7 +383,7 @@ contains
              dotprod = real(direction .dot. tooccult)
              if ((dotprod > 0.).and.(distToOccult < distToStar)) then
                 sinang = sqrt(max(0.,(1.-dotprod*dotprod)))
-                if ((sinang*disttooccult) < occultradius) then 
+                if ((sinang*disttooccult) < occultradius) then
                    occulted = .true.
                 endif
              endif
@@ -409,7 +409,7 @@ contains
                    if (grid%adaptive) then
                       tau_cmn = real(tau_cmn * abs((thisOctal%N(thisSubcell,m)/gDegen(m)) - &
                                               (thisOctal%N(thisSubcell,n)/gDegen(n)))) ! eq 5.
-                   else 
+                   else
                       tau_cmn = real(tau_cmn * abs((grid%n(i1,i2,i3,m)/gDegen(m)) - &
                                               (grid%n(i1,i2,i3,n)/gDegen(n)))) ! eq 5.
                    endif
@@ -422,7 +422,7 @@ contains
                          tau_cmn = tau_cmn/dV_dn_jets(rVec, direction)
                       else
                          rVecOctal = rVec
-                         
+
                          octalCopy => thisOctal
                          tau_cmn = tau_cmn / (amrGridDirectionalDeriv(grid,rVecOctal,direction, &
                                                                    startOctal=octalCopy) / 1.e10)
@@ -536,7 +536,7 @@ contains
              dotprod = real(direction .dot. tooccult)
              if ((dotprod > 0.).and.(distToOccult < distToStar)) then
                 sinang = sqrt(max(0.,(1.-dotprod*dotprod)))
-                if ((sinang*disttooccult) < occultradius) then 
+                if ((sinang*disttooccult) < occultradius) then
                    occulted = .true.
                 endif
              endif
@@ -652,7 +652,7 @@ contains
        oneD = .true.
        aboutZ = .false.
     endif
-    
+
     if (grid%geometry == "donati") then
        twoD = .true.
        threeD = .false.
@@ -721,7 +721,7 @@ contains
        call readGridPopulations(popFilename, grid, maxLevels)
     else
        do i = 1, grid%na1
-          do j = 1, grid%na2 
+          do j = 1, grid%na2
              do k = 1, grid%na3
                 if ((.not.grid%instar(i,j,k)).and.grid%inUse(i,j,k)) then
                    nTot = dble(grid%rho(i,j,k) / mhydrogen)
@@ -730,17 +730,17 @@ contains
                    if (grid%temperature(i,j,k) < 1.e5) then
                       phiT = 1.5d0*log10(2.d0*pi*mElectron*kErg*grid%temperature(i,j,k)) - &
                            3.d0*log10(hCgs) + log10(exp(-1.0*hydE0eVdb/(kEV*grid%temperature(i,j,k))))
-                     
+
                       phiT = 10.d0**phiT
                       call solveQuadDble(1.d0, phiT, &
                            -1.d0*phiT*dble(nTot), ne1, ne2, ok)
-                      grid%ne(i,j,k) = min(max(ne1,ne2),nTot)   
+                      grid%ne(i,j,k) = min(max(ne1,ne2),nTot)
                       grid%ne(i,j,k) = max(grid%ne(i,j,k),1.d0)
                    else
                       grid%ne(i,j,k) = dble(ntot)
                    endif
 
-                   grid%nTot(i,j,k) = nTot 
+                   grid%nTot(i,j,k) = nTot
                    do m = 1, maxlevels
                       grid%n(i,j,k,m) = boltzsaha(m, grid%ne(i,j,k), &
                            dble(grid%temperature(i,j,k)))
@@ -789,7 +789,7 @@ contains
           !$OMP SHARED(lte, hnu1, hnu2, nuArray1, nnu1, nuarray2, nnu2) &
           !$OMP SHARED(isBinary, debugInfo) &
           !$OMP PRIVATE(i, visFrac1, visFrac2, rVec, nTot, percentDone) &
-          !$OMP PRIVATE(departCoeffAll, xAll) 
+          !$OMP PRIVATE(departCoeffAll, xAll)
           do i1 = 1, grid%na1
              allocate(departCoeffAll(1:maxlevels))
              departCoeffAll = 1.d0
@@ -821,7 +821,7 @@ contains
                             write(*,*) visFrac1, visFrac2
                             grid%ne(i1,i2,i3) = xall(maxlevels+1)
                             do i = 1 , maxLevels
-                               departCoeffall(i) = real(real(xall(i))/boltzSaha(i, grid%Ne(i1,i2,i3), &	
+                               departCoeffall(i) = real(real(xall(i))/boltzSaha(i, grid%Ne(i1,i2,i3), &
                                     dble(grid%temperature(i1,i2,i3))))
                                grid%n(i1,i2,i3,i) = xall(i)
                                if ((.not.lte).and.debugInfo) then
@@ -953,7 +953,7 @@ contains
                    !$OMP SHARED(lte, hnu1, hnu2, nuArray1, nnu1, nuarray2, nnu2) &
                    !$OMP SHARED(isBinary, debugInfo, iiter) &
                    !$OMP PRIVATE(i, visFrac1, visFrac2, rVec, nTot, percentDone) &
-                   !$OMP PRIVATE(departCoeffAll, xAll, oldLevels, sinTheta, ang) 
+                   !$OMP PRIVATE(departCoeffAll, xAll, oldLevels, sinTheta, ang)
                    do i1 = 1, grid%nr
                       allocate(departCoeffAll(1:maxlevels))
                       allocate(xall(1:maxLevels+1))
@@ -1095,7 +1095,7 @@ contains
                 enddo
              enddo
           endif
-             
+
              ! now perform the remapping
 
           if (.not.lte) then
@@ -1130,15 +1130,15 @@ contains
              endif
        endif
     endif
-    
+
  endif
 
 
 
  if (oneD) then
-    
+
     nIter = 1
-    
+
     departCoeff = 1.
     do iIter = 1, nIter
        do i1 = 1,grid%na1
@@ -1148,15 +1148,15 @@ contains
           rvec = vector(grid%raxis(i1)*sinTheta*cos(ang), &
                grid%raxis(i1)*sinTheta*sin(ang), &
                grid%rAxis(i1)*grid%muAxis(i2))
-          
-          where (departCoeff < 0.) 
+
+          where (departCoeff < 0.)
              departCoeff = 1.
           end where
           departCoeff(1) = real(1./(0.5*(1.-sqrt(max(0.0_db,(1.-grid%rStar1**2/modulus(rVec-grid%starpos1)**2))))))
-          
-          
+
+
           if (.not.grid%inStar(i1,i2,i3).and.grid%inUse(i1,i2,i3)) then
-             
+
              if (iIter == 1) then
                 do i = 1, maxlevels
                    x(i) = grid%n(i1,i2,i3,i) * dble(departCoeff(i))
@@ -1172,8 +1172,8 @@ contains
                 enddo
                 x(maxlevels+1) = grid%ne(i1,i2,i3)
              endif
-             
-             
+
+
              if (.not.lte) then
                 if (grid%geometry == "binary") then
                    call occultTest(grid, i1, i2, i3, grid%starPos1, grid%rStar1, &
@@ -1184,14 +1184,14 @@ contains
                    visFrac1 = 1.
                    visFrac2 = 0.
                 endif
-                
+
                 call mnewt_stateq(grid, maxLevels+1,x,maxlevels+1,tolx,tolf, hnu1, &
                      nuarray1, nnu1, hnu2, nuarray2, nnu2, rvec, i1, i2, i3, visFrac1, visFrac2, isBinary)
              endif
              if (.not.lte) write(*,*) "Grid: ",i1,i2,i3,grid%temperature(i1,i2,i3)
              do i = 1 , maxLevels
                 departCoeff(i) = real(real(x(i))/boltzSaha(i, x(maxlevels+1), dble(grid%temperature(i1,i2,i3))))
-                
+
                 if (.not.lte) then
                    write(*,'(i3,1p,e12.3,e12.3,e12.3,e12.3)') &
                         i,departCoeff(i), x(i),log10(departCoeff(i)),log10(x(2)/x(1))
@@ -1258,20 +1258,20 @@ contains
 
 
   real(double) elemental function BoltzSaha(m, Ne, t)
-  
+
     integer, intent(in)              :: m
     real(double), intent(in):: Ne, t
-    
+
     real(double), parameter :: ci = 2.07d-16
     real(double), parameter :: iPot = hydE0eV
 
     BoltzSaha = Ne**2 * gDegen(m) * ci * exp( (iPot-eTrans(m))/(kev * t) ) / t**1.5d0
-    
+
   end function BoltzSaha
 
 
   real(double) pure function boltzmann(m, N0, t)
-  
+
     integer, intent(in)              :: m
     real(double), intent(in):: N0, t
     real(double)            :: z0
@@ -1286,11 +1286,11 @@ contains
     !
     ! this function calculates the collisional ionization rate (see k&c and
     ! mihalas 1967 (apj 149 169) ).
-    ! 
+    !
     integer, intent(in)              :: i        ! the level
     real(double),intent(in) :: t        ! the temperature
-    
-    real(double) :: t1                  
+
+    real(double) :: t1
     real(double) :: gammait             ! see k&c
     real(double) :: lgt
     real(double) :: chi                 ! potential from i to k
@@ -1312,7 +1312,7 @@ contains
 
     t1 = min(t,1.5e5_db)
     lgt=log10(t1)
-    if (i .ne. 2) then 
+    if (i .ne. 2) then
        gammait=cint(1,i)+cint(2,i)*lgt+cint(3,i)*(lgt**2)+ &
             (cint(4,i)/lgt)+(cint(5,i)/(lgt**2))
     else
@@ -1322,21 +1322,21 @@ contains
     oldcikt=(5.465e-11)*sqrt(t1)*exp(-chi/(kev*t1))*gammait
 
   end function oldcikt
-  
+
   real(double) function cikt(i,t)
     !
     ! this function calculates the collisional ionization rate
     ! (using Hillier coefficients for most levels).
-    ! 
+    !
     integer, intent(in)              :: i        ! the level
     real(double),intent(in) :: t        ! the temperature
-    
-    real(double) :: t1                  
+
+    real(double) :: t1
 !    real(double) :: gammait             ! see k&c
     real(double) :: chi                 ! potential from i to k
     integer :: lower, upper
     real(double) :: factor
-    
+
     ! making cint a PARAMETER may cause problems with XL Fortran
     !  real(double) :: cint(5,10)
     !  cint = reshape(source=                                                                   &
@@ -1355,17 +1355,17 @@ contains
 
     t1 = min(t,1.5e5_db)
     chi=hydE0eV-eTrans(i)
-!    if (i .ne. 2) then 
+!    if (i .ne. 2) then
        call locate(tempTable,size(tempTable),t,lower)
        if (lower == 0 .or. lower == size(tempTable)) then
          print *, 'In cikt, temperature is out of range! (',t1,')'
          stop
-       end if 
+       end if
        upper = lower + 1
        factor = (t1 - tempTable(lower)) / (tempTable(upper) - tempTable(lower))
        cikt = 3.23_db*8.63e-08_db * (omegaik(lower,i)*(1.0_db-factor) + omegaik(upper,i)*factor) * &
               exp(-chi/(kev*t1)) / gDegen(i) / sqrt(t1*10e-4_db)
-        
+
 !    else
 !       gammait=cint(1,i)+cint(2,i)*t1+(cint(4,i)/t1)+(cint(5,i)/t1**2)
 !       cikt=(5.465e-11)*sqrt(t1)*exp(-chi/(kev*t1))*gammait
@@ -1381,7 +1381,7 @@ contains
 !    !
 !    integer, intent(in)              :: i,j  ! lower/upper level
 !    real(double),intent(in) :: t    ! temperature
-!    
+!
 !    integer :: r                             ! counter
 !    real(double) :: t1              ! temperature
 !    real(double) :: bsum(9)         ! summation
@@ -1389,10 +1389,10 @@ contains
 !    real(double) :: x
 !    integer               :: i1,j1           ! lower/upper level
 !    ! making avals a PARAMETER may cause problems with XL Fortran
-!    !   real(double) :: avals(7)     
+!    !   real(double) :: avals(7)
 !    !   avals = (/ 2.579997e-10_db, -1.629166e-10_db, 7.713069e-11_db, -2.668768e-11_db, &
 !    !              6.642513e-12_db, -9.422885e-13_db, 0.e0_db                            /)
-!    real(double),parameter :: avals(7) =                                    &    
+!    real(double),parameter :: avals(7) =                                    &
 !            (/ 2.579997e-10_db, -1.629166e-10_db, 7.713069e-11_db, -2.668768e-11_db, &
 !               6.642513e-12_db, -9.422885e-13_db, 0.e0_db                            /)
 !
@@ -1422,14 +1422,14 @@ contains
 !
 !
 !  end function oldcijt
-  
+
   real(double) function cijt(i,j,t)
     implicit none
     !
     ! this function calculates the excitation rate using values from Hillier !
     integer, intent(in)              :: i,j  ! lower/upper level
     real(double),intent(in) :: t    ! temperature
-    
+
     real(double) :: t1              ! temperature
     real(double) :: chi             ! excitation energy
     integer               :: i1,j1           ! lower/upper level
@@ -1446,13 +1446,13 @@ contains
     if (lower == 0 .or. lower == size(tempTable)) then
       print *, 'In cijt, temperature is out of range! (',t1,')'
       stop
-    end if 
+    end if
     upper = lower + 1
     factor = (t1 - tempTable(lower)) / (tempTable(upper) - tempTable(lower))
     cijt = (3.23_db*8.63e-08_db) * (omegaij(lower,j1,i1)*(1.0_db-factor) + omegaij(upper,j1,i1)*(factor)) * &
     exp(-chi) / gDegen(i1) / sqrt(t1*10e-4_db)
 
-      
+
     if (j < i) then
        cijt = cijt / (exp(-chi) * 2.)
     endif
@@ -1468,7 +1468,7 @@ contains
     integer, intent(in)              :: n     ! the level
     real(double), intent(in):: nu    ! the photon frequency
     real(double)            :: lam,e ! the photon wavelength
-    
+
     lam=cSpeed/nu
     lam=lam * 1.e8_db
 
@@ -1484,7 +1484,7 @@ contains
 
 
   real pure function expint(n,x1)
-    ! 
+    !
     ! exponential integrals. numerical approximations given by gray.
     !
     integer, intent(in)              :: n
@@ -1526,8 +1526,8 @@ contains
     real(double), intent(in) ::  z,wl
     real(double) ::  efree,sum,ag,alam
     integer               :: i
-    
-    real(double) :: nDouble 
+
+    real(double) :: nDouble
     ! making coeff  a PARAMETER may cause problems with XL Fortran
     real(double),dimension(6), parameter :: coeff = &
           (/-0.338276d0, 0.808398d0, -0.59941d0, 0.104292d0, &
@@ -1558,9 +1558,9 @@ contains
        gii = (1.e0-sum) * alam + 0.93e0_db*sum+0.2e0_db*sum*(1.e0_db-sum)
        return
     endif
-    
+
   end function gii
-  
+
 
   real pure function giia(nDouble,z,wl)
     real(double), intent(in) :: nDouble
@@ -1568,7 +1568,7 @@ contains
 
     real(double)             :: u, gii, term
     real(double), parameter  :: twoThirds = 2.e0_db/3.e0_db
-    real(double), parameter  :: fourThirds = 2.0_db * twoThirds 
+    real(double), parameter  :: fourThirds = 2.0_db * twoThirds
 
     u = nDouble*nDouble*911.76e0_db / (wl*z*z)-1.e0_db
     gii = 1.e0_db + 0.1728e0_db * (u-1.e0_db) / ((nDouble*(u+1.e0_db))**twoThirds)
@@ -1580,7 +1580,7 @@ contains
        giia = 1.0_db
        return
     endif
-    
+
   end function giia
 
 
@@ -1612,9 +1612,9 @@ contains
     if (n == debug) write(*,*) " "
 
     ! we have one IF statement to decide whether we use the block containin the
-    !   AMR version of the code. 
+    !   AMR version of the code.
    if (grid%adaptive) then
-   
+
        tot = 0.e0_db
 
        do m = 1, n - 1
@@ -1625,11 +1625,11 @@ contains
           else
              inu = 0.
           endif
-   
+
           tot = tot  + (thisOctal%N(thisSubcell,m)*bEinstein(m,n) &
                - thisOctal%N(thisSubcell,n)*bEinstein(n,m)) * &
                beta_cmn(m, n, rVec, i1, i2, i3, grid, 1, thisOctal, thisSubcell) * Inu
-   
+
           if (binary) then
              if ((freq >= nuArray2(1)).and.(freq <= nuArray2(nnu2))) then
                 call hunt(nuArray2, nNu2, real(freq), i)
@@ -1641,26 +1641,26 @@ contains
                   thisOctal%N(thisSubcell,n)*bEinstein(n,m)) * &
                   beta_cmn(m, n, rVec, i1, i2, i3, grid, 2, thisOctal, thisSubcell) * Inu
           endif
-   
+
           tot = tot - thisOctal%N(thisSubcell,n)*aEinstein(n,m)*&
                    beta_mn(m, n, rVec, i1, i2, i3, grid, thisOctal, thisSubcell)
           tot = tot + thisOctal%Ne(thisSubcell) * &
                (thisOctal%N(thisSubcell,m)*cijt(m,n,real(thisOctal%temperature(thisSubcell),kind=db)) &
                - thisOctal%N(thisSubcell,n) * cijt(n,m,real(thisOctal%temperature(thisSubcell),kind=db)))
        enddo
-   
+
        if (n == debug) then
           write(*,*) "m < n",tot
        endif
-   
-   
+
+
        do m = n+1, nPop
           tot = tot + thisOctal%N(thisSubcell,m)*aEinstein(m,n)*&
                    beta_mn(n,m,rVec, i1, i2, i3,grid, thisOctal, thisSubcell)
           if (n == debug) then
              write(*,*) "spont",m,tot
           endif
-   
+
           freq = cSpeed/lambdaTrans(m,n)
           if ((freq >= nuArray1(1)).and.(freq <= nuArray1(nnu1))) then
              call hunt(nuArray1, nNu1, real(freq), i)
@@ -1672,12 +1672,12 @@ contains
           tot = tot  - (thisOctal%N(thisSubcell,n)*bEinstein(n,m) - &
                thisOctal%N(thisSubcell,m)*bEinstein(m,n)) * &
                beta_cmn(n, m, rVec, i1, i2, i3, grid, 1, thisOctal, thisSubcell) * Inu
-   
+
           if (n == debug) then
              write(*,*) m,"star 1",tot
           endif
-   
-   
+
+
           if (binary) then
              if ((freq >= nuArray2(1)).and.(freq <= nuArray2(nnu2))) then
                 call hunt(nuArray2, nNu2, real(freq), i)
@@ -1689,23 +1689,23 @@ contains
                   thisOctal%N(thisSubcell,m)*bEinstein(m,n)) * &
                   beta_cmn(n, m, rVec, i1, i2, i3, grid, 2, thisOctal, thisSubcell) * Inu
           endif
-   
+
           if (n == debug) then
              write(*,*) m,"star 2",tot
           endif
-   
-   
+
+
           tot = tot + thisOctal%Ne(thisSubcell) * (thisOctal%N(thisSubcell,m) &
            *cijt(m,n,real(thisOctal%temperature(thisSubcell),kind=db)) - thisOctal%N(thisSubcell,n)&
            *cijt(n,m,real(thisOctal%temperature(thisSubcell),kind=db)))
           if (n == debug) then
              write(*,*) m,"collisional",tot
           endif
-   
-   
+
+
        enddo
-   
-   
+
+
        if ( n == debug) then
           write(*,*) "m > n",tot
        endif
@@ -1713,7 +1713,7 @@ contains
        NStar = boltzSaha(n, thisOctal%Ne(thisSubcell),dble(thisOctal%temperature(thisSubcell)))
 
 
-       fac1 = integral1(n,hnu1, nuArray1, nNu1, rVec, i1, i2, i3, grid, 1, thisOctal, thisSubcell)*visFrac1 
+       fac1 = integral1(n,hnu1, nuArray1, nNu1, rVec, i1, i2, i3, grid, 1, thisOctal, thisSubcell)*visFrac1
 
        if (binary) then
           fac2 = integral1(n,hnu2, nuArray2, nNu2, rVec, i1, i2, i3, grid, 2, thisOctal, thisSubcell)*visFrac2
@@ -1724,14 +1724,14 @@ contains
           tot = tot + Nstar * (fac1 + fac2 + thisOctal%Ne(thisSubcell)* &
           cikt(n,real(thisOctal%temperature(thisSubcell),kind=db)))
        end if
-   
+
        if (n == debug) then
           write(*,*) "Recombination: ",tot
           phiT = 1.5d0*log10(2.d0*pi*mElectron*kErg*thisOctal%temperature(thissubcell)) - &
                3.d0*log10(hCgs) + log10(exp(-1.0*hydE0eVdb/(kEV*thisOCtal%temperature(thissubcell))))
           phiT = 10.d0**phiT
 
-          
+
 
           write(*,*) thisOctal%ne(thissubcell)**2 * phit,nstar
 
@@ -1739,15 +1739,15 @@ contains
              cikt(n,real(thisOctal%temperature(thisSubcell),kind=db))
        endif
 
-       
-       fac1 = integral2(n,hnu1, nuArray1, nNu1, rVec, grid, 1)*visFrac1 
- 
+
+       fac1 = integral2(n,hnu1, nuArray1, nNu1, rVec, grid, 1)*visFrac1
+
        if (binary) then
           fac2 = integral2(n,hnu2, nuArray2, nNu2, rVec, grid, 2)*visFrac2
        else
           fac2 = 0.
        endif
-       
+
        if (.not. (n == 1 .and. LyContThick)) then
 
 
@@ -1756,19 +1756,19 @@ contains
 
 
        end if
-   
+
        if (n == debug) then
           write(*,*) "Ionization: ", &
                thisOctal%N(thisSubcell,n)*(fac1 + fac2 + thisOctal%Ne(thisSubcell) * &
                   cikt(n, real(thisOctal%temperature(thisSubcell),kind=db)))
           write(*,*) thisOctal%N(thisSubcell,n),fac1,fac2,thisOctal%Ne(thisSubcell) * &
              cikt(n, real(thisOctal%temperature(thisSubcell),kind=db))
-       endif 
-       
-       
+       endif
+
+
     else ! grid is not adaptive
-       
-       
+
+
        tot = 0.e0_db
        do m = 1, n - 1
           freq = cSpeed/lambdaTrans(m,n)
@@ -1778,12 +1778,12 @@ contains
           else
              inu = 0.
           endif
-   
-   
+
+
           tot = tot  + (grid%N(i1,i2,i3,m)*bEinstein(m,n) &
                - grid%N(i1,i2,i3,n)*bEinstein(n,m)) * &
                beta_cmn(m, n, rVec, i1, i2, i3, grid, 1) * Inu
-   
+
           if (binary) then
              if ((freq >= nuArray2(1)).and.(freq <= nuArray2(nnu2))) then
                 call hunt(nuArray2, nNu2, real(freq), i)
@@ -1795,24 +1795,24 @@ contains
                   grid%N(i1,i2,i3,n)*bEinstein(n,m)) * &
                   beta_cmn(m, n, rVec, i1, i2, i3, grid, 2) * Inu
           endif
-   
+
           tot = tot - grid%N(i1,i2,i3,n)*aEinstein(n,m)*beta_mn(m, n, rVec, i1, i2, i3, grid)
           tot = tot + grid%Ne(i1,i2,i3) * &
                (grid%N(i1,i2,i3,m)*cijt(m,n,dble(grid%temperature(i1,i2,i3))) - grid%N(i1,i2,i3,n) * &
                 cijt(n,m,dble(grid%temperature(i1,i2,i3))))
        enddo
-   
+
        if (n == debug) then
           write(*,*) "m < n",tot
        endif
-   
-   
+
+
        do m = n+1, nPop
           tot = tot + grid%N(i1,i2,i3,m)*aEinstein(m,n)*beta_mn(n,m,rVec, i1, i2, i3,grid)
           if (n == debug) then
              write(*,*) "spont",m,tot
           endif
-   
+
           freq = cSpeed/lambdaTrans(m,n)
           if ((freq >= nuArray1(1)).and.(freq <= nuArray1(nnu1))) then
              call hunt(nuArray1, nNu1, real(freq), i)
@@ -1820,17 +1820,17 @@ contains
           else
              inu = 0.
           endif
-   
-   
+
+
           tot = tot  - (grid%N(i1,i2,i3,n)*bEinstein(n,m) - &
                grid%N(i1,i2,i3,m)*bEinstein(m,n)) * &
                beta_cmn(n, m, rVec, i1, i2, i3, grid, 1) * Inu
-   
+
           if (n == debug) then
              write(*,*) m,"star 1",tot
           endif
-   
-   
+
+
           if (binary) then
              if ((freq >= nuArray2(1)).and.(freq <= nuArray2(nnu2))) then
                 call hunt(nuArray2, nNu2, real(freq), i)
@@ -1842,28 +1842,28 @@ contains
                   grid%N(i1,i2,i3,m)*bEinstein(m,n)) * &
                   beta_cmn(n, m, rVec, i1, i2, i3, grid, 2) * Inu
           endif
-   
+
           if (n == debug) then
              write(*,*) m,"star 2",tot
           endif
-   
-   
+
+
           tot = tot + grid%Ne(i1,i2,i3) * (grid%N(i1,i2,i3,m) &
            *cijt(m,n,dble(grid%temperature(i1,i2,i3))) - grid%N(i1,i2,i3,n)*cijt(n,m,dble(grid%temperature(i1,i2,i3))))
           if (n == debug) then
              write(*,*) m,"collisional",tot
           endif
-   
-   
+
+
        enddo
-   
-   
+
+
        if ( n == debug) then
           write(*,*) "m > n",tot
        endif
-   
+
        NStar = boltzSaha(n, grid%Ne(i1,i2,i3),dble(grid%temperature(i1,i2,i3)))
-   
+
        fac1 = integral1(n,hnu1, nuArray1, nNu1, rVec, i1, i2, i3, grid, 1, thisOctal, thisSubcell)*visFrac1
        if (binary) then
           fac2 = integral1(n,hnu2, nuArray2, nNu2, rVec, i1, i2, i3, grid, 2, thisOctal, thisSubcell)*visFrac2
@@ -1871,14 +1871,14 @@ contains
           fac2 = 0.
        endif
        tot = tot + Nstar * (fac1 + fac2 + grid%Ne(i1,i2,i3)*cikt(n,dble(grid%temperature(i1,i2,i3))))
-   
+
        if (n == debug) then
           write(*,*) "Recombination: ",tot
           write(*,*) nstar, fac1, fac2, grid%Ne(i1,i2,i3)*cikt(n,dble(grid%temperature(i1,i2,i3)))
        endif
-       
-       
-   
+
+
+
        fac1 = integral2(n,hnu1, nuArray1, nNu1, rVec, grid, 1)*visFrac1
        if (binary) then
           fac2 = integral2(n,hnu2, nuArray2, nNu2, rVec, grid, 2)*visFrac2
@@ -1886,13 +1886,13 @@ contains
           fac2 = 0.
        endif
        tot = tot - grid%N(i1,i2,i3,n)*(fac1 + fac2 + grid%Ne(i1,i2,i3) * cikt(n, dble(grid%temperature(i1,i2,i3))))
-   
+
        if (n == debug) then
           write(*,*) "Ionization: ", &
                grid%N(i1,i2,i3,n)*(fac1 + fac2 + grid%Ne(i1,i2,i3) * cikt(n, dble(grid%temperature(i1,i2,i3))))
           write(*,*) grid%N(i1,i2,i3,n),fac1,fac2,grid%Ne(i1,i2,i3) * cikt(n, dble(grid%temperature(i1,i2,i3)))
-       endif 
-       
+       endif
+
     end if ! (grid%adaptive)
 
     if (n == debug) write(*,*) "Final total:",tot
@@ -1900,7 +1900,7 @@ contains
 
 
   end function equation8
- 
+
 
   real (kind=double) pure function equation14(nPop, grid, i1, i2, i3, thisOctal, thisSubcell)
 
@@ -1908,7 +1908,7 @@ contains
     integer, intent(in)          :: i1, i2, i3, nPop
     type(OCTAL),pointer,optional :: thisOctal
     integer,intent(in),optional  :: thisSubcell
-    
+
     real(double) :: tot
     integer :: i
     integer, parameter :: maxLevels = statEqMaxLevels
@@ -1919,14 +1919,14 @@ contains
        do i = 1, nPop
           tot = tot + dble(thisOctal%N(thisSubcell,i))
        enddo
-       
+
        do i = nPop+1, maxLevels+3
           tot = tot + boltzSaha(i, dble(thisOctal%Ne(thisSubcell)), dble(thisOctal%temperature(thisSubcell)))
        enddo
 
 
        ! number density of HI and HII  (Ne=N_HII)
-       tot = tot + thisOctal%Ne(thisSubcell) 
+       tot = tot + thisOctal%Ne(thisSubcell)
        ! This should be zero (when converged).
        tot = tot - dble(thisOctal%rho(thisSubcell) / mHydrogen)
 
@@ -1939,7 +1939,7 @@ contains
        do i = 1, nPop
           tot = tot + dble(grid%n(i1,i2,i3,i))
        enddo
-       
+
        do i = nPop+1, maxLevels+3
           tot = tot + boltzSaha(i, grid%ne(i1,i2,i3), dble(grid%temperature(i1,i2,i3)))
        enddo
@@ -1965,7 +1965,7 @@ contains
     integer,intent(in)       :: i1, i2, i3
     type(OCTAL),pointer,optional:: thisOctal
     integer,intent(in),optional :: thisSubcell
-    
+
     real    :: r
     integer :: i, imin
     real    :: fac1, fac2
@@ -2002,8 +2002,8 @@ contains
     endif
     tot = 0.
 
-    if (grid%adaptive) then 
-            
+    if (grid%adaptive) then
+
        fac1  = real((fourPi/(hCgs*freq))*annu(n,dble(freq))* &
             ((2.*real(dble(hCgs)*dble(freq)**3) / (cSpeed*cSpeed)) + jnu) &
             *exp(-hCgs*freq/(kErg*thisOctal%temperature(thisSubcell))))
@@ -2025,7 +2025,7 @@ contains
        enddo
 
     else ! not adaptive
-            
+
        fac1  = real((fourPi/(hCgs*freq))*annu(n,dble(freq))* &
             ((2.*real(dble(hCgs)*dble(freq)**3) / (cSpeed*cSpeed)) + jnu) &
             *exp(-hCgs*freq/(kErg*grid%temperature(i1,i2,i3))))
@@ -2047,12 +2047,12 @@ contains
        enddo
 
     end if ! (grid%adaptive)
-    
+
     integral1 = tot
-    
+
   end function integral1
 
-  
+
   real function integral2(n,hnu, nuArray, nNu, rVec, grid, nStar)
     real, dimension(:) :: hnu, nuArray
     integer :: nNu, nStar, n
@@ -2181,8 +2181,8 @@ contains
 
     tot = 0.
 
-    if (grid%adaptive) then 
-            
+    if (grid%adaptive) then
+
        fac1  = real((fourPi/(hCgs*freq))*annu(n,dble(freq))* &
             ((2.*real(dble(hCgs)*dble(freq)**3) / (cSpeed*cSpeed)) + jnu)&
             *exp(-hCgs*freq/(kErg*thisOctal%temperature(thisSubcell))))
@@ -2204,7 +2204,7 @@ contains
        enddo
 
     else ! not adaptive
-            
+
        fac1  = real((fourPi/(hCgs*freq))*annu(n,dble(freq))* &
             ((2.*real(dble(hCgs)*dble(freq)**3) / (cSpeed*cSpeed)) + jnu) &
             *exp(-hCgs*freq/(kErg*grid%temperature(i1,i2,i3))))
@@ -2226,12 +2226,12 @@ contains
        enddo
 
     end if ! (grid%adaptive)
-    
+
     integral1_new = tot
-    
+
   end function integral1_new
 
-  
+
   real function integral2_new(n,hnu, nuArray, nNu, hnu2, nuArray2, nNu2, rVec, grid, nStar, photoOmega, hotOmega)
     real, dimension(:) :: hnu, nuArray
     real, dimension(:) :: hnu2, nuArray2
@@ -2328,26 +2328,26 @@ contains
     integer, intent(in)                :: nNu1, nNu2
     type(VECTOR), intent(in)           :: rVec
     integer, intent(in)                :: i1, i2, i3
-    type(octal), pointer, optional     :: thisOctal 
-    integer, intent(in),optional       :: thisSubcell 
+    type(octal), pointer, optional     :: thisOctal
+    integer, intent(in),optional       :: thisSubcell
     integer, intent(inout), optional   :: negativeErrors
-    
+
     real(double)              :: tmp, incr
     real(double), parameter   :: fac = 1.e-4_db
     integer                            :: i, j
     integer, parameter                 :: maxLevels = statEqMaxLevels
-    
-    if (grid%adaptive) then 
+
+    if (grid%adaptive) then
 
        thisOctal%N(thisSubcell,1:maxLevels) = x(1:maxLevels)
        thisOctal%Ne(thisSubcell) = x(maxLevels+1)
-   
+
        do i = 1, maxLevels
           beta(i) = -equation8(i, maxLevels, Hnu1, nuArray1, nNu1, Hnu2, nuArray2, nNu2, &
                rVec, i1, i2, i3, grid, visFrac1, visFrac2, isBinary, thisOctal, thisSubcell)
        enddo
        beta(maxLevels+1) = -equation14(maxLevels, grid, i1, i2, i3, thisOctal, thisSubcell)
-   
+
    !    write(*,*) "beta",real(beta(1:7))
 
        do i = 1, maxLevels
@@ -2363,7 +2363,7 @@ contains
              thisOctal%N(thisSubcell,j) = tmp
           enddo
        enddo
-   
+
    !    do j = 1, maxLevels
    !       tmp = grid%N(i1,i2,i3,j)
    !       grid%N(i1,i2,i3,j) = grid%N(i1,i2,i3,j) * (1.d0 + fac)
@@ -2371,10 +2371,10 @@ contains
    !       alpha(maxLevels+1,j) = 1.d0 !(beta(maxLevels+1) + incr) / (tmp*fac) ! 1.d0
    !       grid%N(i1,i2,i3,j) = tmp
    !    enddo
-   
+
 
        alpha(maxLevels+1,1:maxLevels) = 1.e0_db
-   
+
        tmp = thisOctal%Ne(thisSubcell)
        thisOctal%Ne(thisSubcell) = thisOctal%Ne(thisSubcell) * (1.e0_db+fac)
        do i = 1, maxLevels
@@ -2384,13 +2384,13 @@ contains
           alpha(i, maxLevels+1) = (beta(i)+incr)/(tmp*fac)
        enddo
 
-! ==TESTING HERE ===   
+! ==TESTING HERE ===
        incr = equation14(maxLevels, grid, i1, i2, i3, thisOctal, thisSubcell)
        incr = incr + beta(maxLevels+1)
        alpha(maxLevels+1,maxLevels+1) = incr/(tmp*fac)
 !       alpha(maxLevels+1,maxLevels+1) = 1.0d0
        thisOctal%Ne(thisSubcell) = tmp
-   
+
    !    do i = 1, maxLevels+1
    !       do j = 1, maxLevels+1
    !          write(*,*) i,j,real(alpha(i,j))
@@ -2401,25 +2401,25 @@ contains
  !      do i = 1, maxLevels+1
  !         do j = 1, maxLevels+1
  !            alpha(i,j) = rate_alpha_mn(i, j, Hnu1, nuArray1, nNu1, Hnu2, nuArray2, nNu2, &
- !                 rVec, i1, i2, i3, grid, visFrac1, visFrac2, isbinary, thisOctal, thisSubcell) 
+ !                 rVec, i1, i2, i3, grid, visFrac1, visFrac2, isbinary, thisOctal, thisSubcell)
  !         enddo
  !      enddo
-   
+
 
 
     else ! grid not adaptive
-           
+
        do i = 1, maxLevels
           grid%N(i1,i2,i3,i) = x(i)
        enddo
        grid%Ne(i1,i2,i3) = x(maxLevels+1)
-   
+
        do i = 1, maxLevels
           beta(i) = -equation8(i, maxLevels, Hnu1, nuArray1, nNu1, Hnu2, nuArray2, nNu2, &
                rVec, i1, i2, i3, grid, visFrac1, visFrac2, isBinary)
        enddo
        beta(maxLevels+1) = -equation14(maxLevels, grid, i1, i2, i3)
-   
+
    !    write(*,*) "beta",real(beta(1:7))
        do i = 1, maxLevels
           do j = 1, maxLevels
@@ -2434,7 +2434,7 @@ contains
              grid%N(i1,i2,i3,j) = tmp
           enddo
        enddo
-   
+
    !    do j = 1, maxLevels
    !       tmp = grid%N(i1,i2,i3,j)
    !       grid%N(i1,i2,i3,j) = grid%N(i1,i2,i3,j) * (1.d0 + fac)
@@ -2442,9 +2442,9 @@ contains
    !       alpha(maxLevels+1,j) = 1.d0 !(beta(maxLevels+1) + incr) / (tmp*fac) ! 1.d0
    !       grid%N(i1,i2,i3,j) = tmp
    !    enddo
-   
+
        alpha(maxLevels+1,1:maxLevels) = 1.e0_db
-   
+
        tmp = grid%Ne(i1,i2,i3)
        grid%Ne(i1,i2,i3) = grid%Ne(i1,i2,i3) * (1.e0_db+fac)
        do i = 1, maxLevels
@@ -2453,13 +2453,13 @@ contains
    !       alpha(i, maxLevels+1) = (beta(maxLevels+1)+incr)/(tmp*fac)
           alpha(i, maxLevels+1) = (beta(i)+incr)/(tmp*fac)
        enddo
-   
+
        incr = equation14(maxLevels, grid, i1, i2, i3)
        incr = incr + beta(maxLevels+1)
 !       alpha(maxLevels+1,maxLevels+1) = incr/(tmp*fac)
        alpha(maxLevels+1,maxLevels+1) = 1.0d0  ! RK Changed this.
        grid%Ne(i1,i2,i3) = tmp
-   
+
    !    do i = 1, maxLevels+1
    !       do j = 1, maxLevels+1
    !          write(*,*) i,j,real(alpha(i,j))
@@ -2467,8 +2467,8 @@ contains
    !    enddo
 
     end if ! (grid%adaptive)
-  
-    if (any(x < 0.0_db)) then 
+
+    if (any(x < 0.0_db)) then
 !      print *, "x = ",x
 !      print *, 'Warning: in setupMatrices, negative value detected'
       if (present(negativeErrors)) then
@@ -2504,59 +2504,59 @@ contains
     real(double),intent(in):: tolx, tolf
     real(double)          :: errf, d, errx
     real(double)          :: alpha(n,n),beta(n)
-    type(octal), pointer, optional :: thisOctal 
-    integer, intent(in),optional   :: thisSubcell 
+    type(octal), pointer, optional :: thisOctal
+    integer, intent(in),optional   :: thisSubcell
     logical                        :: debug
     integer                        :: negativeErrors
     logical, intent(out), optional :: needRestart
     integer, intent(in), optional  :: maxNegatives
     !
-    logical, intent(in), optional  :: be_gentle   ! if T, the change in the population 
+    logical, intent(in), optional  :: be_gentle   ! if T, the change in the population
     !         will be limited to a fraction of beta in Newton-Raphson method.
     integer, parameter             :: ntrial_min = 4  ! minimum number of tiral
     integer                        :: n_iteration
-    real(double)                   :: del, dx_max, dx    
-    
+    real(double)                   :: del, dx_max, dx
+
 
     debug = .true.
-    if (size(x) /= n) then 
+    if (size(x) /= n) then
       print *, 'In subroutine mnewt_stateq, we are assuming argumnent ''n'' = SIZE(x),',&
                ' but in this case it is not.'
       stop
     end if
-    
+
     negativeErrors = 0
     needRestart = .false.
 
     n_iteration = MAX(ntrial, ntrial_min)
       do k = 1, n_iteration
-        if (debug) print *, 'Trial ',k      
-        
+        if (debug) print *, 'Trial ',k
+
         call setupMatrices(x,alpha,beta,rVec, i1, i2, i3, grid,Hnu1, nuArray1, nNu1, Hnu2, &
              nuArray2, nNu2, visFrac1, visFrac2, isBinary, thisOctal=thisOctal, &
              thisSubcell=thisSubcell, negativeErrors=negativeErrors)
 
         if (present(needRestart) .and. present(maxNegatives)) then
-          if (negativeErrors >= maxNegatives) then 
+          if (negativeErrors >= maxNegatives) then
             needRestart = .true.
             return
           end if
         end if
-             
+
         errf=0.
         do i = 1, n
           errf=errf+abs(beta(i))
-        end do 
+        end do
         !if (debug) print *, "errf,tolf",errf,tolf
-!        if ((errf.le.tolf) .and. all(x > 0.0_db)) then 
+!        if ((errf.le.tolf) .and. all(x > 0.0_db)) then
 
         ! Now allows for at least ntrial_min iterations. (RK changed this)
-        if ((errf.le.tolf) .and. all(x > 0.0_db) .and. k>ntrial_min) then 
+        if ((errf.le.tolf) .and. all(x > 0.0_db) .and. k>ntrial_min) then
            if (debug) print *, k, 'trials.'
            return
         end if
 
-        call ludcmp_f77(alpha,n,n,indx,d) 
+        call ludcmp_f77(alpha,n,n,indx,d)
 
         call lubksb_f77(alpha,n,n,indx,beta)
 
@@ -2565,24 +2565,24 @@ contains
         if (PRESENT(be_gentle)) then
            if (be_gentle) then
               del = dble(k)/dble(n_iteration)
-              beta(:) = del*beta(:) 
+              beta(:) = del*beta(:)
            end if
         end if
 
         errx=0.
         do i = 1, n
           errx=errx+abs(beta(i))
-          x(i)=x(i)+beta(i)  
-        end do 
+          x(i)=x(i)+beta(i)
+        end do
 
-        ! New test for convergence                            
-        ! now compute the maximum fractional change of all level 
+        ! New test for convergence
+        ! now compute the maximum fractional change of all level
         ! population
-        dx_max = 1.0d-100                                     
+        dx_max = 1.0d-100
         do i = 1, n
-           if (x(i) /= 0.0d0) dx = beta(i)/x(i)               
-           dx_max = max(ABS(dx), dx_max)                           
-        end do    
+           if (x(i) /= 0.0d0) dx = beta(i)/x(i)
+           dx_max = max(ABS(dx), dx_max)
+        end do
 
 
         !if (debug) print *, "errx,tolx",errx,tolx
@@ -2594,12 +2594,12 @@ contains
         end if
       end do
 
-      if (any(x < 0.0_db)) then 
+      if (any(x < 0.0_db)) then
         needRestart = .true.
       end if
 
-!      print *, ntrial, 'trials' 
-      print *, n_iteration, 'trials' 
+!      print *, ntrial, 'trials'
+      print *, n_iteration, 'trials'
 
     end subroutine mnewt_stateq_v1
 
@@ -2609,11 +2609,11 @@ contains
      !
      real(double), intent(in) :: freq,t
      real(double)             :: wav,gauntf
-      
+
      wav=1.e8_db*cSpeed/freq
      gauntf=giii(1.e0_db,t,wav)
      alpkk=gauntf*real(3.7d8/((dble(freq)**3)*sqrt(dble(t))))
-     
+
   end function alpkk
 
 
@@ -2621,14 +2621,14 @@ contains
      !
      !   ferland's fabulous functional fits
      !
-     
+
      real(double), intent(in) :: wl, t, z
      real(double) :: c, u, ulog, gam2
      integer               :: i,j,k, m
      real(double) :: b2
      real(double) :: frac, sum1, sum2, d
      ! making coeff and a2 PARAMETERs may cause problems with XL Fortran
-     !  real(double) :: coeff(28) 
+     !  real(double) :: coeff(28)
      !  real(double) :: a2(7)
      !  coeff =                                                           &
      !     (/1.102d0       ,-0.1085d0     ,0.09775d0     ,-0.01125d0     ,&
@@ -2639,8 +2639,8 @@ contains
      !       1.16d0        ,-0.707333d0   ,0.112d0       ,0.0053333333d0 ,&
      !       0.883d0       ,-0.76885d0    ,0.190175d0    ,0.022675d0     /)
      !  a2 = (/100.d0, 10.d0, 3.d0, 1.d0, 0.3d0, 0.1d0, 0.001d0/)
-       
-     real(double), parameter :: coeff(28) =                   & 
+
+     real(double), parameter :: coeff(28) =                   &
         (/1.102d0       ,-0.1085d0     ,0.09775d0     ,-0.01125d0     ,&
           1.2d0         ,-0.24016667d0 ,0.07675d0     ,-0.01658333d0  ,&
           1.26d0        ,-0.313166667d0,0.15075d0     ,0.00241667d0   ,&
@@ -2650,7 +2650,7 @@ contains
           0.883d0       ,-0.76885d0    ,0.190175d0    ,0.022675d0     /)
      real(double), parameter :: a2(7) =                       &
           (/100.d0, 10.d0, 3.d0, 1.d0, 0.3d0, 0.1d0, 0.001d0/)
-       
+
        u = 1.44e+8 / (wl*t)
        ulog = log10(u)
        gam2 = 1.58e+5 * z*z/t
@@ -2723,13 +2723,13 @@ contains
       distToOccult = real(modulus(toOccult))
       toStar = toStar / dble(distToStar)
       toOccult = toOccult / dble(distToOccult)
-      
+
       if (distToOccult > distToStar) then
          visFrac = 1.
          goto 666
       endif
 
-      
+
       visFrac = 0.
       occultedFrac = 0.
 
@@ -2759,7 +2759,7 @@ contains
              dotprod = real(direction .dot. tooccult)
              if (dotprod > 0.) then
                 sinang = sqrt(max(0.,(1.-dotprod*dotprod)))
-                if ((sinang*disttooccult) < occultradius) then 
+                if ((sinang*disttooccult) < occultradius) then
                    occultedFrac = occultedFrac + dOmega
                 endif
              endif
@@ -2770,7 +2770,7 @@ contains
 666 continue
   end subroutine occultTest
 
-  
+
   subroutine generateOpacities(grid, m, n)
 
     type(GRIDTYPE) :: grid
@@ -2816,7 +2816,7 @@ contains
                 chil = real(((pi*eCharge**2)/(mElectron*cSpeed))*fStrength(m,n))
                 chil = real(chil* (grid%n(i1,i2,i3,m)-( ( gDegen(m) / gDegen(n)) * grid%n(i1,i2,i3,n))))
                 grid%chiLine(i1,i2,i3) = 1.e10*chil
-                
+
                 if (grid%n(i1,i2,i3,n) == 0.d0) then
                    write(*,*) i1,i2,i3,n
                    write(*,*) grid%n(i1,i2,i3,1:maxLevels)
@@ -2840,15 +2840,15 @@ contains
                            exp((-hcgs*freq)/(kerg*grid%temperature(i1,i2,i3))))* annu(j,dble(freq)))
                    endif
                 enddo
-                
+
                 chi=chi+real(real(grid%ne(i1,i2,i3))**2*alpkk(freq,dble(grid%temperature(i1,i2,i3)))*&
                      (1.d0-exp((-hcgs*freq)/(kerg*grid%temperature(i1,i2,i3)))))
 !                chi=chi+grid%ne(i1,i2,i3)*sigmaE
-                
+
                 grid%kappaabs(i1,i2,i3,1) = chi * 1.e10
                 !
                 ! continuous emissivity...bf and ff
-                ! 
+                !
                 eta=0.d0
                 do j=1,20
                    thresh=real((hydE0eVdb-eTrans(j)))
@@ -2857,12 +2857,12 @@ contains
                            *annu(j,freq)*exp(-(hcgs*freq)/(kerg*grid%temperature(i1,i2,i3))))
                    endif
                 enddo
-                
+
                 eta=eta + real((grid%ne(i1,i2,i3)**2) * alpkk(freq,dble(grid%temperature(i1,i2,i3)))* &
                      exp(-(hcgs*freq)/(kerg*grid%temperature(i1,i2,i3))))
-                
+
                 eta=eta*real((2.0*dble(hcgs)*dble(freq)**3)/(dble(cspeed)**2))
-                
+
                 grid%etacont(i1,i2,i3) = eta*1.e10
 
                 if (grid%chiLine(i1,i2,i3) < 0.) then
@@ -2902,7 +2902,7 @@ contains
 
     implicit none
 
-    type(GRIDTYPE),intent(inout):: grid      
+    type(GRIDTYPE),intent(inout):: grid
     logical,intent(in)          :: lte           ! true if lte conditions
     integer,intent(in)          :: nLower, nUpper! level populations
     logical, intent(in)         :: recalcPrevious ! whether to improve some previous results
@@ -2937,19 +2937,19 @@ contains
     type(octal), pointer        :: thisOctal => null()
     real, dimension(maxLevels)  :: departCoeff
     real, dimension(maxLevels)  :: previousXall
-    real                        :: previousNeRatio      
+    real                        :: previousNeRatio
     logical                     :: debugInfo
-    Type(VECTOR)           :: starCentre 
+    Type(VECTOR)           :: starCentre
     real(double), parameter :: NeFactor = 20.0_db ! NeFactor
 !    real :: lam
-    integer                     :: numLTEsubcells 
+    integer                     :: numLTEsubcells
 
     ! 2-d case variables
     type(octalListElement),pointer  :: listHead => NULL() ! linked list of octals
     type(octalWrapper), allocatable :: planeOctals(:) ! array of pointers to octals in 2d plane
     type(octalWrapper), allocatable :: subsetOctals(:) ! array of pointers to octals
 
-    integer       ::   ioctal_beg, ioctal_end  
+    integer       ::   ioctal_beg, ioctal_end
 #ifdef MPI
     ! For MPI implementations
     integer       ::   my_rank        ! my processor rank
@@ -2970,7 +2970,6 @@ contains
     end if
     ! Initialize the data arrays (lambdaTrans, bEinstein, fStrength) defined at the top of this module.
     call map_transition_arrays(maxLevels)
-    
     starCentre = globalSourceArray(1)%position
 
       nNu1 = starSurface%nNuHotFlux
@@ -3001,11 +3000,11 @@ contains
           call getIntersectedOctals(grid%octreeRoot,listHead,grid,nOctal,onlyChanged=.true.)
           print *, nOctal, ' octals in the 2-d plane have been updated'
        end if
-       
-       ! allocate the array of pointers to octals that intersect the plane 
+
+       ! allocate the array of pointers to octals that intersect the plane
        allocate(planeOctals(nOctal))
        call moveOctalListToArray(listHead,planeOctals)
-       
+
        ! now calculate the non-LTE populations in that plane.
        ! we use 'setupCoeffs' to store the departure coefficients
        ! we use 'propogateCoeffs' to use the previous (radius-sorted) cell's
@@ -3014,7 +3013,7 @@ contains
        call calcAMRstatEq(planeOctals, setupCoeffs=.true., propogateCoeffs=.true., &
             firstTime=.true.,NeFactor=NeFactor)
        deallocate(planeOctals) ! no longer need the pointers to that plane.
-       
+
        print *, '   Mapping 2-D cells to 3-D...'
        call map2DstatEq(grid%octreeRoot,grid)
        print *, '   ...3-D mapping done'
@@ -3033,12 +3032,12 @@ contains
           call getOctalsInFirstOctant(grid%octreeRoot,listHead,grid,nOctal,onlyChanged=.true.)
           print *, nOctal, ' octals (in the first octant) have been updated/changed'
        end if
-       
+
        ! allocate the array of pointers to octals in first octant
        allocate(subsetOctals(nOctal))
        call moveOctalListToArray(listHead,subsetOctals)
-       
-       ! now calculate the non-LTE populations 
+
+       ! now calculate the non-LTE populations
        ! we use 'setupCoeffs' to store the departure coefficients
        ! we use 'propogateCoeffs' to use the previous (radius-sorted) cell's
        !   coefficients as a starting point.
@@ -3046,15 +3045,15 @@ contains
        call calcAMRstatEq(subsetOctals, setupCoeffs=.true., propogateCoeffs=.true., &
             firstTime=.true.,NeFactor=NeFactor)
        deallocate(subsetOctals) ! no longer need the pointers to that plane.
-       
+
        print *, '   Mapping the first octant octal cells to other octants...'
        call mapOctantStatEq(grid%octreeRoot,grid)
        print *, '   ...3-D mapping done'
 
 
-    ! if we're going to calculate solutions for all the cells (not just those in 
-    !   a plane): 
-    elseif ((.not. grid%amr2dOnly) .or. lte .or. recalcPrevious) then    
+    ! if we're going to calculate solutions for all the cells (not just those in
+    !   a plane):
+    elseif ((.not. grid%amr2dOnly) .or. lte .or. recalcPrevious) then
 
 
        write(*,*) "Doing all cells..."
@@ -3081,42 +3080,42 @@ contains
           ! 'firstTime' must be off because we have already computed LTE values.
         call calcAMRstatEq(octalArray, setupCoeffs=.false., propogateCoeffs=.false.,&
                            firstTime=.false.,NeFactor=NeFactor)
-        !print *, 'and again, just for fun...'                   
+        !print *, 'and again, just for fun...'
         !call calcAMRstatEq(octalArray, setupCoeffs=.false., propogateCoeffs=.false.,&
         !                   firstTime=.false.,NeFactor=NeFactor)
       else
-                
+
         ! we solve from scratch for all the cells
         call calcAMRstatEq(octalArray, setupCoeffs=.false., propogateCoeffs=.true., &
                            firstTime=.true.,NeFactor=NeFactor)
 
-      end if 
+      end if
       deallocate(octalArray)
     end if
     ! if we are going to use them later, we must store all the departure
     ! coefficients.
     if (.not. lte) then
-      
+
       if (.not.(allocated(octalArray))) then
         allocate(octalArray(grid%nOctals))
         call getOctalArray(grid%octreeRoot,octalArray, nOctal)
       end if
-      
+
       call saveAllDepartCoeffs(octalArray)
     end if
-      
+
     !! we no longer need to store the departure coefficients
     !if (grid%statEq2d .and. (.not. lte) .and. (.not. recalcPrevious)) &
     !  call removeDepartCoeffs(grid%octreeRoot)
 
     call identifyTransitionStateq(dble(lamLine), nLower, nUpper)
     call generateOpacitiesAMR(grid, nLower, nUpper)
-    
+
   contains
-  
+
   subroutine calcAMRstatEq(octalArray,setupCoeffs,propogateCoeffs,firstTime,NeFactor)
-    ! takes an array of pointers to octals, and calculates the statistical 
-    !   equilibrium. 
+    ! takes an array of pointers to octals, and calculates the statistical
+    !   equilibrium.
     use messages_mod, only : myRankIsZero
     use surface_mod, only: photoFluxIntegral
 #ifdef MPI
@@ -3124,13 +3123,13 @@ contains
 #endif
 
     type(octalWrapper), intent(inout), dimension(:) :: octalArray
-    logical, intent(in) :: setupCoeffs  ! whether to store the departure 
+    logical, intent(in) :: setupCoeffs  ! whether to store the departure
                                         !   coefficients in the octal structure.
     logical, intent(in) :: propogateCoeffs ! whether to use previous cell's
                                            !   departure coefficients as
                                            !   starting values.
-                                           
-    logical, intent(in) :: firstTime ! if this is the first run, we have to 
+
+    logical, intent(in) :: firstTime ! if this is the first run, we have to
                                      !   calculate LTE values first.
     real(double), intent(in) :: NeFactor ! fudge factor for Ne
 !    real :: photoOmega, hotOmega
@@ -3160,21 +3159,21 @@ contains
        call sortOctalArray(octalArray,grid)
        print *, '   ...sorting complete'
     end if
-   
-    do i = 1, size(octalArray), 1 
+
+    do i = 1, size(octalArray), 1
       if (recalcPrevious) then
         ! if we're just updating a few cells, set the mask
         octalArray(i)%inUse = octalArray(i)%content%changed
       end if
       octalArray(i)%content%changed = .false.
     end do
-    
-    if (firstTime .or. (recalcPrevious .and. .not. grid%statEq2d)) then 
+
+    if (firstTime .or. (recalcPrevious .and. .not. grid%statEq2d)) then
        print *, "   calculating LTE values..." ,size(octalArray)
        do iOctal = 1, SIZE(octalArray), 1
           thisOctal => octalArray(iOctal)%content
           do iSubcell = 1, thisOctal%maxChildren
-             if (octalArray(iOctal)%inUse(iSubcell).and.thisOctal%inflow(isubcell)) then 
+             if (octalArray(iOctal)%inUse(iSubcell).and.thisOctal%inflow(isubcell)) then
 
                 call LTElevels(thisOctal%temperature(iSubcell),  &
                                thisOctal%rho(iSubcell),thisOctal%Ne(iSubcell), &
@@ -3195,45 +3194,45 @@ contains
              endif
           enddo
        enddo
-       print *, "   ...LTE calculations complete." 
+       print *, "   ...LTE calculations complete."
     end if
 
     if (.not.lte) then
-       print *, "   calculating non-LTE values..." 
-            
+       print *, "   calculating non-LTE values..."
+
        visFrac1 = 1.
        visFrac2 = 0.
        isBinary = .false.
-       
+
        ! default loop indecies
        ioctal_beg = 1
-       ioctal_end = SIZE(octalArray)       
+       ioctal_end = SIZE(octalArray)
 
 
-#ifdef MPI 
+#ifdef MPI
     ! FOR MPI IMPLEMENTATION=======================================================
-    !  Get my process rank # 
+    !  Get my process rank #
     call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-  
+
     ! Find the total # of precessor being used in this run
     call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
-    
+
     ! we will use an array to store the rank of the process
     !   which will calculate each octal's variables
     allocate(octalsBelongRank(size(octalArray)))
-    
+
     if (my_rank == 0) then
        print *, ' '
        print *, 'calcAMRstatEq routine  computed by ', np-1, ' processors.'
        print *, ' '
        call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
                             maxBlockSize=10,setDebug=.false.)
-    
+
     endif
     ! ============================================================================
 #endif
 
-       
+
        ! initialize some variables
        departCoeff = 1.0
        previousXall = -9.9
@@ -3241,9 +3240,9 @@ contains
 
 #ifdef MPI
  if (my_rank /= 0) then
-  blockLoop: do     
+  blockLoop: do
  call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
-   if (rankComplete) exit blockLoop 
+   if (rankComplete) exit blockLoop
 #endif
 
 !!$OMP    ! FOR OpenMP IMPLEMENTATION=======================================================
@@ -3252,11 +3251,11 @@ contains
 !$OMP PRIVATE(iOctal, thisOctal, iSubcell, NeLTE, xAll, previousXall, rVec) &
 !$OMP PRIVATE(photoFlux1, hNu1, nuArray1, previousSubcell, previousNeRatio) &
 !$OMP PRIVATE(tempNe, tempLevels, nTot, needRestart, departCoeff, i) &
-!$OMP SHARED(iOctal_beg, iOctal_end, octalArray, setupCoeffs, starSurface, starCentre) & 
-!$OMP SHARED(recalcPrevious, firstTime, propogateCoeffs, grid) & 
-!$OMP SHARED(visFrac1, visFrac2, isBinary) & 
-!$OMP SHARED(nNu1, nuArray2, hNu2, nNu2) & 
-!$OMP SHARED(numLTEsubcells,  NeFactor, debuginfo) 
+!$OMP SHARED(iOctal_beg, iOctal_end, octalArray, setupCoeffs, starSurface, starCentre) &
+!$OMP SHARED(recalcPrevious, firstTime, propogateCoeffs, grid) &
+!$OMP SHARED(visFrac1, visFrac2, isBinary) &
+!$OMP SHARED(nNu1, nuArray2, hNu2, nNu2) &
+!$OMP SHARED(numLTEsubcells,  NeFactor, debuginfo)
 !$OMP DO SCHEDULE(DYNAMIC)
        do iOctal =  iOctal_beg, iOctal_end, 1
 
@@ -3264,43 +3263,43 @@ contains
           thisOctal => octalArray(iOctal)%content
           if (setupCoeffs) allocate (thisOctal%departCoeff(8,maxLevels+1))
             ! departCoeff(maxLevels+1) is the LTE/nonLTE Ne ratio
-          
+
           do iSubcell = 1,  thisOctal%maxChildren, 1
              if (octalArray(iOctal)%inUse(iSubcell) .and. ((thisOctal%inFlow(iSubcell) .and. &
                 thisOctal%nTot(iSubcell) > 1.0) )) then
 
                 if (recalcPrevious .and. .not. firstTime) then
                   ! calculate LTE values, and then scale by old coefficients
-                  
+
                   call LTElevels(thisOctal%temperature(iSubcell),  &
                                  thisOctal%rho(iSubcell),thisOctal%Ne(iSubcell),&
                                  thisOctal%nTot(iSubcell),thisOctal%N(iSubcell,:))
 
                   thisOctal%Ne(iSubcell) = &
-                    thisOctal%Ne(iSubcell) * thisOctal%departCoeff(iSubcell,maxLevels+1)      
+                    thisOctal%Ne(iSubcell) * thisOctal%departCoeff(iSubcell,maxLevels+1)
                   thisOctal%N(iSubcell,:) = &
-                    thisOctal%N(iSubcell,:) * thisOctal%departCoeff(iSubcell,1:maxLevels)      
-                  
+                    thisOctal%N(iSubcell,:) * thisOctal%departCoeff(iSubcell,1:maxLevels)
+
                 end if
-                
+
                 ! store the electron density so that we can use it for
                 !   comparison later.
                 NeLTE = thisOctal%Ne(iSubcell)
-                
+
                 ! if we are using starting values from the previous cell, apply
                 !   them now
                 if (propogateCoeffs) then
-                   thisOctal%Ne(iSubcell) = thisOctal%Ne(iSubcell) * previousNeRatio     
+                   thisOctal%Ne(iSubcell) = thisOctal%Ne(iSubcell) * previousNeRatio
                    thisOctal%N(iSubcell,1:maxLevels) = departCoeff(1:maxLevels) * &
                                       boltzSaha(allLevels, thisOctal%Ne(iSubcell),&
                                       real(thisOctal%temperature(iSubcell),kind=db))
                 end if
-                
+
                 xAll(1:maxLevels) = thisOctal%N(iSubcell,1:maxLevels)
                 xAll(maxLevels+1) = thisOctal%Ne(iSubcell)
                 if (.not. propogateCoeffs .and. .not. firstTime) &
                        previousXall = real(xAll(1:maxLevels))
-                       
+
                 rVec = subcellCentre(thisOctal,iSubcell)
 
                 !call photoSolidAngle(rVec, starSurface, hotOmega, photoOmega)
@@ -3315,7 +3314,7 @@ contains
                 end if
 
 
-                  
+
 !                call mnewt_stateq(grid, maxLevels+1, xAll, maxlevels+1, tolx, tolf, hNu1(1:nNu1), &
                 call mnewt_stateq(grid, ntrial_max, xAll, maxlevels+1, tolx, tolf, hNu1(1:nNu1), &
                            nuArray1, nNu1, &
@@ -3335,29 +3334,29 @@ contains
                       print *, 'Using starting coefficients from previous',&
                                ' subcell: ',previousSubcell
                       ! calculate the departure coefficients for the previous
-                      !   subcell 
+                      !   subcell
                       call LTElevels(thisOctal%temperature(previousSubcell),  &
                                      thisOctal%rho(previousSubcell),tempNe,nTot,tempLevels)
                       tempNe = thisOctal%Ne(previousSubcell) / tempNe
                       tempLevels = thisOctal%N(previousSubcell,1:maxLevels) / tempLevels
-                     
-                      ! recalculate LTE for the current subcell 
+
+                      ! recalculate LTE for the current subcell
                       call LTElevels(thisOctal%temperature(iSubcell),  &
                                      thisOctal%rho(iSubcell),xAll(maxLevels+1),&
                                      thisOctal%nTot(iSubcell),xAll(1:maxLevels))
                       ! apply coefficients
                       xAll(maxLevels+1) = xAll(maxLevels+1) * tempNe
                       xAll(1:maxLevels) = xAll(1:maxLevels) * tempLevels
-                      
+
 !                      call mnewt_stateq(grid, maxLevels+1, xAll, maxlevels+1, tolx, tolf, &
                       call mnewt_stateq(grid, ntrial_max, xAll, maxlevels+1, tolx, tolf, &
                            hNu1(1:nNu1), nuArray1, nNu1, &
                            hNu2, nuArray2, nNu2, rVec, 1, 1, 1, visFrac1, visFrac2,&
                            isBinary, thisOctal, iSubcell, needRestart,maxNegatives=20)
 
-                      if (.not. needRestart) exit 
-                    end if 
-                 
+                      if (.not. needRestart) exit
+                    end if
+
                   end do
 
                   if (needRestart) then
@@ -3387,7 +3386,7 @@ contains
                          hNu1(1:nNu1), nuArray1, nNu1, &
                          hNu2, nuArray2, nNu2, rVec, 1, 1, 1, visFrac1, visFrac2,&
                          isBinary, thisOctal, iSubcell, needRestart,maxNegatives=20, be_gentle=.true.)
-                      
+
                       if (needRestart) then
                          print *, 'LTE initial guess with BE_GENTLE=T option did not work....'
                          print *, 'Fixing subcell (at depth ',thisOctal%nDepth,') at LTE values!!!'
@@ -3406,12 +3405,12 @@ contains
                 ! store the results
                 thisOctal%N(iSubcell,1:maxLevels) = xall(1:maxLevels)
                 thisOctal%Ne(iSubcell) = xall(maxLevels+1)
-                
+
                 if (propogateCoeffs .or. setupCoeffs .or. associated(thisOctal%departCoeff)) then
 
                    ! we work out the Ne ratio of non-LTE to LTE...
                    previousNeRatio = real(thisOctal%Ne(iSubcell) / NeLTE)
-                  
+
                    ! and the departure coefficients from LTE at the current (non-LTE) Ne
                    departCoeff(1:maxLevels) = real(xall(1:maxLevels))/                         &
                                                  real(boltzSaha(allLevels, thisOctal%Ne(iSubcell),&
@@ -3420,10 +3419,10 @@ contains
                    thisOctal%departCoeff(iSubcell,1:maxLevels) = departCoeff(:)
                    thisOctal%departCoeff(iSubcell,maxLevels+1) = previousNeRatio
                 end if
-                           
+
                 if (debugInfo) then
-                   write (*,'(a12,i1,a15,f7.0,a16,1pe14.3)') '   subcell #', iSubcell, '  temperature: ', & 
-                                      thisOctal%temperature(iSubcell),' N(HI)+N(HII): ',thisOctal%rho(iSubcell)/mHydrogen 
+                   write (*,'(a12,i1,a15,f7.0,a16,1pe14.3)') '   subcell #', iSubcell, '  temperature: ', &
+                                      thisOctal%temperature(iSubcell),' N(HI)+N(HII): ',thisOctal%rho(iSubcell)/mHydrogen
                    write (*,'(a,1pe15.4,a)') '    radius = ',&
                       modulus(subcellCentre(thisOctal,iSubcell) - starCentre)/grid%rStar1,' rStar'
                    write(*,*) '  level   dep.coeff      N          N LTE     start N  '
@@ -3434,22 +3433,22 @@ contains
                        boltzSaha(i, thisOctal%Ne(iSubcell),real(thisOctal%temperature(iSubcell),kind=db)),&
                        previousXall(i)
                    enddo
-                   if (.not. propogateCoeffs .and. .not. firstTime) then 
+                   if (.not. propogateCoeffs .and. .not. firstTime) then
                      write(*,*) 'Log Ne = ',REAL(log10(thisOctal%Ne(iSubcell))),&
                                 '  Ne final / Ne starting value = ',REAL(thisOctal%Ne(iSubcell)/NeLTE)
                    else
                      write(*,*) 'Log Ne = ',REAL(log10(thisOctal%Ne(iSubcell))), &
                                 '  Ne non-LTE/LTE = ',REAL(thisOctal%Ne(iSubcell)/NeLTE)
                    end if
-                   
+
                    !write(*,'(a,f6.2)') 'Hot spot viewing fraction(%): ',100.*hotOmega/(photoOmega+hotOmega)
-                end if   
-                
+                end if
+
              else if (setupCoeffs) then
-                
+
                 if (.not. associated(thisOctal%departCoeff)) allocate (thisOctal%departCoeff(8,maxLevels+1))
                 thisOctal%departCoeff(iSubcell,:) = 1.0
-                
+
              endif
           enddo
        enddo
@@ -3459,43 +3458,43 @@ contains
 
 #ifdef MPI
  if (.not.blockHandout) exit blockloop
- end do blockLoop        
+ end do blockLoop
  end if ! (my_rank /= 0)
 
-     print *,'Process ',my_rank,' waiting to update values in calcAMRstatEq...' 
-     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+     print *,'Process ',my_rank,' waiting to update values in calcAMRstatEq...'
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
      ! have to send out the 'octalsBelongRank' array
      call MPI_BCAST(octalsBelongRank,SIZE(octalsBelongRank),  &
                     MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
        !
        ! Update the values (N and Ne) of grid computed by all processors.
        !
        do iOctal = 1, SIZE(octalArray)
-          !print *,'Process ',my_rank,' starting octal ',iOctal 
+          !print *,'Process ',my_rank,' starting octal ',iOctal
 
           !if (my_rank==0)   print *,'Root reports rank ',octalsBelongRank(ioctal), 'for octal',ioctal
           thisOctal => octalArray(iOctal)%content
-          
+
           ! we may need to allocate departure coefficients
           if (my_rank == octalsBelongRank(iOctal)) then
             dcAllocated = associated(thisOctal%departCoeff)
             !print *, 'rank ',my_rank,'broadcasting dcAllocated:',dcAllocated
           end if
-          
+
           call MPI_BCAST(dcAllocated, 1, &
                MPI_LOGICAL, octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
-          
-          if (dcAllocated .and. .not. associated(thisOctal%departCoeff)) then 
+
+          if (dcAllocated .and. .not. associated(thisOctal%departCoeff)) then
             allocate(thisOctal%departCoeff(8,maxLevels+1))
             !print *, 'process ',my_rank,'allocating dc'
           end if
-          
+
           do iSubcell = 1, thisOctal%maxChildren
              if (octalArray(iOctal)%inUse(iSubcell)) then
-                
+
                 call MPI_BCAST(thisOctal%nTot(iSubcell), 1, MPI_DOUBLE_PRECISION,&
                      octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
                 call MPI_BCAST(thisOctal%Ne(iSubcell), 1, MPI_DOUBLE_PRECISION, &
@@ -3503,28 +3502,28 @@ contains
                 call MPI_BCAST(thisOctal%N(iSubcell, 1:maxlevels), maxlevels, &
                      MPI_DOUBLE_PRECISION, octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
              end if
-          
+
              if (dcAllocated) then
-     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
                 call MPI_BCAST(thisOctal%departCoeff(iSubcell, 1:maxlevels+1), maxlevels+1, &
                      MPI_REAL, octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
-             end if   
+             end if
           end do
        end do
-          
+
      tempInt = 0
      call MPI_REDUCE(numLTEsubcells,tempInt,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,ierr)
      numLTEsubcells = tempInt
-          
-     print *,'Process ',my_rank,' finished updating values in calcAMRstatEq...' 
-     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+
+     print *,'Process ',my_rank,' finished updating values in calcAMRstatEq...'
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 #endif
-      
+
       if (myRankIsZero) then
-         print *, "   non-LTE calculations complete..." 
+         print *, "   non-LTE calculations complete..."
          print *, numLTEsubcells,' subcells were fixed at LTE values'
       end if
-       
+
     endif
 
     end subroutine calcAMRstatEq
@@ -3539,13 +3538,14 @@ contains
     use surface_mod, only: SURFACETYPE
     USE amr_mod
     USE inputs_mod, ONLY: LyContThick, statEq1stOctant, lamLine
+    USE inputs_mod, ONLY: ttauriRstar !! so that rStar can be set to non zero value
     use parallel_mod
 #ifdef MPI
     use mpi
 #endif
     implicit none
 
-    type(GRIDTYPE),intent(inout):: grid      
+    type(GRIDTYPE),intent(inout):: grid
     logical,intent(in)          :: lte           ! true if lte conditions
     integer,intent(in)          :: nLower, nUpper! level populations
     logical, intent(in)         :: recalcPrevious ! whether to improve some previous results
@@ -3580,19 +3580,19 @@ contains
     type(octal), pointer        :: thisOctal => null()
     real, dimension(maxLevels)  :: departCoeff
     real, dimension(maxLevels)  :: previousXall
-    real                        :: previousNeRatio      
+    real                        :: previousNeRatio
     logical                     :: debugInfo
-    Type(VECTOR)           :: starCentre 
+    Type(VECTOR)           :: starCentre
     real(double), parameter :: NeFactor = 20.0_db ! NeFactor
 !    real :: lam
-    integer                     :: numLTEsubcells 
+    integer                     :: numLTEsubcells
 
     ! 2-d case variables
     type(octalListElement),pointer  :: listHead => NULL() ! linked list of octals
     type(octalWrapper), allocatable :: planeOctals(:) ! array of pointers to octals in 2d plane
     type(octalWrapper), allocatable :: subsetOctals(:) ! array of pointers to octals
 
-    integer       ::   ioctal_beg, ioctal_end  
+    integer       ::   ioctal_beg, ioctal_end
 #ifdef MPI
     ! For MPI implementations
     integer       ::   np             ! The number of processes
@@ -3604,7 +3604,7 @@ contains
     if ( trim(grid%geometry) == "binary" ) isBinary = .true.
 
     numLTEsubcells = 0
-
+    grid%rStar1 = tTauriRstar / 1.d10
     if (LyContThick) then
       print *, '**************************************************'
       print *, 'Lyman Continuum Thick!'
@@ -3615,7 +3615,7 @@ contains
     call setInuseOnTemperature(grid%octreeRoot)
 
     call map_transition_arrays(maxLevels)
-    
+
     starCentre = grid%starPos1
 
     nNu1 = starSurface%nNuHotFlux
@@ -3645,11 +3645,11 @@ contains
           call getIntersectedOctals(grid%octreeRoot,listHead,grid,nOctal,onlyChanged=.true.)
           print *, nOctal, ' octals in the 2-d plane have been updated'
        end if
-       
-       ! allocate the array of pointers to octals that intersect the plane 
+
+       ! allocate the array of pointers to octals that intersect the plane
        allocate(planeOctals(nOctal))
        call moveOctalListToArray(listHead,planeOctals)
-       
+
        ! now calculate the non-LTE populations in that plane.
        ! we use 'setupCoeffs' to store the departure coefficients
        ! we use 'propogateCoeffs' to use the previous (radius-sorted) cell's
@@ -3658,7 +3658,7 @@ contains
        call calcAMRstatEqNew(planeOctals, setupCoeffs=.true., propogateCoeffs=.false., &
             firstTime=.true.,NeFactor=NeFactor)
        deallocate(planeOctals) ! no longer need the pointers to that plane.
-       
+
        print *, '   Mapping 2-D cells to 3-D...'
        call map2DstatEq(grid%octreeRoot,grid)
        print *, '   ...3-D mapping done'
@@ -3677,12 +3677,12 @@ contains
           call getOctalsInFirstOctant(grid%octreeRoot,listHead,grid,nOctal,onlyChanged=.true.)
           print *, nOctal, ' octals (in the first octant) have been updated/changed'
        end if
-       
+
        ! allocate the array of pointers to octals in first octant
        allocate(subsetOctals(nOctal))
        call moveOctalListToArray(listHead,subsetOctals)
-       
-       ! now calculate the non-LTE populations 
+
+       ! now calculate the non-LTE populations
        ! we use 'setupCoeffs' to store the departure coefficients
        ! we use 'propogateCoeffs' to use the previous (radius-sorted) cell's
        !   coefficients as a starting point.
@@ -3690,15 +3690,15 @@ contains
        call calcAMRstatEqNew(subsetOctals, setupCoeffs=.true., propogateCoeffs=.false., &
             firstTime=.true.,NeFactor=NeFactor)
        deallocate(subsetOctals) ! no longer need the pointers to that plane.
-       
+
        print *, '   Mapping the first octant octal cells to other octants...'
        call mapOctantStatEq(grid%octreeRoot,grid)
        print *, '   ...3-D mapping done'
 
 
-    ! if we're going to calculate solutions for all the cells (not just those in 
-    !   a plane): 
-    elseif ((.not. grid%amr2dOnly) .or. lte .or. recalcPrevious) then    
+    ! if we're going to calculate solutions for all the cells (not just those in
+    !   a plane):
+    elseif ((.not. grid%amr2dOnly) .or. lte .or. recalcPrevious) then
 
 
        write(*,*) "Doing all cells..."
@@ -3726,30 +3726,30 @@ contains
           ! 'firstTime' must be off because we have already computed LTE values.
         call calcAMRstatEqNew(octalArray, setupCoeffs=.false., propogateCoeffs=.false.,&
                            firstTime=.false.,NeFactor=NeFactor)
-        !print *, 'and again, just for fun...'                   
+        !print *, 'and again, just for fun...'
         !call calcAMRstatEqNew(octalArray, setupCoeffs=.false., propogateCoeffs=.false.,&
         !                   firstTime=.false.,NeFactor=NeFactor)
       else
-                
+
         ! we solve from scratch for all the cells
         call calcAMRstatEqNew(octalArray, setupCoeffs=.false., propogateCoeffs=.false., &
                            firstTime=.true.,NeFactor=NeFactor)
 
-      end if 
+      end if
       deallocate(octalArray)
     end if
     ! if we are going to use them later, we must store all the departure
     ! coefficients.
     if (.not. lte) then
-      
+
       if (.not.(allocated(octalArray))) then
         allocate(octalArray(grid%nOctals))
         call getOctalArray(grid%octreeRoot,octalArray, nOctal)
       end if
-      
+
       call saveAllDepartCoeffs(octalArray)
     end if
-      
+
     !! we no longer need to store the departure coefficients
     !if (grid%statEq2d .and. (.not. lte) .and. (.not. recalcPrevious)) &
     !  call removeDepartCoeffs(grid%octreeRoot)
@@ -3757,12 +3757,12 @@ contains
     call torus_mpi_barrier
     call identifyTransitionStateq(dble(lamLine), nLower, nUpper)
     call generateOpacitiesAMR(grid, nLower, nUpper)
-    
+
   contains
-  
+
   subroutine calcAMRstatEqNew(octalArray,setupCoeffs,propogateCoeffs,firstTime,NeFactor)
-    ! takes an array of pointers to octals, and calculates the statistical 
-    !   equilibrium. 
+    ! takes an array of pointers to octals, and calculates the statistical
+    !   equilibrium.
     use messages_mod, only : myRankIsZero
     use surface_mod, only: photoFluxIntegral
 #ifdef MPI
@@ -3770,13 +3770,13 @@ contains
 #endif
 
     type(octalWrapper), intent(inout), dimension(:) :: octalArray
-    logical, intent(in) :: setupCoeffs  ! whether to store the departure 
+    logical, intent(in) :: setupCoeffs  ! whether to store the departure
                                         !   coefficients in the octal structure.
     logical, intent(in) :: propogateCoeffs ! whether to use previous cell's
                                            !   departure coefficients as
                                            !   starting values.
-                                           
-    logical, intent(in) :: firstTime ! if this is the first run, we have to 
+
+    logical, intent(in) :: firstTime ! if this is the first run, we have to
                                      !   calculate LTE values first.
     real(double), intent(in) :: NeFactor ! fudge factor for Ne
 !    real :: photoOmega, hotOmega
@@ -3803,21 +3803,21 @@ contains
        call sortOctalArray(octalArray,grid)
        print *, '   ...sorting complete'
     end if
-   
-    do i = 1, size(octalArray), 1 
+
+    do i = 1, size(octalArray), 1
       if (recalcPrevious) then
         ! if we're just updating a few cells, set the mask
         octalArray(i)%inUse = octalArray(i)%content%changed
       end if
       octalArray(i)%content%changed = .false.
     end do
-    
-    if (firstTime .or. (recalcPrevious .and. .not. grid%statEq2d)) then 
+
+    if (firstTime .or. (recalcPrevious .and. .not. grid%statEq2d)) then
        print *, "   calculating LTE values..." ,size(octalArray)
        do iOctal = 1, SIZE(octalArray), 1
           thisOctal => octalArray(iOctal)%content
           do iSubcell = 1, thisOctal%maxChildren
-             if (octalArray(iOctal)%inUse(iSubcell).and.thisOctal%inflow(isubcell)) then 
+             if (octalArray(iOctal)%inUse(iSubcell).and.thisOctal%inflow(isubcell)) then
 
                 call LTElevels(thisOctal%temperature(iSubcell),  &
                                thisOctal%rho(iSubcell),thisOctal%Ne(iSubcell),&
@@ -3838,37 +3838,37 @@ contains
              endif
           enddo
        enddo
-       print *, "   ...LTE calculations complete." 
+       print *, "   ...LTE calculations complete."
     end if
 
     if (.not.lte) then
-       print *, "   calculating non-LTE values..." 
-            
+       print *, "   calculating non-LTE values..."
+
        visFrac1 = 1.
        visFrac2 = 0.
        isBinary = .false.
-       
+
        ! default loop indecies
        ioctal_beg = 1
-       ioctal_end = SIZE(octalArray)       
+       ioctal_end = SIZE(octalArray)
 
 
 
-       
+
        ! initialize some variables
        departCoeff = 1.0
        previousXall = -9.9
        previousNeRatio = 1.0
 
-          
+
 
 #ifdef MPI
-    
-            ! Set the range of index for octal loop used later.     
+
+            ! Set the range of index for octal loop used later.
             np = nThreadsGlobal
             n_rmdr = MOD(SIZE(octalArray),np)
             m = SIZE(octalArray)/np
-            
+
             if (myRankGlobal .lt. n_rmdr ) then
                ioctal_beg = (m+1)*myRankGlobal + 1
                ioctal_end = ioctal_beg + m
@@ -3876,7 +3876,7 @@ contains
                ioctal_beg = m*myRankGlobal + 1 + n_rmdr
                ioctal_end = ioctal_beg + m - 1
             end if
-            
+
 #endif
 
 !!$OMP    ! FOR OpenMP IMPLEMENTATION=======================================================
@@ -3885,54 +3885,54 @@ contains
 !$OMP PRIVATE(iOctal, thisOctal, iSubcell, NeLTE, xAll, previousXall, rVec) &
 !$OMP PRIVATE(photoFlux1, hNu1, nuArray1, previousSubcell, previousNeRatio) &
 !$OMP PRIVATE(tempNe, tempLevels, nTot, needRestart, departCoeff, i) &
-!$OMP SHARED(iOctal_beg, iOctal_end, octalArray, setupCoeffs, starSurface, starCentre) & 
-!$OMP SHARED(recalcPrevious, firstTime, propogateCoeffs, grid) & 
-!$OMP SHARED(visFrac1, visFrac2, isBinary) & 
-!$OMP SHARED(nNu1, nuArray2, hNu2, nNu2) & 
-!$OMP SHARED(numLTEsubcells,  NeFactor, debuginfo) 
+!$OMP SHARED(iOctal_beg, iOctal_end, octalArray, setupCoeffs, starSurface, starCentre) &
+!$OMP SHARED(recalcPrevious, firstTime, propogateCoeffs, grid) &
+!$OMP SHARED(visFrac1, visFrac2, isBinary) &
+!$OMP SHARED(nNu1, nuArray2, hNu2, nNu2) &
+!$OMP SHARED(numLTEsubcells,  NeFactor, debuginfo)
 !$OMP DO SCHEDULE(DYNAMIC)
        do iOctal =  iOctal_beg, iOctal_end, 1
           print *, 'Octal #',iOctal
           thisOctal => octalArray(iOctal)%content
           if (setupCoeffs) allocate (thisOctal%departCoeff(thisOctal%maxChildren,maxLevels+1))
             ! departCoeff(maxLevels+1) is the LTE/nonLTE Ne ratio
-          
+
           do iSubcell = 1,  thisOctal%maxChildren, 1
              if (octalArray(iOctal)%inUse(iSubcell) .and. ((thisOctal%inFlow(iSubcell) .and. &
                 thisOctal%nTot(iSubcell) > 1.0) )) then
                 if (recalcPrevious .and. .not. firstTime) then
                   ! calculate LTE values, and then scale by old coefficients
-                  
+
                   call LTElevels(thisOctal%temperature(iSubcell),  &
                                  thisOctal%rho(iSubcell),thisOctal%Ne(iSubcell),&
                                  thisOctal%nTot(iSubcell),thisOctal%N(iSubcell,:))
 
                   thisOctal%Ne(iSubcell) = &
-                    thisOctal%Ne(iSubcell) * thisOctal%departCoeff(iSubcell,maxLevels+1)      
+                    thisOctal%Ne(iSubcell) * thisOctal%departCoeff(iSubcell,maxLevels+1)
                   thisOctal%N(iSubcell,:) = &
-                    thisOctal%N(iSubcell,:) * thisOctal%departCoeff(iSubcell,1:maxLevels)      
-                  
+                    thisOctal%N(iSubcell,:) * thisOctal%departCoeff(iSubcell,1:maxLevels)
+
                 end if
-                
+
                 ! store the electron density so that we can use it for
                 !   comparison later.
                 NeLTE = thisOctal%Ne(iSubcell)
-                
+
                 ! if we are using starting values from the previous cell, apply
                 !   them now
                 if (propogateCoeffs) then
-                   thisOctal%Ne(iSubcell) = thisOctal%Ne(iSubcell) * previousNeRatio     
+                   thisOctal%Ne(iSubcell) = thisOctal%Ne(iSubcell) * previousNeRatio
                    thisOctal%N(iSubcell,1:maxLevels) = departCoeff(1:maxLevels) * &
                                       boltzSaha(allLevels, thisOctal%Ne(iSubcell),&
                                       real(thisOctal%temperature(iSubcell),kind=db))
                 end if
 
-                
+
                 xAll(1:maxLevels) = thisOctal%N(iSubcell,1:maxLevels)
                 xAll(maxLevels+1) = thisOctal%Ne(iSubcell)
                 if (.not. propogateCoeffs .and. .not. firstTime) &
                        previousXall = real(xAll(1:maxLevels))
-                       
+
                 rVec = subcellCentre(thisOctal,iSubcell)
 
                 !call photoSolidAngle(rVec, starSurface, hotOmega, photoOmega)
@@ -3945,7 +3945,7 @@ contains
                   print *, 'Binary geometry not implemented for amrStateq surface models'
                   stop
                 end if
-                  
+
 !                call mnewt_stateq(grid, maxLevels+1, xAll, maxlevels+1, tolx, tolf, hNu1(1:nNu1), &
                 call mnewt_stateq(grid, ntrial_max, xAll, maxlevels+1, tolx, tolf, hNu1(1:nNu1), &
                            nuArray1, nNu1, &
@@ -3965,29 +3965,29 @@ contains
                       print *, 'Using starting coefficients from previous',&
                                ' subcell: ',previousSubcell
                       ! calculate the departure coefficients for the previous
-                      !   subcell 
+                      !   subcell
                       call LTElevels(thisOctal%temperature(previousSubcell),  &
                                      thisOctal%rho(previousSubcell),tempNe,nTot,tempLevels)
                       tempNe = thisOctal%Ne(previousSubcell) / tempNe
                       tempLevels = thisOctal%N(previousSubcell,1:maxLevels) / tempLevels
-                     
-                      ! recalculate LTE for the current subcell 
+
+                      ! recalculate LTE for the current subcell
                       call LTElevels(thisOctal%temperature(iSubcell),  &
                                      thisOctal%rho(iSubcell),xAll(maxLevels+1),&
                                      thisOctal%nTot(iSubcell),xAll(1:maxLevels))
                       ! apply coefficients
                       xAll(maxLevels+1) = xAll(maxLevels+1) * tempNe
                       xAll(1:maxLevels) = xAll(1:maxLevels) * tempLevels
-                      
+
 !                      call mnewt_stateq(grid, maxLevels+1, xAll, maxlevels+1, tolx, tolf, &
                       call mnewt_stateq(grid, ntrial_max, xAll, maxlevels+1, tolx, tolf, &
                            hNu1(1:nNu1), nuArray1, nNu1, &
                            hNu2, nuArray2, nNu2, rVec, 1, 1, 1, visFrac1, visFrac2,&
                            isBinary, thisOctal, iSubcell, needRestart,maxNegatives=20)
 
-                      if (.not. needRestart) exit 
-                    end if 
-                 
+                      if (.not. needRestart) exit
+                    end if
+
                   end do
 
                   if (needRestart) then
@@ -4017,7 +4017,7 @@ contains
                          hNu1(1:nNu1), nuArray1, nNu1, &
                          hNu2, nuArray2, nNu2, rVec, 1, 1, 1, visFrac1, visFrac2,&
                          isBinary, thisOctal, iSubcell, needRestart,maxNegatives=20, be_gentle=.true.)
-                      
+
                       if (needRestart) then
                          print *, 'LTE initial guess with BE_GENTLE=T option did not work....'
                          print *, 'Fixing subcell (at depth ',thisOctal%nDepth,') at LTE values!!!'
@@ -4036,12 +4036,12 @@ contains
                 ! store the results
                 thisOctal%N(iSubcell,1:maxLevels) = xall(1:maxLevels)
                 thisOctal%Ne(iSubcell) = xall(maxLevels+1)
-                
+
                 if (propogateCoeffs .or. setupCoeffs .or. associated(thisOctal%departCoeff)) then
 
                    ! we work out the Ne ratio of non-LTE to LTE...
                    previousNeRatio = real(thisOctal%Ne(iSubcell) / NeLTE)
-                  
+
                    ! and the departure coefficients from LTE at the current (non-LTE) Ne
                    departCoeff(1:maxLevels) = real(xall(1:maxLevels))/                         &
                                                  real(boltzSaha(allLevels, thisOctal%Ne(iSubcell),&
@@ -4050,10 +4050,10 @@ contains
                    thisOctal%departCoeff(iSubcell,1:maxLevels) = departCoeff(:)
                    thisOctal%departCoeff(iSubcell,maxLevels+1) = previousNeRatio
                 end if
-                           
+
                 if (debugInfo) then
-                   write (*,'(a12,i1,a15,f7.0,a16,1pe14.3)') '   subcell #', iSubcell, '  temperature: ', & 
-                                      thisOctal%temperature(iSubcell),' N(HI)+N(HII): ',thisOctal%rho(iSubcell)/mHydrogen 
+                   write (*,'(a12,i1,a15,f7.0,a16,1pe14.3)') '   subcell #', iSubcell, '  temperature: ', &
+                                      thisOctal%temperature(iSubcell),' N(HI)+N(HII): ',thisOctal%rho(iSubcell)/mHydrogen
                    write (*,'(a,1pe15.4,a)') '    radius = ',&
                       modulus(subcellCentre(thisOctal,iSubcell) - starCentre)/grid%rStar1,' rStar'
                    write(*,*) '  level   dep.coeff      N          N LTE     start N  '
@@ -4064,22 +4064,22 @@ contains
                        boltzSaha(i, thisOctal%Ne(iSubcell),real(thisOctal%temperature(iSubcell),kind=db)),&
                        previousXall(i)
                    enddo
-                   if (.not. propogateCoeffs .and. .not. firstTime) then 
+                   if (.not. propogateCoeffs .and. .not. firstTime) then
                      write(*,*) 'Log Ne = ',REAL(log10(thisOctal%Ne(iSubcell))),&
                                 '  Ne final / Ne starting value = ',REAL(thisOctal%Ne(iSubcell)/NeLTE)
                    else
                      write(*,*) 'Log Ne = ',REAL(log10(thisOctal%Ne(iSubcell))), &
                                 '  Ne non-LTE/LTE = ',REAL(thisOctal%Ne(iSubcell)/NeLTE)
                    end if
-                   
+
                    !write(*,'(a,f6.2)') 'Hot spot viewing fraction(%): ',100.*hotOmega/(photoOmega+hotOmega)
-                end if   
-                
+                end if
+
              else if (setupCoeffs) then
-                
+
                 if (.not. associated(thisOctal%departCoeff)) allocate (thisOctal%departCoeff(thisOctal%maxChildren,maxLevels+1))
                 thisOctal%departCoeff(iSubcell,:) = 1.0
-                
+
              endif
           enddo
        enddo
@@ -4118,15 +4118,15 @@ contains
      tempInt = 0
      call MPI_REDUCE(numLTEsubcells,tempInt,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,ierr)
      numLTEsubcells = tempInt
-          
-     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 #endif
-      
+
       if (myRankIsZero) then
-         print *, "   non-LTE calculations complete..." 
+         print *, "   non-LTE calculations complete..."
          print *, numLTEsubcells,' subcells were fixed at LTE values'
       end if
-       
+
    endif
 
     end subroutine calcAMRstatEqNew
@@ -4136,26 +4136,26 @@ contains
   subroutine saveAllDepartCoeffs(octalArray)
     ! populate the 'departcoeff' variable for all of the octals.
     ! we need these when the 'recalcPrevious' flag is on.
-    
+
     type(octalWrapper), intent(inout), dimension(:) :: octalArray
-    
+
     integer :: iOctal, iSubcell
     real(double) :: NeLTE, dummy
     real(double), dimension(stateqMaxLevels) :: nLte
     type(octal), pointer :: thisOctal
     integer :: i
     integer, dimension(stateqMaxLevels), parameter :: allLevels = (/ (i,i=1,stateqMaxLevels) /)
-    
+
     do iOctal = 1, size(octalArray), 1
       thisOctal => octalArray(iOctal)%content
-    
+
       if (.not. associated(thisoctal%departCoeff)) &
         allocate(thisOctal%departCoeff(thisOctal%maxChildren,(stateqMaxLevels+1)))
-      
-      thisOctal%departCoeff = 1.0  
-      
+
+      thisOctal%departCoeff = 1.0
+
       do iSubcell = 1, thisOctal%maxChildren, 1
-      
+
         if (thisOctal%inFlow(iSubcell) .and. (thisOctal%nTot(iSubcell) > 1.0) ) then
           call LTElevels(thisOctal%temperature(iSubcell),            &
                          thisOctal%rho(iSubcell), NeLTE, dummy, nLTE)
@@ -4163,7 +4163,7 @@ contains
              real(thisOctal%Ne(iSubcell) / NeLTE)
           thisOctal%departCoeff(iSubcell,1:stateqMaxLevels) = real(thisOctal%N(iSubcell,1:stateqMaxLevels)/  &
              boltzSaha(allLevels, thisOctal%Ne(iSubcell),real(thisOctal%temperature(iSubcell),kind=db)))
-        else 
+        else
           thisOctal%departCoeff = 1.0
         end if
       end do
@@ -4171,11 +4171,11 @@ contains
 
   end subroutine saveAllDepartCoeffs
 
-                
+
   subroutine generateOpacitiesAMR(grid, nLower, nUpper)
     ! for all the cells in the grid.
     use inputs_mod, only : vTurb
-    type(GRIDTYPE),intent(inout):: grid      
+    type(GRIDTYPE),intent(inout):: grid
     integer,intent(in)          :: nLower, nUpper! level populations
     real(double)                :: chil
     real(double)                :: chi
@@ -4193,10 +4193,10 @@ contains
     call map_transition_arrays(maxLevels)
     freq = cspeed/lambdaTrans(nLower,nUpper)
 
-    nOctal = 0 
+    nOctal = 0
     allocate(octalArray(grid%nOctals))
     call getOctalArray(grid%octreeRoot,octalArray, nOctal)
-  
+
     transe = abs(eTrans(nUpper)-eTrans(nLower))
     write(*,'(a,f8.1)') "   generating opacities for ", lambdaTrans(nLower, nUpper)*1.e8
 
@@ -4205,20 +4205,20 @@ contains
           if (octalArray(iOctal)%inUse(iSubcell).and.octalArray(iOctal)%content%inFlow(isubcell)) then
              octalArray(iOctal)%content%kappaSca(iSubcell,1) = &
                 octalArray(iOctal)%content%Ne(iSubcell) * sigmae * 1.e10
-             
-             if (octalArray(iOctal)%content%kappaSca(iSubcell,1) < 0.0) then              
+
+             if (octalArray(iOctal)%content%kappaSca(iSubcell,1) < 0.0) then
                 octalArray(iOctal)%content%kappaSca(iSubcell,1) = 1.e-20
                 print *, ' in amrStatEq, negative kappaSca value fixed!', &
                      octalArray(ioctal)%content%ne(isubcell)
              end if
 
              ! calculate the line opacity and emissivity
-             
+
              chil=( (pi*eCharge**2) / (mElectron*cSpeed) ) * fStrength(nLower,nUpper)
              chil = chil * (octalArray(iOctal)%content%N(iSubcell,nLower) - &
                        ((gDegen(nLower) / gDegen(nUpper)) * octalArray(iOctal)%content%N(iSubcell,nUpper)))
              octalArray(iOctal)%content%chiLine(iSubcell) = 1.e10 * chil
-             
+
              if (octalArray(iOctal)%content%n(iSubcell,nUpper) == 0.e0_db) then
                 write(*,*) 'In amrStatEq, octalArray(iOctal)%content%n(iSubcell,nUpper) == 0.d0'
                 write(*,*) nUpper
@@ -4227,19 +4227,19 @@ contains
                 write(*,*) octalArray(iOctal)%content%temperature(iSubcell)
                 stop
              endif
-             
+
              fac=(((octalArray(iOctal)%content%N(iSubcell,nLower)* gDegen(nUpper)) / &
                  (octalArray(iOctal)%content%N(iSubcell,nUpper)*gDegen(nLower)))-1.e0_db)
              octalArray(iOctal)%content%etaLine(iSubcell) = &
                   1.e10*chil*real((2.e0_db*dble(hcgs)*dble(freq)**3)/(dble((cSpeed*cSpeed))))/fac
-             
-             if (octalArray(iOctal)%content%etaLine(iSubcell) < 0.0) then              
+
+             if (octalArray(iOctal)%content%etaLine(iSubcell) < 0.0) then
                 octalArray(iOctal)%content%etaLine(iSubcell) = 1.e-20
                 print *, ' in amrStatEq, negative etaline value fixed!'
              end if
-             
+
              ! continuous opacity.. bound-free and free-free processes (+es)
-             
+
              chi=0.e0_db
              do j=1,maxLevels
                 thresh=(hydE0eVdb-eTrans(j))
@@ -4251,20 +4251,20 @@ contains
                         annu(j,real(freq,kind=db))
                 endif
              enddo
-             
+
              chi=chi+real(octalArray(iOctal)%content%Ne(iSubcell))**2 * &
                     alpkk(freq,real(octalArray(iOctal)%content%temperature(iSubcell),kind=db))*&
                     (1.e0_db-exp((-hcgs*freq)/(kerg*octalArray(iOctal)%content%temperature(iSubcell))))
              !                chi=chi+grid%ne(i1,i2,i3)*sigmaE
-             if (chi < 0.0) then              
+             if (chi < 0.0) then
                 chi = 1.e-30
                 print *, ' in amrStatEq, negative chi value fixed!'
              end if
              octalArray(iOctal)%content%kappaAbs(iSubcell,1) = chi * 1.e10
 
-             
+
              ! continuous emissivity...bf and ff
-              
+
              eta=0.e0_db
              do j=1,20
                 thresh=(hydE0eVdb-eTrans(j))
@@ -4274,22 +4274,23 @@ contains
                         annu(j,freq)*exp(-(hcgs*freq)/(kerg*octalArray(iOctal)%content%temperature(iSubcell)))
                 endif
              enddo
-             
+
              eta=eta + (octalArray(iOctal)%content%Ne(iSubcell)**2) * &
                         alpkk(freq,real(octalArray(iOctal)%content%temperature(iSubcell),kind=db))* &
                         exp(-(hcgs*freq)/(kerg*octalArray(iOctal)%content%temperature(iSubcell)))
-             
+
              eta=eta*real((2.0*dble(hcgs)*dble(freq)**3)/(dble(cspeed)**2))
-             
+
              octalArray(iOctal)%content%etaCont(iSubcell) = eta*1.e10
-             
+             octalArray(iOctal)%content%etaCont(iSubcell)    = 1.e-20
+             octalArray(iOctal)%content%kappaAbs(iSubcell,1) = 1.e-20 !!attempt to remove continuum emmision from calc (tjgw 18/08/2019)
 
 
-             if (octalArray(iOctal)%content%etaCont(iSubcell) < 0.0) then              
+             if (octalArray(iOctal)%content%etaCont(iSubcell) < 0.0) then
                 octalArray(iOctal)%content%etaCont(iSubcell) = 1.e-20
                 print *, ' in amrStatEq, negative etacont value fixed!'
              end if
-             
+
              if (octalArray(iOctal)%content%chiLine(iSubcell) < 0.) then
                 write(*,*) iOCtal, chil
                 octalArray(iOctal)%content%chiLine(iSubcell)    = 1.e-20
@@ -4318,13 +4319,13 @@ contains
   end subroutine generateOpacitiesAMR
 
 
-  ! This really should be in cmfgen_mod.f90, but due to circular 
+  ! This really should be in cmfgen_mod.f90, but due to circular
   ! depdndecy this has to be in this module
-  ! 
+  !
   subroutine map_cmfgen_opacities(grid)
     use cmfgen_class, only: get_cmfgen_data_array, get_cmfgen_nd
 
-    type(GRIDTYPE),intent(inout):: grid      
+    type(GRIDTYPE),intent(inout):: grid
     !
     integer                     :: iOctal        ! loop counter
     integer                     :: iSubcell      ! loop counter
@@ -4338,11 +4339,11 @@ contains
     integer :: nd  ! depth points
     real(double), allocatable :: R(:), eta(:), chi_th(:), chi_line(:), eta_line(:), chi_es(:)
 
-    nOctal = 0 
+    nOctal = 0
     !
     allocate(octalArray(grid%nOctals))
     call getOctalArray(grid%octreeRoot,octalArray, nOctal)
-  
+
     ! creating the temp arrays
     nd = get_cmfgen_nd()
     ! just checking ...
@@ -4368,22 +4369,22 @@ contains
     endif
     do iOctal = 1, SIZE(octalArray), 1
        do iSubcell = 1, octalArray(iOctal)%content%maxChildren
-          thisOctal => octalArray(iOctal)%content        
+          thisOctal => octalArray(iOctal)%content
 
           thisOctal%etaCont(iSubcell) = 1.d-30
           thisOctal%kappaAbs(iSubcell,1) = 1.d-30
           thisOctal%kappaSca(iSubcell,1) = 1.d-30
-          thisOctal%etaLine(iSubcell) = 1.d-30 
+          thisOctal%etaLine(iSubcell) = 1.d-30
           thisOctal%chiLine(iSubcell) = 1.d-30
 
           if (octalArray(iOctal)%inUse(iSubcell).and.octalArray(iOctal)%content%inFlow(isubcell)) then
              point = subcellCentre(thisOctal,isubcell)
-             ri = modulus( point )   ! [10^10cm]             
-             thisOctal%etaCont(iSubcell) = loginterp_dble(eta, nd, R, ri)    
-             thisOctal%kappaAbs(iSubcell,1) =  loginterp_dble(chi_th, nd, R, ri)    
-             thisOctal%kappaSca(iSubcell,1) =  loginterp_dble(chi_es, nd, R, ri)    
-             thisOctal%etaLine(iSubcell) = loginterp_dble(eta_line, nd, R, ri)    
-             thisOctal%chiLine(iSubcell) = loginterp_dble(chi_line, nd, R, ri)              
+             ri = modulus( point )   ! [10^10cm]
+             thisOctal%etaCont(iSubcell) = loginterp_dble(eta, nd, R, ri)
+             thisOctal%kappaAbs(iSubcell,1) =  loginterp_dble(chi_th, nd, R, ri)
+             thisOctal%kappaSca(iSubcell,1) =  loginterp_dble(chi_es, nd, R, ri)
+             thisOctal%etaLine(iSubcell) = loginterp_dble(eta_line, nd, R, ri)
+             thisOctal%chiLine(iSubcell) = loginterp_dble(chi_line, nd, R, ri)
              thisOctal%ne(iSubcell) = 1.d-10*thisOctal%kappaSca(iSubcell,1)/sigmaE
              thisOctal%rho(isubcell) = thisOctal%ne(isubcell) *  mHydrogen * 2.6d0/ 1.8d0
           endif
@@ -4402,7 +4403,7 @@ contains
 
   end subroutine map_cmfgen_opacities
 
-  
+
 
   recursive subroutine map2DstatEq(thisOctal,grid,subcellMask)
     ! applies the departure coefficients from the 2-d plane to the rest of the
@@ -4410,7 +4411,7 @@ contains
     USE amr_mod, only: amrGridValues
 
     type(octal), pointer        :: thisOctal
-    type(GRIDTYPE),intent(inout):: grid      
+    type(GRIDTYPE),intent(inout):: grid
     logical, dimension(:), intent(in), optional :: subcellMask
 
     integer               :: iSubcell
@@ -4423,33 +4424,33 @@ contains
     type(VECTOR)     :: cellCentre
     type(octal),pointer   :: inPlaneOctal
     integer               :: inPlaneSubcell
-    real, dimension(1:grid%maxLevels+1) :: departCoeff 
+    real, dimension(1:grid%maxLevels+1) :: departCoeff
       ! the last value is the electron density coefficent
 
     integer               :: i
-    integer, parameter    :: maxLevels = statEqMaxLevels 
+    integer, parameter    :: maxLevels = statEqMaxLevels
     integer, dimension(maxLevels), parameter :: allLevels = (/ (i,i=1,maxLevels) /)
     type(octal), pointer  :: child
     integer               :: iChild
-    
+
     starCentre = grid%starPos1
     rHat = VECTOR(1.0_oc/SQRT(2.0_oc),1.0_oc/SQRT(2.0_oc),0.0_oc)
-      
+
     DO iSubcell = 1, thisOctal%maxChildren, 1
       if (present(subcellMask)) then
         if (.not. subcellMask(iSubcell)) cycle
       end if
-    
+
       ! find the corresponding subcell in the statEq-populated plane
-      
+
       cellCentre = subcellCentre(thisOctal,iSubcell)
 
-      ! calculate the radial distance from the star's centre in the x-y plane 
+      ! calculate the radial distance from the star's centre in the x-y plane
       distance = modulus(cellCentre -                                         &
                          VECTOR(starCentre%x,starCentre%y,cellCentre%z))
-      
+
       inPlanePoint = starCentre + (distance * rHat)
-      inPlanePoint%z = cellCentre%z 
+      inPlanePoint%z = cellCentre%z
 
       ! get the parameters from the in-plane octal
       call amrGridValues(grid%octreeRoot,inPlanePoint,                       &
@@ -4458,51 +4459,51 @@ contains
 
       ! if the current subcell is in the plane, we can ignore it
       if (associated(thisOctal,inPlaneOctal) .and. (iSubcell==inPlaneSubcell)) &
-        cycle 
-        
+        cycle
+
       ! calculate LTE values for the current subcell (to get Ne)
       call LTElevels(thisOctal%temperature(iSubcell),  &
                      thisOctal%rho(iSubcell),thisOctal%Ne(iSubcell),&
                      thisOctal%nTot(iSubcell),thisOctal%N(iSubcell,:))
       thisOctal%Ne(iSubcell) =  thisOctal%Ne(iSubcell) *                        &
                                    real(departCoeff(maxLevels+1),KIND=double)
-                                   
+
       ! calculate level pops. for the current subcell (with modified Ne)
       thisOctal%N(iSubcell,1:maxLevels) = departCoeff(1:maxLevels) * &
                          boltzSaha(allLevels, thisOctal%Ne(iSubcell),&
                          real(thisOctal%temperature(iSubcell),kind=db))
-             
+
       if (.not. associated(thisOctal%departCoeff)) &
         allocate(thisOctal%departCoeff(thisOctal%maxChildren,maxLevels+1))
 
       thisOctal%departCoeff(iSubcell,:) = departCoeff
       thisOctal%changed(iSubcell) = .false.
-    
-    end do 
-    
+
+    end do
+
     ! call recursively on any children
-    if (thisOctal%nChildren > 0) then 
+    if (thisOctal%nChildren > 0) then
       do iChild = 1, thisOctal%nChildren, 1
         child => thisOctal%child(iChild)
         call map2DstatEq(child,grid)
       end do
     end if
-  
-  end subroutine map2dStatEq
-  
 
-  ! This is base on map2dStatEq. 
-  ! Maps the departure coefficients to the first octant (x>0, y>0, z>0) 
-  ! to other 7 octants using symmetries ( symmetry about z=0 plane, 
+  end subroutine map2dStatEq
+
+
+  ! This is base on map2dStatEq.
+  ! Maps the departure coefficients to the first octant (x>0, y>0, z>0)
+  ! to other 7 octants using symmetries ( symmetry about z=0 plane,
   ! phi = pi/2 rotational symmetry around z axis)
-  ! 
+  !
  recursive subroutine mapOctantStatEq(thisOctal,grid,subcellMask)
     ! applies the departure coefficients from the 2-d plane to the rest of the
     !   grid (for rotationally symmetric geometries).
    USE amr_mod, only: amrGridValues
 
     type(octal), pointer        :: thisOctal
-    type(GRIDTYPE),intent(inout):: grid      
+    type(GRIDTYPE),intent(inout):: grid
     logical, dimension(:), intent(in), optional :: subcellMask
 
     integer               :: iSubcell
@@ -4513,26 +4514,26 @@ contains
     type(octal),pointer   :: foundOctal
     integer               :: foundSubcell
     real(oct) :: phi
-    real, dimension(1:grid%maxLevels+1) :: departCoeff 
+    real, dimension(1:grid%maxLevels+1) :: departCoeff
       ! the last value is the electron density coefficent
 
     integer               :: i
-    integer, parameter    :: maxLevels = statEqMaxLevels 
+    integer, parameter    :: maxLevels = statEqMaxLevels
     integer, dimension(maxLevels), parameter :: allLevels = (/ (i,i=1,maxLevels) /)
     type(octal), pointer  :: child
     integer               :: iChild
     logical   :: skip_rotation
-    
+
     starCentre = grid%starPos1
-      
+
     MAINLOOP: DO iSubcell = 1, thisOctal%maxChildren, 1
       if (present(subcellMask)) then
         if (.not. subcellMask(iSubcell)) cycle
       end if
-    
-      ! find the corresponding subcell in the statEq-populated plane      
+
+      ! find the corresponding subcell in the statEq-populated plane
       cellCentre = subcellCentre(thisOctal,iSubcell) - starCentre
-      ! 
+      !
       if (cellCentre%x > 0.0 .and. cellCentre%y > 0.0 .and. cellCentre%z > 0.0) then
          ! the point is in the first octant; hence, no need to map the value.
          CYCLE  MAINLOOP
@@ -4552,7 +4553,7 @@ contains
          else
             ! in the second quadrant
             phi = 0.5d0*pi
-         end if         
+         end if
       else
          if (r%y<0.0) then
             ! in fourth quadrant
@@ -4561,65 +4562,65 @@ contains
             ! in the first quadrant
             phi = 0.0d0
             skip_rotation=.true.
-         end if                  
+         end if
       end if
       if (skip_rotation)   then
          r2 = r
       else
-         r2 = rotateZ(r, phi)   
+         r2 = rotateZ(r, phi)
       end if
 
       ! get the parameters from the octals in the first octant
       call amrGridValues(grid%octreeRoot, r2,                       &
                          foundOctal=foundOctal,foundSubcell=foundSubcell,&
                          departCoeff=departCoeff)
-        
+
       ! calculate LTE values for the current subcell (to get Ne)
       call LTElevels(thisOctal%temperature(iSubcell),  &
                      thisOctal%rho(iSubcell),thisOctal%Ne(iSubcell),&
                      thisOctal%nTot(iSubcell),thisOctal%N(iSubcell,:))
       thisOctal%Ne(iSubcell) =  thisOctal%Ne(iSubcell) *                        &
                                    real(departCoeff(maxLevels+1),KIND=double)
-                                   
+
       ! calculate level pops. for the current subcell (with modified Ne)
       thisOctal%N(iSubcell,1:maxLevels) = departCoeff(1:maxLevels) * &
                          boltzSaha(allLevels, thisOctal%Ne(iSubcell),&
                          real(thisOctal%temperature(iSubcell),kind=db))
-             
+
       if (.not. associated(thisOctal%departCoeff)) &
         allocate(thisOctal%departCoeff(thisOctal%maxChildren,maxLevels+1))
 
       thisOctal%departCoeff(iSubcell,:) = departCoeff
       thisOctal%changed(iSubcell) = .false.
-    
+
    end do MAINLOOP
-    
+
     ! call recursively on any children
-    if (thisOctal%nChildren > 0) then 
+    if (thisOctal%nChildren > 0) then
       do iChild = 1, thisOctal%nChildren, 1
         child => thisOctal%child(iChild)
         call mapOctantStatEq(child,grid)
       end do
     end if
-  
+
   end subroutine mapOctantStatEq
-  
+
 
 
 
   ! Initialize the data arrays (lambdaTrans, bEinstein, fStrength) defined at the top of this module.
   subroutine map_transition_arrays(maxLevels)
     implicit none
-    integer, intent(in)   :: maxLevels      
+    integer, intent(in)   :: maxLevels
     integer               :: i, k
-    real(double) :: freq    
+    real(double) :: freq
     logical, save         :: alreadyDone = .false.
-    
+
 !$OMP THREADPRIVATE(alreadyDone)
 
 
     if (alreadyDone) return
-    
+
     if (maxLevels > 20) then
       print *, 'Number of levels is > 20. Stopping in stateq_mod'
       stop
@@ -4640,18 +4641,18 @@ contains
 
   end subroutine map_transition_arrays
 
-  
+
   !
   ! Computes the partition function of hydrogen (HI)
-  ! 
-  
+  !
+
   pure function Z_HI(nmax, T) RESULT(out)
     implicit none
-    real(double)  :: out 
+    real(double)  :: out
     integer, intent(in) :: nmax       ! maximum level used for the hydrogen
     real(double), intent(in) :: T ! Temperature in Kelvin
-    !    
-    integer :: i 
+    !
+    integer :: i
     real(double) :: sum
     real(double), parameter :: k = 8.617342d-5      ! [eV/K]      ! Boltzmann constant
     real(double)  :: x
@@ -4667,29 +4668,29 @@ contains
        end if
        sum = sum + 2.0d0*dble(i*i) * exp_minus_x
     end do
-    
+
     out = sum
 
   end function Z_HI
 
   pure subroutine LTElevels(Tsingle,rho,Ne,nTot,levels,NeFactor)
 
-    real, intent(in)                  :: Tsingle 
+    real, intent(in)                  :: Tsingle
     real(double)             :: T
     real(double), intent(in)                  :: rho
-    real(double), intent(out):: Ne 
+    real(double), intent(out):: Ne
     real(double), intent(out):: nTot
     real(double), dimension(:), intent(out) :: levels
-    real(double), intent(in), optional :: NeFactor 
+    real(double), intent(in), optional :: NeFactor
     real(double), parameter  :: CI = 2.07d-16   ! in cgs units
-    integer, parameter                :: maxLevels = statEqMaxLevels 
+    integer, parameter                :: maxLevels = statEqMaxLevels
     integer :: i
     integer, dimension(maxLevels), parameter :: allLevels = (/ (i,i=1,maxLevels) /)
     real(double)             :: phiT
     real(double) :: N_H   ! number density of HI and HII
-    
+
     !==========================================================================
-    !                                     
+    !
     !                                    3/2
     ! Note:           1  /       h^2     \
     !         CI =   --- |----------------|  = 2.07x10^-16 (in cgs)
@@ -4699,26 +4700,26 @@ contains
     ! See page 49-50 of "Fundation of Radiation Hydrodynamic" by Mihalas & Mihalas.
 
     T = Tsingle
-    
+
     N_H = rho/mHydrogen  ! number density of HI plus number density of HII
     phiT = CI*Z_HI(maxLevels,T)*(T**(-1.5))*EXP(real(hydE0eV,kind=double)/(kev*T))
 
     ! Solving for phi(T)*ne^2 + 2ne -nTot =0 and ne+N_H = nTot for ne where
     ! nTot is the number density of particles includeing all species.
     ! ==> phi(T)*ne^2 + ne - N_H =0
-    ! Th physical solution  is chosen out of two ...  
+    ! Th physical solution  is chosen out of two ...
 !    Ne = (sqrt(nTot*phiT+1.0_db) -1.0_db)/phiT
     Ne = (sqrt(4.0_db*N_H*phiT+1.0_db) -1.0_db)/(2.0_db*phiT)
     nTot = Ne + N_H
 !    Ne = min(Ne, nTot)     ! to avoid unphysical solution.
 !    if (Ne<=0) Ne =nTot   ! to avoid unphysical solution.
     if (Ne<=0) Ne =1.0d-40 ! to avoid unphysical solution.
-   
+
     if (present(NeFactor)) Ne = Ne * NeFactor
-    
+
 !    levels = boltzsaha(allLevels,Ne,T)  ! This is ok for elemental function...
     do i = 1, maxLevels
-       levels(i) = boltzsaha(allLevels(i),Ne,T)  
+       levels(i) = boltzsaha(allLevels(i),Ne,T)
     end do
   end subroutine LTElevels
 
@@ -4727,13 +4728,13 @@ contains
 
 
   !
-  ! Given n, m (transition levels), this function returns the component of the 
-  ! Jacobian matrix alpah(m,n) = \parial{F_m}/\partial{N_n}. 
+  ! Given n, m (transition levels), this function returns the component of the
+  ! Jacobian matrix alpah(m,n) = \parial{F_m}/\partial{N_n}.
   ! C.f. equation (8) of Klein and Castor (1978)
   !
-  ! 
+  !
   real(double) function rate_alpha_mn(m, n, Hnu1, nuArray1, nNu1, &
-       rVec, i1, i2, i3, grid,  binary, thisOctal, thisSubcell) 
+       rVec, i1, i2, i3, grid,  binary, thisOctal, thisSubcell)
 
     use inputs_mod, only : LyContThick
     type(GRIDTYPE), intent(in)  :: grid
@@ -4745,7 +4746,7 @@ contains
     type(VECTOR), intent(in)    :: rVec
     type(OCTAL),pointer,optional:: thisOctal
     integer,intent(in),optional :: thisSubcell
-    integer, parameter          :: maxLevels = statEqMaxLevels 
+    integer, parameter          :: maxLevels = statEqMaxLevels
     real(double) :: Nm_LTE, Nm_nLTE
     real(double) :: freq
     integer, save :: i = 0
@@ -4755,7 +4756,7 @@ contains
 
 !$OMP THREADPRIVATE(i)
 
-    ! 
+    !
     if (binary) then
        write(*,*) "Error:: binary option not yet implmented in [stateq_mod::rate_alpha_mn]."
        write(*,*) "        If you need this option see equation14() and equation8() in this module."
@@ -4773,7 +4774,7 @@ contains
     end if
 
     Ne = thisOctal%Ne(thisSubcell)
-    
+
     ! special case
     if (m==maxLevels+1) then
        ! the last row
@@ -4781,7 +4782,7 @@ contains
        return
     elseif (n==maxLevels+1 .and. m /= maxLevels+1) then
        ! the last column
-       Nm_LTE = boltzSaha(m, Ne, dble(thisOctal%temperature(thisSubcell)))              
+       Nm_LTE = boltzSaha(m, Ne, dble(thisOctal%temperature(thisSubcell)))
        Nm_nLTE = thisOctal%N(thisSubcell, m)
        rate_alpha_mn = (Nm_LTE-Nm_nLTE)*cikt(m,real(thisOctal%temperature(thisSubcell),kind=db))
        return
@@ -4802,9 +4803,9 @@ contains
           else
              inu = 0.
           endif
-          
-       ! 
-          b_nm   = beta_mn(n, m, rVec, i1, i2, i3, grid, thisOctal, thisSubcell) 
+
+       !
+          b_nm   = beta_mn(n, m, rVec, i1, i2, i3, grid, thisOctal, thisSubcell)
           b_cnm  = beta_cmn(n, m, rVec, i1, i2, i3, grid, 1, thisOctal, thisSubcell)
           c_nm   = cijt(n,m,real(thisOctal%temperature(thisSubcell),kind=db))
 
@@ -4815,7 +4816,7 @@ contains
              ! rates between n-th and its upper levels
              rate_alpha_mn =  aEinstein(n,m)*b_nm + bEinstein(n,m)*b_cnm*Inu + Ne*c_nm
           end if
-             
+
        end if
 
     end if
@@ -4825,18 +4826,18 @@ contains
 
 
 
-  ! Given m (transition levels), this routine returns the 
-  ! 
+  ! Given m (transition levels), this routine returns the
+  !
   ! Used in Newton-Raphson method
   ! alpha_{m,n}*x_{n} = beta_{m}
-  ! beta_{m} = -F_{m} 
+  ! beta_{m} = -F_{m}
   ! where F_m{x1, x2, x3, Xn} = 0 is a set of non-linear eq you want to solve.
   ! C.f. equation (8) of Klein and Castor (1978)
   !
   ! m can be 1 to maxleve+1 (for Ne).
 
   real(double) function rate_beta_m(m, Hnu1, nuArray1, nNu1, &
-       rVec, i1, i2, i3, grid, binary, thisOctal, thisSubcell) 
+       rVec, i1, i2, i3, grid, binary, thisOctal, thisSubcell)
 
     use inputs_mod, only : LyContThick
     type(GRIDTYPE), intent(in)  :: grid
@@ -4848,7 +4849,7 @@ contains
     type(VECTOR), intent(in)    :: rVec
     type(OCTAL),pointer,optional:: thisOctal
     integer,intent(in),optional :: thisSubcell
-    integer, parameter          :: maxLevels = statEqMaxLevels 
+    integer, parameter          :: maxLevels = statEqMaxLevels
     real(double) :: Nm_LTE, Nm_nLTE
     real(double) :: freq
     integer, save :: i = 0
@@ -4857,13 +4858,13 @@ contains
     real(double) :: Dm, Gm, Nm, Nn, Ne, C_mk
     integer :: j
     ! Be smart. For speed.
-    real(double) :: b_nm,  b_cnm, c_mn, c_nm  
+    real(double) :: b_nm,  b_cnm, c_mn, c_nm
     real(double) :: sum_Nm_LTE, sum_Nm_nLTE
 
 
 !$OMP THREADPRIVATE(i)
 
-    ! 
+    !
     if (binary) then
        write(*,*) "Error:: binary option not yet implmented in [stateq_mod::rate_beta_m]."
        write(*,*) "        If you need this option see equation14() and equation8() in this module."
@@ -4897,16 +4898,16 @@ contains
           sum_Nm_LTE = sum_Nm_LTE + Nm_LTE
        end do
 
-       tot = sum_Nm_nLTE + sum_Nm_LTE + Ne - dble(thisOctal%rho(thisSubcell) / mHydrogen) 
-       
-       rate_beta_m = -tot         
+       tot = sum_Nm_nLTE + sum_Nm_LTE + Ne - dble(thisOctal%rho(thisSubcell) / mHydrogen)
+
+       rate_beta_m = -tot
        return
     end if
-    ! 
+    !
     !
     !
     Nm = thisOctal%N(thisSubcell,m)
-    tot = 0.0d0      
+    tot = 0.0d0
     do j = 1, maxLevels
        if (m /= j) then
           ! Finding the continuum flux
@@ -4919,7 +4920,7 @@ contains
           endif
           ! For speed and clarity
           Nn = thisOctal%N(thisSubcell,j)
-          b_nm   = beta_mn(j, m, rVec, i1, i2, i3, grid, thisOctal, thisSubcell) 
+          b_nm   = beta_mn(j, m, rVec, i1, i2, i3, grid, thisOctal, thisSubcell)
           b_cnm  = beta_cmn(j, m, rVec, i1, i2, i3, grid, 1, thisOctal, thisSubcell)
           c_mn  = cijt(m, j, real(thisOctal%temperature(thisSubcell),kind=db))
           c_nm  = cijt(j, m, real(thisOctal%temperature(thisSubcell),kind=db))
@@ -4937,7 +4938,7 @@ contains
 
     end do
 
-    Nm_LTE = boltzSaha(m, thisOctal%Ne(thisSubcell),dble(thisOctal%temperature(thisSubcell)))              
+    Nm_LTE = boltzSaha(m, thisOctal%Ne(thisSubcell),dble(thisOctal%temperature(thisSubcell)))
     Nm_nLTE = thisOctal%N(thisSubcell,m)
     Dm = integral1(m,hnu1, nuArray1, nNu1, rVec, i1, i2, i3, grid, 1, thisOctal, thisSubcell)
     Gm = integral2(m,hnu1, nuArray1, nNu1, rVec, grid, 1)
@@ -4945,13 +4946,13 @@ contains
 
     tot = tot + Nm_LTE*(Dm+Ne*C_mk) - Nm_nLTE*(Gm+Ne*C_mk)
 
-    rate_beta_m = -tot 
+    rate_beta_m = -tot
     return
 
   end function rate_beta_m
 
 
- 
+
 
 
   !
@@ -4980,14 +4981,14 @@ contains
     real(double),intent(in):: tolx, tolf
     real(double)          :: d, errx, errf
     real(double)          :: alpha(n,n),beta(n)
-    type(octal), pointer, optional :: thisOctal 
-    integer, intent(in),optional   :: thisSubcell 
+    type(octal), pointer, optional :: thisOctal
+    integer, intent(in),optional   :: thisSubcell
     logical                        :: debug
     integer                        :: negativeErrors
     logical, intent(out), optional :: needRestart
     integer, intent(in), optional  :: maxNegatives
     !
-    logical, intent(in), optional  :: be_gentle   ! if T, the change in the population 
+    logical, intent(in), optional  :: be_gentle   ! if T, the change in the population
     !         will be limited to a fraction of beta in Newton-Raphson method.
     integer, parameter             :: ntrial_min = 4  ! minimum number of tiral
     integer                        :: n_iteration
@@ -4997,12 +4998,12 @@ contains
 
     debug = .false.
     ! Sanity check
-    if (size(x) /= n) then 
+    if (size(x) /= n) then
       print *, 'In subroutine mnewt_stateq_v2, we are assuming argumnent ''n'' = SIZE(x),',&
                ' but in this case it is not.'
       stop
     end if
-    if (n /= maxLevels+1) then 
+    if (n /= maxLevels+1) then
        write(*,*) "Error:: n /= maxLevels + 1 in [stateq_mod::mnewt_stateq_v2]."
        stop
     end if
@@ -5012,7 +5013,7 @@ contains
 
     n_iteration = MAX(ntrial, ntrial_min)
       do k = 1, n_iteration
-        if (debug) print *, 'Trial ',k      
+        if (debug) print *, 'Trial ',k
 
         ! Setting the Jacobian matrix and the conatant vector
         ! Using functions in this module.
@@ -5020,31 +5021,31 @@ contains
            beta(j2) = rate_beta_m(j2, Hnu1, nuArray1, nNu1, rVec,  i1, i2, i3, grid, isbinary, thisOctal, thisSubcell)
            do j1 = 1, n  ! ==> m-index
               alpha(j1, j2) = rate_alpha_mn(j1, j2, Hnu1, nuArray1, nNu1, &
-                   rVec, i1, i2, i3, grid, isbinary, thisOctal, thisSubcell) 
+                   rVec, i1, i2, i3, grid, isbinary, thisOctal, thisSubcell)
            end do
         end do
 
 
         if (present(needRestart) .and. present(maxNegatives)) then
-          if (negativeErrors >= maxNegatives) then 
+          if (negativeErrors >= maxNegatives) then
             needRestart = .true.
             return
           end if
         end if
-             
-        
+
+
         errf=0.
         do i = 1, n
           errf=errf+abs(beta(i))
-        end do 
+        end do
 
         ! Now allows for at least ntrial_min iterations. (RK changed this)
-        if ((errf.le.tolf) .and. all(x > 0.0_db) .and. k>ntrial_min) then 
+        if ((errf.le.tolf) .and. all(x > 0.0_db) .and. k>ntrial_min) then
            if (debug) print *, k, 'trials.'
            return
         end if
 
-        call ludcmp_f77(alpha,n,n,indx,d) 
+        call ludcmp_f77(alpha,n,n,indx,d)
         call lubksb_f77(alpha,n,n,indx,beta)
 
         ! Del factor introduced to limit a large change might
@@ -5052,23 +5053,23 @@ contains
         if (PRESENT(be_gentle)) then
            if (be_gentle) then
               del = dble(k)/dble(n_iteration)
-              beta(:) = del*beta(:) 
+              beta(:) = del*beta(:)
            end if
         end if
 
-        
-        ! New test for convergence                            
-        ! now compute the maximum fractional change of all level 
+
+        ! New test for convergence
+        ! now compute the maximum fractional change of all level
         ! population
-        dx_max = 1.0d-100                                     
-        do i = 1, n                                           
-           if (x(i) /= 0.0d0) dx = beta(i)/x(i)               
-           dx_max = max(ABS(dx), dx_max)                           
-        end do    
+        dx_max = 1.0d-100
+        do i = 1, n
+           if (x(i) /= 0.0d0) dx = beta(i)/x(i)
+           dx_max = max(ABS(dx), dx_max)
+        end do
 
 
         ! Checking if there is a negative population
-        if (any(x < 0.0_db)) then 
+        if (any(x < 0.0_db)) then
            print *, "x = ",x
            print *, 'Warning: in  negative value detected [stateq_mod::mnewt_stateq_v2].'
            negativeErrors = negativeErrors + 1
@@ -5079,13 +5080,13 @@ contains
         ! Del factor introduced to limit a large change might
         ! occur near the beginning of the iterations
         del = dble(k)/dble(n_iteration)
-        beta(:) = del*beta(:) 
+        beta(:) = del*beta(:)
         !
         errx=0.
         do i = 1, n
            errx=errx+abs(beta(i))
-           x(i)=x(i)+beta(i)  
-        end do 
+           x(i)=x(i)+beta(i)
+        end do
 
         !==>  update the new population in octal
         thisOctal%N(thisSubcell,1:maxLevels) = x(1:maxLevels)
@@ -5101,11 +5102,11 @@ contains
 
       end do
 
-      if (any(x < 0.0_db)) then 
+      if (any(x < 0.0_db)) then
         needRestart = .true.
       end if
 
-!      print *, n_iteration, 'trials' 
+!      print *, n_iteration, 'trials'
 
     end subroutine mnewt_stateq_v2
 
@@ -5120,9 +5121,9 @@ contains
 
   recursive subroutine setInuseOnTemperature(thisOctal)
   type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
+  type(octal), pointer  :: child
   integer :: subcell, i
-  
+
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -5163,13 +5164,13 @@ contains
        do iOctal = 1, SIZE(octalArray)
 
           thisOctal => octalArray(iOctal)%content
-          
+
           do iSubcell = 1, thisOctal%maxChildren
               if (.not.thisOctal%hasChild(iSubcell)) then
                  nTemps = nTemps + 1
                  if ((ioctal >= ioctal_beg).and.(iOctal<=ioctal_end)) then
                    tArray(nTemps) = thisOctal%N(isubcell, iLevel)
-                 else 
+                 else
                    tArray(nTemps) = 0.d0
                  endif
               endif
@@ -5194,11 +5195,11 @@ contains
        do iOctal = 1, SIZE(octalArray)
 
           thisOctal => octalArray(iOctal)%content
-          
+
           do iSubcell = 1, thisOctal%maxChildren
               if (.not.thisOctal%hasChild(iSubcell)) then
                  nTemps = nTemps + 1
-                 thisOctal%N(isubcell,iLevel) = tArray(nTemps) 
+                 thisOctal%N(isubcell,iLevel) = tArray(nTemps)
               endif
           end do
        end do
@@ -5221,13 +5222,13 @@ contains
        do iOctal = 1, SIZE(octalArray)
 
           thisOctal => octalArray(iOctal)%content
-          
+
           do iSubcell = 1, thisOctal%maxChildren
               if (.not.thisOctal%hasChild(iSubcell)) then
                  nTemps = nTemps + 1
                  if ((ioctal >= ioctal_beg).and.(iOctal<=ioctal_end)) then
                    tArray(nTemps) = thisOctal%Ne(isubcell)
-                 else 
+                 else
                    tArray(nTemps) = 0.d0
                  endif
               endif
@@ -5251,11 +5252,11 @@ contains
        do iOctal = 1, SIZE(octalArray)
 
           thisOctal => octalArray(iOctal)%content
-          
+
           do iSubcell = 1, thisOctal%maxChildren
               if (.not.thisOctal%hasChild(iSubcell)) then
                  nTemps = nTemps + 1
-                 thisOctal%Ne(isubcell) = tArray(nTemps) 
+                 thisOctal%Ne(isubcell) = tArray(nTemps)
               endif
           end do
        end do
@@ -5266,5 +5267,3 @@ contains
 
 end module stateq_mod
 #endif
-
-
