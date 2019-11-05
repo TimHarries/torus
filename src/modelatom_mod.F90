@@ -101,7 +101,7 @@ contains
     character(len=*) :: atomfilename
     character(len=200) :: dataDirectory, thisfilename
     type(MODELATOM) :: thisAtom
-    integer :: i, nChunks, j, iTrans
+    integer :: i, nChunks, j
     character(len=120) :: junk
     character(len=20) :: chunk(20)
     character(len=80) :: message
@@ -178,20 +178,6 @@ contains
        if (thisAtom%transType(i) == "RBB") then
            thisAtom%fMatrix(thisAtom%iLower(i), thisAtom%iUpper(i)) = thisAtom%params(i,1)
         endif
-    enddo
-
-
-    thisAtom%nRBBTrans = 0
-    thisAtom%nRBFTrans = 0
-    do iTrans = 1, thisAtom%nTrans
-       if (thisAtom%transType(iTrans) == "RBB") then
-          thisAtom%nRBBTrans = thisAtom%nRBBTrans + 1
-          thisAtom%indexRBBtrans(itrans) = thisAtom%nRBBTrans
-       endif
-       if (thisAtom%transType(iTrans) == "RBF") then
-          thisAtom%nRBFTrans = thisAtom%nRBFTrans + 1
-          thisAtom%indexRBFtrans(thisAtom%nRBFTrans) = iTrans
-       endif
     enddo
 
   end subroutine readAtom
@@ -1161,11 +1147,11 @@ contains
        do iAtom = 1, nAtom
           do j = 1, thisAtom(iAtom)%nRBFtrans
              iTrans = thisAtom(iAtom)%indexRBFtrans(j)
-             ilower = thisAtom(iAtom)%iLower(iTrans)
           if (thisAtom(iatom)%transType(itrans) /= "RBF") then
-             write(*,*) "transtype bug in bfopacity ",iatom,itrans,thisAtom(iatom)%transType(iTrans), ilower
+             write(*,*) "transtype bug in bfemissivity"
              stop
           endif
+             ilower = thisAtom(iAtom)%iLower(iTrans)
              if (ilower < 10) then
                 fac = exp(-hCgs*freq / (kerg * temperature))
                 if (present(iFreq)) then
@@ -1229,7 +1215,7 @@ contains
           iLower = thisAtom(iAtom)%iLower(iTrans)
           iUpper = thisAtom(iAtom)%iUpper(iTrans)
           if (thisAtom(iatom)%transType(itrans) /= "RBF") then
-             write(*,*) "transtype bug in bfemissivity ",iatom,itrans,thisAtom(iatom)%transType(iTrans), ilower, iupper
+             write(*,*) "transtype bug in bfemissivity"
              stop
           endif
           if (iLower < 10) then

@@ -315,7 +315,7 @@ contains
 ! Make a unit vector with the required inclination
 ! Inclination is spherical polar theta
 
-    tempVec = VECTOR(0.d0, 0.d0, -1.d0)
+    
 ! Now apply the required position angle
 ! Position angle is spherical polar phi
     setImageViewVec = rotateZ(tempVec,dble(myImages(i)%positionAngle))
@@ -328,7 +328,6 @@ contains
 
 
   end function setImageViewVec
-
 
 ! Return the viewing vector for the ith image
   type(VECTOR) function getImageViewVec(i)

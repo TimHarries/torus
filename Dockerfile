@@ -1,4 +1,4 @@
-FROM tjharries/torusdocker:dockermpiv2
+FROM tjharries/torusdocker:dockermpi
 WORKDIR /app
 COPY . /app
-RUN /app/buildtorus mpi openmp hybrid single debug=yes SYSTEM=gfortran
+RUN /app/buildtorus mpi=yes cfitsio=no debug=yes 

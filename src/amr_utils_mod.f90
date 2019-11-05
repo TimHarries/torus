@@ -74,7 +74,7 @@ module amr_utils_mod
     ! if actualSubcell and startSubcell are both supplied, these 
     !   locations are assumed to be correct and no search is performed.
 
-    use inputs_mod, only : cylindrical, WBvel
+    use inputs_mod, only : cylindrical
     use analytical_velocity_mod, only : analyticalVelocity
     use utils_mod
     IMPLICIT NONE
@@ -582,13 +582,6 @@ module amr_utils_mod
 
 666   continue
 
-
-   if(WBvel) then
-      amrgridvelocity = vector(0.d0, resultOctal%velocity(subcell)%y, 0.d0)
-      phi = atan2(point%y, point%x)
-      newVec = rotateZ(amrGridVelocity, -phi)
-      amrGridVelocity = newVec
-   endif
 !    endif
   END FUNCTION amrGridVelocity
 

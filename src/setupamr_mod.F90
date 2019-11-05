@@ -2652,7 +2652,7 @@ end subroutine assignTurbVelocity
 
 
 recursive subroutine splitGridMagstream(thisOctal, grid, npoints, posArray, rhoArray, velArray)
-  use inputs_mod, only : minDepthAMR, maxDepthAMR, isothermTemp, tMinGlobal
+  use inputs_mod, only : minDepthAMR, maxDepthAMR, isothermTemp
   type(GRIDTYPE) :: grid
   type(OCTAL),pointer :: thisOctal !TJH 9 JULY
   type(OCTAL), pointer :: childPointer
@@ -2691,7 +2691,6 @@ recursive subroutine splitGridMagstream(thisOctal, grid, npoints, posArray, rhoA
 
      thisOctal%velocity(isubcell) = VECTOR(0.d0,0.d0,0.d0)
      thisOctal%rho(isubcell) = 0.d0
-     thisOctal%temperature(isubcell) = tminGlobal
 
      do k = 1, npoints
 

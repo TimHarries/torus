@@ -870,7 +870,7 @@ subroutine readH2O(nLines,lambda,kappa,excitation,g)
   ratiolog = LOG(1.D0+1.D0/2000000.D0)
 
 
-  nLines = 6591235
+  nLines = 65912356  / 10
 
   DO  I=1,32768
      TABLOG(I)=10.**((I-16384)*.001)

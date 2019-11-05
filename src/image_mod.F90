@@ -155,8 +155,9 @@ module image_mod
 #endif
 
 #ifdef PHOTOION
-   subroutine addPhotonToPhotoionImage(xAxis, yAxis, thisImage, thisPhoton, totalFlux)
+   subroutine addPhotonToPhotoionImage(observerDirection, xAxis, yAxis, thisImage, thisPhoton, totalFlux)
 
+     type(VECTOR), intent(in) :: observerDirection
      type(IMAGETYPE), intent(inout) :: thisImage
      type(PHOTON), intent(in) :: thisPhoton
      real(double), intent(inout) :: totalFlux
@@ -174,19 +175,12 @@ module image_mod
 
      call pixelLocate(thisImage, xDist, yDist, xPix, yPix)
 
-!     write(*,*) "xaxis ",xaxis, " yaxis ", yaxis, " pos ",thisPhoton%position
-!     write(*,*) "xdist, ydist" , xdist,ydist
-!     write(*,*) "image x ",thisImage%xAxiscentre(1), thisImage%xAxisCentre(thisImage%nx)
-!     write(*,*) "image y ",thisImage%yAxiscentre(1), thisImage%yAxisCentre(thisImage%ny)
-!     write(*,*) xpix,ypix
-
      if ( (xPix >= 1)            .and.(yPix >= 1) .and. &
           (xPix <= thisImage%nx) .and.(yPix <= thisImage%ny)) then
 
         thisImage%pixel(xPix, yPix) = thisImage%pixel(xPix, yPix)  &
              + thisPhoton%stokes * oneOnFourPi * exp(-thisPhoton%tau) * thisPhoton%weight
 
-!        write(*,*) thisImage%pixel(xpix,ypix)%i
         thisImage%nSamples(xPix, yPix) = thisImage%nSamples(xPix, yPix) + 1
 
      endif
@@ -196,7 +190,7 @@ module image_mod
    end subroutine addPhotonToPhotoionImage
 #endif
 
-   subroutine addPhotonToImage(xAxis, yAxis, thisImageSet, nImage, thisPhoton, &
+   subroutine addPhotonToImage(viewVec, xAxis, yAxis, rotationAxis, thisImageSet, nImage, thisPhoton, &
                                thisVel, weight, filters, positionAngle, lambda0_cont)
      use inputs_mod, only : imageOrigin
      use filter_set_class
@@ -205,7 +199,7 @@ module image_mod
      integer, intent(in) :: nImage  ! number of images in a set
      type(IMAGETYPE), intent(inout) :: thisImageSet(nImage)
      type(PHOTON) :: thisPhoton
-     type(VECTOR) :: xAxis, yAxis
+     type(VECTOR) :: viewVec,  xAxis, yAxis, rotationAxis
      real :: xDist, yDist
      real(double) :: positionAngle!, ang
 !     real :: r
@@ -756,29 +750,19 @@ module image_mod
                 enddo
              enddo
 
-          case("qphi")
+          case("qr")
              do i = 1, image%nx
                 do j = 1, image%ny
-                   dx = image%xAxisCentre(2) - image%xAxisCentre(1)
-                   if (dx > 0.) then
-                      phi = atan2(image%yAxisCentre(j), image%xAxisCentre(i)) + piby2
-                   else
-                      phi = atan2(image%yAxisCentre(j), -image%xAxisCentre(i)) + piby2
-                   endif
-                   array(i,j) = real(-cos(2.d0*phi) * image%pixel(i,j)%q - sin(2.d0*phi)*image%pixel(i,j)%u)
+                   phi = atan2(image%xAxisCentre(i), image%yAxisCentre(j)) + piby2
+                   array(i,j) = real(cos(2.d0*phi) * image%pixel(i,j)%q + sin(2.d0*phi)*image%pixel(i,j)%u)
                 enddo
              enddo
 
-          case("uphi")
+          case("ur")
              do i = 1, image%nx
                 do j = 1, image%ny
-                   dx = image%xAxisCentre(2) - image%xAxisCentre(1)
-                   if (dx > 0.) then
-                      phi = atan2(image%yAxisCentre(j), image%xAxisCentre(i)) + piby2
-                   else
-                      phi = atan2(image%yAxisCentre(j), -image%xAxisCentre(i)) + piby2
-                   endif
-                   array(i,j) = real(sin(2.d0*phi) * image%pixel(i,j)%q - cos(2.d0*phi)*image%pixel(i,j)%u)
+                   phi = atan2(image%xAxisCentre(i), image%yAxisCentre(j)) + piby2
+                   array(i,j) = real(-sin(2.d0*phi) * image%pixel(i,j)%q + cos(2.d0*phi)*image%pixel(i,j)%u)
                 enddo
              enddo
 
@@ -1098,19 +1082,19 @@ module image_mod
                 enddo
              enddo
 
-          case("qphi")
+          case("qr")
              do i = 1, image%nx
                 do j = 1, image%ny
                    phi = atan2(image%xAxisCentre(i), image%yAxisCentre(j)) + piby2
-                   array(i,j) = real(-cos(2.d0*phi) * image%pixel(i,j)%q - sin(2.d0*phi)*image%pixel(i,j)%u)
+                   array(i,j) = real(cos(2.d0*phi) * image%pixel(i,j)%q + sin(2.d0*phi)*image%pixel(i,j)%u)
                 enddo
              enddo
 
-          case("uphi")
+          case("ur")
              do i = 1, image%nx
                 do j = 1, image%ny
                    phi = atan2(image%xAxisCentre(i), image%yAxisCentre(j)) + piby2
-                   array(i,j) = real(sin(2.d0*phi) * image%pixel(i,j)%q - cos(2.d0*phi)*image%pixel(i,j)%u)
+                   array(i,j) = real(-sin(2.d0*phi) * image%pixel(i,j)%q + cos(2.d0*phi)*image%pixel(i,j)%u)
                 enddo
              enddo
 

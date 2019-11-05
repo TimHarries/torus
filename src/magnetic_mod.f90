@@ -71,7 +71,7 @@ contains
     use inputs_mod, only :  dipoleOffset, ttauriRstar, SW_openAngle, SW_eqGap
     TYPE(VECTOR), INTENT(IN) :: point
     type(VECTOR) :: rVec, rVecDash
-    real(double) :: r, theta, beta
+    real(double) :: r, theta, phi, beta
     real(double) :: thisrMax
     real(double) :: rDash, thetaDash, phiDash
     real(double) :: rMaxMax, sin2theta0dash
@@ -123,8 +123,8 @@ REAL(DOUBLE) FUNCTION stellarWindDensity(point)
        SW_openAngle, SW_Mdot, SW_rMin
   TYPE(VECTOR), INTENT(IN) :: point
   TYPE(VECTOR) :: rVec, rVecDash
-  REAL(DOUBLE) :: r, theta, beta, rBoundary
-  REAL(DOUBLE) :: thetaStar, area
+  REAL(DOUBLE) :: r, theta, phi, beta, rBoundary
+  REAL(DOUBLE) :: thisrMax, thetaStar, area
   REAL(DOUBLE) :: rDash, thetaDash, phiDash
   REAL(DOUBLE) :: rMaxMax, sin2theta0dash
   REAL(DOUBLE) :: rhoStart, rhoBoundary, thisRho
@@ -235,9 +235,10 @@ END FUNCTION stellarWindDensity
   USE inputs_mod, ONLY : dipoleOffset, ttauriRInner, ttauriRouter, ttauriMstar, &
        ttaurirstar
   TYPE(VECTOR), INTENT(in) :: point
-  TYPE(VECTOR) :: rvec, vp, rVecDash
+  TYPE(VECTOR) :: rvec, vp, rVecDash, vSolid
   REAL(DOUBLE) :: r, rDash, phi, phiDash, theta,thetaDash,sin2theta0dash, beta
   REAL(DOUBLE) :: deltaU, y, modVp, thisRmax, cosThetaDash, rTrunc, rMaxMin,rMaxMax
+  REAL(DOUBLE) :: velMagAtCorotation
 
 
   rVec = point*1.d10
@@ -298,7 +299,8 @@ END FUNCTION velocityMahdavi
 !Assigns the densiy of grid cells in the accretion funnel
 !Equation given in Hartmann et al.(1994) - tjgw201 10/04/19
   real (double) function densityHartmann(point, mdot)
-    use inputs_mod, only : dipoleOffset, ttauriRInner, ttauriRouter, ttauriMstar
+    use inputs_mod, only : dipoleOffset, ttauriRInner, ttauriRouter, ttauriMstar, &
+         ttaurirstar
     type(VECTOR), intent(in) :: point
     type(VECTOR) :: rVec, rVecDash
 
