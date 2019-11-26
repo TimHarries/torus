@@ -4165,11 +4165,12 @@ CONTAINS
                inSubcell(thisOctal,subcell,VECTOR(1.d-6,0.d0,-1.d-6)))) &
                   split=.true.
           endif
-
-          if (ttauriMagnetosphere) then
-             if ((modulus(cellCentre) < ttauriRouter/1.d10).and.(thisOCtal%subcellSize > (ttauriRouter/1.d10)/100.d0)) &
-                  split=.true.
-          endif
+          !!add this code back to have splitting for spherical shell around star
+          !!removed by tjgw201 26/11/19
+          ! if (ttauriMagnetosphere) then
+          !    if ((modulus(cellCentre) < ttauriRouter/1.d10).and.(thisOCtal%subcellSize > (ttauriRouter/1.d10)/100.d0)) &
+          !         split=.true.
+          ! endif
 
 
 
