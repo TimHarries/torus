@@ -1010,8 +1010,10 @@ contains
     integer :: subcell
     real(double) :: dv, nu
     type(MODELATOM) :: thisAtom
-
-    if ((thisAtom%name=="HI").and.(thisOctal%microturb(subcell)==0.d0).and.(.not.starkBroaden)) then
+    !!check for microtub being zero removed as causing divide by zero error in getRay() vturb must be set to nonzero
+    !!Thomas Wilson 05/12/19
+        !!if ((thisAtom%name=="HI").and.(thisOctal%microturb(subcell)==0.d0).and.(starkBroaden)) then
+    if ((thisAtom%name=="HI").and.(starkBroaden)) then
        phiProf = phiProfStark(dv, thisOctal, subcell, nu, thisAtom)
     else
        phiProf = phiProfTurb(dv, thisOctal%microturb(subcell))
