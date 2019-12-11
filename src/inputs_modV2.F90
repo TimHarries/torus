@@ -3730,7 +3730,7 @@ contains
 
 
     call getLogical("storescattered",storeScattered, cLine, fLine, nLines, &
-         "Store scattered light: ", "(a,1l,1x,a)", .true., ok, .false.)
+         "Store scattered light: ", "(a,1l,1x,a)", .false., ok, .false.)
 
     call getReal("scatteredlightwavelength", scatteredLightWavelength, 1., cLine, fLine, nLines, &
          "Wavelength of scattered light","(a,f7.1,a)",1.e4, ok, .false.)
