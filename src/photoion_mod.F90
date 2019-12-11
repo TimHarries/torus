@@ -38,7 +38,7 @@ contains
 
   subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray)
     use vector_mod
-    use inputs_mod, only : nlucy, taudiff, lambdaSmooth, variableDustSublimation, dustPhysics
+    use inputs_mod, only : nlucy, lambdaSmooth, variableDustSublimation
     use diffusion_mod, only: defineDiffusionOnRosseland, defineDiffusionOnUndersampled, solvearbitrarydiffusionzones, randomWalk
     use amr_mod, only: countVoxels, getOctalArray
     use source_mod, only: randomSource, getphotonpositiondirection, getMelvinPositionDirection, SOURCETYPE
@@ -136,10 +136,12 @@ contains
     real(double), allocatable :: tempArrayd(:), tArrayd(:), tdArray(:)
 #endif
 
+#ifdef MPI
     call writeinfo("",IMPORTANT)
     write(message,*) 'Photoionization loop computed by ', nThreadsGlobal, ' processors.'
     call writeinfo(message,IMPORTANT)
     call writeinfo("",IMPORTANT)
+#endif
 
     write(message,'(a,f6.3)') "Undercorrection factor for thermal balance= ", undercorrection
     call writeinfo(message,FORINFO)
@@ -254,9 +256,12 @@ contains
           endif
        end if
 
+!       nCellsInDiffusion = 0
+!       call defineDiffusionOnUndersampled(grid%octreeroot, nDiff=nCellsInDiffusion, reset=.true.)
 
-       nCellsInDiffusion = 0
-       if (dustPhysics) call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
+!       nCellsInDiffusion = 0
+!       if (dustPhysics) call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
+
        write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
        call writeInfo(message,IMPORTANT)
 
@@ -297,7 +302,7 @@ contains
        !$OMP REDUCTION(+:nPacketIonizing, nPhotonIonizing)
 
 
-       !$OMP DO SCHEDULE (STATIC)
+       !$OMP DO SCHEDULE (DYNAMIC,10)
        mainloop: do iMonte = iMonte_beg, iMonte_end
           call randomSource(source, nSource, iSource, sourceWeight)
           thisSource => source(iSource)
@@ -498,7 +503,7 @@ contains
     !$OMP SHARED(grid, ioctal_beg, ioctal_end, octalarray, epsOverDeltaT, niter) &
     !$OMP REDUCTION(+:sumDeltaT, numDeltaT, sumDeltaNe, numDeltaNe)
                  
-    !$OMP DO SCHEDULE(STATIC)
+    !$OMP DO SCHEDULE(DYNAMIC,10)
     do iOctal =  iOctal_beg, iOctal_end
 
        thisOctal => octalArray(iOctal)%content
@@ -582,17 +587,22 @@ contains
          write(*,*) "Finished calculating ionization and thermal equilibria"
 
        if (doTuning) call tune(6, "Temperature/ion corrections")
-       if (dustPhysics) call defineDiffusionOnRosseland(grid,grid%octreeRoot,taudiff)
+!       if (dustPhysics) call defineDiffusionOnRosseland(grid,grid%octreeRoot,taudiff)
 
        if (doTuning) call tune(6, "Gauss-Seidel sweeps")
 
 
        nCellsInDiffusion = 0
-       call defineDiffusionOnUndersampled(grid%octreeroot, nDiff=nCellsInDiffusion)
+       num_undersampled = 0
+       call identifyUndersampled(grid%octreeRoot, num_undersampled)
+       call defineDiffusionOnUndersampled(grid%octreeroot, nDiff=nCellsInDiffusion, reset = .true.)
 
 
-       call solveArbitraryDiffusionZones(grid)
-       if (dustPhysics) call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, nDiff=nCellsInDiffusion)
+       call solveArbitraryDiffusionZones(grid, onlyundersampled=.true.)
+       call resetDiffusionApprox(grid%octreeRoot)
+
+
+!       if (dustPhysics) call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, nDiff=nCellsInDiffusion)
 !       call unsetOnDirect(grid%octreeRoot)
        write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
        call writeInfo(message,IMPORTANT)
@@ -699,6 +709,8 @@ contains
 !          if (writeoutput) write(*,*) "...grid smoothing complete"
 !       endif
 
+       num_undersampled = 0
+       call  identifyUndersampled(grid%octreeRoot, num_undersampled)
 
     meanDeltaT  = globalSumDeltaT  / real(globalNumDeltaT,db)
     meanDeltaNe = globalSumDeltaNe / real(globalNumDeltaNe,db)
@@ -723,7 +735,8 @@ contains
     lambdaSmooth = 5500.0 ! wavelength for tau
     call writeVtkFile(grid, "temp.vtk", &
          valueTypeString=(/"rho        ", "temperature", "HI         ", "dust1      ", "OI         ", &
-         "OII        ", "OIII       ", "tau        ", "tdust      "/))
+         "OII        ", "OIII       ", "tau        ", "tdust      ", &
+         "crossings  "/))
 
     if (variableDustSublimation .and. nIter < 8 ) then
        converged = .false.
@@ -1208,11 +1221,11 @@ end subroutine photoIonizationloop
                    if (y1*y2 > 0.d0) then
                       if (HHecooling(grid, thisOctal, subcell, t1) > totalHeating) then
                          tm = t1
-                         write(*,*) "set at tmin"
-                         write(*,*) "heating ",totalheating
-                         write(*,*) "cooling ",hhecooling(grid, thisOctal, subcell, tm)
-                         write(*,*) "tgas, tdust ",tm,thisOctal%tDust(subcell)
-                         write(*,*) " "
+!                         write(*,*) "set at tmin"
+!                         write(*,*) "heating ",totalheating
+!                         write(*,*) "cooling ",hhecooling(grid, thisOctal, subcell, tm)
+!                         write(*,*) "tgas, tdust ",tm,thisOctal%tDust(subcell)
+!                         write(*,*) " "
                       else
                          tm  = t2
                       endif
@@ -1239,7 +1252,7 @@ end subroutine photoIonizationloop
                       else
                          converged = .true.
                          tm = 0.5*(t1+t2)
-                         write(*,*) t1, t2, y1,y2,ym
+!                         write(*,*) t1, t2, y1,y2,ym
                       endif
                       
                       if (abs((t1-t2)/t1) .le. 1.e-4) then
@@ -1252,14 +1265,14 @@ end subroutine photoIonizationloop
                            dble(tm), thisOctal%tDust(subcell))
 
 
-                      if (totalHeating == 0.d0) then
-                         write(*,*) "iter ",niter
-                         write(*,*) "heating ",totalheating
-                         write(*,*) "cooling ",hhecooling(grid, thisOctal, subcell, tm)
-                         write(*,*) "gasgrain ",gasGrainCool
-                         write(*,*) "dustheating ",dustheating
-                         write(*,*) "tgas, tdust ",tm,thisOctal%tDust(subcell)
-                      endif
+!                      if (totalHeating == 0.d0) then
+!                         write(*,*) "iter ",niter
+!                         write(*,*) "heating ",totalheating
+!                         write(*,*) "cooling ",hhecooling(grid, thisOctal, subcell, tm)
+!                         write(*,*) "gasgrain ",gasGrainCool
+!                         write(*,*) "dustheating ",dustheating
+!                         write(*,*) "tgas, tdust ",tm,thisOctal%tDust(subcell)
+!                      endif
 
                       dustHeating = max(1.d-30,dustHeating + gasGrainCool)
                       call returnKappa(grid, thisOctal, subcell, kappap=kappap, atThisTemperature=real(thisOctal%tDust(subcell)))
@@ -3137,6 +3150,8 @@ end subroutine readHeIIrecombination
     observerDirection = getImageViewVec(imageNum)
     inclination = getImageInc(imageNum)
 
+    xAxis = VECTOR(1.d0, 0.d0, 0.d0)
+    yAxis = VECTOR(0.d0, 1.d0, 0.d0)
     xAxis = rotateX(xAxis, inclination)
     yAxis = rotateX(yAxis, inclination)
         

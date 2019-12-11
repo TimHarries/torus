@@ -137,9 +137,11 @@ ifeq ($(SYSTEM), gfortran)
 #    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-surprising -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
 #    DEBUGFLAG= -ggdb -fbacktrace -Wunderflow -Wall -Werror -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
     FASTFLAG = -O3
-    OPENMPFLAG = -fopenmp 
+    OPENMPFLAG = -fopenmp -Wl,-stack_size,0x40000000,-stack_addr,0xf0000000
 # -static-libgcc fixes linking problems under Mac OS
     STARLIBS += -static-libgcc -static-libgfortran
+    INCLUDEFLAG = -I/usr/local/include -L/usr/local/lib
+    HEALPIXLIB = -lhealpix
     EXE = torus.gfortran
     KNOWN_SYSTEM = yes
     CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
@@ -606,7 +608,7 @@ VERSIONSOURCE = torus_version_mod.f90
 
 F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90 image_utils_mod.f90 \
             sed_mod.f90 utils_mod.f90  phfit2.f90  bhmie_mod.f90 mieDistCrossSection_mod.f90 \
-            gaussian_mod.f90 math_mod.f90 dimensionality_mod.f90 \
+            gaussian_mod.f90 math_mod.f90 dimensionality_mod.f90 user_mod.f90 \
             phasematrix_mod.f90 photon_mod.f90 blob_mod.f90 \
             distortion_mod.f90   analytical_velocity_mod.f90 \
             disc_hydro_mod.f90 \
@@ -676,7 +678,7 @@ LIBOBJ = $(CAPF90OBJLIB) $(F90OBJ)  $(INPUTSMODOBJ) $(CLIB)
 # Compilers and compiler flags
 #
 
-F90 = $(F95COMP) $(F95FLAG) $(FASTFLAG) $(ETCFLAG) $(MATHTRAP) $(MPI_INC) $(MPIFLAG) $(XMLINCLUDE) $(NCDF_INC)
+F90 = $(F95COMP) $(F95FLAG) $(FASTFLAG) $(ETCFLAG) $(MATHTRAP) $(MPI_INC) $(MPIFLAG) $(XMLINCLUDE) $(NCDF_INC) $(INCLUDEFLAG)
 GCC = gcc -fopenmp -O0 -Wall $(SUNDIALSINC)
 #
 #
@@ -691,7 +693,7 @@ all: depends $(ALLOBJ)
 #	    endif
 	    $(F90) $(TRACEFLAG) $(SUNDIALSLIBRARIES) -o $(EXE) \
 	    $(INPUTSMODOBJ) $(F90OBJ) $(CAPF90OBJ) \
-	    $(CFITSIOLIBS)  $(STARLIBS) $(STATICLIBS) $(MKLIBS) $(XMLLIBS) $(ZLIBLIBS) $(COBJ) \
+	    $(CFITSIOLIBS)  $(HEALPIXLIB) $(STARLIBS) $(STATICLIBS) $(MKLIBS) $(XMLLIBS) $(ZLIBLIBS) $(COBJ) \
 	    $(SLIBS) $(NCDF_LIB) $(KROMELIBS)
 
     else

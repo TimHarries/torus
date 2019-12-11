@@ -29,13 +29,14 @@ contains
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, iHydro, finalPass)
     use inputs_mod, only : variableDustSublimation, iterlucy, rCore, solveVerticalHydro, dustSettling, restartLucy
     use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau
-    use inputs_mod, only : object, convergeOnUndersampled
+    use inputs_mod, only : object, convergeOnUndersampled, storeScattered, scatteredLightWavelength
     use inputs_mod, only : writelucyTmpfile, discWind, mincrossings, maxiterLucy, solveDiffusionZone, quickSublimate, usePAH
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
     use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled, randomwalk, &
          unsetDiffusion
     use amr_mod, only: myScaleSmooth, myTauSmooth, findtotalmass, scaledensityamr
+!    use intensity_storage_mod
     use dust_mod, only: filldustuniform, stripdustaway, sublimatedust, sublimatedustwr104, fillDustShakara, &
          normalizeDustFractions, findDustMass, setupOrigDustFraction, reportMasses, fillDustSettled
     use random_mod
@@ -176,7 +177,6 @@ contains
 
     thisIsFinalPass = .false.
     if (PRESENT(finalPass)) thisIsFinalPass = finalPass
-
 
 
     do i = 1, 1000
@@ -786,10 +786,10 @@ contains
              call calculateAdotPAH(grid%octreeRoot, epsOverDeltaT)
 
 
-!          if (storeScattered) then
-!             call locate(freq, nFreq, cSpeed/(scatteredLightWavelength*angstromtocm),i)
-!             call calculateMeanIntensityOverdNu(grid%octreeRoot, epsOverDeltaT,dnu(i))
-!          endif
+          if (storeScattered) then
+             call locate(freq, nFreq, cSpeed/(scatteredLightWavelength*angstromtocm),i)
+             call calculateMeanIntensityOverdNu(grid%octreeRoot, epsOverDeltaT,dnu(i))
+          endif
 
           
 
@@ -1127,11 +1127,11 @@ contains
        call writeInfo(message,TRIVIAL)
     endif
 
-    !    if (storescattered) then 
-    !       call locate(freq, nFreq, cSpeed/(1.e4*angstromtocm),i)
-    !       call calcIntensityFromGrid(grid%octreeRoot, epsOverDeltaT, dnu(i))
-    !       if (writeoutput) call writeVTKfile(grid, "scattered.vtk", valueTypeString = (/"scattered"/))
-    !    endif
+        if (storescattered) then 
+           call locate(freq, nFreq, cSpeed/(scatteredlightwavelength*angstromtocm),i)
+           call calcIntensityFromGrid(grid%octreeRoot, epsOverDeltaT, dnu(i))
+           if (writeoutput) call writeVTKfile(grid, "scattered.vtk", valueTypeString = (/"scattered"/))
+        endif
 
   end subroutine lucyRadiativeEquilibriumAMR
 
@@ -2277,8 +2277,8 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
 ! These lines were previously in an openmp critical section. If they are reinstated with OpenMP
 ! in use then access to shared memory may need to be protected from simutaneous updates. 
-!          if (scatteredPhoton.and.storeScattered.and.(iLam==iLamScat)) &
-!               call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, tVal)
+          if (storeScattered.and.(iLam==iLamScat)) &
+               call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, tVal)
 
     call addMeanIntensity(thisOctal, subcell, tVal*1.d10)
 
@@ -2418,8 +2418,8 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
 ! These lines were previously in an openmp critical section. If they are reinstated with OpenMP
 ! in use then access to shared memory may need to be protected from simutaneous updates. 
-!          if (scatteredPhoton.and.storeScattered.and.(iLam==iLamScat)) &
-!               call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, dble(tVal)*dble(tau)/thisTau)
+          if (storeScattered.and.(iLam==iLamScat)) &
+               call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, dble(tVal)*dble(tau)/thisTau)
 
                call addMeanIntensity(thisOctal, subcell, 1.d10*dble(tVal)*dble(tau)/thisTau)
 
@@ -3720,16 +3720,13 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
 
   subroutine addToScatteredIntensity(position, thisOctal, subcell, uHat, tVal)
 
+!    use intensity_storage_mod
+
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     type(VECTOR) :: uHat, thisVec, position
-    real(double) :: tVal, thisTheta, thisPhi, ang
-    integer :: nTheta, nPhi
-    integer :: iTheta, iPhi
-
-    nTheta = SIZE(thisOctal%scatteredIntensity,2)
-    nPhi = SIZE(thisOctal%scatteredIntensity,3)
-
+    real(double) :: tval, ang
+    integer :: ipix
 
     ang = atan2(position%y, position%x)
 
@@ -3739,15 +3736,8 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
        thisVec = rotateZ(uHat, -ang)
     endif
 
-    thisTheta = acos(thisvec%z)
-    thisPhi = atan2(thisVec%y,thisVec%x)
-
-    if (thisPhi < 0.d0) thisPhi = thisPhi + twoPi 
-    iTheta = nint((thisTheta / pi) * dble(nTheta-1))+1
-    iphi = nint((thisPhi / twoPi) * dble(nPhi-1))+1
-
-    thisOctal%scatteredIntensity(subcell,iTheta,iPhi) = thisOctal%scatteredIntensity(subcell,iTheta, iPhi) + tval*1.d10
-!    write(*,*) thisOctal%scatteredIntensity(subcell,itheta,iphi)
+    ipix = 1!returnIpix(thisVec)
+    thisOctal%scatteredIntensity(subcell,1,ipix) = thisOctal%scatteredIntensity(subcell,1, ipix) + tval*1.d10
   end subroutine addToScatteredIntensity
 
   subroutine addMeanIntensity(thisOctal, subcell, tVal)
@@ -3762,23 +3752,20 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
 
 
   recursive subroutine calcIntensityFromGrid(thisOctal, epsOverDt, dnu)
-
+!    use intensity_storage_mod
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     real(double) :: epsOverDt, dnu
     real(double) :: v
-    integer :: subcell, i, j, k
-    integer :: nTheta, nphi
-    real(double), allocatable :: iNuDomega(:,:)
-    real(double) :: dTheta, dphi, theta, dOmega
+    integer :: subcell, i
+    real(double), allocatable :: iNuDOmega(:,:)
+!    integer :: npix
+
+!    npix = returnHealpixPixelNumber()
+!    allocate(iNuDOmega(1:1,1:nPix))
 
 
 
-
-    nTheta = SIZE(thisOctal%scatteredIntensity,2)
-    nPhi = SIZE(thisOctal%scatteredIntensity,3)
-
-    allocate(iNudOmega(nTheta, nPhi))
 
     Do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -3793,16 +3780,12 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
        else
 
           V = cellVolume(thisOctal, subcell)*1.d30
-          InuDomega(:,:) = (epsOverDt / V) * thisOctal%scatteredIntensity(subcell, :,:) / dnu
-          dTheta = pi / dble(nTheta-1)
-          dPhi = twoPi / dble(nPhi)
-          do j = 1, nTheta
-             theta = pi * dble(j-1)/dble(nTheta-1)
-             do k = 1, nPhi
-                dOmega = dTheta * dphi * sin(theta)
-                thisOctal%scatteredIntensity(subcell, j, k) = inuDomega(j,k) / max(dOmega,1.d-10)
-             enddo
-          enddo
+!          InuDomega(:,:) = (epsOverDt / V) * thisOctal%scatteredIntensity(subcell, :,:) / dnu
+
+!          thisOctal%scatteredIntensity(subcell, :, :) = inuDomega(:,:) / (fourPi/dble(nPix))
+
+          write(*,*) "scat ",thisOctal%scatteredIntensity(subcell,1,:)
+
        endif
        
     enddo

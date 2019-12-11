@@ -909,6 +909,7 @@
   ! "modular" geometry parameters: -------------------------------------------------------
   integer, parameter :: maxDiscMods = 9
   integer :: nDiscModule
+  real(double) :: tiltAngleMod(maxDiscMods)  ! tiltAngle for disc module
   real(double) :: alphaMod(maxDiscMods)  ! alpha for disc module
   real(double) :: betaMod(maxDiscMods)   ! beta for disc module
   real(double) :: rInnerMod(maxDiscMods) ! inner radius for disc module (au)

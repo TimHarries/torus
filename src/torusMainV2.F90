@@ -24,6 +24,7 @@ program torus
   use inputs_mod         ! variables filled by inputs subroutine
   use citations_mod
   use dimensionality_mod
+!  use intensity_storage_mod
   use constants_mod
   use messages_mod
   use mpi_global_mod
@@ -111,6 +112,8 @@ program torus
     stop
   endif
 
+
+
   call initBibCode()
   call setVersion("V4.0")
   grid%version = torusVersion
@@ -124,6 +127,7 @@ program torus
   call inputs()
 
   call setUpBibcodesOnParametersFile()
+!  if (storeScattered) call initHealpix(1)
 
 #ifdef MPI
   ! Set up amrCOMMUNICATOR and global mpi groups

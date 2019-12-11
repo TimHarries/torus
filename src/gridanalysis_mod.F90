@@ -29,8 +29,9 @@ contains
     call findMassWithBounds(grid%octreeRoot, mass14, minRho=1.d-14)
     call findMassWithBounds(grid%octreeRoot, mass15, minRho=1.d-15)
     call findMassWithBounds(grid%octreeRoot, mass16, minRho=1.d-16)
-    call findDiscMass(grid%octreeRoot, globalSourceArray(1)%mass, mDisc, 1500.d0*autocm/1.d10)
+    call findDiscMass(grid%octreeRoot, globalSourceArray(1)%mass, mDisc, 2000.d0*autocm/1.d10)
     write(*,*) "disc mass ",mdisc/msol
+    call averageRadialProfile(grid, 10000.d0*autocm/1.d10)
     call findMultifilename("vel****.dat",iModel,thisfile)
     open(69, file=thisFile, status="unknown", form="formatted")
     call writeVelocityWithBounds(grid%octreeRoot, maxRadius=1500.d0*autocm/1.d10)
@@ -243,6 +244,62 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
        endif
     enddo
   end subroutine findMassWithBounds
+
+
+  subroutine averageRadialProfile(grid, maxRadius)
+    type(GRIDTYPE) :: grid
+    real(double) :: maxRadius
+    integer, parameter :: nr = 30
+    integer :: i
+    real(double), allocatable :: r(:), rho(:), t(:),n(:)
+    allocate(r(1:nr), rho(1:nr), t(1:nr), n(1:nr))
+    r = 0.d0; rho = 0.d0; t = 0.d0; n = 0.d0
+    do i = 1, nr
+!       r(i) = log10(0.01d0*maxradius) + (log10(maxRadius)-log10(0.01d0*maxradius))*(dble(i-1)/dble(nr-1))
+!       r(i) = 10.d0**r(i)
+       r(i) = maxRadius*dble(i-1)/dble(nr-1)
+    enddo
+    
+    call fillRadialMidplaneArray(grid%octreeRoot, nr, r, rho, t, n, maxRadius)
+    open(20,file="midplane.dat",status="unknown",form="formatted")
+    write(20,*) "radius (au)    density(g cm^-3)    temperature (K)"
+    do i = 1, nr
+       write(20,'(f7.0,1pe12.2,f8.0,i5)') r(i)*1.d10/autocm, rho(i)/n(i), t(i)/n(i),int(n(i))
+    enddo
+    close(20)
+  end subroutine averageRadialProfile
+
+
+  recursive subroutine fillradialMidplaneArray(thisOctal, nr, r, rho, t, n ,maxRadius)
+
+    type(OCTAL), pointer :: thisOctal, child
+    real(double) :: r(:), rho(:), t(:), n(:), maxRadius
+    integer :: subcell, i, j, nr
+    type(VECTOR):: cen
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call fillradialMidplaneArray(child, nr, r, rho, t, n ,maxRadius)
+                exit
+             end if
+          end do
+       else
+          cen = subcellCentre(thisOctal, subcell)
+          if (sqrt(cen%x**2 + cen%y**2)  < maxRadius+0.5d0*(r(nr)-r(nr-1))) then
+             if ( (cen%z + thisOctal%subcellSize/2.d0*1.001d0)* (cen%z - thisOctal%subcellSize/2.d0*1.001d0) < 0.d0) then
+                call locate(r,nr,sqrt(cen%x**2+cen%y**2),j)
+                if (sqrt(cen%x**2+cen%y**2) > maxRadius) j = nr
+                rho(j) = rho(j) + thisOCtal%rho(subcell)
+                t(j) = t(j) + thisOctal%temperature(Subcell)
+                n(j) = n(j) + 1.d0
+             endif
+          endif
+       endif
+    enddo
+  end subroutine fillradialMidplaneArray
 
   recursive subroutine findDiscMass(thisOctal, sourceMass, totalMass,  maxRadius)
     type(octal), pointer   :: thisOctal

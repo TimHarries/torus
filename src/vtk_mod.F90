@@ -938,7 +938,7 @@ contains
 
 
                case("scattered")
-                  write(lunit, *) real(thisOctal%scatteredIntensity(subcell,5,3))
+                  write(lunit, *) real(SUM(thisOctal%scatteredIntensity(subcell,1,:)))
 
                case("habing")
                   ! note this is in units of 1e-10 Habing
@@ -3209,7 +3209,7 @@ end subroutine writeXMLVtkFileAMR
 
 
                case("scattered")
-                  rArray(1, n) = real(real(thisOctal%scatteredIntensity(subcell,5,3)))
+                  rArray(1, n) = real(SUM(thisOctal%scatteredIntensity(subcell,1:1,:)))
 
                case("hydrovelocity")
                   if (thisOctal%threeD) then

@@ -5,6 +5,8 @@ module amr_mod
   ! routines for adaptive mesh refinement. nhs
   ! twod stuff added by tjh started 25/08/04
   use amr_utils_mod
+  use user_mod
+!  use intensity_storage_mod
   use discwind_class
   USE octal_mod, only: OCTAL, wrapperArray, octalWrapper, subcellCentre, cellVolume, &
        allocateattribute, copyattribute, deallocateattribute, returndphi, subcellCorners
@@ -348,7 +350,7 @@ CONTAINS
        split = .false.
 
        cellSize = thisOctal%subcellSize
-       cellCentre = subcellCentre(thisOctal,isubCell)
+       cellcentre = subcellCentre(thisOctal,isubCell)
        r = sqrt(cellcentre%x**2 + cellcentre%y**2)
        if ((r < 2.*autocm/1.d10).or.(r > 12.*autocm/1.d10)) then
 
@@ -717,6 +719,7 @@ CONTAINS
     use gridFromFitsFile, only: assign_from_fitsfile
 #endif
     use angularImage_utils, only: calcAngImgTest
+    use user_mod
     use ramses_mod, only: fillRamses
 
     IMPLICIT NONE
@@ -1012,6 +1015,9 @@ CONTAINS
 
     CASE("sphere")
        call calcSphere(thisOctal, subcell)
+
+    CASE("user")
+       call userSubroutine(thisOctal,subcell)
 
     CASE("plumber")
        call calcPlumber(thisOctal, subcell)
@@ -1840,6 +1846,7 @@ CONTAINS
     ! uses an external function to decide whether to split a subcell of
     !   the current octal.
 !    use inputs_mod, only : splitOverMPI
+    use user_mod
     IMPLICIT NONE
 
 
@@ -2125,6 +2132,7 @@ CONTAINS
 
 
        SELECT CASE (grid%geometry)
+
 
        CASE ("ttauri")
 !          IF (.NOT. useHartmannTemp) &
@@ -3606,7 +3614,7 @@ CONTAINS
     use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize, ttauriMagnetosphere, rCavity
     use inputs_mod, only : cavdens, limitscalar, addDisc, flatdisc, ttauristellarwind, SW_rMax, SW_rmin
     use inputs_mod, only : discWind, planetDisc, sourceMass, sourceRadius, sourceTeff, rGapInner1, accretionFeedback
-    use inputs_mod, only : nDiscModule, rOuterMod, rInnerMod, betaMod, heightMod
+    use inputs_mod, only : nDiscModule, rOuterMod, rInnerMod, betaMod, heightMod, tiltAngleMod
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use magnetic_mod, only : accretingAreaMahdavi
@@ -3837,6 +3845,11 @@ CONTAINS
 
 
        select case(grid%geometry)
+
+       CASE("user")
+          centre = subcellCentre(thisOctal,subcell)
+          cellSize = thisOctal%subcellSize
+          split = userSplit(centre*1.d10, cellSize*1.d10)
 
        case("skin")
           split = splitSkin(thisOctal, subcell)
@@ -4163,17 +4176,17 @@ CONTAINS
                   split=.true.
           endif
 
-          if (ttauriMagnetosphere) then
-             if ((modulus(cellCentre) > ttauriRouter/1.d10).and.(thisOCtal%subcellSize > (ttauriRouter/1.d10)/100.d0) &
-               .and.(inSubcell(thisOctal, subcell, VECTOR(1.d-6,0.d0,1.d-6)).or. &
-               inSubcell(thisOctal,subcell,VECTOR(1.d-6,0.d0,-1.d-6)))) &
-                  split=.true.
-          endif
+!          if (ttauriMagnetosphere) then
+!             if ((modulus(cellCentre) > ttauriRouter/1.d10).and.(thisOCtal%subcellSize > (ttauriRouter/1.d10)/100.d0) &
+!               .and.(inSubcell(thisOctal, subcell, VECTOR(1.d-6,0.d0,1.d-6)).or. &
+!               inSubcell(thisOctal,subcell,VECTOR(1.d-6,0.d0,-1.d-6)))) &
+!                  split=.true.
+!          endif
 
-          if (ttauriMagnetosphere) then
-             if ((modulus(cellCentre) < ttauriRouter/1.d10).and.(thisOCtal%subcellSize > (ttauriRouter/1.d10)/100.d0)) &
-                  split=.true.
-          endif
+ !         if (ttauriMagnetosphere) then
+ !            if ((modulus(cellCentre) < ttauriRouter/1.d10).and.(thisOCtal%subcellSize > (ttauriRouter/1.d10)/100.d0)) &
+ !                 split=.true.
+ !         endif
 
 
 
@@ -5585,12 +5598,21 @@ CONTAINS
           endif
 
        case("modular")
+
+          splitInAzimuth = .false.
           ! first off, make sure the cell splits if the depth of the cell depth is less than mindepthamr:
           if (thisOctal%ndepth < mindepthamr) split = .true.
+          if (thisOctal%ndepth < 4) splitInAzimuth = .true.
           ! Then find your location in the disk and the size of the cell:
           cellSize = thisOctal%subcellSize
           cellCentre = subcellCentre(thisOctal, subcell)
-          r = sqrt(cellCentre%x**2 + cellCentre%y**2)
+
+
+          rVec = cellCentre
+          rVec = rotateX(rVec, -tiltAngleMod(nDiscModule)) ! rotate to midplane of outer disc
+
+          r = dble(SQRT(rVec%x**2 + rVec%y**2))           ! locate your disc midplane position
+          z = dble(rVec%z)                                ! locate your position above the disc midplane
           thisHeightSplitFac = heightSplitFac
           ! Don't split the cells if you're more than half a cell radius outside (the outer disk edge + 10%):
           if (((r + cellSize/2.d0) > MAXVAL(rOuterMod)*1.1d0).and.(thisOctal%ndepth >= mindepthamr)) then
@@ -5603,12 +5625,20 @@ CONTAINS
              (cellSize/hr > thisheightSplitFac)) split = .true.
 
           do iMod = 1, nDiscModule
+             rVec = cellCentre
+             rVec = rotateX(rVec, -tiltAngleMod(iMod)) ! rotate to midplane of outer disc
+
+             r = dble(SQRT(rVec%x**2 + rVec%y**2))           ! locate your disc midplane position
+             z = dble(rVec%z)                                ! locate your position above the disc midplane
+
+
              if ((r > rInnerMod(iMod)).and.(r < rOuterMod(iMod))) then
                 hr = heightMod(iMod) * (r/rInnerMod(iMod))**betaMod(iMod)
                 if ((ABS(cellCentre%z/hr) < 7.d0).and.(cellSize/hr > thisHeightSplitFac).and. &
                    (thisOctal%ndepth < maxdepthamr)) split = .true.
                 if ((ABS(cellCentre%z/hr) > 2.d0).and.(ABS(cellCentre%z/cellSize) < 2.d0).and. &
                    (thisOctal%nDepth < maxdepthamr)) split = .true.
+                if (tiltAngleMod(iMod) /= 0.d0) splitInAzimuth = .true.
              endif
              if (((r - cellSize) < rInnerMod(1)).and.((r + cellSize/2.d0) > rInnerMod(1))) then
                 hr = heightMod(1) * (r/rInnerMod(1))**betaMod(1)
@@ -5616,8 +5646,11 @@ CONTAINS
                    (thisOctal%ndepth < maxdepthamr)) split = .true.
                 if ((ABS(cellCentre%z/hr) > 2.d0).and.(ABS(cellCentre%z/cellSize) < 2.d0).and. &
                    (thisOctal%nDepth < maxdepthamr)) split = .true.
+                if (tiltAngleMod(iMod) /= 0.d0) splitInAzimuth = .true.
              endif
+
           enddo
+          if (thisOctal%dPhi*radtodeg < 1.d0) splitInAzimuth = .false.
 
        case("circumbin")
 
@@ -12959,7 +12992,7 @@ end function readparameterfrom2dmap
 
     use inputs_mod, only : rho0, rSublimation ! real precision disc module-independent param
     use inputs_mod, only : nDiscModule, nDustType ! counting params
-    use inputs_mod, only : alphaMod, betaMod, heightMod, rInnerMod, rOuterMod, prod ! 1D array params
+    use inputs_mod, only : alphaMod, betaMod, heightMod, rInnerMod, rOuterMod, tiltAngleMod, prod ! 1D array params
     use inputs_mod, only : dustFracMod, dustHeightMod, dustBetaMod ! 2D array params
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
@@ -12967,10 +13000,6 @@ end function readparameterfrom2dmap
     type(VECTOR) :: rVec
     real(double) :: r, z, h, thisHeight, fracDust
     integer :: iMod, iDust
-
-      rVec = subcellCentre(thisOctal, subcell)        ! locate your position in the grid
-      r = dble(SQRT(rVec%x**2 + rVec%y**2))           ! locate your disc midplane position
-      z = dble(rVec%z)                                ! locate your position above the disc midplane
 
       ! Fill the entire grid with default values
       thisOctal%rho(subcell) = 1.d-30                           ! default value of gas density
@@ -12980,6 +13009,21 @@ end function readparameterfrom2dmap
 
       ! Determine which disc module you are located in and assign a gas density
       do iMod = 1, nDiscModule
+
+
+         rVec = subcellCentre(thisOctal, subcell)        ! locate your position in the grid
+
+         ! now we need to rotate this position so r and z refer to the midplane of the tilted disc
+         ! the tilt angle is zero by default so this doesn't do anything to most modules
+
+         rVec = rotateX(rVec, -tiltAngleMod(iMod))
+
+         r = dble(SQRT(rVec%x**2 + rVec%y**2))           ! locate your disc midplane position
+         z = dble(rVec%z)                                ! locate your position above the disc midplane
+
+
+
+
         if ((rOuterMod(iMod) > r).and.(rInnerMod(iMod) < r)) then
           h = heightMod(iMod) * (r/rInnerMod(iMod))**betaMod(iMod)
           ! determine the scale height of the gas disc at your position, r
@@ -18608,8 +18652,8 @@ END SUBROUTINE assignDensitiesStellarWind
     use inputs_mod, only : mie,  nDustType, TminGlobal, &
          photoionization, hydrodynamics, timeDependentRT, nAtom, &
          lineEmission, atomicPhysics, photoionPhysics, dustPhysics, molecularPhysics, cmf
-    use inputs_mod, only : grainFrac, pdrcalc, xraycalc, useionparam, biophysics
-    use gridtype_mod, only: statEqMaxLevels
+    use inputs_mod, only : grainFrac, pdrcalc, xraycalc, useionparam, biophysics !, storeScattered
+    Use gridtype_mod, only: statEqMaxLevels
     use h21cm_mod, only: h21cm
 
 
@@ -18628,6 +18672,7 @@ END SUBROUTINE assignDensitiesStellarWind
 #ifdef PDR
     integer :: nrays, nside
 #endif
+!    integer :: npix
     thisOctal%rho = amr_min_rho
     thisOctal%gasOpacity = .false.
     thisOctal%temperature = TMinGlobal
@@ -18667,7 +18712,10 @@ END SUBROUTINE assignDensitiesStellarWind
        enddo
        thisOctal%inflow = .true.
 
-!       if (storescattered) allocate(thisOctal%scatteredIntensity(thisOctal%maxChildren, ntheta, nPhi))
+!       if (storescattered) then
+!          npix =  returnHealpixPixelNumber()
+!          allocate(thisOctal%scatteredIntensity(thisOctal%maxChildren, 1, 1:nPix))
+!       endif
 
        call allocateAttribute(thisOctal%meanIntensity, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%adotPAH, thisOctal%maxChildren)

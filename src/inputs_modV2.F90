@@ -2465,6 +2465,12 @@ contains
 
 ! -- Define the geometry parameters specific to each disc module:
        do i = 1, nDiscModule
+
+          write(alphaDiscLabel, '(a,i1.1)') "tiltangle",i
+          call getDouble(alphaDiscLabel, tiltAngleMod(i), degtoRad, cLine, fLine, nLines, &
+               "Tilt angle for disc module: ","(a,f8.3,a)", 0.d0, ok, .false.)
+!         tilt angle for each module of the disc
+
           write(alphaDiscLabel, '(a,i1.1)') "alphamod",i
           call getDouble(alphaDiscLabel, alphaMod(i), 1.d0, cLine, fLine, nLines, &
                "Alpha parameter for disc module: ","(a,f8.3,a)", 2.25d0, ok, .true.)
@@ -3694,6 +3700,10 @@ contains
 
     call getReal("edenstol", eDensTol, 1., cLine, fLine, nLines, &
          "Fractional change in energy density for convergence: ","(a,f7.1,a)",0.001, ok, .false.) ! used for gauss-seidel sweep also
+
+
+    call getLogical("storescattered",storeScattered, cLine, fLine, nLines, &
+         "Store scattered light: ", "(a,1l,1x,a)", .true., ok, .false.)
 
     call getReal("scatteredlightwavelength", scatteredLightWavelength, 1., cLine, fLine, nLines, &
          "Wavelength of scattered light","(a,f7.1,a)",1.e4, ok, .false.)

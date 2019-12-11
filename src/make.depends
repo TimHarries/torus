@@ -44,6 +44,7 @@ image_utils_mod.o: constants_mod.o messages_mod.o vector_mod.o
 integratePath.o: amr_mod.o atom_mod.o constants_mod.o grid_mod.o \
 	gridtype_mod.o math_mod.o photon_mod.o source_mod.o utils_mod.o \
 	vector_mod.o
+intensity_storage_mod.o: vector_mod.o
 interface_hierarchy_mod.o: kind_mod.o random_mod.o triangle_mesh_mod.o \
 	vector_mod.o
 interferometry_mod.o: constants_mod.o kind_mod.o messages_mod.o random_mod.o
@@ -94,6 +95,7 @@ triangle_mesh_mod.o: kind_mod.o messages_mod.o obj_io_mod.o vector_mod.o
 turbulence_mod.o: constants_mod.o kind_mod.o messages_mod.o random_mod.o \
 	unix_mod.o utils_mod.o vector_mod.o
 units_mod.o: constants_mod.o
+user_mod.o: constants_mod.o octal_mod.o vector_mod.o
 utils_mod.o: constants_mod.o kind_mod.o messages_mod.o octal_mod.o \
 	vector_mod.o
 vector_mod.o: constants_mod.o kind_mod.o random_mod.o
@@ -106,7 +108,8 @@ amr_mod.o: amr_utils_mod.o analytical_velocity_mod.o angularImage_utils.o \
 	h21cm_mod.o inputs_modV2.o jets_mod.o luc_cir3d_class.o magField.o \
 	magnetic_mod.o memory_mod.o mpi_global_mod.o octal_mod.o ostar_mod.o \
 	phfit2.o ramses_mod.o romanova_class.o source_mod.o sph_data_class.o \
-	surface_mod.o unix_mod.o utils_mod.o vector_mod.o vh1_mod.o
+	surface_mod.o unix_mod.o user_mod.o utils_mod.o vector_mod.o \
+	vh1_mod.o
 angularImage_mod.o: amr_mod.o angularImage_utils.o atom_mod.o constants_mod.o \
 	datacube_mod.o gridtype_mod.o h21cm_mod.o inputs_modV2.o kind_mod.o \
 	messages_mod.o molecular_mod.o mpi_global_mod.o octal_mod.o \
