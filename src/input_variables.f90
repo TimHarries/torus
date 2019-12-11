@@ -157,7 +157,11 @@
   real(double) :: feedbackDelay ! after starburst, delay feedback mechanisms by this fraction of free-fall time
   character(len=20) :: burstType
   character(len=20) :: imfType  !Initial mass function sampled by cluster sink particles
-  real(double) :: imfMin, imfMax
+  character(len=20) :: populationMethod  !Method by which populate cluster sinks with stars
+  character(len=80) :: imfFilename ! if reading in an IMF
+  real(double) :: populationMass ! total mass of IMF
+  logical :: readIMF
+  real(double) :: imfMin, imfMax 
   type(VECTOR) :: burstPosition ! pos of star for burstType 'singlestartest'
   logical :: dumpregularVTUS   !dump vtu after every photo step
   ! Parameters  specific to domain decomposed photoionisation
@@ -218,6 +222,7 @@
   real(double) :: FeedbackStartMass   !Do not apply feedback till the star reaches this mass
   real :: cflNumber                   !Courant-Friedrichs-Lewy constant
   integer :: nHydroPerPhoto           !number of hydroSteps per photoionization loop
+  integer :: nHydroPerSpectra         ! number of hydro steps per spectrum calculation (clustersinks)
   logical :: forcegascourant          !use the gas condition only
   real(double) :: rhoFloor            !min density in grid
   real(double) :: mu                  !mean molecular weight
@@ -226,7 +231,8 @@
   logical :: cylindricalHydro         ! perform the hydrodynamics in cylindrical coordinates
   real(double) :: tStart, tEnd, tDump !Start, end and dump interval times
   real(double) :: rhoThreshold        ! threshold density for sink creation
-  real(double) :: criticalMass        ! critical reservoir mass above which cluster sink particles sample IMF
+  real(double) :: criticalMass        ! critical reservoir mass above which cluster sink particles sample IMF 
+  real(double) :: starFormationEfficiency ! cluster sink SFE
   real(double) :: hydroSpeedLimit     ! fudge to limit hydrodynamic advection speed
   logical :: hydrovelocityConv        !Convert input velocity vector into simulation velocities
   logical :: doRefine, doUnrefine     !Allow the AMR grid to refine/unrefine
@@ -427,6 +433,7 @@
   real(double), allocatable :: fracMode(:)
   character(len=80) :: sourceFilename
   logical :: sourceHistory
+  logical :: subsourceHistory
   character(len=80) :: sourceHistoryFilename
   integer :: inputNsource
   real(double) :: sourceTeff(10), sourceMass(10), sourceRadius(10), sourceProb(10), sourceMdot(10)

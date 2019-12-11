@@ -4266,6 +4266,7 @@ contains
     centre = grid%octreeRoot%centre
     halfGridSize = grid%octreeRoot%subcellSize
     cellSize = amrGridSize/dble(npix)
+    if (associated(image)) deallocate(image)
     allocate(image(1:npix, 1:npix))
     image = 0.d0
     do i = 1, nPix
@@ -4286,6 +4287,7 @@ contains
 
   subroutine columnAlongPathAMR(grid, rVec, direction, sigma)
     use mpi
+    use inputs_mod, only : vtkIncludeGhosts
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, direction, currentPosition
     real(double) :: sigma, distToNextCell
@@ -4309,8 +4311,12 @@ contains
   
        currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
        if (myrankGlobal == thisOctal%mpiThread(subcell)) then
-          if (.not. thisOctal%ghostCell(subcell)) then
+          if (vtkIncludeGhosts) then
              sigma = sigma + distToNextCell*1.d10*thisOctal%rho(subcell)
+          else
+             if (.not. thisOctal%ghostCell(subcell)) then
+                sigma = sigma + distToNextCell*1.d10*thisOctal%rho(subcell)
+             endif
           endif
        endif
 
@@ -4339,6 +4345,7 @@ contains
     centre = grid%octreeRoot%centre
     halfGridSize = grid%octreeRoot%subcellSize
     cellSize = amrGridSize/dble(npix)
+    if (associated(image)) deallocate(image)
     allocate(image(1:npix, 1:npix))
     image = 0.d0
     do i = 1, nPix
@@ -4413,6 +4420,7 @@ contains
     centre = grid%octreeRoot%centre
     halfGridSize = grid%octreeRoot%subcellSize
     cellSize = amrGridSize/dble(npix)
+    if (associated(image)) deallocate(image)
     allocate(image(1:npix, 1:npix))
     image = 0.d0
     do i = 1, nPix
