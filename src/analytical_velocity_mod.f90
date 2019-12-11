@@ -153,7 +153,6 @@ TYPE (VECTOR) FUNCTION TTauriStellarWindVelocity(point)
   r = modulus(rVec)
   rVec = rVec * 1.d10
   wind = vector(0.d0, 0.d0, 0.d0)
-
   beta = dipoleOffset
   openAngleDash = SW_openAngle - beta
   rVecDash = rotateY(rVec, -beta)
@@ -185,6 +184,7 @@ TYPE (VECTOR) FUNCTION TTauriStellarWindVelocity(point)
   !!max speed is multiple of escape velocity
   vMax = SW_vMax * SQRT(2.d0*bigG*ttauriMstar/ttauriRstar)
   !!radial velocity given by beta law
+  IF (r < SW_rMin) r = SW_rMin
   radV = SW_vMin + (vMax - SW_vMin)*(1.d0 - SW_rMin/r)**SW_beta
 
   IF ((SW_Protation /= 0.d0).OR.(SW_Veq /= 0.d0)) THEN
