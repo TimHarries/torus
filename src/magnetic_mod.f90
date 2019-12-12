@@ -129,6 +129,8 @@ REAL(DOUBLE) FUNCTION stellarWindDensity(point)
   REAL(DOUBLE) :: rMaxMax, sin2theta0dash
   REAL(DOUBLE) :: rhoStart, rhoBoundary, thisRho
 
+  thisRho = 1.d-43
+
   rVec = point * 1.d10
   beta = dipoleOffset
   r = modulus(rVec)
@@ -153,15 +155,15 @@ REAL(DOUBLE) FUNCTION stellarWindDensity(point)
   !thisRMax = rDash / sin(thetaDash)**2.d0
 
   thetaStar = ASIN(SQRT(tTauriRstar / rMaxMax))
-  rBoundary = rMaxMax * SIN(SW_openAngle)**2.d0
+  rBoundary = rMaxMax * SIN(SW_openAngle)**2.d0 / 1.d10 ![stellar radii]
   area = (1.d0-COS(thetaStar))*twoPi*ttauriRstar**2.d0
   rhoStart = 0.5d0*SW_Mdot/area
-  rhoBoundary = 1.d10*rhoStart * (SW_rMin/rBoundary)**3.d0
+  rhoBoundary = rhoStart * (SW_rMin/rBoundary)**3.d0
 
   IF (rDash <= rBoundary) THEN
-     thisRho = 1.d10*rhoStart * (SW_rMin/rDash)**3.d0
+     thisRho = rhoStart * (1.d10*SW_rMin/rDash)**3.d0
   ELSE
-     thisRho = rhoBoundary * (rBoundary / rDash)**2.d0
+     thisRho = rhoBoundary * (1.d10*rBoundary / rDash)**2.d0
   ENDIF
   stellarWindDensity = thisRho
 666 CONTINUE

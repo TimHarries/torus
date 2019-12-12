@@ -1375,11 +1375,11 @@ contains
                "Stellar wind:: multiple to Max R at which momentum is conserved: ", &
                "(a,1p,e9.3,1x,a)", 1.0d0, ok, .false.)
 
-          call getDouble("SW_Rmin", SW_rMin, ttaurirstar/1.d10, cLine, fLine, nLines, &
+          call getDouble("SW_Rmin", SW_rMin, tTaurirstar/1.d10, cLine, fLine, nLines, &
                "Stellar wind:: Inner radius of the wind [stellar radii]: ", &
                "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.)
 
-          call getDouble("SW_Rmax", SW_rMax, ttaurirstar/1.d10, cLine, fLine, nLines, &
+          call getDouble("SW_Rmax", SW_rMax, tTaurirstar/1.d10, cLine, fLine, nLines, &
                "Stellar wind:: Outer radius of the wind [stellar radii]: ", &
                "(a,1p,e9.3,1x,a)", 100.0d0, ok, .true.)
 
