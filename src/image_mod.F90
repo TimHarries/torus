@@ -728,11 +728,11 @@ module image_mod
 !             print *, "image%pixel%i", image%pixel%i
           case("stokesq")
              where (image%pixel%i /= 0.d0) 
-                array = real(image%pixel%q/image%pixel%i)
+                array = real(image%pixel%q)
              end where
           case("stokesu")
              where (image%pixel%i /= 0.d0) 
-                array = real(image%pixel%u/image%pixel%i)
+                array = real(image%pixel%u)
              end where
           case("pol")
              array = real(sqrt(image%pixel%q**2 + image%pixel%u**2))
