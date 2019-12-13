@@ -3602,6 +3602,7 @@ CONTAINS
     use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize, ttauriMagnetosphere, rCavity
     use inputs_mod, only : cavdens, limitscalar, addDisc, flatdisc, ttauristellarwind, SW_rMax, SW_rmin
     use inputs_mod, only : discWind, planetDisc, sourceMass, sourceRadius, sourceTeff, rGapInner1, accretionFeedback
+    use inputs_mod, only : SW_openAngle, SW_beta
     use inputs_mod, only : nDiscModule, rOuterMod, rInnerMod, betaMod, heightMod
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
@@ -3662,7 +3663,7 @@ CONTAINS
     real(double),save  :: R_tmp(204)  ! [10^10cm]
     real(double),allocatable, save  :: R_cmfgen(:)  ! [10^10cm]
     real(double),save  :: Rmin_cmfgen  ! [10^10cm]
-    real(double) :: rho
+    real(double) :: rho, theta
     real(double) :: OstrikerRho(2), r0
     logical, save :: first_time=.true.
     logical :: close_to_star
@@ -4101,10 +4102,10 @@ CONTAINS
 
           if (ttauriStellarWind) then
 
-
              r = modulus(cellCentre)
+             theta = acos(cellCentre%z/r)
              if (firsttime) then
-                nr = 100
+                nr = 200
                 do i = 1, nr
                    rgrid(i) = log10(SW_Rmin) + (dble(i-1)/dble(nr-1))*log10(SW_Rmax/SW_Rmin)
                 enddo
@@ -4113,43 +4114,16 @@ CONTAINS
              endif
 
              if ((r > SW_Rmin).and.(r < SW_Rmax)) then
-                call locate(rGrid, 100, r ,i)
+               if ((theta <= SW_Openangle).or.(theta>= (pi-SW_openAngle))) then
+                call locate(rGrid, 200, r ,i)
                 if (thisOctal%subcellSize > (rgrid(i+1)-rGrid(i))) split = .true.
+              endif
              endif
              if ( ((r + cellsize/2.d0) > SW_rMin).and.(r < SW_rMin)) then
                 if (cellsize > (rgrid(2)-rgrid(1))) split = .true.
              endif
 
           endif
-
-
-
-
-
-
-          if (ttauriStellarWind) then
-
-
-             r = modulus(cellCentre)
-             if (firsttime) then
-                nr = 100
-                do i = 1, nr
-                   rgrid(i) = log10(SW_Rmin) + (dble(i-1)/dble(nr-1))*log10(SW_Rmax/SW_Rmin)
-                enddo
-                rgrid(1:nr) = 10.d0**rgrid(1:nr)
-                firsttime = .false.
-             endif
-
-             if ((r > SW_Rmin).and.(r < SW_Rmax)) then
-                call locate(rGrid, 100, r ,i)
-                if (thisOctal%subcellSize > (rgrid(i+1)-rGrid(i))) split = .true.
-             endif
-             if ( ((r + cellsize/2.d0) > SW_rMin).and.(r < SW_rMin)) then
-                if (cellsize > (rgrid(2)-rgrid(1))) split = .true.
-             endif
-
-          endif
-
 
 
 
@@ -4166,7 +4140,7 @@ CONTAINS
                   split=.true.
           endif
           !!add this code back to have splitting for spherical shell around star
-          !!removed by tjgw201 26/11/19
+          !!removed by Thomas Wilson 26/11/19
           ! if (ttauriMagnetosphere) then
           !    if ((modulus(cellCentre) < ttauriRouter/1.d10).and.(thisOCtal%subcellSize > (ttauriRouter/1.d10)/100.d0)) &
           !         split=.true.
