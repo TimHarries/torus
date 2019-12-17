@@ -1652,6 +1652,9 @@ end subroutine assignMgAsciiValues
     case ("HD169142")
        call testAMRmass(grid, dble(mdisc))
 
+    case ("modular")
+       call testAMRmass(grid, dble(mdisc))
+
 
 #ifdef SPH
     case("molcluster", "theGalaxy", "cluster","sphfile", "dale")

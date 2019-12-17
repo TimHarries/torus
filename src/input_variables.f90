@@ -381,6 +381,17 @@
   real(double) :: mStar
   real(double) :: metallicity
 
+
+!-----------------------------
+! time dependent RT          |
+!-----------------------------
+
+  real(double) :: varystart, varyend
+  real(double) :: timeStart, timeEnd
+  integer :: nTime
+  
+
+
 !----------------------------
 ! Lucy radiative equilibrium
 !----------------------------

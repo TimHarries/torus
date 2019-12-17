@@ -37,6 +37,10 @@ contains
 
   subroutine runTimeDependentRT(grid, source, nSource, nLambda, xArray)
     use inputs_mod, only : teff, rCore, rInner, mCore
+    use inputs_mod, only : timeStart, timeEnd, varyStart, varyEnd
+    use inputs_mod, only : nphotons, ntime, gridInputFilename
+    use sed_mod, only:  SEDlamMin, SEDlamMax, SEDnumLam
+
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
     integer :: nSource
@@ -59,23 +63,33 @@ contains
     logical :: varyingSource
     real(double) :: mdot
     real(double) :: photonsPerStep
-    real(double) :: gridCrossingTime
-    integer, parameter :: nSedWavelength = 100, nTime = 501
-    real(double) :: sedTime(nTime),fac
+    real(double) :: gridCrossingTime,fac
     integer :: i
-    real(double) :: sedWavelength(nSedWavelength)
-    real(double) :: outputFlux(nSedWavelength, nTime)
-    real(double) :: outputFluxScat(nSedWavelength, nTime)
-    real(double) :: sedFlux(nSedWavelength, nTime)
-    real(double) :: sedFluxScat(nSedWavelength, nTime)
-    real(double) :: sedFluxStep(nSedWavelength, nTime)
-    real(double) :: sedFluxScatStep(nSedWavelength, nTime)
-    real(double) :: w1, w2
+    real(double), allocatable :: sedTime(:)
+    real(double), allocatable :: sedWavelength(:)
+    real(double), allocatable :: outputFlux(:,:)
+    real(double), allocatable :: outputFluxScat(:,:)
+    real(double), allocatable :: sedFlux(:,:)
+    real(double), allocatable :: sedFluxScat(:,:)
+    real(double), allocatable :: sedFluxStep(:,:)
+    real(double), allocatable :: sedFluxScatStep(:,:)
+    real(double) :: w1, w2, thisTeff
     real(double) :: sourceLuminosity, accretionLuminosity, tAcc, frac, accretionArea
     real(double) :: inc, endTime
     type(VECTOR) :: observerDirection, observerposition
     logical :: lastTime, ok
     logical :: seedRun
+
+    allocate(sedTime(1:nTime))
+    allocate(sedWavelength(sedNumLam))
+    allocate(outputFlux(sedNumLam, nTime))
+    allocate(outputFluxScat(sedNumLam, nTime))
+    allocate(sedFlux(sedNumLam, nTime))
+    allocate(sedFluxScat(sedNumLam, nTime))
+    allocate(sedFluxStep(sedNumLam, nTime))
+    allocate(sedFluxScatStep(sedNumLam, nTime))
+
+
 
     seedRun = .false.
     inc = 60.d0 * degToRad
@@ -96,10 +110,10 @@ contains
     dumpFromNow = 0.d0
     sedFlux = 0.d0
     sedFluxScat = 0.d0
-    w1 = 1200.d0
-    w2 = 2.d7
-    do i = 1, nSedWavelength
-       sedWavelength(i) = log10(w1) + (log10(w2)-log10(w1))*dble(i-1)/dble(nSedWavelength-1)
+    w1 = sedlamMin
+    w2 = sedlamMaX
+    do i = 1, sednumLam
+       sedWavelength(i) = log10(w1) + (log10(w2)-log10(w1))*dble(i-1)/dble(sedNumLam-1)
     enddo
     sedWavelength = 10.d0**sedWavelength
 
@@ -109,9 +123,8 @@ contains
     deltaTmin = 1.d3
     Deltatmax = 1.d9
     gridCrossingTime = grid%octreeRoot%subcellSize*1.d10/cSpeed
-    nMonte = 10000
 
-    photonsPerStep = 100000 ! dble(nMonte) / (gridCrossingTime / deltaTmin)
+    photonsPerStep = nPhotons
 
     photonsPerSecond = photonsPerStep / deltaTmin
 
@@ -122,8 +135,7 @@ contains
     call zeroTemperature(grid%octreeRoot)
 
     varyingSource = .true.
-    varyUntilTime = 1.d30
-    endTime = 1.d30
+    varyUntilTime = varyend
     startVaryTime = 0.d0
     !    call clearDust(grid%octreeRoot)
 
@@ -143,19 +155,18 @@ contains
        i = findIlambda(1.e5, xArray, nLambda, ok)
        call setBiasOnTau(grid, i)
        luminosityPeriod = 3600.d0
-       startVaryTime = 0.d0
-       varyUntilTime = 5.d0 * luminosityPeriod  + startVaryTime
+       startVaryTime = varyStart
+       varyUntilTime = varyEnd
        seedRun = .true.
 
-       deltaTMax = (varyUntilTime)/dble(nTime-1)
+       deltaTMax = (timeEnd-timeStart)/dble(nTime-1)
        deltaTMin = deltaTmax
        tDump = deltaTmax
        dumpFromNow =  observerDistance/cSpeed
-       endTime  = varyUntilTime
        nextDumpTime = dumpFromNow
        deltaT = deltaTmax
        do i = 1, nTime
-          sedTime(i) = dumpFromNow + varyUntilTime * dble(i-1)/dble(nTime-1)
+          sedTime(i) = dumpFromNow + (timeend-timestart) * dble(i-1)/dble(nTime-1)
        enddo
 
     endif
@@ -168,7 +179,7 @@ contains
 
     lastTime = .false.
 
-    do while (currentTime < varyUntilTime)
+    do while (currentTime < timeend)
        iter = iter + 1
        if (myrankGlobal == 0) then
           !          write(vtkFilename, '(a,i4.4,a)') "iter",iter,".vtk"
@@ -185,40 +196,49 @@ contains
 
 
        if (varyingSource) then 
-
-          sourceLuminosity = fourPi * stefanBoltz * (source(1)%radius * 1.d10)**2 * teff**4
+          thisTeff = source(1)%teff
           if ((currentTime >= startVaryTime).and.(currentTime<=varyUntilTime)) then
-             fac = sin(twoPi*currentTime/luminosityPeriod)
-             mdot = 5.d-8 + 2.5d-8 *  fac
-             mdot = mdot * msol * secstoyears
-             accretionLuminosity = bigG * mcore * mDot * ((1.d0/(rCore*1.d10)) - (1.d0/(rInner*1.d10)))
-          else
-             mdot = 5.d-8
-             mdot = mdot * msol * secstoyears
-             accretionLuminosity = bigG * mcore * mDot * ((1.d0/(rCore*1.d10)) - (1.d0/(rInner*1.d10)))
+             thisTeff = teff * (10.d0**0.25d0)
           endif
+             
 
-          if (seedRun) then
-             mdot = 5.d-8
-             mdot = mdot * msol * secstoyears
-             accretionLuminosity = bigG * mcore * mDot * ((1.d0/(rCore*1.d10)) - (1.d0/(rInner*1.d10)))
-          endif
+          sourceLuminosity = fourPi * stefanBoltz * (source(1)%radius * 1.d10)**2 * thisteff**4
 
-          accretionArea = 5.d-2 * fourPi * (source(1)%radius * 1.d10)**2
-          tAcc  = (accretionLuminosity / (stefanBoltz * accretionArea))**0.25d0
-          frac = 5.d-2
+
+!          if ((currentTime >= startVaryTime).and.(currentTime<=varyUntilTime)) then
+!             fac = sin(twoPi*currentTime/luminosityPeriod)
+!             mdot = 5.d-18 !+ 2.5d-8 *  fac
+!             mdot = mdot * msol * secstoyears
+!             accretionLuminosity = bigG * mcore * mDot * ((1.d0/(rCore*1.d10)) - (1.d0/(rInner*1.d10)))
+!          else
+!             mdot = 5.d-18
+!             mdot = mdot * msol * secstoyears
+!             accretionLuminosity = bigG * mcore * mDot * ((1.d0/(rCore*1.d10)) - (1.d0/(rInner*1.d10)))
+!          endif
+!
+!          if (seedRun) then
+!             mdot = 5.d-18
+!             mdot = mdot * msol * secstoyears
+!             accretionLuminosity = bigG * mcore * mDot * ((1.d0/(rCore*1.d10)) - (1.d0/(rInner*1.d10)))
+!          endif
+!
+!          accretionArea = 5.d-2 * fourPi * (source(1)%radius * 1.d10)**2
+!          tAcc  = (accretionLuminosity / (stefanBoltz * accretionArea))**0.25d0
+!          frac = 5.d-2
+
           if (writeoutput) write(*,*) "radii ",rCore*1.d10/rsol, rinner*1.d10/rsol
           if (writeoutput) write(*,*) "mdot ",mdot/msol / secstoyears
           if (writeoutput) write(*,*) "mcore ",mcore/msol
-          if (writeoutput) write(*,*) "accretion luminosity ", accretionLuminosity/lSol
-          if (writeoutput) write(*,*) "accretion temp ", tacc
-          call fillSpectrumBB(source(1)%spectrum, dble(teff), 1200.d0, 2.d7, 200)
-          call addToSpectrumBB(source(1)%spectrum, tAcc, frac)
+          if (writeoutput) write(*,*) "teff ",thisteff
+!          if (writeoutput) write(*,*) "accretion luminosity ", accretionLuminosity/lSol
+!          if (writeoutput) write(*,*) "accretion temp ", tacc
+          call fillSpectrumBB(source(1)%spectrum, dble(thisteff), 1200.d0, 2.d7, 200)
+!          call addToSpectrumBB(source(1)%spectrum, tAcc, frac)
           call normalizedSpectrum(source(1)%spectrum)
-          source(1)%luminosity = sourceLuminosity + accretionLuminosity
-          photonsPerStep = 1000000 ! dble(nMonte) / (gridCrossingTime / deltaTmin)
+          source(1)%luminosity = sourceLuminosity !+ accretionLuminosity
+          photonsPerStep = nPhotons ! dble(nMonte) / (gridCrossingTime / deltaTmin)
        else
-          photonsPerStep = 10000000 ! max(10000000, nint(5000000.d0 * min(1.d0, deltaT/gridCrossingTime)))
+          photonsPerStep = nPhotons ! max(10000000, nint(5000000.d0 * min(1.d0, deltaT/gridCrossingTime)))
           Deltatmax = 1.d12
           deltaTmin = 1.d3
        endif
@@ -226,7 +246,7 @@ contains
        dumpNow = .true.
 
        if (varyingSource.and.seedRun) then
-          photonsPerStep = 10000000
+          photonsPerStep = nPhotons
           deltaT = 1.e10
        endif
 
@@ -241,7 +261,7 @@ contains
        call  timeDependentRTStep(grid, oldStack, nStack, oldStackFilename, currentStackFilename, &
             nsource, source, deltaT, newDeltaT, deltaTmax, deltaTmin, &
             nMonte, xArray, nLambda, varyingSource, currentTime, &
-            nSedWavelength, nTime, sedWavelength, sedTime, sedFluxStep, sedFluxScatStep, dumpFromNow, &
+            sednumlam, nTime, sedWavelength, sedTime, sedFluxStep, sedFluxScatStep, dumpFromNow, &
             observerPosition, observerDirection, seedRun)
        if (doTuning) call tune(6, "Time dependent RT step") 
 
@@ -256,9 +276,9 @@ contains
 
 
           do iTime = 1, nTime-1
-             sedFlux(1:nSedWavelength, itime) = (sedFlux(1:nSedWavelength, itime) / deltaT) &
+             sedFlux(1:sedNumLam, itime) = (sedFlux(1:sedNumLam, itime) / deltaT) &
                   * (sedTime(itime+1)-sedTime(itime))
-             sedFluxScat(1:nSedWavelength, itime) = (sedFluxScat(1:nSedWavelength, itime) / deltaT) &
+             sedFluxScat(1:sedNumLam, itime) = (sedFluxScat(1:sedNumLam, itime) / deltaT) &
                   * (sedTime(itime+1)-sedTime(itime))
           enddo
 
@@ -288,12 +308,12 @@ contains
        if (varyingSource.and.(mod(idump,100) == 0)) then
 
           if (myrankGlobal == 0) then
-             do i = 1, nSedWavelength-1
+             do i = 1, sedNumLam-1
                 outputFlux(i,1:nTime) = sedFlux(i,1:nTime) / &
                      (sedWavelength(i+1)-sedWavelength(i))
              enddo
 
-             do i = 1, nSedWavelength-1
+             do i = 1, sedNumLam-1
                 outputFluxScat(i,1:nTime) = sedFluxScat(i,1:nTime) / &
                      (sedWavelength(i+1)-sedWavelength(i))
              enddo
@@ -302,7 +322,7 @@ contains
                 write(vtkFilename, '(a,i5.5,a)') "sed",itime,".dat"
                 open(32, file=vtkFilename, status="unknown", form="formatted")
                 write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT, " seconds"
-                do i = 1, nSedWavelength-1
+                do i = 1, sedNumLam-1
                    write(32,'(1p,2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
                         outputFlux(i, itime)/(sedTime(itime+1)-sedTime(itime))/observerDistance**2
                 enddo
@@ -312,7 +332,7 @@ contains
                 open(32, file=vtkFilename, status="unknown", form="formatted")
                 write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT, " seconds"
 
-                do i = 1, nSedWavelength-1
+                do i = 1, sedNumLam-1
                    write(32,'(1p,2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
                         outputFluxScat(i, itime)/(sedTime(itime+1)-sedTime(itime))/observerDistance**2
                 enddo
@@ -326,12 +346,12 @@ contains
     if (varyingSource) then
 
        if (myrankGlobal == 0) then
-          do i = 1, nSedWavelength-1
+          do i = 1, sedNumLam-1
              outputFlux(i,1:nTime) = sedFlux(i,1:nTime) / &
                   (sedWavelength(i+1)-sedWavelength(i))
           enddo
 
-          do i = 1, nSedWavelength-1
+          do i = 1, sedNumLam-1
              outputFluxScat(i,1:nTime) = sedFluxScat(i,1:nTime) / &
                   (sedWavelength(i+1)-sedWavelength(i))
           enddo
@@ -340,7 +360,7 @@ contains
              write(vtkFilename, '(a,i5.5,a)') "sed",itime,".dat"
              open(32, file=vtkFilename, status="unknown", form="formatted")
              write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT, " seconds"
-             do i = 1, nSedWavelength-1
+             do i = 1, sedNumLam-1
                 write(32,'(1p,2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
                      outputFlux(i, itime)/(sedTime(itime+1)-sedTime(itime))/observerDistance**2
              enddo
@@ -350,7 +370,7 @@ contains
              open(32, file=vtkFilename, status="unknown", form="formatted")
              write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT, " seconds"
 
-             do i = 1, nSedWavelength-1
+             do i = 1, sedNumLam-1
                 write(32,'(1p,2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
                      outputFluxScat(i, itime)/(sedTime(itime+1)-sedTime(itime))/observerDistance**2
              enddo
@@ -516,6 +536,7 @@ contains
 
     if (doTuning) call tune(6, "Photon loop") 
     do iMonte = 1, nPhotons
+!       write(*,*) iMonte,nphotons
        if (oldStacknStack > 0)  then
           call getPhotonFromStack(useFileForStack, oldStack, oldStackUnit, &
                oldStacknStack, rVec, uHat, eps, freq, &

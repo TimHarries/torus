@@ -480,7 +480,8 @@ contains
     call getLogical("photoioneq", photoionEquilibrium, cLine, fLine, nLines, &
          "Perform a photoionization calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
-
+    call getLogical("timedep", timeDependentRT, cLine, fLine, nLines, &
+         "Time-dependent RT: ", "(a,1l,1x,a)", .false., ok, .false.)
 
     call getLogical("xray", xraycalc, cLine, fLine, nLines, &
          "Include x-ray treatment: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -655,6 +656,7 @@ contains
     if (radiativeEquilibrium) call readRadiativeEquilibriumParameters(cLine, fLine, nLines)
     if (photoionEquilibrium) call readPhotoionEquilibriumParameters(cLine, fLine, nLines)
     if (hydrodynamics) call readHydrodynamicsParameters(cLine, fLine, nLines)
+    if (timeDependentRT) call readTimeDependentRTParameters(cLine, fLine, nLines)
 
 ! now do we dump the output grid
 
@@ -2812,6 +2814,49 @@ contains
 
 
   end subroutine readGridInitParameters
+
+  subroutine readTimeDependentRTParameters(cLine, fLine, nLines)
+    use sed_mod, only:  setSedParameters,  SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
+    character(len=lencLine) :: cLine(:)
+    logical :: fLine(:)
+    integer :: nLines
+    logical :: ok
+
+    call writeBanner("Time dependendent RT",".",TRIVIAL)
+
+    call getDouble("timestart", timeStart, 1.d0, cLine, fLine, nLines, &
+         "Start time of calculation (s):  ","(a,e12.3,1x,a)", 0.d0, ok, .false.)
+
+    call getDouble("timeend", timeEnd, 1.d0, cLine, fLine, nLines, &
+         "End time of calculation (s):  ","(a,e12.3,1x,a)", 1500.d0, ok, .false.)
+
+    call getDouble("varystart", varystart, 1.d0, cLine, fLine, nLines, &
+         "Start time of source variability (s):  ","(a,e12.3,1x,a)", 1500.d0, ok, .true.)
+
+    call getDouble("varyend", varyend, 1.d0, cLine, fLine, nLines, &
+         "End time of source variability (s):  ","(a,e12.3,1x,a)", 1500.d0, ok, .true.)
+
+    call getBigInteger("nphotons", nPhotons, cLine, fLine, nLines,"Number of photons per timestep: ","(a,i12,a)",1,ok,.false.)
+
+    call getInteger("ntime", nTime, cLine, fLine, nLines,"Number of timesteps: ","(a,i12,a)",1,ok,.false.)
+
+    call getString("inputfile", gridInputFilename, cLine, fLine, nLines, &
+         "Grid input filename: ","(a,a,1x,a)","none", ok, .true.)
+
+    call getReal("sedlammin", SEDlamMin, 1.0e4, cLine, fLine, nLines, &
+         "Minimum wavelength output to SED (microns)","(a,1PE10.3,1x,a)", 0.1, ok, .false.)
+
+    call getReal("sedlammax", SEDlamMax, 1.0e4, cLine, fLine, nLines, &
+         "Maximum wavelength output to SED (microns)","(a,1PE10.3,1x,a)", 2000.0, ok, .false.)
+
+
+    call getInteger("sednumlam", SEDnumLam, cLine, fLine, nLines, &
+         "Number of SED points: ", "(a,i3,1x,a)", 50, ok, .false.)
+
+
+  end subroutine readTimeDependentRTParameters
+
+
 
   subroutine readDustPhysicsParameters(cLine, fLine, nLines)
     character(len=lencLine) :: cLine(:)
