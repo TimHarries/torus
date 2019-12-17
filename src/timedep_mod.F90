@@ -61,7 +61,6 @@ contains
     character(len=80) :: oldStackFilename, currentStackFilename
     real(double) :: luminosityPeriod
     logical :: varyingSource
-    real(double) :: mdot
     real(double) :: photonsPerStep
     real(double) :: gridCrossingTime
     integer :: i
