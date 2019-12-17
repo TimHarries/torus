@@ -70,7 +70,7 @@ CONTAINS
 
        vr = -v * SQRT(1.d0 + costheta/mu_0)
        vt = v * (mu_0 - costheta) * SQRT(ABS((mu_0+costheta)/(mu_0*costheta)))
-       vp = v * (sintheta0/sintheta) * SQRT(1.d0-costheta/mu_0)
+       vp = v * (sintheta0/sintheta) * SQRT(MAX(0.d0,1.d0-costheta/mu_0))
 
        vx = vr * cosphi * sintheta + vt * cosphi * costheta - vp * sinphi
        vy = vr * sinphi * sintheta + vt * sinphi * costheta + vp * cosphi
