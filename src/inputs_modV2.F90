@@ -2828,6 +2828,14 @@ contains
     call getDouble("varyend", varyend, 1.d0, cLine, fLine, nLines, &
          "End time of source variability (s):  ","(a,e12.3,1x,a)", 1500.d0, ok, .true.)
 
+
+    call getDouble("lumfactor", lumFactor, 1.d0, cLine, fLine, nLines, &
+         "Increase in luminosity as a factor of standard luminosity:  ","(a,e12.3,1x,a)", 1500.d0, ok, .true.)
+
+    call getDouble("lumdecaytime", lumDecayTime, 1.d0, cLine, fLine, nLines, &
+         "Luminosity decay timescale (e-folding time in seconds):  ","(a,e12.3,1x,a)", 1500.d0, ok, .true.)
+
+
     call getBigInteger("nphotons", nPhotons, cLine, fLine, nLines,"Number of photons per timestep: ",&
          "(a,i12,a)",1_bigint,ok,.false.)
 

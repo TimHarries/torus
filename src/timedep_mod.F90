@@ -40,7 +40,7 @@ contains
     use inputs_mod, only : timeStart, timeEnd, varyStart, varyEnd
     use inputs_mod, only : nphotons, ntime, gridInputFilename
     use sed_mod, only:  SEDlamMin, SEDlamMax, SEDnumLam
-
+    use inputs_mod, only : lumFactor, lumDecayTime
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
     integer :: nSource
@@ -74,7 +74,7 @@ contains
     real(double), allocatable :: sedFluxScatStep(:,:)
     real(double) :: w1, w2, thisTeff
     real(double) :: sourceLuminosity
-    real(double) :: inc
+    real(double) :: inc, fac
     type(VECTOR) :: observerDirection, observerposition
     logical :: lastTime, ok
     logical :: seedRun
@@ -195,13 +195,19 @@ contains
 
 
        if (varyingSource) then 
+
           thisTeff = source(1)%teff
+          thisRadius = source(1)%radius
+
           if ((currentTime >= startVaryTime).and.(currentTime<=varyUntilTime)) then
-             thisTeff = teff * (10.d0**0.25d0)
+
+             fac = lumFactor*exp((startVaryTime-currentTime)/lumDecayTime)
+             thisTeff = teff 
+             thisRadius = radius * sqrt(fac)
           endif
              
 
-          sourceLuminosity = fourPi * stefanBoltz * (source(1)%radius * 1.d10)**2 * thisteff**4
+          sourceLuminosity = fourPi * stefanBoltz * (thisRadius * 1.d10)**2 * thisteff**4
 
 
 !          if ((currentTime >= startVaryTime).and.(currentTime<=varyUntilTime)) then

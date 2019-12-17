@@ -389,6 +389,8 @@
   real(double) :: varystart, varyend
   real(double) :: timeStart, timeEnd
   integer :: nTime
+  real(double) :: lumFactor
+  real(double) :: lumDecayTime
   
 
 
