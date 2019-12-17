@@ -1102,7 +1102,7 @@ contains
     endif
     
 
-    rhoOut = max(rhoOut, cavDens)
+!    rhoOut = max(rhoOut, cavDens)
 
 
 

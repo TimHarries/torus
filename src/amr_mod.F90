@@ -5480,6 +5480,11 @@ CONTAINS
                 split = .true.
              endif
           endif
+          
+          r = modulus(cellcentre)
+          if (( abs(r-erinner/1.d10)<cellsize ).and.(cellsize/(erinner/1.d10) > 0.01)) then
+             split = .true.
+          endif
 
 
           if (discWind) then
@@ -12820,13 +12825,13 @@ end function readparameterfrom2dmap
     use inputs_mod, only : rOuter, betaDisc !, rInner, erInner, erOuter, alphaDisc
     use inputs_mod, only : curvedInnerEdge, nDustType, grainFrac, gridDistanceScale, rInner
     use inputs_mod, only : height, hydrodynamics, dustPhysics, mCore, molecularPhysics, photoionization
-    use inputs_mod, only : rSublimation, erInner, erOuter, mDotEnv, rhofloor
+    use inputs_mod, only : rSublimation, erInner, erOuter, mDotEnv, rhofloor, cavAngle, cavDens
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     complex(double) :: a(3), za(3)
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    real(double) :: r, h, rd, ethermal, rhoFid, thisRSub,fac, rho, sinTheta,v, rhoEnv, mu, mu_0, z
+    real(double) :: r, h, rd, ethermal, rhoFid, thisRSub,fac, rho, sinTheta,v, rhoEnv, mu, mu_0, z, dr
     TYPE(vector) :: rVec
 
     type(VECTOR),save :: velocitysum
@@ -12983,6 +12988,18 @@ end function readparameterfrom2dmap
           thisOctal%velocity(subcell) = ulrichVelocity(rVec)
        endif
     endif
+
+    rVec = subcellCentre(thisOctal, subcell)
+    dr = tan(cavAngle/2.) * abs(rVec%z)
+    r = sqrt(rVec%x**2 + rVec%y**2) 
+    if ((r < dr).and.(modulus(rVec)<(erouter/1.d10))) then
+       thisOctal%rho(subcell) = cavdens
+    endif
+
+    if (modulus(rVec) < (erinner/1.d10)) then
+       thisOctal%rho(subcell) = max(thisOctal%rho(subcell), cavdens)
+    endif
+
 
     thisOctal%rho(subcell) = max(rhofloor, thisOctal%rho(subcell))
 

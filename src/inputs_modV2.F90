@@ -2039,9 +2039,10 @@ contains
 !       mCore = mCore * mSol
 !       mDisc = mDisc * mSol
 
-       rho0  = real(mDisc *(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * (height*1.e10)/real(100.d0*autocm)**betaDisc  &
-            * (rInner*1.e10)**alphaDisc * &
-            (((rOuter*1.e10)**(betaDisc-alphaDisc+2.)-(rInner*1.e10)**(betaDisc-alphaDisc+2.))) ))
+       rho0  = real(dble(mDisc)*(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * (dble(height)*1.d10)/dble(100.d0*autocm)**betaDisc  &
+            * (dble(rInner)*1.d10)**alphaDisc * &
+            (((dble(rOuter)*1.d10)**(betaDisc-alphaDisc+2.)-(dble(rInner)*1.d10)**(betaDisc-alphaDisc+2.))) ))
+       if (Writeoutput) write(*,*) "rho0: ",rho0
 
     case("HD169142")
 
