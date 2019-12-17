@@ -148,7 +148,7 @@ contains
     !    call allocateMemoryForTimeDep(grid%octreeRoot)
     if (varyingSource) then
        call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
-       call readAMRgrid("output.safe", .false., grid)
+       call readAMRgrid(gridinputfilename, .false., grid)
        call allocateMemoryForTimeDep(grid%octreeRoot)
        call calculateUdensFromTemperature(grid%octreeRoot)
        i = findIlambda(1.e5, xArray, nLambda, ok)
