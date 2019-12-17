@@ -1891,7 +1891,7 @@ contains
     integer :: nUndersampled
     integer, save  :: nwarning = 0
     integer, parameter :: nmaxwarning = 20
-    real, parameter :: underCorrect = 1.
+    real, parameter :: underCorrect = 0.8
 
     if(this_is_root) then !initialize some values
        dT_sum = 0.0

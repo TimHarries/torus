@@ -12996,8 +12996,13 @@ end function readparameterfrom2dmap
        thisOctal%rho(subcell) = cavdens
     endif
 
-    if (modulus(rVec) < (erinner/1.d10)) then
-       thisOctal%rho(subcell) = max(thisOctal%rho(subcell), cavdens)
+    if (modulus(rVec) < erInner/1.d10) then
+       thisOctal%rho(subcell) = max(cavDens,thisOctal%rho(subcell))
+    endif
+
+
+    if (modulus(rVec) < rInner) then
+       thisOctal%rho(subcell) = rhoFloor
     endif
 
 
