@@ -63,7 +63,7 @@ contains
     logical :: varyingSource
     real(double) :: mdot
     real(double) :: photonsPerStep
-    real(double) :: gridCrossingTime,fac
+    real(double) :: gridCrossingTime
     integer :: i
     real(double), allocatable :: sedTime(:)
     real(double), allocatable :: sedWavelength(:)
@@ -74,8 +74,8 @@ contains
     real(double), allocatable :: sedFluxStep(:,:)
     real(double), allocatable :: sedFluxScatStep(:,:)
     real(double) :: w1, w2, thisTeff
-    real(double) :: sourceLuminosity, accretionLuminosity, tAcc, frac, accretionArea
-    real(double) :: inc, endTime
+    real(double) :: sourceLuminosity
+    real(double) :: inc
     type(VECTOR) :: observerDirection, observerposition
     logical :: lastTime, ok
     logical :: seedRun
@@ -227,7 +227,6 @@ contains
 !          frac = 5.d-2
 
           if (writeoutput) write(*,*) "radii ",rCore*1.d10/rsol, rinner*1.d10/rsol
-          if (writeoutput) write(*,*) "mdot ",mdot/msol / secstoyears
           if (writeoutput) write(*,*) "mcore ",mcore/msol
           if (writeoutput) write(*,*) "teff ",thisteff
 !          if (writeoutput) write(*,*) "accretion luminosity ", accretionLuminosity/lSol
