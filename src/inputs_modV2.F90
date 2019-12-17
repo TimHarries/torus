@@ -1945,11 +1945,11 @@ contains
             "Envelope inner radius (AU): ","(a,f10.2,a)", 100.d0, ok, .false.)
 
        call getDouble("erouter", erOuter, autocm, cLine, fLine, nLines, &
-            "Envelope inner radius (AU): ","(a,f10.2,a)", 1.d5, ok, .false.)
+            "Envelope outer radius (AU): ","(a,f10.2,a)", 1.d5, ok, .false.)
 
 
        call getDouble("mdotenv", mDotEnv, msol * secstoyears, cLine, fLine, nLines, &
-            "Envelope accretion rate (AU): ","(a,f5.2,a)", 1.d-30, ok, .false.)
+            "Envelope accretion rate (msol/yr): ","(a,f5.2,a)", 1.d-30, ok, .false.)
 
 
        call getDouble("cavangle", cavAngle, degToRad, cLine, fLine, nLines, &
@@ -1963,14 +1963,6 @@ contains
                "Include disc wind: : ","(a,1l,1x,a)", .false., ok, .false.)
 
 
-       call getDouble("erinner", erinner, autocm, cLine, fLine, nLines, &
-            "Inner radius of envelope (AU): ","(a,f5.1,a)", 1.d30, ok, .false.)
-
-       call getDouble("erouter", erouter, pctocm, cLine, fLine, nLines, &
-            "Outer radius of envelope (pc): ","(a,f5.1,a)", 180.d0, ok, .false.)
-
-       call getDouble("mdotenv", mdotenv, msol/(365.25d0*24.d0*3600.d0), cLine, fLine, nLines, &
-            "Accretion of envelope (solar/year): ","(a,f5.1,a)", 180.d0, ok, .false.)
 
 
        if (discwind) then
