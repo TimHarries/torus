@@ -813,7 +813,7 @@ contains
 
   recursive subroutine fillDustUniform(grid, thisOctal)
 
-    use inputs_mod, only : nDustType, grainFrac, rSublimation, variabledustsublimation
+    use inputs_mod, only : nDustType, grainFrac, rSublimation
     use inputs_mod, only : ttauriDisc
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
