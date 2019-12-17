@@ -2816,7 +2816,7 @@ contains
   end subroutine readGridInitParameters
 
   subroutine readTimeDependentRTParameters(cLine, fLine, nLines)
-    use sed_mod, only:  setSedParameters,  SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
+    use sed_mod, only:  setSedParameters,  SEDlamMin, SEDlamMax, SEDnumLam
     character(len=lencLine) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
