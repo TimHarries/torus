@@ -72,7 +72,7 @@ contains
     real(double), allocatable :: sedFluxScat(:,:)
     real(double), allocatable :: sedFluxStep(:,:)
     real(double), allocatable :: sedFluxScatStep(:,:)
-    real(double) :: w1, w2, thisTeff
+    real(double) :: w1, w2, thisTeff, thisRadius
     real(double) :: sourceLuminosity
     real(double) :: inc, fac
     type(VECTOR) :: observerDirection, observerposition
