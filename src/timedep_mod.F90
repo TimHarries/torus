@@ -203,7 +203,7 @@ contains
 
              fac = lumFactor*exp((startVaryTime-currentTime)/lumDecayTime)
              thisTeff = teff 
-             thisRadius = radius * sqrt(fac)
+             thisRadius = source(1)%radius * sqrt(fac)
           endif
              
 
