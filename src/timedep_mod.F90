@@ -40,7 +40,7 @@ contains
     use inputs_mod, only : timeStart, timeEnd, varyStart, varyEnd
     use inputs_mod, only : nphotons, ntime, gridInputFilename
     use sed_mod, only:  SEDlamMin, SEDlamMax, SEDnumLam
-    use inputs_mod, only : lumFactor, lumDecayTime
+    use inputs_mod, only : lumFactor, lumDecayTime, gridDistance, thisinclination
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
     integer :: nSource
@@ -91,8 +91,8 @@ contains
 
 
     seedRun = .false.
-    inc = 60.d0 * degToRad
-    observerDistance = 140.d0 * pcToCm
+    inc = thisinclination
+    observerDistance = gridDistance
     observerDirection = VECTOR(sin(inc), 0.d0, cos(inc))
     observerPosition = observerDistance * observerDirection
 
@@ -201,8 +201,9 @@ contains
 
           if ((currentTime >= startVaryTime).and.(currentTime<=varyUntilTime)) then
 
-             fac = lumFactor*exp((startVaryTime-currentTime)/lumDecayTime)
+             fac = 1.d0 + (lumFactor-1.d0)*exp((startVaryTime-currentTime)/lumDecayTime)
              thisTeff = teff 
+             if (writeoutput) write(*,*) "Luminosity of source increased by factor ",fac
              thisRadius = source(1)%radius * sqrt(fac)
           endif
              
@@ -325,7 +326,7 @@ contains
              do itime = 1, nTime-1
                 write(vtkFilename, '(a,i5.5,a)') "sed",itime,".dat"
                 open(32, file=vtkFilename, status="unknown", form="formatted")
-                write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT, " seconds"
+                write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT*secsToYears, " years"
                 do i = 1, sedNumLam-1
                    write(32,'(1p,2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
                         outputFlux(i, itime)/(sedTime(itime+1)-sedTime(itime))/observerDistance**2
@@ -334,7 +335,7 @@ contains
 
                 write(vtkFilename, '(a,i5.5,a)') "scat",itime,".dat"
                 open(32, file=vtkFilename, status="unknown", form="formatted")
-                write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT, " seconds"
+                write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT*secsToYears, " years"
 
                 do i = 1, sedNumLam-1
                    write(32,'(1p,2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
@@ -363,7 +364,7 @@ contains
           do itime = 1, nTime-1
              write(vtkFilename, '(a,i5.5,a)') "sed",itime,".dat"
              open(32, file=vtkFilename, status="unknown", form="formatted")
-             write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT, " seconds"
+             write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT*secsToYears, " years"
              do i = 1, sedNumLam-1
                 write(32,'(1p,2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
                      outputFlux(i, itime)/(sedTime(itime+1)-sedTime(itime))/observerDistance**2
@@ -372,7 +373,7 @@ contains
 
              write(vtkFilename, '(a,i5.5,a)') "scat",itime,".dat"
              open(32, file=vtkFilename, status="unknown", form="formatted")
-             write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT, " seconds"
+             write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT*secsToYears, " years"
 
              do i = 1, sedNumLam-1
                 write(32,'(1p,2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &

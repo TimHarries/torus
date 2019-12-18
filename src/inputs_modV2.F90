@@ -2817,24 +2817,24 @@ contains
 
     call writeBanner("Time dependendent RT",".",TRIVIAL)
 
-    call getDouble("timestart", timeStart, 1.d0, cLine, fLine, nLines, &
-         "Start time of calculation (s):  ","(a,e12.3,1x,a)", 0.d0, ok, .false.)
+    call getDouble("timestart", timeStart, yearsToSecs, cLine, fLine, nLines, &
+         "Start time of calculation (years):  ","(a,e12.3,1x,a)", 0.d0, ok, .false.)
 
-    call getDouble("timeend", timeEnd, 1.d0, cLine, fLine, nLines, &
-         "End time of calculation (s):  ","(a,e12.3,1x,a)", 1500.d0, ok, .false.)
+    call getDouble("timeend", timeEnd, yearsToSecs, cLine, fLine, nLines, &
+         "End time of calculation (years):  ","(a,e12.3,1x,a)", 1500.d0, ok, .false.)
 
-    call getDouble("varystart", varystart, 1.d0, cLine, fLine, nLines, &
-         "Start time of source variability (s):  ","(a,e12.3,1x,a)", 1500.d0, ok, .true.)
+    call getDouble("varystart", varystart, yearsToSecs, cLine, fLine, nLines, &
+         "Start time of source variability (years):  ","(a,e12.3,1x,a)", 1500.d0, ok, .true.)
 
-    call getDouble("varyend", varyend, 1.d0, cLine, fLine, nLines, &
-         "End time of source variability (s):  ","(a,e12.3,1x,a)", 1500.d0, ok, .true.)
+    call getDouble("varyend", varyend, yearsToSecs, cLine, fLine, nLines, &
+         "End time of source variability (years):  ","(a,e12.3,1x,a)", 1.d30, ok, .false.)
 
 
     call getDouble("lumfactor", lumFactor, 1.d0, cLine, fLine, nLines, &
          "Increase in luminosity as a factor of standard luminosity:  ","(a,e12.3,1x,a)", 1500.d0, ok, .true.)
 
-    call getDouble("lumdecaytime", lumDecayTime, 1.d0, cLine, fLine, nLines, &
-         "Luminosity decay timescale (e-folding time in seconds):  ","(a,e12.3,1x,a)", 1500.d0, ok, .true.)
+    call getDouble("lumdecaytime", lumDecayTime, yearsToSecs, cLine, fLine, nLines, &
+         "Luminosity decay timescale (e-folding time in years):  ","(a,e12.3,1x,a)", 1500.d0, ok, .true.)
 
 
     call getBigInteger("nphotons", nPhotons, cLine, fLine, nLines,"Number of photons per timestep: ",&
@@ -2842,8 +2842,14 @@ contains
 
     call getInteger("ntime", nTime, cLine, fLine, nLines,"Number of timesteps: ","(a,i12,a)",1,ok,.false.)
 
+    call getReal("inclination", thisinclination, real(degtorad), cLine, fLine, nLines, &
+         "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
+
     call getString("inputfile", gridInputFilename, cLine, fLine, nLines, &
          "Grid input filename: ","(a,a,1x,a)","none", ok, .true.)
+
+    call getReal("distance", gridDistance, real(pctocm), cLine, fLine, nLines, &
+         "Grid distance (pc): ","(a,f6.1,1x,a)", 100., ok, .true.)
 
     call getReal("sedlammin", SEDlamMin, 1.0e4, cLine, fLine, nLines, &
          "Minimum wavelength output to SED (microns)","(a,1PE10.3,1x,a)", 0.1, ok, .false.)
@@ -4014,7 +4020,6 @@ contains
          "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
     call getReal("distance", gridDistance, real(pcToCm), cLine, fLine, nLines, &
          "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)
-
     call getDouble("limbaB", sourcelimbaB, 1.d0, cLine, fLine, nLines, &
          "Limb darkening a coefficient (B): ","(a,e9.3,a)",0.d0, ok, .false.)
     call getDouble("limbbB", sourcelimbbB, 1.d0, cLine, fLine, nLines, &
