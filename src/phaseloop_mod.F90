@@ -3509,9 +3509,9 @@ end subroutine rdintpro
        write(20,*) '# Columns are: Lambda (Microns) and Flux (janskies)'
     else
        if (sedlambdainmicrons) then
-          write(20,*) '# Columns are: Lambda (Microns) and Flux (ergs/s/cm^2/Hz)'
+          write(20,*) '# Columns are: Lambda (Microns) and Flux (ergs/s/cm^2/A)'
        else
-          write(20,*) '# Columns are: Lambda (Angstroms) and Flux (ergs/s/cm^2/Hz)'
+          write(20,*) '# Columns are: Lambda (Angstroms) and Flux (ergs/s/cm^2/A)'
        endif
     end if
 

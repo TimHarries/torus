@@ -3701,7 +3701,7 @@ CONTAINS
     real(double) :: T, vturb
 #endif
     real(double) :: chi, zeta0dash, psi, eta, zeta
-    real(double) :: dx, cornerDist(8), d, muval(8), r1, r2, v, enhancedheight
+    real(double) :: dx, cornerDist(8), d, muval(8), r1, r2, v, enhancedheight, cfac
 
     splitInAzimuth = .false.
     split = .false.
@@ -5474,9 +5474,11 @@ CONTAINS
 
           cellsize = thisOctal%subcellSize
           cellCentre = subcellCentre(thisOctal, subcell)
+          cfac = (eRouter/1.d10)**(-1./2.) / tan(cavAngle)**(3./2.)
           if (cavdens > 1.d-30) then
-             dr = tan(cavAngle/2.) * abs(cellCentre%z)
-             if ( ((abs(cellCentre%x) - cellsize/2.d0) < dr).and.(cellSize > dr/8.d0) .and.(abs(cellCentre%z)>erInner/1.d10)) then
+             dr = (abs(cellCentre%z)/cfac)**(2./3.)
+             if ( (abs(cellCentre%x-dr) < cellsize).and.(cellSize > dr/50.d0) &
+                  .and. (modulus(cellCentre)>erInner/1.d10).and.(modulus(cellCentre)<eRouter/1.d10) ) then
                 split = .true.
              endif
           endif
@@ -12833,7 +12835,7 @@ end function readparameterfrom2dmap
     TYPE(gridtype), INTENT(IN) :: grid
     real(double) :: r, h, rd, ethermal, rhoFid, thisRSub,fac, rho, sinTheta,v, rhoEnv, mu, mu_0, z, dr
     TYPE(vector) :: rVec
-
+    real(double) :: cfac
     type(VECTOR),save :: velocitysum
     logical,save :: firsttime = .true.
 
@@ -12990,8 +12992,10 @@ end function readparameterfrom2dmap
     endif
 
     rVec = subcellCentre(thisOctal, subcell)
-    dr = tan(cavAngle/2.) * abs(rVec%z)
     r = sqrt(rVec%x**2 + rVec%y**2) 
+    cfac = (eRouter/1.d10)**(-1./2.) / tan(cavAngle)**(3./2.)
+    dr = (abs(rVec%z)/cfac)**(2./3.)
+
     if ((r < dr).and.(modulus(rVec)<(erouter/1.d10))) then
        thisOctal%rho(subcell) = cavdens
     endif
