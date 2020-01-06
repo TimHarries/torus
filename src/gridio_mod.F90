@@ -4625,7 +4625,7 @@ contains
          type(GRIDTYPE) :: grid
          logical :: fileFormatted
          character(len=20) :: tag
-         character(len=80) :: message
+         character(len=120) :: message
 
          do while(.true.)
             if (fileFormatted) then 
