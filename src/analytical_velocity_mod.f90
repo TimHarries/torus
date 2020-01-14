@@ -134,9 +134,9 @@ CONTAINS
 
 
 TYPE (VECTOR) FUNCTION TTauriStellarWindVelocity(point)
-  USE inputs_mod, ONLY : ttauriRouter, dipoleOffset, &
+  USE inputs_mod, ONLY : dipoleOffset, &
        ttauriRstar, SW_openAngle, ttauriMstar, SW_vMin, &
-       SW_vMax, SW_rMin, SW_beta, SW_rMax, SW_protation, SW_Veq, &
+       SW_vMax, SW_rMin, SW_beta, SW_protation, SW_Veq, &
        SW_eqGap, SW_alfven
 
   TYPE(VECTOR), INTENT(IN) :: point

@@ -3602,7 +3602,7 @@ CONTAINS
     use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize, ttauriMagnetosphere, rCavity
     use inputs_mod, only : cavdens, limitscalar, addDisc, flatdisc, ttauristellarwind, SW_rMax, SW_rmin
     use inputs_mod, only : discWind, planetDisc, sourceMass, sourceRadius, sourceTeff, rGapInner1, accretionFeedback
-    use inputs_mod, only : SW_openAngle, SW_beta
+    use inputs_mod, only : SW_openAngle
     use inputs_mod, only : nDiscModule, rOuterMod, rInnerMod, betaMod, heightMod
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
@@ -16533,7 +16533,7 @@ END SUBROUTINE assignDensitiesStellarWind
 
 
   recursive subroutine assignDensitiesMahdavi(grid, thisOctal, astar, mdot, minrCubedRhoSquared)
-    use inputs_mod, only :  vturb, isothermTemp, ttauriRstar
+    use inputs_mod, only :  vturb, isothermTemp
     use inputs_mod, only : TTauriDiskHeight
     use magnetic_mod, only : inflowMahdavi, velocityMahdavi, densityHartmann
     real(double) :: astar, mdot, thisR, thisRho, thisV, minRcubedRhoSquared

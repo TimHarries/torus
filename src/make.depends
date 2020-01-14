@@ -94,6 +94,7 @@ triangle_mesh_mod.o: kind_mod.o messages_mod.o obj_io_mod.o vector_mod.o
 turbulence_mod.o: constants_mod.o kind_mod.o messages_mod.o random_mod.o \
 	unix_mod.o utils_mod.o vector_mod.o
 units_mod.o: constants_mod.o
+user_mod.o: constants_mod.o octal_mod.o vector_mod.o
 utils_mod.o: constants_mod.o kind_mod.o messages_mod.o octal_mod.o \
 	vector_mod.o
 vector_mod.o: constants_mod.o kind_mod.o random_mod.o
