@@ -151,19 +151,24 @@ REAL(DOUBLE) FUNCTION stellarWindDensity(point)
   IF (phiDash == 0.d0) phiDash = 1.d-20
 
   sin2theta0dash = (1.d0 + TAN(beta)**2.d0 * COS(phiDash)**2.d0)**(-1.d0)
-  rMaxMax = SW_eqGap / sin2theta0dash
+  rMaxMax = SW_eqGap / sin2theta0dash ![stellar radii]
   !thisRMax = rDash / sin(thetaDash)**2.d0
 
   thetaStar = ASIN(SQRT(tTauriRstar / rMaxMax))
   rBoundary = rMaxMax * SIN(SW_openAngle)**2.d0 / 1.d10 ![stellar radii]
-  area = (1.d0-COS(thetaStar))*twoPi*ttauriRstar**2.d0
+
+  area = (1.d0-COS(thetaStar))*twoPi*(SW_rMin*1.d10)**2.d0
   rhoStart = 0.5d0*SW_Mdot/area
   rhoBoundary = rhoStart * (SW_rMin/rBoundary)**3.d0
 
-  IF (rDash <= rBoundary) THEN
-     thisRho = rhoStart * (1.d10*SW_rMin/rDash)**3.d0
+  IF (SW_rMin > rBoundary) THEN
+    thisRho = 0.5d0*rhoStart * (1.d10*SW_rMin / rDash)**2.d0
   ELSE
-     thisRho = rhoBoundary * (1.d10*rBoundary / rDash)**2.d0
+    IF (rDash <= (rBoundary*1.d10)) THEN
+       thisRho = rhoStart * (1.d10*SW_rMin/rDash)**3.d0
+    ELSE
+       thisRho = rhoBoundary * (1.d10*rBoundary / rDash)**2.d0
+    ENDIF
   ENDIF
   stellarWindDensity = thisRho
 666 CONTINUE

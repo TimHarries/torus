@@ -16442,6 +16442,9 @@ RECURSIVE SUBROUTINE assignDensitiesStellarWind(grid, thisOctal)
                thisOCtal%rho(subcell) = thisRho
              END IF
            END IF
+           open(24,file='windRho.dat',action='write',position='append')
+           write(24,*) r, thisOctal%rho(subcell), modulus(thisOctal%velocity(subcell))
+           close(24)
            thisOCtal%fixedTemperature(subcell) = .TRUE.
            thisOctal%temperature(subcell) = REAL(SW_temperature)
         END IF
