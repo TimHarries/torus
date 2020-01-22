@@ -121,9 +121,10 @@ contains
 REAL(DOUBLE) FUNCTION stellarWindDensity(point)
   USE inputs_mod, ONLY : dipoleOffset, ttauriRstar, SW_eqGap, &
        SW_openAngle, SW_Mdot, SW_rMin
+  USE analytical_velocity_mod, ONLY : TTauriStellarWindVelocity
   TYPE(VECTOR), INTENT(IN) :: point
-  TYPE(VECTOR) :: rVec, rVecDash
-  REAL(DOUBLE) :: r, theta, beta, rBoundary
+  TYPE(VECTOR) :: rVec, rVecDash, normVec
+  REAL(DOUBLE) :: r, radVel, theta, beta, rBoundary
   REAL(DOUBLE) :: thetaStar, area
   REAL(DOUBLE) :: rDash, thetaDash, phiDash
   REAL(DOUBLE) :: rMaxMax, sin2theta0dash
@@ -157,12 +158,17 @@ REAL(DOUBLE) FUNCTION stellarWindDensity(point)
   thetaStar = ASIN(SQRT(tTauriRstar / rMaxMax))
   rBoundary = rMaxMax * SIN(SW_openAngle)**2.d0 / 1.d10 ![stellar radii]
 
-  area = (1.d0-COS(thetaStar))*twoPi*(SW_rMin*1.d10)**2.d0
-  rhoStart = 0.5d0*SW_Mdot/area
+  normVec = point
+  call normalize(normVec)
+  radVel = (TTauriStellarWindVelocity(point).dot.normVec)*cSpeed
+
+  area = (1.d0-COS(SW_openAngle))*twoPi*(SW_rMin*1.d10)**2.d0
+  rhoStart = 0.5d0*SW_Mdot/(area * radVel)
   rhoBoundary = rhoStart * (SW_rMin/rBoundary)**3.d0
 
   IF (SW_rMin > rBoundary) THEN
-    thisRho = 0.5d0*rhoStart * (1.d10*SW_rMin / rDash)**2.d0
+    thisRho = rhoStart * (1.d10*SW_rMin / rDash)**2.d0
+    ! thisRho = SW_Mdot /(radVel*(1.d0-COS(SW_openAngle))*fourPi*(rDash)**2.d0)
   ELSE
     IF (rDash <= (rBoundary*1.d10)) THEN
        thisRho = rhoStart * (1.d10*SW_rMin/rDash)**3.d0

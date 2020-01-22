@@ -185,7 +185,7 @@ TYPE (VECTOR) FUNCTION TTauriStellarWindVelocity(point)
   vMax = SW_vMax * SQRT(2.d0*bigG*ttauriMstar/ttauriRstar)
   !!radial velocity given by beta law
   IF (r < SW_rMin) r = SW_rMin
-  radV = SW_vMin + (vMax - SW_vMin)*(1.d0 - SW_rMin/r)**SW_beta
+  radV = SW_vMin + (vMax - SW_vMin)*(1.d0 - (SW_rMin/r))**SW_beta
 
   IF ((SW_Protation /= 0.d0).OR.(SW_Veq /= 0.d0)) THEN
      IF (SW_Protation > 0.d0) THEN

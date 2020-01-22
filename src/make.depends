@@ -53,8 +53,8 @@ jets_mod.o: constants_mod.o gridtype_mod.o kind_mod.o octal_mod.o \
 luc_cir3d_class.o: constants_mod.o kind_mod.o octal_mod.o vector_mod.o \
 	zeus_data_class.o
 magField.o: constants_mod.o inputs_modV2.o utils_mod.o vector_mod.o
-magnetic_mod.o: constants_mod.o gridtype_mod.o inputs_modV2.o kind_mod.o \
-	vector_mod.o
+magnetic_mod.o: analytical_velocity_mod.o constants_mod.o gridtype_mod.o \
+	inputs_modV2.o kind_mod.o vector_mod.o
 math_mod.o: constants_mod.o grid_mod.o gridtype_mod.o kind_mod.o \
 	messages_mod.o octal_mod.o random_mod.o utils_mod.o vector_mod.o
 math_mod2.o: kind_mod.o random_mod.o

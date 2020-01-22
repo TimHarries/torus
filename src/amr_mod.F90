@@ -4100,30 +4100,30 @@ CONTAINS
           endif
 
 
-          if (ttauriStellarWind) then
+  IF (ttauriStellarWind) THEN
 
-             r = modulus(cellCentre)
-             theta = acos(cellCentre%z/r)
-             if (firsttime) then
-                nr = 200
-                do i = 1, nr
-                   rgrid(i) = log10(SW_Rmin) + (dble(i-1)/dble(nr-1))*log10(SW_Rmax/SW_Rmin)
-                enddo
-                rgrid(1:nr) = 10.d0**rgrid(1:nr)
-                firsttime = .false.
-             endif
+     r = modulus(cellCentre)
+     theta = ACOS(cellCentre%z/r)
+     IF (firsttime) THEN
+        nr = 100
+        DO i = 1, nr
+           rgrid(i) = LOG10(SW_Rmin) + (DBLE(i-1)/DBLE(nr-1))*LOG10(SW_Rmax/SW_Rmin)
+        ENDDO
+        rgrid(1:nr) = 10.d0**rgrid(1:nr)
+        firsttime = .FALSE.
+     ENDIF
 
-             if ((r > SW_Rmin).and.(r < SW_Rmax)) then
-               if ((theta <= SW_Openangle).or.(theta>= (pi-SW_openAngle))) then
-                call locate(rGrid, 200, r ,i)
-                if (thisOctal%subcellSize > (rgrid(i+1)-rGrid(i))) split = .true.
-              endif
-             endif
-             if ( ((r + cellsize/2.d0) > SW_rMin).and.(r < SW_rMin)) then
-                if (cellsize > (rgrid(2)-rgrid(1))) split = .true.
-             endif
+     IF ((r > SW_Rmin).AND.(r < SW_Rmax)) THEN
+        IF ((theta <= SW_Openangle).OR.(theta>= (pi-SW_openAngle))) THEN
+           CALL locate(rGrid, 100, r ,i)
+           IF (thisOctal%subcellSize > (rgrid(i+1)-rGrid(i))) split = .TRUE.
+        ENDIF
+     ENDIF
+     IF ( ((r + cellsize/2.d0) > SW_rMin).AND.(r < SW_rMin)) THEN
+        IF (cellsize > (rgrid(2)-rgrid(1))) split = .TRUE.
+     ENDIF
+  ENDIF
 
-          endif
 
 
 
@@ -16408,7 +16408,7 @@ RECURSIVE SUBROUTINE assignDensitiesStellarWind(grid, thisOctal)
   USE analytical_velocity_mod
   USE inputs_mod, ONLY : SW_Rmin, SW_rmax, SW_temperature
   TYPE(GRIDTYPE) :: grid
-  REAL(DOUBLE) :: thisRho, r,  v
+  REAL(DOUBLE) :: thisRho, r
   TYPE(octal), POINTER   :: thisOctal
   TYPE(octal), POINTER  :: child
   TYPE(VECTOR) :: cellCentre
@@ -16430,20 +16430,22 @@ RECURSIVE SUBROUTINE assignDensitiesStellarWind(grid, thisOctal)
         r = modulus(cellCentre)
 
         IF ((stellarWindOutflow(cellCentre)).AND.(r > SW_Rmin).AND.(r < SW_Rmax)) THEN
-           thisOctal%velocity(subcell) = TTauriStellarWindVelocity(cellcentre)
+
            thisOctal%inflow(subcell) = .TRUE.
-           CALL fillVelocityCorners(thisOctal,TTauriStellarWindVelocity)
-           thisOctal%iAnalyticalVelocity(subcell) = 3
-           v = modulus(thisOctal%velocity(subcell))
-           IF (v > 0.d0) THEN
-             thisRho = stellarWindDensity(cellCentre)
-             thisRho = thisRho / (v * cSpeed)
-             IF (thisRho > thisOctal%rho(subcell)) THEN
-               thisOCtal%rho(subcell) = thisRho
-             END IF
-           END IF
            thisOCtal%fixedTemperature(subcell) = .TRUE.
            thisOctal%temperature(subcell) = REAL(SW_temperature)
+           CALL fillVelocityCorners(thisOctal,TTauriStellarWindVelocity)
+           thisOctal%iAnalyticalVelocity(subcell) = 3
+           thisOctal%velocity(subcell) = TTauriStellarWindVelocity(cellcentre)
+
+           IF (modulus(thisOctal%velocity(subcell)) > 0.d0) THEN
+             thisRho = stellarWindDensity(cellCentre)
+             IF (thisRho > thisOctal%rho(subcell)) thisOCtal%rho(subcell) = thisRho
+           END IF
+
+           ! open(24,file='windRho.dat',action='write',position='append')
+           ! write(24,*) r, thisOctal%rho(subcell), modulus(thisOctal%velocity(subcell))
+           ! close(24)
         END IF
      END IF
   END DO
