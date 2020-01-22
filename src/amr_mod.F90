@@ -16408,10 +16408,10 @@ RECURSIVE SUBROUTINE assignDensitiesStellarWind(grid, thisOctal)
   USE analytical_velocity_mod
   USE inputs_mod, ONLY : SW_Rmin, SW_rmax, SW_temperature
   TYPE(GRIDTYPE) :: grid
-  REAL(DOUBLE) :: thisRho, r
+  REAL(DOUBLE) :: thisRho, r, radVel
   TYPE(octal), POINTER   :: thisOctal
   TYPE(octal), POINTER  :: child
-  TYPE(VECTOR) :: cellCentre
+  TYPE(VECTOR) :: cellCentre, normVec
   INTEGER :: subcell, i
 
   DO subcell = 1, thisOctal%maxChildren
@@ -16439,7 +16439,10 @@ RECURSIVE SUBROUTINE assignDensitiesStellarWind(grid, thisOctal)
            thisOctal%velocity(subcell) = TTauriStellarWindVelocity(cellcentre)
 
            IF (modulus(thisOctal%velocity(subcell)) > 0.d0) THEN
-             thisRho = stellarWindDensity(cellCentre)
+             normVec = cellCentre
+             call normalize(normVec)
+             radVel = (TTauriStellarWindVelocity(cellCentre).dot.normVec)*cSpeed
+             thisRho = stellarWindDensity(cellCentre) / radVel
              IF (thisRho > thisOctal%rho(subcell)) thisOCtal%rho(subcell) = thisRho
            END IF
 
