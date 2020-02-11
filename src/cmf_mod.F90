@@ -3226,7 +3226,7 @@ FUNCTION intensityAlongRayGeneric(position, direction, grid,deltaV, source, nSou
   !    write(*,*) "currentposition",sqrt(currentPosition%x**2+currentPosition%y**2),currentPosition%z, &
   !         inOctal(grid%octreeRoot, currentPosition),distTogrid
   i0 = TINY(i0)!0.d0
-  intensityIntegral = 0.0
+  intensityIntegral = 0.d0
   tau = 0.d0
   rayVel = VECTOR(0.d0, 0.d0, 0.d0)
 
@@ -3442,6 +3442,7 @@ FUNCTION intensityAlongRayGeneric(position, direction, grid,deltaV, source, nSou
 666 CONTINUE
 
 END FUNCTION intensityAlongRayGeneric
+
 
 
 

@@ -4105,7 +4105,7 @@ CONTAINS
      r = modulus(cellCentre)
      theta = ACOS(cellCentre%z/r)
      IF (firsttime) THEN
-        nr = 100
+        nr = 200
         DO i = 1, nr
            rgrid(i) = LOG10(SW_Rmin) + (DBLE(i-1)/DBLE(nr-1))*LOG10(SW_Rmax/SW_Rmin)
         ENDDO
@@ -4115,7 +4115,7 @@ CONTAINS
 
      IF ((r > SW_Rmin).AND.(r < SW_Rmax)) THEN
         IF ((theta <= SW_Openangle).OR.(theta>= (pi-SW_openAngle))) THEN
-           CALL locate(rGrid, 100, r ,i)
+           CALL locate(rGrid, 200, r ,i)
            IF (thisOctal%subcellSize > (rgrid(i+1)-rGrid(i))) split = .TRUE.
         ENDIF
      ENDIF
