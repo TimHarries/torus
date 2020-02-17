@@ -5483,10 +5483,10 @@ CONTAINS
              endif
           endif
           
-          r = modulus(cellcentre)
-          if (( abs(r-erinner/1.d10)<cellsize ).and.(cellsize/(erinner/1.d10) > 0.01)) then
-             split = .true.
-          endif
+!          r = modulus(cellcentre)
+!          if (( abs(r-erinner/1.d10)<cellsize ).and.(cellsize/(erinner/1.d10) > 0.01)) then
+!             split = .true.
+!          endif
 
 
           if (discWind) then
@@ -12835,7 +12835,7 @@ end function readparameterfrom2dmap
     TYPE(gridtype), INTENT(IN) :: grid
     real(double) :: r, h, rd, ethermal, rhoFid, thisRSub,fac, rho, sinTheta,v, rhoEnv, mu, mu_0, z, dr
     TYPE(vector) :: rVec
-    real(double) :: cfac
+    real(double) :: cfac, discDens
     type(VECTOR),save :: velocitysum
     logical,save :: firsttime = .true.
 
@@ -12884,6 +12884,7 @@ end function readparameterfrom2dmap
 
 !    if (r < rOuter) then
        thisOctal%rho(subcell) = density(rVec, grid)
+       discDens = density(rVec,grid)
 ! tinkered from 10K - I figured the cooler bits will gently drop but a
 ! large no. of cells are close to this temp.
        thisOctal%temperature(subcell) = 10.
@@ -12997,7 +12998,7 @@ end function readparameterfrom2dmap
     dr = (abs(rVec%z)/cfac)**(2./3.)
 
     if ((r < dr).and.(modulus(rVec)<(erouter/1.d10))) then
-       thisOctal%rho(subcell) = cavdens
+       thisOctal%rho(subcell) = max(cavdens, discDens)
     endif
 
     if (modulus(rVec) < erInner/1.d10) then
