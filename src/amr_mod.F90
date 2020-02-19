@@ -16345,10 +16345,10 @@ end function readparameterfrom2dmap
 
 
                       if ((thisOctal%etaLine(subcell) /= 0.d0).and.(neighbourOctal%etaLine(neighbourSubcell)/=0.d0)) then
-                         if ((j==3).or.(j==4)) then
+                         if ((j==1).or.(j==2).or.(j==3).or.(j==4)) then
                             fac = abs(neighbourOctal%etaLine(neighbourSubcell)-thisOctal%etaLine(subcell))
-                            if (split.and.(fac > 0.2d0).and.(thisOctal%etaLine(subcell) > 0.1d0).and. &
-                                 (thisOctal%etaLine(subcell) < 1.d0).and. &
+                            if (split.and.(fac > 1.d0).and.(thisOctal%etaLine(subcell) > 1.d0).and. &
+                                 (thisOctal%etaLine(subcell) < 10.d0).and. &
                                  (thisOctal%etaLine(subcell)>neighbourOctal%etaLine(neighbourSubcell))) then
 !                               if (myrankGlobal == 1) write(*,*) &
 !                               " tau split ", fac, " eta ",thisOctal%etaline(subcell), "depth ",thisOctal%ndepth
@@ -17630,6 +17630,34 @@ END SUBROUTINE assignDensitiesStellarWind
     end do
 
   end subroutine getxValues
+
+  recursive subroutine getzValues(thisOctal, nz, zAxis)
+
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    type(VECTOR) :: rVec
+    integer :: nz, subcell, i
+    real(double) :: zAxis(:)
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call getzValues(child, nz, zAxis)
+                exit
+             end if
+          end do
+       else
+
+          rVec = subcellCentre(thisOctal, subcell)
+          nz = nz + 1
+          zAxis(nz) = rVec%z
+       end if
+    end do
+
+  end subroutine getzValues
 
   !
   ! hydroWarp stuff

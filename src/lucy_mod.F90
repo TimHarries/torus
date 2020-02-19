@@ -943,18 +943,20 @@ contains
                 call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
                 do j = iSmoothLam, iSmoothLam
                    write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
+                   call putTau(grid, grid%lamArray(j))
+!                      call writeVtkFile(grid, "puttau.vtk", &
+!                           valueTypeString=(/"rho        ", "temperature", "dust       ", &
+!                                    "etaline    "/))
                    call writeInfo(message, TRIVIAL)
                    do
                       gridConverged = .true.
-!                      call writeInfo("putting tau")
-                      call putTau(grid, grid%lamArray(j))
-!                      call writeInfo("done")
+
                       if (solveVerticalHydro) then
                          call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                              inheritProps = .false., interpProps = .true., photosphereSplit = .true.)
+                              inheritProps = .false., interpProps = .true.)!, photosphereSplit = .true.)
                       else
                          call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                              inheritProps = .false., interpProps = .true., photosphereSplit = .true.)
+                              inheritProps = .false., interpProps = .true.)!, photosphereSplit = .true.)
                       endif
 
                       if (gridConverged) exit
@@ -978,6 +980,9 @@ contains
              if (writeoutput) write(*,*) "Full check  has ", humanReadableMemory(totMem)
 !             if (writeoutput) write(*,*) "Max memory available ", humanReadableMemory(maxMemoryAvailable)
 !
+             call writeVtkFile(grid, "afterphotorefine.vtk", &
+                  valueTypeString=(/"rho        ", "temperature", "dust       ", &
+                                    "etaline    "/))
 
 
              if (dustSettling) call fillDustSettled(grid)
@@ -3947,12 +3952,12 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
 
 
   subroutine putTau(grid, wavelength)
-    use amr_mod, only: getxValues
+    use amr_mod, only: getxValues, getzValues
     use utils_mod, only: stripSimilarValues
     type(GRIDTYPE) :: grid
     real :: wavelength
-    integer :: nx
-    real(double), allocatable :: xAxis(:)
+    integer :: nx, nz
+    real(double), allocatable :: xAxis(:),zAxis(:)
     integer :: iLambda, i
     integer :: nOctals,nVoxels
     call countVoxels(grid%octreeRoot, nOctals, nVoxels)
@@ -3967,6 +3972,16 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
        call integrateUpWards(grid, xAxis(i), iLambda)
     end do
     deallocate(xAxis)
+
+    allocate(zAxis(1:nVoxels))
+    nz = 0
+    call getzValues(grid%octreeRoot,nz,zAxis)
+    call stripSimilarValues(zAxis,nz,1.d-5*grid%halfSmallestSubcell)
+    zAxis(1:nz) = zAxis(1:nz) + 1.d-5*grid%halfSmallestSubcell
+    do i = 1, nz
+       call integrateRightwards(grid, zAxis(i), iLambda)
+    end do
+    deallocate(zAxis)
 
   end subroutine putTau
 
@@ -4012,6 +4027,49 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
        thisOctal%etaLine(subcell) =  max(tau,1.d-30)
     end do
   end subroutine integrateDownwards
+
+  subroutine integrateRightwards(grid, z, ilambda)
+    type(GRIDTYPE) :: grid
+    real(double) :: z, tau
+    integer :: iLambda
+    real(double) ::  i0, snu, dtau, jnu
+    type(VECTOR) :: position, viewVec
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    real(double) :: currentDistance, tVal
+    real(double) :: kappaAbs, kappaSca
+    real(double) :: kappaAbsDust, kappaScaDust
+    viewVec = VECTOR(1.d0, 0.d0, 0.d0)
+
+    position = VECTOR(0.01d0*grid%halfSmallestSubcell, 0.d0, z)
+    thisOctal => grid%octreeRoot
+    subcell = 1
+    i0 = 0.d0
+    tau = 0.d0
+    currentDistance  = 0.d0
+    do while(inOctal(grid%octreeRoot, position).and.(position%x > 0.))
+       call findSubcelllocal(position, thisOctal, subcell)
+       call distanceToCellBoundary(grid, position, viewVec, tVal, sOctal=thisOctal)
+       call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, kappaAbs = kappaAbs, kappaSca = kappaSca, &
+            kappaAbsDust = kappaAbsDust, kappaScaDust=kappaScaDust)
+       dTau = (kappaAbsDust + kappaScaDust) * tVal
+       
+       jnu = kappaAbs * bnu(cspeed/(grid%lamArray(ilambda)*angstromTocm), dble(thisOctal%temperature(subcell)))
+       
+       if (kappaAbs .ne. 0.d0) then
+          snu = jnu/kappaAbs
+          i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
+       else
+          snu = tiny(snu)
+          i0 = i0 + tiny(i0)
+       endif
+       
+       tau = tau + dtau
+       position = position + (tval+1.d-3*grid%halfSmallestSubcell) * viewVec
+       thisOctal%etaLine(subcell) =  max(tau,thisOctal%etaLine(subcell))
+    end do
+  end subroutine integrateRightwards
+
 
   subroutine integrateUpwards(grid, x, ilambda)
     type(GRIDTYPE) :: grid
