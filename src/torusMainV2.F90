@@ -56,6 +56,7 @@ program torus
   use sph_data_class, only: deallocate_sph
 #ifdef MPI
   use mpi
+  use mpi_fitter_mod
 #endif
 
 
@@ -71,8 +72,9 @@ program torus
 #ifdef MPI
   ! For MPI implementations =====================================================
   integer ::   ierr           ! error flag
+  integer :: i
 #endif
-!#ifdef _OPENMP
+  !#ifdef _OPENMP
 !  call omp_set_dynamic(.false.)
 !#endif
 
@@ -131,7 +133,15 @@ program torus
 
 #ifdef MPI
   ! Set up amrCOMMUNICATOR and global mpi groups
-  call setupAMRCOMMUNICATOR
+  if (hydrodynamics) call setupAMRCOMMUNICATOR
+  call setupFitterCommunicators
+  do i = 0, nThreadsGlobal-1
+     if (myrankGlobal == i) then
+        write(*,*) "rank ",myrankGlobal, " fitter ",myFitterSetGlobal
+     endif
+  enddo
+  goto 666
+     
 #endif
 
 ! Report build options 
@@ -234,7 +244,7 @@ program torus
      call freeGrid(grid)
      call freeGlobalSourceArray()
   enddo
-!  666 continue
+  666 continue
 
 #ifdef MPI
   call torus_mpi_barrier

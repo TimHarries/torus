@@ -3,6 +3,7 @@ module mpi_global_mod
   implicit none
 
   integer :: amrCOMMUNICATOR
+  integer :: myFitterSetGlobal
   integer :: localWorldCommunicator
   integer :: myRankGlobal
   integer :: myRankWorldGlobal
