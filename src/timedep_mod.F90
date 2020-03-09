@@ -100,8 +100,8 @@ contains
     oldStackFilename = "stack1.dat"
     currentStackFilename  = "stack2.dat"
 #ifdef MPI
-    write(oldStackFilename, '(a,i3.3,a)') "stack1_",myrankGlobal,".dat"
-    write(currentStackFilename, '(a,i3.3,a)') "stack2_",myrankGlobal,".dat"
+    write(oldStackFilename, '(a,i3.3,a)') "stack1_",myrankWorldGlobal,".dat"
+    write(currentStackFilename, '(a,i3.3,a)') "stack2_",myrankWorldGlobal,".dat"
     call randomNumberGenerator(randomSeed=.true.)
 #endif
 
@@ -171,7 +171,7 @@ contains
     endif
 
 
-    !    if (myrankGlobal==0)call calculateLag(grid, nsource, source, xArray, nLambda)
+    !    if (myrankWorldGlobal==0)call calculateLag(grid, nsource, source, xArray, nLambda)
     !    call torus_mpi_barrier
     !    stop
 
@@ -180,7 +180,7 @@ contains
 
     do while (currentTime < timeend)
        iter = iter + 1
-       if (myrankGlobal == 0) then
+       if (myrankWorldGlobal == 0) then
           !          write(vtkFilename, '(a,i4.4,a)') "iter",iter,".vtk"
           !          call writeVtkFile(grid, vtkfilename, &
           !               valueTypeString=(/"rho        ", "temperature", "edens_g    ","edens_s    ", "bias     "/))
@@ -260,7 +260,7 @@ contains
 
        sedFluxStep  = 0.d0
        sedFluxScatStep = 0.d0
-       if (myrankGlobal == 0) write(*,*) iter," Calling RT with timestep of ", deltaT, currentTime,nMonte
+       if (writeoutput) write(*,*) iter," Calling RT with timestep of ", deltaT, currentTime,nMonte
        if (doTuning) call tune(6, "Time dependent RT step")  ! start a stopwatch
 
        call  timeDependentRTStep(grid, oldStack, nStack, oldStackFilename, currentStackFilename, &
@@ -295,12 +295,12 @@ contains
        if (dumpNow) then
           nextDumpTime = nextDumpTime + tDump
           iDump = idump + 1
-          if (myrankGlobal == 0) then
+          if (writeoutput) then
              write(vtkFilename, '(a,i4.4,a)') "output",idump,".vtk"
+             write(*,*) "vtkfilename ",trim(vtkfilename)
              call writeVtkFile(grid, vtkfilename, &
                   valueTypeString=(/"rho        ", "temperature", "edens_g    ", "edens_s    ", &
                   "crossings  "/))
-
              write(vtkFilename, '(a,i4.4,a)') "radial",idump,".dat"
              call writeValues(vtkFilename, grid, currentTime)
 
@@ -312,7 +312,7 @@ contains
 
        if (varyingSource.and.(mod(idump,100) == 0)) then
 
-          if (myrankGlobal == 0) then
+          if (writeoutput) then
              do i = 1, sedNumLam-1
                 outputFlux(i,1:nTime) = sedFlux(i,1:nTime) / &
                      (sedWavelength(i+1)-sedWavelength(i))
@@ -350,7 +350,7 @@ contains
 
     if (varyingSource) then
 
-       if (myrankGlobal == 0) then
+       if (writeoutput) then
           do i = 1, sedNumLam-1
              outputFlux(i,1:nTime) = sedFlux(i,1:nTime) / &
                   (sedWavelength(i+1)-sedWavelength(i))
@@ -527,7 +527,7 @@ contains
     nFromSource = int(fracSource * nFromMatter)
     nFromGas = nFromMatter - nFromSource
 
-    if (myrankGlobal == 0) then
+    if (writeoutput) then
        write(*,*) "doing loop with ",nphotons, " photons"
        write(*,*) "source lum ",sourceLuminosity
        write(*,*) "matter lum ",luminosity
@@ -813,7 +813,7 @@ contains
 
 
 
-     if (myrankGlobal == 0) then
+     if (writeoutput) then
         write(*,*) "Sanity check for luminosity ", checkLum/deltaT, luminosity+sourceLuminosity
         write(*,*) "Sanity check for source luminosity ", checkLumSource/deltaT, sourceLuminosity
      endif
@@ -848,7 +848,7 @@ contains
     diffusionTime = 1.d30
     call calculateDiffusionTime(grid, grid%octreeRoot, diffusionTime)
     if (Writeoutput) write(*,*) "Diffusion Time ", diffusionTime
-    if (myrankGlobal == 0) then
+    if (writeoutput) then
        write(*,*) "Temperature for time controlling cell is ",t1
        write(*,*) "Udens for time controlling cell is ",t2
        write(*,*) "adot for time controlling cell is ",t3
@@ -2522,7 +2522,7 @@ contains
 !!$            xm = 0.d0
 !!$            x1 = 0.d0
 !!$            x2 = 0.d0
-!!$            if (myrankGlobal==0) then
+!!$            if (myrankWorldGlobal==0) then
 !!$               write(*,*) "bisection failed!", y1,y2,ym
 !!$               write(*,*) "rho ",rho
 !!$               write(*,*) "adot ",adot
@@ -2584,7 +2584,7 @@ contains
 !!$            xm = 0.d0
 !!$            x1 = 0.d0
 !!$            x2 = 0.d0
-!!$            if (myrankGlobal==0) then
+!!$            if (myrankWorldGlobal==0) then
 !!$               write(*,*) "bisection failed!", y1,y2,ym
 !!$               write(*,*) "rho ",rho
 !!$               write(*,*) "adot ",adot

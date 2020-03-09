@@ -92,6 +92,7 @@ program torus
   outputwarnings = .true.
   outputinfo     = .true.
   myRankIsZero   = .true.
+  loadBalancingThreadGlobal = .false.
 
 !  call createBox(box,64)
 

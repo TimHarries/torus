@@ -928,7 +928,7 @@ contains
           nFrac = 0
 
              if (iIter_grand == 4) then
-                tauMax = 1.0
+                tauMax = 10.0
                 call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
              endif
 
@@ -1025,7 +1025,7 @@ contains
        endif
 !       if (variableDustSublimation.and.(iIter_grand == 7)) converged = .true.
 
-       if (variableDustSublimation.and.(iIter_grand > 6).and. &
+       if (variableDustSublimation.and.(iIter_grand > 7).and. &
             (percent_undersampled < percent_undersampled_min)) converged = .true.
 
 
