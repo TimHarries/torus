@@ -1184,7 +1184,7 @@ contains
     underCorrect = 1.
 
     kappaSca = 0.d0; kappaAbs = 0.d0
-    subrange = 1.d0
+    subrange = 2.d0
 
     if (present(minLevel)) then
        smallVal = minLevel

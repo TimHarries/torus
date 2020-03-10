@@ -44,6 +44,7 @@ image_utils_mod.o: constants_mod.o messages_mod.o vector_mod.o
 integratePath.o: amr_mod.o atom_mod.o constants_mod.o grid_mod.o \
 	gridtype_mod.o math_mod.o photon_mod.o source_mod.o utils_mod.o \
 	vector_mod.o
+intensity_storage_mod.o: vector_mod.o
 interface_hierarchy_mod.o: kind_mod.o random_mod.o triangle_mesh_mod.o \
 	vector_mod.o
 interferometry_mod.o: constants_mod.o kind_mod.o messages_mod.o random_mod.o

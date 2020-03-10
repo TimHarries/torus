@@ -28,7 +28,7 @@ contains
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, iHydro, finalPass)
     use inputs_mod, only : variableDustSublimation, iterlucy, rCore, solveVerticalHydro, dustSettling, restartLucy
-    use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau
+    use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau, maxDepthAMR
     use inputs_mod, only : object, convergeOnUndersampled, storeScattered, scatteredLightWavelength
     use inputs_mod, only : writelucyTmpfile, discWind, mincrossings, maxiterLucy, solveDiffusionZone, quickSublimate, usePAH
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
@@ -138,6 +138,7 @@ contains
     real :: lamSmoothArray(5)
     logical :: thisIsFinalPass
     integer(bigInt) :: totMem
+    integer :: nUnrefine
     character(len=10) :: stringArray(10)
 #ifdef USEMKL
     integer :: oldmode
@@ -934,6 +935,8 @@ contains
 
              if (iIter_grand == 5) then
                 tauMax = 1.e30
+!                if (dustSettling) call fillDustSettled(grid)
+!                call setupOrigDustFraction(grid%octreeRoot)
                 call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
              endif
 
@@ -955,13 +958,23 @@ contains
                          call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
                               inheritProps = .false., interpProps = .true.)!, photosphereSplit = .true.)
                       else
+                         call getSublimationRadius(grid, subRadius)
                          call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                              inheritProps = .false., interpProps = .true.)!, photosphereSplit = .true.)
+                              inheritProps = .false., interpProps = .true., photosphereSplit = .true., splitToRadius=2.d0*subRadius)
                       endif
 
                       if (gridConverged) exit
                    end do
+
+!                   do
+!                      gridConverged = .true.
+!                      call unrefineThinCells(grid%octreeRoot, grid, j, nUnrefine, gridconverged)
+!                      if (gridConverged) exit
+!                   end do
+                   
                 enddo
+
+                
                 call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
                 call writeInfo("...grid smoothing complete", TRIVIAL)
 
@@ -985,10 +998,6 @@ contains
                                     "etaline    "/))
 
 
-             if (dustSettling) call fillDustSettled(grid)
-             call setupOrigDustFraction(grid%octreeRoot)
-             tauMax = 1e30
-             call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
           endif
 
           if (iIter_grand >= 5) then

@@ -5393,6 +5393,7 @@ CONTAINS
           !      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 1.)) split = .true.
 
 !          write(*,*) hr, height, r, betadisc
+
           if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > thisheightSplitFac)) split = .true.
 
           if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
@@ -16180,14 +16181,15 @@ end function readparameterfrom2dmap
     enddo
   end subroutine interpFromParent
 
-  recursive subroutine myTauSmooth(thisOctal, grid, ilambda, converged, inheritProps, interpProps, photosphereSplit)
-    use inputs_mod, only : tauSmoothMin, tauSmoothMax, erOuter, router, maxDepthAmr, rinner, rGapInner
+  recursive subroutine myTauSmooth(thisOctal, grid, ilambda, converged, inheritProps, interpProps, photosphereSplit, splitToRadius)
+    use inputs_mod, only : tauSmoothMin, tauSmoothMax, erOuter, router, maxDepthAmr, rinner, rGapInner, rSublimation
     use inputs_mod, only : maxMemoryAvailable
     use memory_mod, only : humanreadablememory, globalMemoryFootprint
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child, neighbourOctal
     logical, optional :: inheritProps, interpProps, photoSphereSplit
+    real(double), optional :: splitToRadius
     integer :: subcell, i, ilambda
     logical :: converged
     real(double) :: kabs, ksca, r, fac,  kabsDust, kScaDust
@@ -16208,7 +16210,7 @@ end function readparameterfrom2dmap
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call myTauSmooth(child, grid, ilambda, converged, inheritProps, interpProps, photosphereSplit)
+                call myTauSmooth(child, grid, ilambda, converged, inheritProps, interpProps, photosphereSplit, splitToRadius)
                 exit
              end if
           end do
@@ -16343,6 +16345,8 @@ end function readparameterfrom2dmap
                 if (PRESENT(photosphereSplit)) then
                    if (photosphereSplit.and.(.not.outofmemory)) then
 
+                      if ((grid%geometry.eq."shakara").and.&
+                           (sqrt(rVec%x**2+rVec%y**2) > splitToRadius)) split = .false.
 
                       if ((thisOctal%etaLine(subcell) /= 0.d0).and.(neighbourOctal%etaLine(neighbourSubcell)/=0.d0)) then
                          if ((j==1).or.(j==2).or.(j==3).or.(j==4)) then
