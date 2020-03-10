@@ -16182,7 +16182,7 @@ end function readparameterfrom2dmap
   end subroutine interpFromParent
 
   recursive subroutine myTauSmooth(thisOctal, grid, ilambda, converged, inheritProps, interpProps, photosphereSplit, splitToRadius)
-    use inputs_mod, only : tauSmoothMin, tauSmoothMax, erOuter, router, maxDepthAmr, rinner, rGapInner, rSublimation
+    use inputs_mod, only : tauSmoothMin, tauSmoothMax, erOuter, router, maxDepthAmr, rinner, rGapInner
     use inputs_mod, only : maxMemoryAvailable
     use memory_mod, only : humanreadablememory, globalMemoryFootprint
     type(gridtype) :: grid
