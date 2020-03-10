@@ -19,6 +19,7 @@
 ! RK : 12/02/03 Parallelized major loops in lucyStateEquilibriumAMR, stateqAMR, torusMain.
 ! RK : 07/07/05 Added the observed flux solver in oberver's frame. 
 ! TJH: 10/09/08 pgplot calls removed...
+!
 program torus
   use torus_version_mod
   use inputs_mod         ! variables filled by inputs subroutine
