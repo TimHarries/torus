@@ -28,7 +28,7 @@ contains
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, iHydro, finalPass)
     use inputs_mod, only : variableDustSublimation, iterlucy, rCore, solveVerticalHydro, dustSettling, restartLucy
-    use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau, maxDepthAMR
+    use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau
     use inputs_mod, only : object, convergeOnUndersampled, storeScattered, scatteredLightWavelength
     use inputs_mod, only : writelucyTmpfile, discWind, mincrossings, maxiterLucy, solveDiffusionZone, quickSublimate, usePAH
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
@@ -138,7 +138,6 @@ contains
     real :: lamSmoothArray(5)
     logical :: thisIsFinalPass
     integer(bigInt) :: totMem
-    integer :: nUnrefine
     character(len=10) :: stringArray(10)
 #ifdef USEMKL
     integer :: oldmode
