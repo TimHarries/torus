@@ -986,12 +986,17 @@ contains
                 end do
                 call writeInfo("...grid smoothing complete", TRIVIAL)
 
+                taumax = 1.d30
+                call fixDust(grid,grid%octreeRoot)                
 !
              if (writeoutput) write(*,*) "Global Memory has ",humanReadableMemory(globalMemoryFootprint)
              call findTotalMemory(grid, totMem)
              if (writeoutput) write(*,*) "Full check  has ", humanReadableMemory(totMem)
 !             if (writeoutput) write(*,*) "Max memory available ", humanReadableMemory(maxMemoryAvailable)
 !
+
+
+
              call writeVtkFile(grid, "afterphotorefine.vtk", &
                   valueTypeString=(/"rho        ", "temperature", "dust       ", &
                                     "etaline    "/))
@@ -1719,6 +1724,50 @@ contains
        endif
     enddo
   end subroutine zeroDistanceGrid
+
+  recursive subroutine fixDust(grid,thisOctal)
+    use inputs_mod, only : nDusttype, grainfrac
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    real(double) :: thisTau, tauMax, frac, kappaAbs, kappaSca
+    integer :: subcell, i, j
+    integer, save :: ilambda
+    logical, save :: firstTime = .true.
+    !$OMP THREADPRIVATE (ilambda, FirstTime)
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call fixDust(grid,child)
+                exit
+             end if
+          end do
+       else
+
+          if (firstTime) then
+             call locate(grid%lamArray, grid%nLambda, 5500., iLambda)
+             firstTime = .false.
+          endif
+          do j = 1,nDustType
+             if  (thisOctal%dustTypeFraction(subcell, j) < 0.999d0*grainFrac(j))  then
+                call returnKappa(grid, thisOctal, subcell, ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+                thisTau = (kappaAbs+kappaSca)*thisOctal%subcellSize
+                tauMax = 1.d0
+                if (thisTau > tauMax) then
+                   write(*,*) "fixing ",thisOctal%dustTypeFraction(subcell,j),thisTau
+                   frac = tauMax / thisTau 
+                   thisOctal%dustTypeFraction(subcell,j) = thisOctal%dustTypeFraction(subcell,j) * frac
+                endif
+             endif
+          enddo
+
+       endif
+    enddo
+  end subroutine fixDust
 
   recursive subroutine zeroAdot(thisOctal)
   type(octal), pointer   :: thisOctal
