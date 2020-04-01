@@ -183,16 +183,11 @@ TYPE (VECTOR) FUNCTION TTauriStellarWindVelocity(point)
   CALL normalize(wind)
   !!max speed is multiple of escape velocity
   vMax = SW_vMax * SQRT(2.d0*bigG*ttauriMstar/ttauriRstar)
-  !!radial velocity given by beta law
-  IF (r < SW_rMin) r = SW_rMin
+  IF (r < SW_rMin) r = SW_rMin !!stops error if corner of cell is inside star
   radV = SW_vMin + (vMax - SW_vMin)*(1.d0 - (SW_rMin/r))**SW_beta
-
-  IF ((SW_Protation /= 0.d0).OR.(SW_Veq /= 0.d0)) THEN
-     IF (SW_Protation > 0.d0) THEN
-        Veq = twoPi * tTauriRstar / SW_Protation ![cm/s]
-     ELSE
-        Veq = SW_Veq
-     END IF
+  !!radial velocity given by beta law
+  IF (SW_Veq /= 0.d0) THEN
+     Veq = SW_Veq
      vAlfven = Veq * (rAlfven/SW_rMin)
      r = r*SIN(theta)
      IF (r == 0.d0) r = 1.d-20
