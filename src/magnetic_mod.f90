@@ -240,12 +240,12 @@ END FUNCTION stellarWindDensity
 
   TYPE (VECTOR) FUNCTION velocityMahdavi(point)
   USE inputs_mod, ONLY : dipoleOffset, ttauriRInner, ttauriRouter, ttauriMstar, &
-       ttaurirstar
+       ttaurirstar, rotVel
   TYPE(VECTOR), INTENT(in) :: point
-  TYPE(VECTOR) :: rvec, vp, rVecDash
+  TYPE(VECTOR) :: rvec, vp, rVecDash, vSolid
   REAL(DOUBLE) :: r, rDash, phi, phiDash, theta,thetaDash,sin2theta0dash, beta
   REAL(DOUBLE) :: deltaU, y, modVp, thisRmax, cosThetaDash, rTrunc, rMaxMin,rMaxMax
-  !REAL(DOUBLE) :: velMagAtCorotation, vSolid
+
 
 
   rVec = point*1.d10
@@ -282,21 +282,19 @@ END FUNCTION stellarWindDensity
        0.0, &
        (2.0 - 3.0 * y) / SQRT(4.0 - 3.0 * y))
   vP = (-modVp/cSpeed) * vP
+
   IF (costhetaDash < 0.d0) vP%z = -vp%z
   IF (costhetaDash < 0.d0) vP = (-1.d0)*vp
-
   IF (rVec%z < 0.d0) vP = (-1.d0)*vp
-  vp = rotateZ(vp, -phiDash)
 
+  vp = rotateZ(vp, -phiDash)
   vp = rotateY(vp, beta)
 
-  ! velMagAtCorotation = sqrt(bigG*ttauriMstar/ttauriRouter)/cSpeed
-  ! rVec = VECTOR(point%x,point%y,0.d0)
-  ! vSolid = rVec .cross. VECTOR(0.d0, 0.d0, 1.d0)
-  ! call normalize(vSolid)
-  ! vSolid = (modulus(rVec)/ttauriRouter*velMagAtCorotation) * vSolid
+  vSolid = point.cross.VECTOR(0.d0, 0.d0, 1.d0) !!calculates rotation velocity as solid body
+  call normalize(vSolid)
+  vSolid = (rotVel*r*sin(theta)/tTauriRstar) * vSolid
 
-  velocityMahdavi = vp
+  velocityMahdavi = vp + (vSolid/cSpeed)
 
 
 666 CONTINUE

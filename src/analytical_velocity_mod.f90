@@ -136,7 +136,7 @@ CONTAINS
 TYPE (VECTOR) FUNCTION TTauriStellarWindVelocity(point)
   USE inputs_mod, ONLY : dipoleOffset, &
        ttauriRstar, SW_openAngle, ttauriMstar, SW_vMin, &
-       SW_vMax, SW_rMin, SW_beta, SW_protation, SW_Veq, &
+       SW_vMax, SW_rMin, SW_beta, SW_Veq, &
        SW_eqGap, SW_alfven
 
   TYPE(VECTOR), INTENT(IN) :: point
@@ -146,19 +146,21 @@ TYPE (VECTOR) FUNCTION TTauriStellarWindVelocity(point)
   REAL(DOUBLE) :: rBoundary, openAngleDash
   REAL(DOUBLE) :: r, rDash, thetaDash, phiDash
   REAL(DOUBLE) :: rMaxMax, sin2theta0dash
-  REAL(DOUBLE) :: y, rAlfven, vAlfven
+  REAL(DOUBLE) :: y, rAlfven
   REAL(DOUBLE) :: vMax, radV, Veq, vPhi
 
+  beta = dipoleOffset
   rVec = point
   r = modulus(rVec)
   rVec = rVec * 1.d10
   wind = vector(0.d0, 0.d0, 0.d0)
-  beta = dipoleOffset
+
   openAngleDash = SW_openAngle - beta
   rVecDash = rotateY(rVec, -beta)
   rDash = modulus(rVec)
   theta = ACOS(rVec%z/rDash)
   thetaDash = ACOS(rVecDash%z/rDash)
+
   IF (thetaDash == 0.d0) thetaDash = 1.d-20
   phiDash = ATAN2(rVecDash%y, rVecDash%x)
   IF (phiDash == 0.d0) phiDash = 1.d-20
@@ -166,43 +168,52 @@ TYPE (VECTOR) FUNCTION TTauriStellarWindVelocity(point)
   rMaxMax = SW_eqGap / sin2theta0dash
 
   rBoundary = rMaxMax * SIN(SW_openAngle)**2.d0
-  rAlfven = SW_alfven * rBoundary * SIN(SW_openAngle) / 1.d10
+  rAlfven = (SW_alfven * rBoundary * SIN(SW_openAngle) / 1.d10) * SIN(theta)
+  !!cylindrical radius because only for rotational velocity.
+
+
+
   IF (rDash <= rBoundary) THEN
      y = SIN(thetaDash)**2.d0
      wind = vector(3.d0 * SQRT(y) * SQRT(1.d0-y) / SQRT(4.d0 - (3.d0*y)), &
           0.d0, (2.d0 - 3.d0 * y) / SQRT(4.d0 - 3.d0 * y))
 
      IF ((rVecDash%z/rDash) < 0.d0) wind%z = (-1.d0)*wind%z
-     IF ((rVecDash%z/rDash) < 0.d0) wind = (-1.d0)*wind
-     IF (rVecDash%z < 0.d0) wind = (-1.d0)*wind
+     ! IF ((rVecDash%z/rDash) < 0.d0) wind = (-1.d0)*wind
+     ! IF (rVecDash%z < 0.d0) wind = (-1.d0)*wind
      wind = rotateZ(wind, -phiDash)
      wind = rotateY(wind, beta)
   ELSE
      wind = point
   ENDIF
   CALL normalize(wind)
-  !!max speed is multiple of escape velocity
-  vMax = SW_vMax * SQRT(2.d0*bigG*ttauriMstar/ttauriRstar)
+
+
+  vMax = SW_vMax * SQRT(2.d0*bigG*ttauriMstar/ttauriRstar)!!max speed is multiple of escape velocity
   IF (r < SW_rMin) r = SW_rMin !!stops error if corner of cell is inside star
-  radV = SW_vMin + (vMax - SW_vMin)*(1.d0 - (SW_rMin/r))**SW_beta
-  !!radial velocity given by beta law
+  radV = SW_vMin + (vMax - SW_vMin)*(1.d0 - (SW_rMin/r))**SW_beta!!radial velocity given by beta law
+
+  !!Rotation component
   IF (SW_Veq /= 0.d0) THEN
-     Veq = SW_Veq
-     vAlfven = Veq * (rAlfven/SW_rMin)
      r = r*SIN(theta)
-     IF (r == 0.d0) r = 1.d-20
-     IF (r <= rAlfven) THEN
-       vPhi = Veq * (r/SW_rMin)
-     ELSE
-       vPhi = vAlfven * (rAlfven / r)
-     END IF
+     Veq = SW_Veq
+
+    IF (r <= rAlfven) THEN
+       vPhi = Veq * (1.d10*r/ttauriRstar)!!Solid body rotation
+    ELSE
+       vPhi = Veq * (1.d10*rAlfven/ttauriRstar)!!beyond alfven radius AM conserved
+    END IF
+
      phiHat = point.cross.vector(0.d0,0.d0,1.d0)
      CALL normalize(phiHat)
+
+  !!Add radial and Phi components together
      TTauriStellarWindVelocity = ((radV * wind) + (vPhi * phiHat)) / cspeed
   ELSE
      TTauriStellarWindVelocity = (radV / cSpeed) * wind
   END IF
 END FUNCTION TTauriStellarWindVelocity
+
 
 
 END MODULE analytical_velocity_mod

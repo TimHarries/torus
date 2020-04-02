@@ -1144,6 +1144,8 @@ contains
                "Use isothermal temperature :","(a,1l,1x,a)", .false., ok, .false.)
           call getReal("isothermtemp", isoThermTemp, 1., cLine, fLine, nLines, &
                "Isothermal temperature (K): ","(a,f7.1,1x,a)", 6500.0, ok, .false.)
+          call getReal("rotvel", rotVel, 1.e5, cLine, fLine, nLines, &
+               "Rotation velocity at Equator (km/s): ","(a,f7.1,1x,a)", 0., ok, .false.)
           if (.not.(useHartmannTemp .or. isoTherm)) then
              if (writeoutput)  write(*,'(a)') "WARNING: neither useHartmannTemp nor isoTherm specified!"
              call torus_stop
@@ -1403,8 +1405,8 @@ contains
                "Stellar wind:: temperature [K]: ", &
                "(a,1p,e9.3,1x,a)", 10000.0d0, ok, .true.)
 
-          call getDouble("SW_Veq", SW_veq, 1.d5, cLine, fLine, nLines, &
-               "Stellar wind:: stellar equatorial rotation velocity [km/s]: ", &
+          call getDouble("SW_veq", SW_veq, 1.d5, cLine, fLine, nLines, &
+               "Stellar wind:: stellar cd ~/tor equatorial rotation velocity [km/s]: ", &
                "(a,1p,e9.3,1x,a)", 0.d0, ok, .false.)
 
 

@@ -161,7 +161,7 @@
   character(len=80) :: imfFilename ! if reading in an IMF
   real(double) :: populationMass ! total mass of IMF
   logical :: readIMF
-  real(double) :: imfMin, imfMax 
+  real(double) :: imfMin, imfMax
   type(VECTOR) :: burstPosition ! pos of star for burstType 'singlestartest'
   logical :: dumpregularVTUS   !dump vtu after every photo step
   ! Parameters  specific to domain decomposed photoionisation
@@ -231,7 +231,7 @@
   logical :: cylindricalHydro         ! perform the hydrodynamics in cylindrical coordinates
   real(double) :: tStart, tEnd, tDump !Start, end and dump interval times
   real(double) :: rhoThreshold        ! threshold density for sink creation
-  real(double) :: criticalMass        ! critical reservoir mass above which cluster sink particles sample IMF 
+  real(double) :: criticalMass        ! critical reservoir mass above which cluster sink particles sample IMF
   real(double) :: starFormationEfficiency ! cluster sink SFE
   real(double) :: hydroSpeedLimit     ! fudge to limit hydrodynamic advection speed
   logical :: hydrovelocityConv        !Convert input velocity vector into simulation velocities
@@ -669,6 +669,7 @@
   real :: MdotParameter5, MdotParameter6
   real :: TTauriRinner, TTauriRouter ! disc sizes (in R_star units)
   real :: Thotspot
+  real :: rotVel
   logical :: ttauriwarp, ttauriwind, ttauridisc, ttauriMagnetosphere, flatDisc
   logical :: discWind
   real :: TTauriRstar ! stellar radius (in R_sol units)
