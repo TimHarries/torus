@@ -6285,7 +6285,6 @@ logical  FUNCTION ghostCell(grid, thisOctal, subcell)
              r3 = thisOctal%r + thisOctal%subcellSize
 
              ! bottom level
-             print*,vector(r1*cos(phi1),r1*sin(phi1),z1)
              thisOctal%cornerVelocity(1) = velocityFunc(vector(r1*cos(phi1),r1*sin(phi1),z1))
              thisOctal%cornerVelocity(2) = velocityFunc(vector(r2*cos(phi1),r2*sin(phi1),z1))
              thisOctal%cornerVelocity(3) = velocityFunc(vector(r3*cos(phi1),r3*sin(phi1),z1))
