@@ -146,7 +146,7 @@ TYPE (VECTOR) FUNCTION TTauriStellarWindVelocity(point)
   REAL(DOUBLE) :: rBoundary, openAngleDash
   REAL(DOUBLE) :: r, rDash, thetaDash, phiDash
   REAL(DOUBLE) :: rMaxMax, sin2theta0dash
-  REAL(DOUBLE) :: y, rAlfven
+  REAL(DOUBLE) :: y, rAlfven, vAlfven
   REAL(DOUBLE) :: vMax, radV, Veq, vPhi
 
   beta = dipoleOffset
@@ -198,16 +198,14 @@ TYPE (VECTOR) FUNCTION TTauriStellarWindVelocity(point)
   IF (SW_Veq /= 0.d0) THEN
      r = r*SIN(theta)
      Veq = SW_Veq
-
+     vAlfven = Veq * (1.d10*rAlfven/ttauriRstar)
     IF (r <= rAlfven) THEN
        vPhi = Veq * (1.d10*r/ttauriRstar)!!Solid body rotation
     ELSE
-       vPhi = Veq * (1.d10*rAlfven/ttauriRstar)!!beyond alfven radius AM conserved
+       vPhi = vAlfven * (rAlfven/r)!!beyond alfven radius AM conserved
     END IF
-
      phiHat = point.cross.vector(0.d0,0.d0,1.d0)
      CALL normalize(phiHat)
-
   !!Add radial and Phi components together
      TTauriStellarWindVelocity = ((radV * wind) + (vPhi * phiHat)) / cspeed
   ELSE
