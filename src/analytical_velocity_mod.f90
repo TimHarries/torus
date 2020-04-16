@@ -168,7 +168,7 @@ TYPE (VECTOR) FUNCTION TTauriStellarWindVelocity(point)
   rMaxMax = SW_eqGap / sin2theta0dash !![10^10]
 
   rBoundary = rMaxMax * SIN(SW_openAngle)**2.d0 !![10^10]
-  rAlfven = SW_alfven * rBoundary * SIN(SW_openAngle) / 1.d10
+  rAlfven = SW_alfven * rBoundary / 1.d10 ! * SIN(SW_openAngle) / 1.d10
   !!cylindrical radius because only for rotational velocity.
 
 
@@ -196,14 +196,14 @@ TYPE (VECTOR) FUNCTION TTauriStellarWindVelocity(point)
 
   !!Rotation component
   IF (SW_Veq /= 0.d0) THEN
-     r = r*SIN(theta)
      Veq = SW_Veq
-     vAlfven = Veq * (1.d10*rAlfven/ttauriRstar)
-    IF (r <= rAlfven) THEN
-       vPhi = Veq * (1.d10*r/ttauriRstar)!!Solid body rotation
-    ELSE
+
+     IF (r <= rAlfven) THEN
+       vPhi = Veq * (1.d10*r*SIN(theta)/ttauriRstar)!!Solid body rotation
+     ELSE
+       vAlfven = Veq * (1.d10*rAlfven*SIN(theta)/tTauriRstar)
        vPhi = vAlfven * (rAlfven/r)!!beyond alfven radius AM conserved
-    END IF
+     END IF
      phiHat = point.cross.vector(0.d0,0.d0,1.d0)
      CALL normalize(phiHat)
   !!Add radial and Phi components together
