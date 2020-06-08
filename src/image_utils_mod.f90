@@ -313,8 +313,8 @@ contains
     TYPE(vector) :: setImageViewVec, tempVec
 
 
-    tempVec%x = sin(myImages(i)%positionAngle) * sin(myImages(i)%inclination)
-    tempVec%y = cos(myImages(i)%positionAngle) * sin(myImages(i)%inclination)
+    tempVec%x = cos(myImages(i)%positionAngle) * sin(myImages(i)%inclination)
+    tempVec%y = sin(myImages(i)%positionAngle) * sin(myImages(i)%inclination)
     tempVec%z = cos(myImages(i)%inclination)
 
     setImageViewVec =  tempVec
