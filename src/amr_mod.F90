@@ -13034,6 +13034,9 @@ end function readparameterfrom2dmap
       thisOctal%temperature(subcell) = 1.d1                     ! default value of temperature
       thisOctal%dustTypeFraction(subcell,1:nDustType) = 1.d-30  ! default dust fraction
       thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)    ! default velocity value
+      rVec = subcellCentre(thisOctal, subcell)        ! locate your position in the grid
+      thisOctal%velocity(subcell) = keplerianVelocity(rvec)
+      thisOctal%iAnalyticalVelocity(subcell) = 2
 
       ! Determine which disc module you are located in and assign a gas density
       do iMod = 1, nDiscModule

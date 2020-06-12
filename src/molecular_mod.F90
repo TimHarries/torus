@@ -2951,7 +2951,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
         call setObserverVectors(viewvec, observerVec, imagebasis)
      else
         viewVec = inputViewVec
-        observerVec = dble(-griddistance*1e-10) * viewVec ! This is the EXACT position of the observer in space
+        observerVec = dble(-griddistance*pctocm*1e-10) * viewVec ! This is the EXACT position of the observer in space
         imagebasis(1) = viewvec .cross. VECTOR(0.d0, 0.d0, 1.d0)
         imagebasis(2) = imagebasis(1) .cross. viewvec
         call normalize(imagebasis(1))
@@ -3101,7 +3101,6 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
       integer :: subpixels
       integer :: ipixels, jpixels
 
-      print *, "making image"
 ! pixelcorner initialised to TOPLEFT      
 ! Previous method: only works for cubes with equal sized spatial axes
 !      dnpixels    = dble(npixels) 
@@ -3133,7 +3132,6 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 !$OMP END DO
 !$OMP END PARALLEL
       enddo
-    print *, "image made"
     end subroutine makeImageGrid
 
  !!! Calculates the intensity for a square pixel of arbitrary size, position, orientation
@@ -3369,11 +3367,11 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
         endif
      endif
 
-     cube%obsDistance = gridDistance !(in cm) Additional information that will be useful
-     if (gridDistance/pctocm < 1000.0) then 
-        write(message,'(a,f10.3,a)') "Observer Distance        : ",gridDistance/pctocm, " pc"
+     cube%obsDistance = gridDistance*pctocm !(in cm) Additional information that will be useful
+     if (gridDistance < 1000.0) then 
+        write(message,'(a,f10.3,a)') "Observer Distance        : ",gridDistance, " pc"
      else
-        write(message,'(a,f10.3,a)') "Observer Distance        : ",gridDistance/kpctocm, " kpc"
+        write(message,'(a,f10.3,a)') "Observer Distance        : ",gridDistance, " kpc"
      endif
      call writeinfo(message, TRIVIAL)
      write(message,'(a,1pe12.3,a)') "Finest grid resolution   : ",grid%halfsmallestsubcell*2d10/autocm, " AU"
@@ -3482,7 +3480,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
            endif
 
            intensitysum = sum(temp(:,:,1)) / dble(cube%nx*cube%ny)
-           fluxsum = intensitytoflux(intensitysum, dble(imageside), dble(gridDistance), thisMolecule)
+           fluxsum = intensitytoflux(intensitysum, dble(imageside), dble(gridDistance*pctocm), thisMolecule)
 
            if(iv .eq. 1) then
               if(lineimage) then
@@ -3494,7 +3492,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
               background = Bnu(linefreq, Tcbr)
               write(message, *) "Background Intensity: ",background
               call writeinfo(message, TRIVIAL)
-              background = intensitytoflux(background, dble(imageside), dble(gridDistance), thisMolecule)
+              background = intensitytoflux(background, dble(imageside), dble(gridDistance*pctocm), thisMolecule)
               write(message, *) "Background Flux: ",background
               call writeinfo(message, TRIVIAL)
               write(message, *) ""
@@ -4758,7 +4756,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
         imagebasis(2) = imagebasis(2) * pixelwidth
 ! This is a vector parallel to the line of sight *from* the observer to the grid centre
         unitVec = (-1.d0) * viewvec 
-        observerVec = dble(griddistance*1e-10) * unitvec ! This is the EXACT position of the observer in space
+        observerVec = dble(griddistance*pctocm*1e-10) * unitvec ! This is the EXACT position of the observer in space
 
         if(paraxial) then
            ! Paraxial case 
@@ -5839,7 +5837,7 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
 
    fac =  pi*(cube%telescope%Diameter/2.d0)**2 / (2.d0*kerg) ! Effective Telescope Area / 2k - Flux -> Antenna Temp
 
-   dA = ((cube%xaxis(2) - cube%xaxis(1)) / (gridDistance/1.d10)) ** 2
+   dA = ((cube%xaxis(2) - cube%xaxis(1)) / (gridDistance*pctocm/1.d10)) ** 2
 
    fac2 = (1.d0* (cspeed**2 / thisMolecule%transFreq(iTrans)**2) &
                     / (pi * (cube%telescope%diameter / 2.d0)**2 )) / dA
@@ -5890,7 +5888,7 @@ endif
    endif
 
    dx = cube%xAxis(2) - cube%xAxis(1) ! pixelwidth in torus units
-   dx = (dx / (gridDistance*1e-10))**2 ! not in steradians (* 2 pi)
+   dx = (dx / (gridDistance*pctocm*1e-10))**2 ! not in steradians (* 2 pi)
 
    do ipixel = 1,cube%nx
       do jpixel = 1,cube%ny
@@ -5919,7 +5917,7 @@ endif
    real(double) :: dx
 
    dx = cube%xAxis(2) - cube%xAxis(1) ! pixelwidth in torus units
-   dx = (dx / (gridDistance*1e-10))**2 ! not in steradians (* 2 pi)
+   dx = (dx / (gridDistance*pctocm*1e-10))**2 ! not in steradians (* 2 pi)
 
    do ipixel = 1,cube%nx
       do jpixel = 1,cube%ny
@@ -5962,8 +5960,8 @@ endif
 
    do i=1,npix ! Where are all the pixels (top left corners) - what are all their weights
       do j=1,npix
-         rr = (cube%xAxis(i)/(gridDistance*1d-10))**2 + & 
-              (cube%yAxis(j)/(gridDistance*1d-10))**2
+         rr = (cube%xAxis(i)/(gridDistance*pctocm*1d-10))**2 + & 
+              (cube%yAxis(j)/(gridDistance*pctocm*1d-10))**2
 
          cube%Weight(i,j) = exp(-0.5d0*(rr/sigma2))
 
@@ -6012,7 +6010,7 @@ endif
                x = cube%xAxis(i) + real(k-10)/20. * deltax  
                y = cube%yAxis(j) + real(l-10)/20. * deltay
 
-               rr = (x/(gridDistance*1d-10))**2 + (y/(gridDistance*1d-10))**2
+               rr = (x/(gridDistance*pctocm*1d-10))**2 + (y/(gridDistance*pctocm*1d-10))**2
                f = exp(-0.5d0*(rr/sigma2))
                Weight(i,j) = Weight(i,j) + f*0.01
 

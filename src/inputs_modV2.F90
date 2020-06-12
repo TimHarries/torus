@@ -3326,7 +3326,7 @@ contains
 !            "Add new molecular data to non-molecular grid: ","(a,l,1x,a)",.false., ok, .false.)
        call getString("moleculefile", moleculefile, cLine, fLine, nLines, &
             "Input molecule filename: ","(a,a,1x,a)","none", ok, .true.)
-       call getReal("distance", gridDistance, real(pctocm), cLine, fLine, nLines, &
+       call getReal("distance", gridDistance, 1., cLine, fLine, nLines, &
             "Grid distance (pc): ","(a,f8.1,1x,a)", 1., ok, .true.)
        call getInteger("initnray", initnray, cLine, fLine, nLines, &
                "Number of fixed rays for stage 1: ","(a,i4,a)", 1024, ok, .false.)
@@ -4050,7 +4050,7 @@ contains
          "Output datacube  filename: ","(a,a,1x,a)","none", ok, .true.)
     call getReal("cubeaspectratio", cubeAspectRatio, 1.0, cLine, fLine, nLines, &
          "Data cube spatial aspect ratio: ","(a,f4.1,1x,a)", 1.0, ok, .false.)
-    call getReal("distance", gridDistance, real(pcToCm), cLine, fLine, nLines, &
+    call getReal("distance", gridDistance, 1., cLine, fLine, nLines, &
          "Grid distance (pc): ","(a,f9.1,1x,a)", 100., ok, .false.)
     call getInteger("npixels", npixels, cLine, fLine, nLines, &
          "Number of pixels per row: ","(a,1x,i4,a)", 50, ok, .true.)

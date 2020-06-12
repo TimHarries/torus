@@ -134,7 +134,8 @@ program torus
 
 #ifdef MPI
   ! Set up amrCOMMUNICATOR and global mpi groups
-!  if (hydrodynamics) call setupAMRCOMMUNICATOR
+  call setupAMRCOMMUNICATOR
+  write(*,*) "nthreadsglobal ",nThreadsGlobal
 !  call setupFitterCommunicators
 !  do i = 0, nThreadsGlobal-1
 !     if (myrankGlobal == i) then
