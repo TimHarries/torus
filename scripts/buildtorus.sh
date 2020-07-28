@@ -184,30 +184,25 @@ else
     cd $fitsTestDir
     ln -s ../../benchmarks/disc/check_disc_image.f90
 
-    # ifort and gfortran SYSTEMs include ${HOME}/cfitsio/lib in link line
+    # Set up link flags for specific SYSTEMS
+    link_flags="-lcfitsio"
     if [[ $SYSTEM == gfortran || $SYSTEM == ifort ]]; then
 	if [[ -d ${HOME}/cfitsio/lib ]]; then
-	    ${torusFortranCompiler} -o check_disc_image check_disc_image.f90 -lcfitsio -L${HOME}/cfitsio/lib > /dev/null 2>&1
-	else
-	    ${torusFortranCompiler} -o check_disc_image check_disc_image.f90 -lcfitsio > /dev/null 2>&1
+	    link_flags="${link_flags} -L${HOME}/cfitsio/lib"
 	fi
-    else
-	${torusFortranCompiler} -o check_disc_image check_disc_image.f90 -lcfitsio > /dev/null 2>&1
     fi
+    if [[ $SYSTEM == gfortran ]]; then
+	link_flags="${link_flags} -L/usr/local/lib"
+    fi
+
+    echo "Testing with link flags: ${link_flags}"
+    ${torusFortranCompiler} -o check_disc_image check_disc_image.f90 ${link_flags} > link_test.out 2>&1
 
     if [[ -x check_disc_image ]]; then
 	echo "Linking with cfitsio works"
     else
-	# Try again with a -lcurl flag
-	if [[ $SYSTEM == gfortran || $SYSTEM == ifort ]]; then
-	    if [[ -d ${HOME}/cfitsio/lib ]]; then
-		${torusFortranCompiler} -o check_disc_image check_disc_image.f90 -lcfitsio -lcurl -L${HOME}/cfitsio/lib > /dev/null 2>&1
-	    else
-		${torusFortranCompiler} -o check_disc_image check_disc_image.f90 -lcfitsio -lcurl > /dev/null 2>&1
-	    fi
-	else
-	    ${torusFortranCompiler} -o check_disc_image check_disc_image.f90 -lcfitsio -lcurl > /dev/null 2>&1
-	fi
+	${torusFortranCompiler} -o check_disc_image check_disc_image.f90 ${link_flags} -lcurl > /dev/null 2>&1
+
 	if [[ -x check_disc_image ]]; then
 	    echo "Linking with cfitsio works (requires -lcurl)"
 	    make_args="${make_args} curlflag=yes"
