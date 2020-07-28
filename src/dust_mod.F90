@@ -2202,6 +2202,7 @@ real function getMedianSize(aMin, aMax, a0, qDist, pDist) result(aMedian)
   real :: a(n)     ! grain sizes 
   real :: f(n)     
   real :: g(n)
+  character(len=80) :: message
 
   if (aMin == aMax) then
      aMedian = aMin
@@ -2222,6 +2223,11 @@ real function getMedianSize(aMin, aMax, a0, qDist, pDist) result(aMedian)
      do i = 2, n
         g(i) = g(i) + g(i-1)
      enddo
+! If a0 is small compared to the grain size the exponential term underflows and we cannot normalise g
+     if (g(n) == 0.0) then
+        write(message,'(3(a,f10.5),a,f4.1)') "aMin=", aMin, " aMax=", aMax, " a0=", a0, " pDist=", pDist
+        call writeFatal("dust_mod::getMedianSize: cannot normalise grain size distribution "//message)
+     end if
      g(:) = g(:)/g(n)
      call locate(g, n, 0.5, i)
      aMedian = a(i+1)
