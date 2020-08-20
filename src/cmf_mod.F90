@@ -1032,13 +1032,16 @@ contains
   end function phiProfTurb
 
   real(double) function  phiProfStark(dv, thisOctal, subcell, nu, thisAtom)
+    use inputs_mod, only : dynamicstark
     use utils_mod, only : voigtn
-    use atom_mod, only: bigGamma
+    use atom_mod, only: bigGamma, bigGammaDynamic
+    use modelatom_mod, only: returneinsteincoeffs
     type(MODELATOM) :: thisAtom
     real(double) :: dv
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) :: n_hi, a, dopplerWidth, hay, nu, v_th
+    real(double) :: AA, Bul, Blu
 
     V_th = sqrt(2.*kErg*thisOctal%temperature(subcell)/(thisAtom%mass*mHydrogen))  ! [cm/s] theram speed
 
@@ -1046,7 +1049,13 @@ contains
 
     N_HI = thisoctal%atomlevel(subcell, 1, 1)
 
-    a = bigGamma(N_HI, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), nu) / (fourPi * DopplerWidth) ! [-]
+    IF(dynamicstark) THEN
+      call returnEinsteinCoeffs(thisAtom, 1, AA, Bul, Blu)
+      a = bigGammaDynamic(N_HI, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), thisAtom%iUpper(1), &
+      thisAtom%iLower(1), AA) / (fourPi * DopplerWidth)
+    ELSE
+      a = bigGamma(N_HI, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), nu) / (fourPi * DopplerWidth) ! [-]
+    END IF
 
     Hay = voigtn(a,dv*cspeed/v_th)
     phiProfStark = nu * Hay / (sqrtPi*DopplerWidth)

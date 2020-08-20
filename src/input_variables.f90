@@ -686,9 +686,10 @@
   real :: curtainsPhi2s ! (all in degrees)
   real :: curtainsPhi2e ! must be: phi1s<phi1e<phi2s<phi2e
   ! The following two are used for constantcurtain geometry (RK)
-  integer :: curtain_number ! nuumber of curtains
-  real    :: curtain_width  ! Width of curtain in degrees.
+  integer :: curtain_number !nuumber of curtains
+  real    :: curtain_width  !Width of curtain in degrees.
   logical :: starkBroaden   !use stark broadening or not.
+  logical :: dynamicstark   !use dynamic stark broadening based on Sutton
 
   ! suboption for ttauri geometry
   logical :: ttau_acc_on        ! T to include magnetosphere

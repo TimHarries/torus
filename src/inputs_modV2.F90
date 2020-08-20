@@ -3009,11 +3009,14 @@ contains
 
     call getLogical("starkbroaden",starkBroaden, cline, fline, nlines, &
                 "Use Stark Broadening", "(a,1l,1x,a)", .false., ok, .true.)
+                
+    call getLogical("dynamicstark",dynamicstark, cline, fline, nlines, &
+                "Use dynamic stark broadening - testing", "(a,1l,1x,a)", .false., ok, .true.)
 
     !
     ! Voigt profile prameters
     !
-    IF (starkBroaden) THEN
+    IF (starkBroaden .AND. (.NOT. dynamicstark)) THEN
       call getReal("C_rad", C_rad, 1., cLine, fLine, nLines, &
            "Damping constant (radiation)     in [A]: ","(a,1PE10.3,1x,a)", 8.16e-3, ok, .false.)
       call getReal("C_vdw", C_vdw, 1., cLine, fLine, nLines, &

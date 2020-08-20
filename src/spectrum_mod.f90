@@ -350,11 +350,11 @@ module spectrum_mod
 
       if (present(weight)) then
          do i = 1, spectrum%nLambda
-            spectrum%flux(i) = spectrum%flux(i) + addition%flux(i)*weight 
+            spectrum%flux(i) = spectrum%flux(i) + addition%flux(i)*weight
          enddo
       else
          do i = 1, spectrum%nLambda
-            spectrum%flux(i) = spectrum%flux(i) + addition%flux(i) 
+            spectrum%flux(i) = spectrum%flux(i) + addition%flux(i)
          enddo
       endif
 
@@ -1044,7 +1044,7 @@ module spectrum_mod
        character(len=*) thisfile, thisLabel
        character(len=80) :: fluxfile, dataDirectory
        character(len=1) :: prefix
-       
+
        call unixGetenv("TORUS_DATA", dataDirectory, i)
 
        if(stellarMetallicity == 0.5) then
@@ -1058,8 +1058,8 @@ module spectrum_mod
        elseif(stellarMetallicity == 0.01) then
           prefix = 'X'
        endif
-       
-       
+
+
        if (teff < 10000.) then
           write(fluxfile,'(a,i4,a,i3.3,a)') prefix,int(teff),"g",int(logg),"v10.flux"
        else
