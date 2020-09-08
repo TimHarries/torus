@@ -118,7 +118,7 @@ module constants_mod
 
   ! refractive indices
 
-  real(double) :: nAir = 1.000277 !!tjgw201 (04/02/19) set this to zero for wavelengths in H.atm to match those expected
+  real(double) :: nAir = 1.000277 !!tjgw201 (04/02/19) set this to zero for wavelengths if in air calcs wanted
 
   !UV stuff
   real(double), parameter :: Habing = 1.6d-3 !erg cm-2 s-1

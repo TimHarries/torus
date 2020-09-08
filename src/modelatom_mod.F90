@@ -97,6 +97,35 @@ contains
     endif
   end subroutine identifyTransitionCmf
 
+
+SUBROUTINE identifyTransitionCmfSingle(lamLine, thisAtom, iTrans)
+  REAL(DOUBLE) :: lamLine, lamTrans
+  TYPE(MODELATOM) :: thisAtom
+  INTEGER :: iTrans
+  LOGICAL :: found
+  INTEGER :: j
+  CHARACTER(len=80) :: message
+  found = .FALSE.
+
+  DO j = 1, thisAtom%nTrans
+     IF (thisAtom%transType(j)=="RBB") THEN
+        lamTrans = ((cspeed/thisAtom%transfreq(j))*1d8)/nAir !!tjgw201 (04/02/19) this will not match wavelengths in H.atm becuse of correction for air (rather than vacuum)
+        IF ( (ABS(lamTrans-lamLine)) < 1.d0) THEN
+           found = .TRUE.
+           iTrans = j
+           EXIT
+        ENDIF
+     ENDIF
+  ENDDO
+  IF (.NOT. found) THEN
+     WRITE(message,'(a,f10.1)') "Transition not found in identifyTransition: ",lamline
+     CALL writeFatal(message)
+     STOP
+  ENDIF
+END SUBROUTINE identifyTransitionCmfSingle
+
+
+
   subroutine readAtom(thisAtom, atomfilename)
     character(len=*) :: atomfilename
     character(len=200) :: dataDirectory, thisfilename

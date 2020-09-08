@@ -486,14 +486,13 @@ contains
 
 
 !!Only implemented for single atom only (hydrogen)
-  real function bigGammaDynamic(N_HI, temperature, Ne, ul, ll,AA)
+  real function bigGammaDynamic(N_HI, temperature, Ne, ul, ll, AA)
     real(double), intent(in) :: N_HI         ! [#/cm^3]  number density of HI
     real(double), intent(in) :: temperature  ! [Kelvins]
     real(double), intent(in) :: Ne           ! [#/cm^3]  nunmber density of electron
     real(double) :: rad, VdW, stark
     real(double) :: chiL, chiU, I, C6, v, AA
     integer, intent(in) :: ul, ll
-
 
     !
     ! See Sutton for details on the stark Broadening parameters
@@ -506,13 +505,12 @@ contains
     v = sqrt((2.d0*temperature*1.3806d-23)/1.6726d-27)
 
     I = 13.6d0
-    chiL = I / ll**2.d0
-    chiU = I / ul**2.d0
-    C6 = 0.3d-30 * ((4.d0/(I-chiU)**2d0)-(4.d0/(I-chiL)**2d0))
+    chiL = I - (I / ll**2.d0)
+    chiU = I - (I / ul**2.d0)
+    C6 = 0.3d-30 * ((4.d0/(I-chiU)**2.d0)-(4.d0/(I-chiL)**2.d0))
     VdW = 17.d0 * C6**(2.d0/5.d0) * v**(3.d0/5.d0) * N_HI
 
     bigGammaDynamic = rad + stark + VdW
-
   end function bigGammaDynamic
 
 end module atom_mod

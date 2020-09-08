@@ -1035,11 +1035,11 @@ contains
     use inputs_mod, only : dynamicstark
     use utils_mod, only : voigtn
     use atom_mod, only: bigGamma, bigGammaDynamic
-    use modelatom_mod, only: returneinsteincoeffs
+    use modelatom_mod, only: returneinsteincoeffs, identifyTransitionCmfSingle
     type(MODELATOM) :: thisAtom
     real(double) :: dv
     type(OCTAL), pointer :: thisOctal
-    integer :: subcell
+    integer :: subcell, iTrans
     real(double) :: n_hi, a, dopplerWidth, hay, nu, v_th
     real(double) :: AA, Bul, Blu
 
@@ -1050,9 +1050,12 @@ contains
     N_HI = thisoctal%atomlevel(subcell, 1, 1)
 
     IF(dynamicstark) THEN
-      call returnEinsteinCoeffs(thisAtom, 1, AA, Bul, Blu)
-      a = bigGammaDynamic(N_HI, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), thisAtom%iUpper(1), &
-      thisAtom%iLower(1), AA) / (fourPi * DopplerWidth)
+      iTrans = 1
+      call identifyTransitionCmfSingle(dble(cSpeed/nu)*1.d8/nAir, thisAtom, iTrans)
+      call returnEinsteinCoeffs(thisAtom, iTrans, AA, Bul, Blu)
+      a = bigGammaDynamic(N_HI, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), thisAtom%iUpper(iTrans), &
+      thisAtom%iLower(iTrans), AA) / (fourPi * DopplerWidth)
+
     ELSE
       a = bigGamma(N_HI, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), nu) / (fourPi * DopplerWidth) ! [-]
     END IF
