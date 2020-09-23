@@ -1922,13 +1922,11 @@ contains
 !  end subroutine testClusterSpectra
 
   subroutine offshootProperties(clusters, iParent, iStart, iEnd)
-    use inputs_mod, only : smallestCellSize, starFormationEfficiency
     type(SOURCETYPE), pointer :: clusters(:)
     integer, intent(in) :: iParent, iStart, iEnd
-    type(OCTAL), pointer :: thisOctal
     type(VECTOR) :: uvec
-    integer :: subcell, i
-    real(double) :: sigma, mean, fac, r
+    integer ::  i
+    real(double) :: sigma, fac, r
 
     ! set the new clusters' properties based on the parent cluster properties
 
@@ -1941,7 +1939,6 @@ contains
        clusters(i)%position%z = clusters(iParent)%position%z + fac * uvec%z
 
        sigma = sqrt(kerg*10.d0/mHydrogen) ! TODO use soundSpeed? would need MPI'ifying to get octal
-       write(*,*) "sigma (km/s) ", sigma/1e5
        fac = randomValueGaussian(sigma, 0.d0)
        uvec = randomUnitVector()
        clusters(i)%velocity%x = clusters(iParent)%velocity%x + fac * uvec%x
@@ -1956,13 +1953,11 @@ contains
   subroutine testClusterSplit
 !     use starburst_mod, only : populateClusters, getStarList
      use inputs_mod, only : accretionRadius, smallestCellSize
-     real(double) :: thissourceflux, tot, burstMass
-     integer :: i, j, k, iImf, nIMF
-     character(len=80) :: mpifilename, fn
+     integer :: i, j, iImf, nIMF
+     character(len=80) :: mpifilename
      logical :: populated(1000), domorephoto
      real(double), pointer :: imf(:)
      type(SOURCETYPE), pointer :: star
-     real(double) :: msink, msub, mtot
 
      iIMF = 0
      nimf = 0
