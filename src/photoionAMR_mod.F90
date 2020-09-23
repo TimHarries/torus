@@ -1316,12 +1316,10 @@ contains
              ! after addSinks and accretion (i.e. sink masses have been updated)
              call randomNumberGenerator(randomSeed=.true.)
              call randomNumberGenerator(syncIseed=.true.)
-
              if (myrankWorldglobal == 1) call tune(6, "Populating clusters")
              call populateClusters(globalSourceArray, globalnSource, 0.d0, populated, doMorePhoto, & 
                imf=imf, iIMF=iIMF, nIMF=nIMF) 
              if (myrankWorldglobal == 1) call tune(6, "Populating clusters")
-
              call randomNumberGenerator(randomSeed=.true.)
 
              if (mod(nHydroCounter,nHydroPerSpectra) == 0) then
@@ -1355,11 +1353,14 @@ contains
        if (myrankglobal == 0 .and. clusterSinks .and. globalnsource > 0) then
           write(*,*) "Cluster properties"
           write(*,'(a2,1x,a4,5x,a12,1x,a4,1x,a12,1x,a12,1x,a12)') "r", "i", "Mcl", "n*", "Mres", "age", "lum"
-          do i = 1, globalnSource
+       do i = 1, globalnSource
+!          if (globalSourceArray(i)%accretionRadius > 0.d0 .or. globalSourceArray(i)%luminosity > 0.d0 .or. &
+!             clusterReservoir(globalSourceArray(i)) > 0.d0) then
              write(*,'(i2.2,1x,i4.4,5x,f12.5,1x,i4,1x,f12.5,1x,es12.5,1x,es12.5)') myrankglobal, i, globalSourceArray(i)%mass/msol,&
              globalSourceArray(i)%nSubsource, clusterReservoir(globalSourceArray(i))/msol, globalsourceArray(i)%age, &
              globalsourceArray(i)%luminosity/lsol
-          enddo
+!          endif
+       enddo
 !             if (globalSourceArray(i)%nSubsource > 0) then
 !                j = maxloc(globalsourceArray(i)%subsourceArray(1:globalsourceArray(i)%nsubsource)%mass,dim=1)
 !                write(*,'(i2.2, 1x,i3.3, a5, f9.2,1x,i4,a14,es9.2,1x,es9.2)') myrankglobal, i, "_max ", &
@@ -1476,7 +1477,7 @@ contains
                 totalMass = totalMass + globalsourceArray(i)%subsourceArray(j)%mass
              enddo
           enddo
-          write(*,*) "Total mass in stars (msol) is ", totalmass/mSol
+          write(*,*) "Total mass in subsources (msol) is ", totalmass/mSol
        endif
 
 
@@ -1735,7 +1736,7 @@ contains
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
 !    close(444)
-    if (gasdt < 1.d-3) then
+    if (gasdt < 1.d-3 .or. sourceSourcedt < 1.d-3) then
       call torus_stop("tc less than 0.001 s")
     endif
 
@@ -10910,6 +10911,7 @@ end subroutine putStarsInGridAccordingToDensity
     endif
 
   end subroutine writeLuminosities
+
 
 !  subroutine testSpectraMemory
 !    use starburst_mod

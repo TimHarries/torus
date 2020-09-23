@@ -417,6 +417,14 @@ contains
 
           call getDouble("imfmax", imfMax, 1.d0, cLine, fLine, nLines, &
                "IMF maximum mass (msol): ","(a,f6.1,a)", 120.d0, ok, .false.)
+
+          call getLogical("splitclusters", splitClusters, cLine, fLine, nLines, &
+               "Split low-mass stars from clusters: ", "(a,1l,1x,a)", .false., ok, .false.)
+          if (splitClusters .and. starFormationEfficiency < 1.d0) then
+             ! this is required to make the clusterReservoir calculation simple, and also it means
+             ! the cluster potential won't be dominated by a massive clustersink
+             call writeFatal("Splitting clusters requires SFE = 1")
+          endif
        endif
 
     endif

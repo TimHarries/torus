@@ -3768,4 +3768,31 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
    ENDIF
  END FUNCTION PLGNDR
 
+ ! returns a random value from a Gaussian PDF between +/- 5*sigma of the mean
+ function randomValueGaussian(sigma, xMean) result (xOut)
+   real(double) :: xMin, xMax, xOut, sigma, xMean
+   integer, parameter :: nx = 100
+   integer :: i
+   real(double) :: xArray(nx), prob(nx), r, t
+
+   xMin = xMean - 5.d0*sigma
+   xMax = xMean + 5.d0*sigma
+
+   do i = 1, nx
+      xArray(i) = xMin + (dble(i-1)/dble(nx-1)) * (xMax-xMin)
+   enddo
+
+   ! gaussian pdf
+   prob = 1.d0/(sigma*sqrt(twoPi)) * exp(-(xArray(:)-xMean)**2/(2.d0*sigma**2))
+   do i = 2, nx
+      prob(i) = prob(i) + prob(i-1)
+   enddo
+   prob(1:nx) = prob(1:nx) - prob(1)
+   prob(1:nx) = prob(1:nx) / prob(nx)
+   call randomNumberGenerator(getDouble=r)
+   call locate(prob, nx, r, i)
+   t = (r - prob(i))/(prob(i+1)-prob(i))
+   xOut = xArray(i) + t * (xArray(i+1)-xArray(i))
+ end function randomValueGaussian
+
 end module utils_mod

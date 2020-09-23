@@ -17,7 +17,7 @@
   type SOURCETYPE
      type(VECTOR)    :: position   ! [10^10cm]
      type(VECTOR)    :: force
-     type(VECTOR)    :: velocity
+     type(VECTOR)    :: velocity ! [cm/s]
      real(double) :: radius     ! [10^10cm]
      real(double) :: luminosity ! [erg/s]
      real(double) :: teff       ! [K]
@@ -1380,6 +1380,10 @@
        clusterReservoir = cluster%mass * starFormationEfficiency - sum(cluster%subsourceArray(1:cluster%nSubsource)%mass) 
     else
        clusterReservoir = cluster%mass * starFormationEfficiency
+    endif
+    ! non-accreting particles are stars, not sinks
+    if (cluster%accretionRadius < 1.d-30) then
+       clusterReservoir = 0.d0
     endif
   end function clusterReservoir
 

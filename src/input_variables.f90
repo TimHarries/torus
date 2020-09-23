@@ -438,6 +438,7 @@
   logical :: moveSources
   logical :: evolveSources
   logical :: clusterSinks
+  logical :: splitClusters
   logical :: hotspot
   logical :: pulsatingStar
   integer :: nModes
