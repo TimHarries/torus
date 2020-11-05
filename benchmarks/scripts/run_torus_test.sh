@@ -883,12 +883,16 @@ for opt in ${DEBUG_OPTS}; do
 # Set platform specific variables for Isca.
 	export TORUS_FC="ifort -g -check all"
 	export TORUS_FITSLIBS=/gpfs/ts0/shared/software/CFITSIO/3.38-intel-2016b/lib
-    else
+    elif [[ ${MODE} == daily ]]; then
 # Set platform specific variables for post-zen.
 	export PATH=/home/torustest/openmpi/bin:/home/torustest/bin:/usr/local/bin:${PATH}:/usr/bin
 	export TORUS_FITSLIBS="/home/torustest/cfitsio/lib"
 	export TORUS_FC="gfortran -g -fcheck=all"
 	export TORUS_DATA=${TEST_DIR}/torusdata
+    elif [[ ${MODE} == workingcopy ]]; then
+# For the working copy tests we will use the user supplied TORUS_DATA
+        export TORUS_FITSLIBS="/home/torustest/cfitsio/lib"
+        export TORUS_FC="gfortran -g -fcheck=all"
     fi
 
 # Set up working directory and check out source code
