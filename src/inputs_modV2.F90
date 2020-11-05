@@ -2792,13 +2792,33 @@ contains
 
 #ifdef USECFITSIO
     subroutine readFitsGridParameters
-      use gridFromFitsFile, only: setGridFromFitsParameters
+      use gridFromFitsFile, only: setGridFromFitsParameters, setGridFromFitsParametersPionAMR
       character(len=80) :: filename
+      character(len=20) :: fileLabel
+      integer :: i
 
-      call getString("fitsgridfile", filename, cLine, fLine, nLines, &
-           "FITS file for making grid: ","(a,a,a)","default",ok, .true.)
+      call getLogical("pionAMR", pionAMR, cLine, fLine, nLines, &
+           "Pion grid is non-uniform?: : ","(a,1l,1x,a)", .false., ok, .false.)
 
-      call setGridFromFitsParameters(filename,amr2d,amr3d)
+      if(pionAMR) then
+         call getInteger("nFitsLevels", nFitsLevels, cLine, fLine, nLines,"Number of fits levels: ","(a,i12,a)",1,ok,.false.)
+
+         do i = 0, nFitsLevels-1
+            write(fileLabel, '(a,i1.1)') "fitsgridfile",i
+
+            call getString(fileLabel, pionFitsAMRfile(i+1), cLine, fLine, nLines, &
+                 "FITS file for making grid: ","(a,a,a)","default",ok, .true.)
+
+         enddo
+         call setGridFromFitsParametersPionAMR(nFitsLevels, pionFitsAMRfile,amr2d,amr3d, pionAMR, maxdepthamr)
+      else
+
+         call getString("fitsgridfile", filename, cLine, fLine, nLines, &
+              "FITS file for making grid: ","(a,a,a)","default",ok, .true.)
+         call setGridFromFitsParameters(filename,amr2d,amr3d, pionAMR)
+      endif
+
+
 
     end subroutine readFitsGridParameters
 #endif

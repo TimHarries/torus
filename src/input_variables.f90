@@ -116,7 +116,12 @@
   logical :: dumpBisbas           !Dump the grid for use in the Bisbas+ 3D-PDR code
   logical :: singleMegaPhoto             !Do an extensive photoionization calculation
   character(len=80) :: gridInputFilename, gridOutputFilename ! File names for reading/writing AMR grid
+  !THaworth pion AMR                                                                                                            
+  logical :: pionAMR 
+  integer :: nFitsLevels
+  character(len=80) :: pionFitsAMRfile(10)
 
+  
 !----------------------------------
 ! Physical units of the calculation
 !----------------------------------

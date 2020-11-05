@@ -1,3 +1,6 @@
+
+
+
 ! Module for setting up a Torus grid from data held in a FITS file
 
 module gridFromFitsFile
@@ -9,31 +12,43 @@ module gridFromFitsFile
   implicit none
 
   public :: read_fits_file_for_grid, assign_from_fitsfile, setGridFromFitsParameters, checkFitsSplit
+
   private :: setup_axes, read_lutable
 
   logical, private, save :: isRequired = .false.
 
 ! Filename and type (VH1, pion)
+  integer :: numFitsFiles
   character(len=80), private, save :: filename="none"
+  character(len=80), private, save :: filenames(10)="none"
   character(len=80), private, save :: filetype
 
 ! Arrays to hold data from fits files
 ! Number of pixels
   integer, private, save :: axis_size(3)
+  integer, private, save :: axis_size_A(3,10)
+  logical, private, save :: pionAMR
 ! Axes
+
   real(double), private, save, allocatable :: xaxis(:), yaxis(:), zaxis(:)
+  real(double), private, save, allocatable :: xaxis_A(:,:), yaxis_A(:,:), zaxis_A(:,:)
+  real(double), private, save, allocatable :: dxArray(:), dyArray(:), dzArray(:)
+  real(double), private, save :: dx_A(10), dy_A(10), dz_A(10)
+  real(double), private, save, allocatable :: dxArray_A(:,:), dyArray_A(:,:), dzArray_A(:,:)
   real(double), private, save :: xMin, xMax, dx
   real(double), private, save :: yMin, yMax, dy
   real(double), private, save :: zMin, zMax, dz
-
+  real(double), private, save :: maxDepthAMR
 ! Size of the x-axis
   real(double), parameter :: xSize   = 30.0*pctocm
   real(double), parameter :: xCentre =  0.0*pctocm
 
 ! Values
   real(single), private, save, allocatable :: density(:,:,:), temperature(:,:,:)
-  real(double), private, save, allocatable :: density_double(:,:,:), temperature_double(:,:,:), ionfrac_double(:,:,:), &
+  real(double), private, save, allocatable :: density_double(:,:,:), temperature_double(:,:,:), ionfrac_double(:,:,:), & 
        tr1_double(:,:,:)
+  real(double), private, save, allocatable :: density_double_A(:,:,:,:), temperature_double_A(:,:,:,:)
+  real(double), private, save, allocatable :: ionfrac_double_A(:,:,:,:), tr1_double_A(:,:,:,:), tr0_double_A(:,:,:,:)
 
 ! If true use the ideal gas EOS to calculate temperature
   logical, parameter, private :: idealGas=.false.
@@ -49,22 +64,55 @@ module gridFromFitsFile
   contains
 
 ! Called from inputs_mod to set parameters for this module
-    subroutine setGridFromFitsParameters(infile,twod,threed)
+    subroutine setGridFromFitsParameters(infile,twod,threed, AMR)
       character(len=80) :: infile
-      logical, intent(in) :: twod, threed
+ logical, intent(in) :: twod, threed, AMR
 
+      
       isRequired = .true.
       filename=infile
       amr2d = twod
       amr3d = threed
+      pionAMR=AMR
 
       if (amr2d.and.amr3d) call writeWarning("Both 2D and 3D are set")
       if (( .not.amr2d) .and. (.not.amr3d) ) call writeWarning("Neither 2D nor 3D is set")
 
     end subroutine setGridFromFitsParameters
 
-    subroutine read_fits_file_for_grid
+! Called from inputs_mod to set parameters for this module
+    subroutine setGridFromFitsParametersPionAMR(nfitsfiles, infiles,twod,threed, AMR, maxdepth)
+      character(len=80) :: infiles(10)
+      integer, intent(in) :: nfitsfiles, maxdepth
+      logical, intent(in) :: twod, threed, AMR
+!      logical :: pionAMR
+      integer :: i
 
+      numFitsFiles = nFitsFiles
+      isRequired = .true.
+      do i=1, numfitsfiles
+         filenames(i) = infiles(i)
+      enddo
+!      filenames(1) = infiles(1)
+!      filenames(2) = infiles(2)
+!      filenames(3) = infiles(3)
+
+      maxDepthAMR = maxdepth
+      amr2d = twod
+      amr3d = threed
+      pionAMR = AMR
+      if (amr2d.and.amr3d) call writeWarning("Both 2D and 3D are set")
+      if (( .not.amr2d) .and. (.not.amr3d) ) call writeWarning("Neither 2D nor 3D is set")
+
+ !     do i = 1, numfitsfiles
+!         print *, "filenames are 1 ", filenames(i), infiles(i)
+  !       print *, " "         
+   !   enddo
+
+    end subroutine setGridFromFitsParametersPionAMR
+
+    subroutine read_fits_file_for_grid
+      
       use fits_utils_mod, only: printFitsError
 
 ! FITS file variables and parameters
@@ -114,6 +162,282 @@ module gridFromFitsFile
 
 
     end subroutine read_fits_file_for_grid
+
+
+
+    subroutine read_fits_file_for_grid_pionAMR
+      
+      use fits_utils_mod, only: printFitsError
+
+! FITS file variables and parameters
+      integer :: status, unit, blocksize
+      integer, parameter :: readwrite=0 ! Open file read only 
+      integer, parameter :: group=0
+      character(len=80) :: record, comment
+      logical :: found_file
+      integer :: i, naxis, j
+      character(len=80) :: message
+      real(double) :: lengthscaling
+      real(double), parameter :: nullvall = 1.d-33
+      integer :: npixels, npix_x, npix_y, npix_z
+      integer :: totalpixels
+      real(single) :: xmin0, xmin1, xmin2
+      real(single) :: xmax0, xmax1, xmax2
+      real(single) :: level_xmin0(numFitsFiles)
+      real(single) :: level_xmax0(numFitsFiles)
+      real(single) :: level_xmin1(numFitsFiles)
+      real(single) :: level_xmax1(numFitsFiles)
+      real(single) :: level_xmin2(numFitsFiles)
+      real(single) :: level_xmax2(numFitsFiles)
+      logical :: anynull
+      integer :: hdutype
+      logical :: CHEM_CODE = .True.
+      chem_code=chem_code
+
+      lengthscaling = 1.d0
+
+      fileType = "pion"
+      npix_x = 0
+      npix_y = 0
+      npix_z = 0
+      
+      totalpixels = 0
+      ! need to loop over each file and count cells first
+
+
+      dx_A=0.d0
+      dy_A=0.d0
+      dz_A=0.d0
+
+      do i=1, numFitsFiles
+!         lengthscaling = 
+         write(message,*) "Initialising grid from a FITS file", i, "/ ", numFitsFiles
+         call writeInfo(message,TRIVIAL)
+         inquire (file=filenames(i), exist=found_file)
+         if (.not. found_file) then
+            call writeFatal("The file called "//trim(filenames(i))//" does not exist")
+            stop
+         endif
+          call writeInfo ("Reading FITS file "//filenames(i), FORINFO)
+
+         status = 0
+
+         !NOW DO THE STUFF THAT WOULD BE CALLED
+!         print *, "checkpoint A"
+         call ftgiou(unit, status)
+ !        print *, "checkpoint B"
+         call ftopen(unit, filenames(i),readwrite,blocksize,status)
+  !       print *, "checkpoint C"
+         ! Find out how many axes there are   
+   !      print *, "checkpoint D"
+         call ftgkyj(unit,"GRIDNDIM",naxis,comment,status)
+    !     print *, "checkpoint E"
+         write(message,*) "There are ", naxis, " axes"
+         call writeInfo(message,TRIVIAL)
+     !    print *, "checkpoint F"
+         
+         if(i==1) then
+            axis_size_A(:,:)=1
+            call ftgkyj(unit,"NGRID0",axis_size_A(1,i),comment,status)
+            call ftgkyj(unit,"NGRID1",axis_size_A(2,i),comment,status)
+            call ftgkyj(unit,"NGRID2",axis_size_A(3,i),comment,status)
+            axis_size_A(1,:) = axis_size_A(1,i)
+            axis_size_A(2,:) = axis_size_A(2,i)
+            axis_size_A(3,:) = axis_size_A(3,i)
+            write(message,*) "Axis sizes: ", axis_size_A(:,i)
+            call writeInfo(message,TRIVIAL)
+         endif
+         npix_x = npix_x + axis_size_A(1,i)
+         npix_y = npix_y + axis_size_A(2,i)
+         npix_z = npix_z + axis_size_A(3,i)
+         npixels = axis_size_A(1,i) * axis_size_A(2,i) * axis_size_A(3,i)
+         totalpixels = totalpixels + npixels
+!         print *, "npixels, totalpixels", npixels, totalpixels
+
+         if ( i == 1) then
+!            print *, "doing allcoations"
+ !           print *, "density double"
+            allocate(density_double_A     (axis_size_A(1,i), axis_size_A(2,i), & 
+                 axis_size_A(3,i), numFitsFiles))
+  !          print *, "temperature double"
+            allocate(temperature_double_A (axis_size_A(1,i), axis_size_A(2,i), & 
+                 axis_size_A(3,i), numFitsFiles))
+   !         print *, "ionfrac double"
+            allocate(ionfrac_double_A (axis_size_A(1,i), axis_size_A(2,i), &
+                 axis_size_A(3,i), numFitsFiles))
+    !        print *, "tr1 double"
+            allocate(tr1_double_A (axis_size_A(1,i), axis_size_A(2,i), &
+                 axis_size_A(3,i), numFitsFiles))
+            allocate(tr0_double_A (axis_size_A(1,i), axis_size_A(2,i), &
+                 axis_size_A(3,i), numFitsFiles))
+     !       print *, "allocations done"
+         endif
+
+
+
+         !THESE ARE GLOBAL PARAMETERS
+         call ftgkye(unit,"XMIN0",xmin0,comment,status)
+!         print *, "xmin0 ", xmin0
+         call ftgkye(unit,"XMIN1",xmin1,comment,status)
+ !        print *, "xmin1 ", xmin1
+         call ftgkye(unit,"XMIN2",xmin2,comment,status)
+  !       print *, "xmin2 ", xmin2
+         call ftgkye(unit,"XMAX0",xmax0,comment,status)
+   !      print *, "xmax0 ", xmax0
+         call ftgkye(unit,"XMAX1",xmax1,comment,status)
+    !     print *, "xmax1 ", xmax1
+         call ftgkye(unit,"XMAX2",xmax2,comment,status)
+     !    print *, "xmax2 ", xmax2
+
+
+
+!THESE ARE LEVEL SPECIFIC
+         call ftgkye(unit,"LEVEL_XMIN0",level_xmin0(i),comment,status)
+!         print *, "level_xmin0 ", level_xmin0(i)
+         call ftgkye(unit,"LEVEL_XMIN1",level_xmin1(i),comment,status)
+ !        print *, "level_xmin1 ", level_xmin1(i)
+         call ftgkye(unit,"LEVEL_XMIN2",level_xmin2(i),comment,status)
+  !       print *, "level_xmin2 ", level_xmin2(i)
+
+         call ftgkye(unit,"LEVEL_XMAX0",level_xmax0(i),comment,status)
+   !      print *, "level_xmax0 ", level_xmax0(i)
+         call ftgkye(unit,"LEVEL_XMAX1",level_xmax1(i),comment,status)
+    !     print *, "level_xmax1 ", level_xmax1(i)
+         call ftgkye(unit,"LEVEL_XMAX2",level_xmax2(i),comment,status)
+     !    print *, "level_xmax2 ", level_xmax2(i)
+
+!If first time do allocations
+         if ( i == 1) then
+!            print *, "allocating axes", numFitsFiles
+ !           print *, "x"
+            allocate(xAxis_A(1:axis_size_A(1,i),numFitsFiles))
+  !          print *, "y"
+            allocate(yAxis_A(1:axis_size_A(2,i),numFitsFiles))
+   !         print *, "z"
+            allocate(zAxis_A(1:axis_size_A(3,i),numFitsFiles))
+    !        print *, "done"
+         endif
+
+         !set up the dx,dy,dz of this level
+         dx_A(i) = (level_xMax0(i) - level_xMin0(i))/real(axis_size_A(1,i))
+         dy_A(i) = (level_xMax1(i) - level_xMin1(i))/real(axis_size_A(2,i))
+         dz_A(i) = (level_xMax2(i) - level_xMin2(i))/real(axis_size_A(3,i))
+         
+!         print *, "axis sizes ",  axis_size_A(1,i), axis_size_A(2,i), axis_size_A(3,i)
+ !        print *, "dx_A ", dx_A
+  !       print *, "dy_A ", dy_A
+   !      print *, "dz_A ", dz_A
+         !populate the axis coordinates of this level
+         do j = 1, axis_size_A(1,i)
+            xAxis_A(j,i) = level_xMin0(i) + dx_A(i) * real(j-1)
+         enddo
+         do j = 1, axis_size_A(2,i)
+            yAxis_A(j,i) = level_xMin1(i) + dy_A(i) * real(j-1)
+         enddo
+         do j = 1, axis_size_A(3,i)
+            zAxis_A(j,i) = level_xMin2(i) + dz_A(i) * real(j-1)
+         enddo
+
+         xAxis_A(:,i) = xAxis_A(:,i) / 1.e10
+         yAxis_A(:,i) = yAxis_A(:,i) / 1.e10
+         zAxis_A(:,i) = zAxis_A(:,i) / 1.e10
+         dx_A(i) = dx_A(i) / 1.e10
+         dy_A(i) = dy_A(i) / 1.e10
+         dz_A(i) = dz_A(i) / 1.e10
+
+         if (writeoutput) then
+            write(*,*) "FILE ", i, " / ", numFitsFiles
+            write(*,*) "xAxis runs from ",xAxis_A(1,i), xAxis_A(axis_size_A(1,i),i)
+            write(*,*) "yAxis runs from ",yAxis_A(1,i), yAxis_A(axis_size_A(2,i),i)
+            write(*,*) "zAxis runs from ",zAxis_A(1,i), zAxis_A(axis_size_A(3,i),i)
+         endif
+!         call ftgkye(unit,"CHEM_CODE",CHEM_CODE,comment,status)
+ !        print *, "CHEM CODE? ", CHEM_CODE
+
+         ! Move to the next extension
+         call ftmrhd(unit,1,hdutype,status)
+         call FTMNHD(unit, 0, "GasDens", 0, status)
+!         call FTMNHD(unit, 1, "GasDens", 1, status)
+!         call FTMNHD(unit, 1, "GasDens", 0, status)
+         call ftgkys(unit,"EXTNAME",record,comment,status)
+
+         if (status==0) then
+            write(message,*) "Reading density from field with EXTNAME= ", trim(record)
+            call writeInfo(message,TRIVIAL)
+         else
+            call writeWarning("Did not find EXTNAME keyword. Will assume this is density")
+!           call writeFatal("Could not find density HDU")
+ !           stop
+         endif
+
+
+         ! Read in the data.
+         call ftgpvd(unit,group,1,npixels,nullvall,density_double_A(:,:,:,i),anynull,status)         
+         
+
+
+         call FTMNHD(unit, 0, "TR0", 0, status)
+         call ftgkys(unit,"EXTNAME",record,comment,status)
+         if (status==0) then
+            write(message,*) "Reading wind mass fraction from field with EXTNAME= ", trim(record)
+            call writeInfo(message,TRIVIAL)
+         else
+            print *, "record was ", trim(record)
+            call writeFatal("Could not find wind mass fraction HDU")
+            stop
+         endif
+
+         ! Read in the data.
+         call ftgpvd(unit,group,1,npixels,nullvall,tr0_double_A(:,:,:,i),anynull,status)
+
+!         tr0_double_A(:,:,:,i) = 1.d-2
+!         call FTMNHD(unit, 0, "TR1", 0, status)
+ !        call ftgkys(unit,"EXTNAME",record,comment,status)
+  !       if (status==0) then
+   !         write(message,*) "Reading TR1 from field with EXTNAME= ", trim(record)
+    !        call writeInfo(message,TRIVIAL)
+     !    else
+      !      call writeFatal("Could not find TR1 in HDU")
+       !     stop
+        ! endif
+
+         ! Read in the data.
+         !call ftgpvd(unit,group,1,npixels,nullvall,tr1_double_A(:,:,:,i),anynull,status)
+!      endif
+
+      call FTMNHD(unit, 0, "Temp", 0, status)
+      call ftgkys(unit,"EXTNAME",record,comment,status)
+      if (status==0) then
+         write(message,*) "Reading temperature from field with EXTNAME= ", trim(record)
+         call writeInfo(message,TRIVIAL)
+      else
+         call writeFatal("Could not find temperature HDU")
+         stop
+      endif
+
+! Read in the data.
+      call ftgpvd(unit,group,1,npixels,nullvall,temperature_double_A(:,:,:,i),anynull,status)
+
+
+      ! Close the file and free the LUN
+      call ftclos(unit, status)
+      call ftfiou(unit, status)
+      
+      ! If there were any errors then print them out
+      call printFitsError(status)
+      
+      
+      
+   enddo
+
+   !OK, now have arrays populated, just need to interpolate them onto torus grid. 
+   print *, "FINISHED POPULATING ARRAYS"
+!      print *, "TEMPORARY STOP"
+ !     stop
+
+    end subroutine read_fits_file_for_grid_pionAMR
+
+
 
 !-------------------------------------------------------------------------------
 ! Reads in a FITS file which will be used to set up the Torus AMR grid
@@ -491,10 +815,15 @@ npd_loop:            do n=1,npd
       TYPE(OCTAL), intent(inout) :: thisOctal
       integer, intent(in) :: subcell
 
-      if (allocated(density_double)) then
-         call assign_from_fitsfile_interp(thisOctal, subcell)
+      if(pionAMR) then 
+!         print *, "assign_from_fitsfile_interp_pionAMR"
+         call assign_from_fitsfile_interp_pionAMR(thisOctal, subcell)
       else
-         call assign_from_fitsfile_nointerp(thisOctal, subcell)
+         if (allocated(density_double)) then
+            call assign_from_fitsfile_interp(thisOctal, subcell)
+         else
+            call assign_from_fitsfile_nointerp(thisOctal, subcell)
+         endif
       endif
     end subroutine assign_from_fitsfile
 
@@ -535,6 +864,7 @@ npd_loop:            do n=1,npd
     logical function checkFitsSplit(thisOctal, subcell)
       use octal_mod
 
+
       TYPE(OCTAL), intent(inout) :: thisOctal
       integer, intent(in) :: subcell
       type(VECTOR) :: rVec
@@ -543,7 +873,11 @@ npd_loop:            do n=1,npd
          case("VH1")
             call checkFitsSplit_vh1
          case("pion")
-            call checkFitsSplit_pion
+            if(pionAMR) then
+               call checkFitsSplit_pionAMR
+            else
+               call checkFitsSplit_pion
+            endif
          case DEFAULT
             call writeFatal("Fits file type not recognised")
             stop
@@ -581,6 +915,7 @@ npd_loop:            do n=1,npd
                 (rVec%y >= xAxis(2)).and.(rVec%y <= yAxis(axis_size(2))).and. &
                 (rVec%z >= xAxis(3)).and.(rVec%z <= zAxis(axis_size(3)))
         endif
+
         checkFitsSplit = .false.
         if (inPionDomain) then
            if (amr2d) then
@@ -589,9 +924,297 @@ npd_loop:            do n=1,npd
         endif
       end subroutine checkFitsSplit_pion
 
+
+      subroutine checkFitsSplit_pionAMR
+        logical :: inPionDomain
+        integer :: i, levelmodifier
+        rVec = thisOctal%centre
+
+        inPionDomain = .false.
+        do i = numFitsFiles, 1, -1
+
+   !        print *, "i = ", i, yAxis_A(1,i)*1.d10/pctocm, yAxis_A(axis_size_A(2,i),i)*1.d10/pctocm, & 
+  !              xAxis_A(1,i)*1.d10/pctocm, xAxis_A(axis_size_A(1,i),i)*1.d10/pctocm
+ !          print *, "rvec ", rvec*1.d10/pctocm
+           if (amr2d) then
+              inPionDomain = (rVec%x >= yAxis_A(1,i)).and.(rVec%x <= yAxis_A(axis_size_A(2,i),i)).and. &
+                   (rVec%z >= xAxis_A(1,i)).and.(rVec%z <= xAxis_A(axis_size_A(1,i),i))
+           else if (amr3d) then
+!              inPionDomain = (rVec%x >= xAxis_A(1,i)).and.(rVec%x <= xAxis_A(axis_size_A(1,i),i)).and. &
+ !                  (rVec%y >= xAxis_A(2,i)).and.(rVec%y <= yAxis_A(axis_size_A(2,i),i)).and. &
+  !                 (rVec%z >= xAxis_A(3,i)).and.(rVec%z <= zAxis_A(axis_size_A(3,i),i))
+
+              inPionDomain = (rVec%x >= xAxis_A(1,i)).and.(rVec%x <= xAxis_A(axis_size_A(1,i),i)).and. &
+                   (rVec%y >= yAxis_A(2,i)).and.(rVec%y <= yAxis_A(axis_size_A(2,i),i)).and. &
+                   (rVec%z >= zAxis_A(3,i)).and.(rVec%z <= zAxis_A(axis_size_A(3,i),i))
+           endif
+
+           checkFitsSplit = .false.
+
+           if (inPionDomain) then
+              levelmodifier= numFitsFiles - i
+              if(thisOctal%ndepth < maxdepthamr-levelmodifier ) then
+                 checkfitssplit = .true.
+!                 print *, "depths, i ", thisOctal%ndepth, maxdepthamr-levelmodifier, maxdepthamr, levelmodifier, i
+              endif
+              exit
+           endif
+        enddo
+           
+      end subroutine checkFitsSplit_pionAMR
+!
+
+!      subroutine checkFitsSplit_pionAMRold
+!        logical :: inPionDomain
+!        integer :: i
+!        rVec = thisOctal%centre
+!
+!        inPionDomain = .false.
+!        do i = numFitsFiles, 1, -1
+!
+!
+!           if (amr2d) then
+!              inPionDomain = (rVec%x >= yAxis_A(1,i)).and.(rVec%x <= yAxis_A(axis_size_A(2,i),i)).and. &
+!                   (rVec%z >= xAxis_A(1,i)).and.(rVec%z <= xAxis_A(axis_size_A(1,i),i))
+!           else if (amr3d) then
+!              inPionDomain = (rVec%x >= xAxis_A(1,i)).and.(rVec%x <= xAxis_A(axis_size_A(1,i),i)).and. &
+!                   (rVec%y >= xAxis_A(2,i)).and.(rVec%y <= yAxis_A(axis_size_A(2,i),i)).and. &
+!                   (rVec%z >= xAxis_A(3,i)).and.(rVec%z <= zAxis_A(axis_size_A(3,i),i))
+!           endif
+!
+!!           print *, "i, num ", i, numFitsFiles
+! !          print *, axis_size_A(1,i), axis_size_A(2,i), axis_size_A(3,i)
+!  !         print *, "x ", rvec%x, yAxis_A(1,i), yAxis_A(axis_size_A(2,i),i)
+!   !        print *, "y ", rVec%y, zAxis_A(1,i), zAxis_A(axis_size_A(3,i),i)
+!    !       print *, "z ", rVec%z, xAxis_A(1,i), xAxis_A(axis_size_A(1,i),i)
+!!           if (amr2d) then
+! !             inPionDomain = (rVec%x >= xAxis_A(1,i)).and.(rVec%x <= xAxis_A(axis_size_A(1,i),i)).and. &
+!  !                 (rVec%z >= yAxis_A(1,i)).and.(rVec%z <= yAxis_A(axis_size_A(2,i),i))
+!   !!        else if (amr3d) then
+!     !         !MIGHT NEED UPDDATED
+!      !        inPionDomain = (rVec%x >= xAxis_A(1,i)).and.(rVec%x <= xAxis_A(axis_size_A(1,i),i)).and. &
+!       !            (rVec%y >= xAxis_A(2,i)).and.(rVec%y <= yAxis_A(axis_size_A(2,i),i)).and. &
+!        !           (rVec%z >= xAxis_A(3,i)).and.(rVec%z <= zAxis_A(axis_size_A(3,i),i))
+!         !  endif
+!           checkFitsSplit = .false.
+! !          print *, "in pion domain? ", inPionDomain, i, numFitsFiles
+!  !         print *, "x pos /lims ", rvec%x, xAxis_A(1,i), xAxis_A(axis_size_A(1,i),i) 
+!   !        print *, "z pos / lims", rvec%z, yAxis_A(1,i), yAxis_A(axis_size_A(2,i),i)
+!!           print *, "X ", xAxis_A(:,i) 
+!!           stop
+!           if (inPionDomain) then
+!!              print *, "AM ACTUALLY SPLITTING ! ! ! !"
+!              if (amr2d) then
+!                 if (thisOctal%subcellSize > 0.5d0*min(dx,dy)) checkFitsSplit = .true.
+!              endif
+!!              stop
+!              exit
+!           endif
+!        enddo
+!           
+!      end subroutine checkFitsSplit_pionAMRold
+!
     end function checkFitsSplit
 
 !-------------------------------------------------------------------------------
+
+
+    subroutine assign_from_fitsfile_interp_pionAMR(thisOctal, subcell)
+      use octal_mod
+      use utils_mod, only : locate
+
+
+      TYPE(OCTAL), intent(inout) :: thisOctal
+      integer, intent(in) :: subcell
+
+      TYPE(vector) :: rVec
+      integer :: thisI, thisJ, thisK
+      integer :: i 
+      real :: u, v, w 
+      logical :: ok
+!      real(double) :: grainfrac
+      logical :: inPionDomain
+
+
+      rVec = subcellcentre(thisOctal, subcell)
+      thisOctal%rho(subcell) = 1.d-30
+
+      inPionDomain = .false.
+
+!      print *, "IN ASSIGN FROM PION AMR"
+      !try highest resolution first and work back until I find coarsest grid I am contained within
+      !hmmm, what will happen at boundaries...
+      !maybe if at boundary use next coarsest level?
+      do i = numFitsFiles, 1, -1
+!         if (amr2d) then
+ !           inPionDomain = (rVec%z >= yAxis_A(1,i)).and.(rVec%z <= yAxis_A(axis_size_A(2,i),i)).and. &
+  !               (rVec%x >= xAxis_A(1,i)).and.(rVec%x <= xAxis_A(axis_size_A(1,i),i))
+   !      else if (amr3d) then
+    !!        inPionDomain = (rVec%x >= xAxis_A(1,i)).and.(rVec%x <= xAxis_A(axis_size_A(1,i),i)).and. &
+      !           (rVec%y >= xAxis_A(2,i)).and.(rVec%y <= yAxis_A(axis_size_A(2,i),i)).and. &
+       !          (rVec%z >= xAxis_A(3,i)).and.(rVec%z <= zAxis_A(axis_size_A(3,i),i))
+        ! endif
+
+         ok = .true.
+
+         if (amr2d) then
+            inPionDomain = (rVec%x >= yAxis_A(1,i)).and.(rVec%x <= yAxis_A(axis_size_A(2,i),i)).and. &
+                 (rVec%z >= xAxis_A(1,i)).and.(rVec%z <= xAxis_A(axis_size_A(1,i),i))
+         else if (amr3d) then
+!            inPionDomain = (rVec%x >= xAxis_A(1,i)).and.(rVec%x <= xAxis_A(axis_size_A(1,i),i)).and. &
+ !                (rVec%y >= xAxis_A(2,i)).and.(rVec%y <= yAxis_A(axis_size_A(2,i),i)).and. &
+  !               (rVec%z >= xAxis_A(3,i)).and.(rVec%z <= zAxis_A(axis_size_A(3,i),i))
+            inPionDomain = (rVec%x >= xAxis_A(1,i)).and.(rVec%x <= xAxis_A(axis_size_A(1,i),i)).and. &
+                 (rVec%y >= yAxis_A(2,i)).and.(rVec%y <= yAxis_A(axis_size_A(2,i),i)).and. &
+                 (rVec%z >= zAxis_A(3,i)).and.(rVec%z <= zAxis_A(axis_size_A(3,i),i))
+         endif
+
+
+
+!         print *, "in Pion domain? ", inPionDomain
+ 
+        
+         if (inPionDomain) then
+            if (amr3d) then
+               call locate(xAxis_A(:,i), axis_size_A(1,i), rVec%x, thisI)
+               call locate(yAxis_A(:,i), axis_size_A(2,i), rVec%y, thisJ)
+               call locate(zAxis_A(:,i), axis_size_A(3,i), rVec%z, thisK)
+
+               u = real((rVec%x - xAxis_A(thisI,i))/(xAxis_A(thisI+1,i)-xAxis_A(thisI,i)))
+               v = real((rVec%y - yAxis_A(thisJ,i))/(yAxis_A(thisJ+1,i)-yAxis_A(thisJ,i)))
+               w = real((rVec%z - zAxis_A(thisK,i))/(zAxis_A(thisK+1,i)-zAxis_A(thisK,i)))
+
+               if( u**2 > 1.d0) then
+                  print *, "u > 1 ", u, v, w
+                  print *, "rvec%x", rvec%x
+                  print *, "xAxis_A(thisI,i)", xAxis_A(thisI,i), xAxis_A(thisI+1,i)
+                  print *, "size ", size(xAxis_A(:,i)), thisI 
+                  stop
+               endif
+
+               if( v**2 > 1.d0) then
+                  print *, "v > 1 ", u, v, w
+                  print *, "rvec%y", rvec%y
+                  print *, "yAxis_A(thisJ,i)", yAxis_A(thisJ,i), yAxis_A(thisJ+1,i)
+                  print *, "size ", size(yAxis_A(:,i)), thisJ 
+                  stop
+               endif
+
+               if( w**2 > 1.d0) then
+                  print *, "w > 1 ", u, v, w
+                  print *, "rvec%z", rvec%z
+                  print *, "zAxis_A(thisK,i)", zAxis_A(thisK,i), zAxis_A(thisK+1,i)
+                  print *, "size ", size(zAxis_A(:,i)), thisK 
+                  stop
+               endif
+
+               thisOctal%rho(subcell) =   density_double_A(thisI  ,  thisJ  ,thisK,i ) * (1.d0-u)*(1.d0-v)*(1.d0-w) &
+                    +  density_double_A(thisI+1,  thisJ  ,thisK,i  ) * (     u)*(1.d0-v)*(1.d0-w) &
+                    +  density_double_A(thisI  ,  thisJ+1,thisK,i  ) * (1.d0-u)*(     v)*(1.d0-w) &
+                    +  density_double_A(thisI+1,  thisJ+1,thisK,i  ) * (     u)*(     v)*(1.d0-w) &
+                    +  density_double_A(thisI  ,  thisJ  ,thisK+1,i) * (1.d0-u)*(1.d0-v)*(     w) &
+                    +  density_double_A(thisI+1,  thisJ  ,thisK+1,i) * (     u)*(1.d0-v)*(     w) &
+                    +  density_double_A(thisI  ,  thisJ+1,thisK+1,i) * (1.d0-u)*(     v)*(     w) &
+                    +  density_double_A(thisI+1,  thisJ+1,thisK+1,i) * (     u)*(     v)*(     w)  
+
+               
+               if(thisOctal%rho(subcell) < 0.d0) then
+                  print *, "negative density"
+                  print *, "density_doubles"
+                  print *, "u,v,w, ", u, v, w
+                  print *, "rvec ", rvec
+                  print *, "Axis1 ", xAxis_A(thisI,i), yAxis_A(thisJ,i), zAxis_A(thisK,i)
+                  print *, "Axis1 ", xAxis_A(thisI+1,i), yAxis_A(thisJ+1,i), zAxis_A(thisK+1,i)
+                  print *, density_double_A(thisI  ,  thisJ  ,thisK,i ), & 
+                       density_double_A(thisI  ,  thisJ  ,thisK,i ) * (1.d0-u)*(1.d0-v)*(1.d0-w)
+                  print *, density_double_A(thisI+1,  thisJ  ,thisK,i  ), & 
+                       density_double_A(thisI+1,  thisJ  ,thisK,i  ) * (     u)*(1.d0-v)*(1.d0-w)
+                  print *, density_double_A(thisI  ,  thisJ+1,thisK,i  ), & 
+                        density_double_A(thisI  ,  thisJ+1,thisK,i  ) * (1.d0-u)*(     v)*(1.d0-w)
+                  print *, density_double_A(thisI+1,  thisJ+1,thisK,i  ), &
+                       density_double_A(thisI+1,  thisJ+1,thisK,i  ) * (     u)*(     v)*(1.d0-w)
+                  print *,  density_double_A(thisI  ,  thisJ  ,thisK+1,i), & 
+                       density_double_A(thisI  ,  thisJ  ,thisK+1,i) * (1.d0-u)*(1.d0-v)*(     w)
+                  print *,  density_double_A(thisI+1,  thisJ  ,thisK+1,i), & 
+                       density_double_A(thisI+1,  thisJ  ,thisK+1,i) * (     u)*(1.d0-v)*(     w)
+                  print *, density_double_A(thisI  ,  thisJ+1,thisK+1,i), & 
+                       density_double_A(thisI  ,  thisJ+1,thisK+1,i) * (1.d0-u)*(     v)*(     w)
+                  print *, density_double_A(thisI+1,  thisJ+1,thisK+1,i), & 
+                       density_double_A(thisI+1,  thisJ+1,thisK+1,i) * (     u)*(     v)*(     w)
+                  ok = .false.
+ !                 stop
+               endif
+
+
+
+               thisOctal%temperature(subcell) =   real(temperature_double_A(thisI  ,  thisJ  ,thisK,i) * & 
+                    (1.d0-u)*(1.d0-v)*(1.d0-w) &
+                    +  temperature_double_A(thisI+1,  thisJ  ,thisK,i  ) * (     u)*(1.d0-v)*(1.d0-w) &
+                    +  temperature_double_A(thisI  ,  thisJ+1,thisK,i  ) * (1.d0-u)*(     v)*(1.d0-w) &
+                    +  temperature_double_A(thisI+1,  thisJ+1,thisK,i  ) * (     u)*(     v)*(1.d0-w) &
+                    +  temperature_double_A(thisI  ,  thisJ  ,thisK+1,i) * (1.d0-u)*(1.d0-v)*(     w) &
+                    +  temperature_double_A(thisI+1,  thisJ  ,thisK+1,i) * (     u)*(1.d0-v)*(     w) &
+                    +  temperature_double_A(thisI  ,  thisJ+1,thisK+1,i) * (1.d0-u)*(     v)*(     w) &
+                    +  temperature_double_A(thisI+1,  thisJ+1,thisK+1,i) * (     u)*(     v)*(     w)  )
+               
+               if (thisoctal%temperature(subcell) < 0.d0) ok = .false.
+
+               thisOctal%dustTypeFraction(subcell,1) =   0.01d0*(1.d0-(tr0_double_A(thisI  ,  thisJ  ,thisK,i) * & 
+                    (1.d0-u)*(1.d0-v)*(1.d0-w) &
+                    +  tr0_double_A(thisI+1,  thisJ  ,thisK,i  ) * (     u)*(1.d0-v)*(1.d0-w) &
+                    +  tr0_double_A(thisI  ,  thisJ+1,thisK,i  ) * (1.d0-u)*(     v)*(1.d0-w) &
+                    +  tr0_double_A(thisI+1,  thisJ+1,thisK,i  ) * (     u)*(     v)*(1.d0-w) &
+                    +  tr0_double_A(thisI  ,  thisJ  ,thisK+1,i) * (1.d0-u)*(1.d0-v)*(     w) &
+                    +  tr0_double_A(thisI+1,  thisJ  ,thisK+1,i) * (     u)*(1.d0-v)*(     w) &
+                    +  tr0_double_A(thisI  ,  thisJ+1,thisK+1,i) * (1.d0-u)*(     v)*(     w) &
+                    +  tr0_double_A(thisI+1,  thisJ+1,thisK+1,i) * (     u)*(     v)*(     w)  ))
+
+               if (thisoctal%dustTypeFraction(subcell,1) <= 0.d0) then 
+                  thisoctal%dustTypeFraction(subcell,1) = 1.d-30
+               endif
+
+            else if (amr2d) then
+!               print *, "locating using level ", i
+               call locate(xAxis_A(:,i), axis_size_A(1,i), rVec%z, thisI)
+               call locate(yAxis_A(:,i), axis_size_A(2,i), rVec%x, thisJ)
+               
+               u = real((rVec%z - xAxis_A(thisI,i))/(xAxis_A(thisI+1,i)-xAxis_A(thisI,i)))
+               v = real((rVec%x - yAxis_A(thisJ,i))/(yAxis_A(thisJ+1,i)-yAxis_A(thisJ,i)))
+               thisOctal%rho(subcell) =     density_double_A(thisI,thisJ,1,i) * (1.d0-u)*(1.d0-v) &
+                    +  density_double_A(thisI+1,thisJ,1,i) * (     u)*(1.d0-v) &
+                    +  density_double_A(thisI, thisJ+1,1,i) * (1.d0-u)*(     v) &
+                    +  density_double_A(thisI+1,thisJ+1,1,i)* (     u)*(     v) 
+               if (thisoctal%rho(subcell) < 0.d0) ok = .false.
+               thisOctal%temperature(subcell) = real( temperature_double_A(thisI,thisJ,1,i) * (1.d0-u)*(1.d0-v) &
+                    +  temperature_double_A(thisI+1,thisJ,1,i) * (     u)*(1.d0-v) &
+                    +  temperature_double_A(thisI, thisJ+1,1,i) * (1.d0-u)*(     v) &
+                    +  temperature_double_A(thisI+1,thisJ+1,1,i)* (     u)*(     v) )
+               if (thisoctal%temperature(subcell) < 0.d0) ok = .false.
+               if (.not.associated(thisOctal%dustTypeFraction)) then
+                  allocate(thisOctal%dustTypeFraction(1:thisOctal%maxChildren,1))
+               endif
+               thisOctal%dustTypeFraction(subcell,1) =  0.01d0 * (1.d0-(   tr0_double_A(thisI,thisJ,1,i) * (1.d0-u)*(1.d0-v) &
+                    +  tr0_double_A(thisI+1,thisJ,1,i) * (     u)*(1.d0-v) &
+                    +  tr0_double_A(thisI, thisJ+1,1,i) * (1.d0-u)*(     v) &
+                    +  tr0_double_A(thisI+1,thisJ+1,1,i)* (     u)*(     v) ))
+
+               if (thisOctal%temperature(subcell) > 1.d6) thisOctal%dustTypeFraction(subcell,1) = 0.d0               
+               
+            endif
+!            if(ok) exit
+            exit
+         endif
+      enddo
+      thisOctal%etaCont(subcell) = 0.
+      thisOctal%inFlow(subcell) = .true.
+      thisOctal%velocity = VECTOR(0.,0.,0.)
+      thisOctal%biasCont3D = 1.
+      thisOctal%etaLine = 1.e-30
+
+    end subroutine assign_from_fitsfile_interp_pionAMR
+
+
+
 
     subroutine assign_from_fitsfile_interp(thisOctal, subcell)
       use octal_mod
@@ -691,17 +1314,35 @@ npd_loop:            do n=1,npd
       
     subroutine deallocate_gridFromFitsFile
 
+      if (allocated(dxArray_A)) deallocate(dxArray_A)
+      if (allocated(dyArray_A)) deallocate(dyArray_A)
+      if (allocated(dzArray_A)) deallocate(dzArray_A)
+
+      if (allocated(dxArray)) deallocate(dxArray)
+      if (allocated(dyArray)) deallocate(dyArray)
+      if (allocated(dzArray)) deallocate(dzArray)
+
       if (allocated (density))     deallocate(density)
       if (allocated (temperature)) deallocate(temperature)
       if (allocated (xaxis))       deallocate(xaxis)
       if (allocated (yaxis))       deallocate(yaxis)
       if (allocated (zaxis))       deallocate(zaxis)
 
+      if (allocated (xaxis_A))       deallocate(xaxis_A)
+      if (allocated (yaxis_A))       deallocate(yaxis_A)
+      if (allocated (zaxis_A))       deallocate(zaxis_A)
+
 
       if (allocated (density_double))     deallocate(density_double)
       if (allocated (temperature_double))     deallocate(temperature_double)
       if (allocated (ionfrac_double))     deallocate(ionfrac_double)
       if (allocated (tr1_double))     deallocate(tr1_double)
+
+      if (allocated (density_double_A))     deallocate(density_double_A)
+      if (allocated (temperature_double_A))     deallocate(temperature_double_A)
+      if (allocated (ionfrac_double_A))     deallocate(ionfrac_double_A)
+      if (allocated (tr1_double_A))     deallocate(tr1_double_A)
+
 
     end subroutine deallocate_gridFromFitsFile
 #endif

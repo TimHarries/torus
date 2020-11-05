@@ -36,7 +36,7 @@ contains
     use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, mDisc
     use inputs_mod, only : rCore, rInner, rOuter, gridDistance, massEnvelope, readTurb, virialAlpha, restartLucy
     use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, logspacegrid, nmag, dospiral, sphereMass, &
-         sphereRadius, sourceRadius
+         sphereRadius, sourceRadius, pionAMR
     use disc_class, only:  new
 #ifdef ATOMIC
     use cmf_mod, only : checkVelocityInterp
@@ -278,9 +278,28 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
 
 #ifdef USECFITSIO
        case("fitsfile")
-          call read_fits_file_for_grid()
+          if(pionAMR) then
+             call read_fits_file_for_grid_pionAMR()
+          else
+             call read_fits_file_for_grid()
+          endif
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
-          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
+
+          nTimes = maxDepthAMR - minDepthAMR + 2
+          do counter = 1, nTimes
+             call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .true.)
+             if (doSmoothGrid) then
+                call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
+                do
+                   gridConverged = .true.
+                   call myScaleSmooth(smoothfactor, grid, &
+                        gridConverged,  inheritProps = .false., &
+                        interpProps = .false.)
+                   if (gridConverged) exit
+                end do
+                call writeInfo("...grid smoothing complete", TRIVIAL)
+             endif
+          enddo
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 #endif
 
