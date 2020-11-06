@@ -329,13 +329,13 @@ module gridFromFitsFile
    !      print *, "dz_A ", dz_A
          !populate the axis coordinates of this level
          do j = 1, axis_size_A(1,i)
-            xAxis_A(j,i) = level_xMin0(i) + dx_A(i) * real(j-1)
+            xAxis_A(j,i) = level_xMin0(i) + dx_A(i) * real(j-0.5)
          enddo
          do j = 1, axis_size_A(2,i)
-            yAxis_A(j,i) = level_xMin1(i) + dy_A(i) * real(j-1)
+            yAxis_A(j,i) = level_xMin1(i) + dy_A(i) * real(j-0.5)
          enddo
          do j = 1, axis_size_A(3,i)
-            zAxis_A(j,i) = level_xMin2(i) + dz_A(i) * real(j-1)
+            zAxis_A(j,i) = level_xMin2(i) + dz_A(i) * real(j-0.5)
          enddo
 
          xAxis_A(:,i) = xAxis_A(:,i) / 1.e10
