@@ -1107,8 +1107,14 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
            viewVec     = getSedViewVec(iInclination)
         end if
 
-        xAxisImage = rotateX(xAxisImage, dble(inclination))
-        yAxisImage = rotateX(yAxisImage, dble(inclination))
+        if (inclination /= 0.) then
+           xAxisImage = viewVec.cross.VECTOR(0.d0, 0.d0, 1.d0)
+        else
+           xAxisImage = VECTOR(1.d0, 0.d0, 0.d0)
+        endif
+        call normalize(xAxisImage)
+        yAxisImage =  viewVec .cross. xAxisimage
+        call normalize(yAxisImage)
         
 
         imagePA = real(thisimagePA)
@@ -1169,6 +1175,10 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
     end if
 
      write(message,'(a,f6.3,a,f6.3,a,f6.3,a)') "Viewing vector: (",viewVec%x,",",viewVec%y,",", viewVec%z,")"
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a,f6.3,a,f6.3,a,f6.3,a)') "X-Axis vector: (",xaxisImage%x,",",xaxisImage%y,",", xaxisImage%z,")"
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a,f6.3,a,f6.3,a,f6.3,a)') "Y-Axis vector: (",yaxisImage%x,",",yaxisImage%y,",", yaxisImage%z,")"
      call writeInfo(message, TRIVIAL)
      write(message,*) " "
      call writeInfo(message, TRIVIAL)
