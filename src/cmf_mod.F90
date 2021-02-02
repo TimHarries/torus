@@ -1041,13 +1041,15 @@ contains
     type(OCTAL), pointer :: thisOctal
     integer :: subcell, iTrans
     real(double) :: n_hi, a, dopplerWidth, hay, nu, v_th
-    real(double) :: AA, Bul, Blu
+    real(double) :: AA, Bul, Blu, turb
 
     V_th = sqrt(2.*kErg*thisOctal%temperature(subcell)/(thisAtom%mass*mHydrogen))  ! [cm/s] theram speed
 
     DopplerWidth = nu/cSpeed * V_th !eq 7  [Hz]
 
     N_HI = thisoctal%atomlevel(subcell, 1, 1)
+
+    turb = thisOctal%microturb(subcell)*nu
 
     IF(dynamicstark) THEN
       iTrans = 1
@@ -1059,6 +1061,8 @@ contains
     ELSE
       a = bigGamma(N_HI, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), nu) / (fourPi * DopplerWidth) ! [-]
     END IF
+
+      a = a + (turb/(fourPi * DopplerWidth))
 
     Hay = voigtn(a,dv*cspeed/v_th)
     phiProfStark = nu * Hay / (sqrtPi*DopplerWidth)

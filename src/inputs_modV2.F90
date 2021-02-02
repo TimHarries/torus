@@ -1406,7 +1406,7 @@ contains
                "(a,1p,e9.3,1x,a)", 10000.0d0, ok, .true.)
 
           call getDouble("SW_veq", SW_veq, 1.d5, cLine, fLine, nLines, &
-               "Stellar wind:: stellar cd ~/tor equatorial rotation velocity [km/s]: ", &
+               "Stellar wind:: stellar equatorial rotation velocity [km/s]: ", &
                "(a,1p,e9.3,1x,a)", 0.d0, ok, .false.)
 
 
@@ -3005,13 +3005,14 @@ contains
                "Line emission wavelength: ","(a,f8.1,1x,a)", 850., ok, .true.)
 
     call getReal("vturb", vturb, real(kmstoc), cLine, fLine, nLines, &
-               "Turbulent velocity (km/s):","(a,f6.1,1x,a)", 0., ok, .true.)
+               "Turbulent velocity (km/s):","(a,f6.1,1x,a)", 1., ok, .false.)
+    IF(vturb == 0.0) vturb = 1*real(kmstoc)
 
     call getLogical("starkbroaden",starkBroaden, cline, fline, nlines, &
                 "Use Stark Broadening", "(a,1l,1x,a)", .false., ok, .true.)
-                
+
     call getLogical("dynamicstark",dynamicstark, cline, fline, nlines, &
-                "Use dynamic stark broadening - testing", "(a,1l,1x,a)", .false., ok, .true.)
+                "Use dynamic stark broadening - testing", "(a,1l,1x,a)", .false., ok, .False.)
 
     !
     ! Voigt profile prameters
