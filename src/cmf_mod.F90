@@ -1049,9 +1049,14 @@ contains
 
     N_HI = thisoctal%atomlevel(subcell, 1, 1)
 
-    turb = thisOctal%microturb(subcell)*nu
+    !conversion to wavelength then to frequency - long hand will wittle down later if correct
+    !adding the turbulant velocity (halfwith of gaussian) to bigGamma
+    turb = thisOctal%microturb(subcell)*cSpeed*sqrt(log(2.d0))
+    turb = turb / nu
+    turb = turb * nu**2 / cSpeed
+    turb = turb / (fourPi * DopplerWidth)
 
-    IF(dynamicstark) THEN
+    IF(dynamicstark) THEN !attempts to calculate the stark broadening parameters for each cell.
       iTrans = 1
       call identifyTransitionCmfSingle(dble(cSpeed/nu)*1.d8/nAir, thisAtom, iTrans)
       call returnEinsteinCoeffs(thisAtom, iTrans, AA, Bul, Blu)
@@ -1062,7 +1067,7 @@ contains
       a = bigGamma(N_HI, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), nu) / (fourPi * DopplerWidth) ! [-]
     END IF
 
-      a = a + (turb/(fourPi * DopplerWidth))
+    a = a + turb
 
     Hay = voigtn(a,dv*cspeed/v_th)
     phiProfStark = nu * Hay / (sqrtPi*DopplerWidth)

@@ -485,7 +485,7 @@ contains
   end function bigGamma
 
 
-!!Only implemented for single atom only (hydrogen)
+!!Implemented for single atom only (hydrogen)
   real function bigGammaDynamic(N_HI, temperature, Ne, ul, ll, AA)
     real(double), intent(in) :: N_HI         ! [#/cm^3]  number density of HI
     real(double), intent(in) :: temperature  ! [Kelvins]
