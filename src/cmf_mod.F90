@@ -1054,7 +1054,8 @@ contains
     turb = thisOctal%microturb(subcell)*cSpeed*sqrt(log(2.d0))
     turb = turb / nu
     turb = turb * nu**2 / cSpeed
-    turb = turb / (fourPi * DopplerWidth)
+    ! turb = turb / (fourPi * DopplerWidth)
+    dopplerWidth = dopplerWidth + turb
 
     IF(dynamicstark) THEN !attempts to calculate the stark broadening parameters for each cell.
       iTrans = 1
@@ -1067,7 +1068,6 @@ contains
       a = bigGamma(N_HI, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), nu) / (fourPi * DopplerWidth) ! [-]
     END IF
 
-    a = a + turb
 
     Hay = voigtn(a,dv*cspeed/v_th)
     phiProfStark = nu * Hay / (sqrtPi*DopplerWidth)
