@@ -3006,7 +3006,7 @@ contains
 
     call getReal("vturb", vturb, real(kmstoc), cLine, fLine, nLines, &
                "Turbulent velocity (km/s):","(a,f6.1,1x,a)", 1., ok, .false.)
-    IF(vturb == 0.0) vturb = 1*real(kmstoc)
+    IF(vturb == 0.0) vturb = 1.*real(kmstoc)
 
     call getLogical("starkbroaden",starkBroaden, cline, fline, nlines, &
                 "Use Stark Broadening", "(a,1l,1x,a)", .false., ok, .true.)

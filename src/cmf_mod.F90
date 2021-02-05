@@ -1043,19 +1043,17 @@ contains
     real(double) :: n_hi, a, dopplerWidth, hay, nu, v_th
     real(double) :: AA, Bul, Blu, turb
 
-    V_th = sqrt(2.*kErg*thisOctal%temperature(subcell)/(thisAtom%mass*mHydrogen))  ! [cm/s] theram speed
-
+    !conversion to wavelength then to frequency - long hand will wittle down later if correct
+    !adding the turbulant velocity (halfwith of gaussian) to bigGamma
+    turb = thisOctal%microturb(subcell)*cSpeed!*sqrt(log(2.d0))
+    ! turb = turb / nu
+    ! turb = turb * nu**2 / cSpeed
+    ! ! turb = turb / (fourPi * DopplerWidth)
+    V_th = sqrt((2.*kErg*thisOctal%temperature(subcell)/(thisAtom%mass*mHydrogen)) + turb**2)  ! [cm/s] theram speed
+    !added turbulent broadening to the dopplerWidth as per: 1. la Cruz Rodríguez, de, J. & van Noort, M. Radiative Diagnostics in the Solar Photosphere and Chromosphere. Space Science Reviews 210, 109–143 (2017).
     DopplerWidth = nu/cSpeed * V_th !eq 7  [Hz]
 
     N_HI = thisoctal%atomlevel(subcell, 1, 1)
-
-    !conversion to wavelength then to frequency - long hand will wittle down later if correct
-    !adding the turbulant velocity (halfwith of gaussian) to bigGamma
-    turb = thisOctal%microturb(subcell)*cSpeed*sqrt(log(2.d0))
-    turb = turb / nu
-    turb = turb * nu**2 / cSpeed
-    ! turb = turb / (fourPi * DopplerWidth)
-    dopplerWidth = dopplerWidth + turb
 
     IF(dynamicstark) THEN !attempts to calculate the stark broadening parameters for each cell.
       iTrans = 1
