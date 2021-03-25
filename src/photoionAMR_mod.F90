@@ -39,7 +39,7 @@ public :: photoIonizationloopAMR, createImagesplitgrid, ionizeGrid, &
      neutralGrid, resizePhotoionCoeff, resetNH, hasPhotoionAllocations, allocatePhotoionAttributes, &
      computeProbDistAMRMpi, putStarsInGridAccordingToDensity, testBranchCopying, createtemperaturecolumnimage,&
      writeLuminosities, calculateAverageTemperature, createtdustColumnImage, calculateAverageTdust, &
-     createEmissionMeasureImage
+     createEmissionMeasureImage,calculateAveragePressure, createPressureImage
 
 
 #ifdef HYDRO
@@ -1656,6 +1656,7 @@ contains
 !             write(mpiFilename,'(a,i4.4,a)') "cells",grid%idump,".dat"
 !             call write1dlist(grid, mpifilename)
 !          endif
+       if (.not.clusterSinks) then
              write(mpiFilename,'(a,i4.4,a)') "radial+X",grid%idump,".dat"
              call  dumpValuesAlongLine(grid, mpiFilename, VECTOR(0.d0,0.d0,0.0d0), &
                   VECTOR(grid%octreeRoot%subcellSize, 0.d0, 0.d0),1000)
@@ -1681,6 +1682,7 @@ contains
              call  dumpValuesAlongLine(grid, mpiFilename, VECTOR(0.d0,0.d0,0.0d0), &
                   VECTOR(grid%octreeRoot%subcellSize, 0.0d0, grid%octreeRoot%subcellSize),1000)
           endif
+       endif
 
 
 !          if (stellarWinds) then
@@ -1932,9 +1934,9 @@ end subroutine radiationHydro
     logical :: undersampled, flushBuffer, containsLastPacket, movedCells
     logical, save :: splitThisTime = .false.
     logical, save :: firstLoadBalancing = .true.
-    real(double) :: maxDiffRadius(1:100)
-    real(double) :: maxDiffRadius1(1:100), maxDiffRadius2(1:100)
-    real(double) :: maxDiffRadius3(1:100), tauWanted, photonMomentum
+    real(double), allocatable :: maxDiffRadius(:)
+    real(double), allocatable :: maxDiffRadius1(:), maxDiffRadius2(:),maxDiffRadius3(:)
+    real(double) :: tauWanted, photonMomentum
     type(VECTOR) ::  vec_tmp, uNew
     integer :: receivedStackSize
     integer :: nDomainThreads, localRank, m, nBundles
@@ -2369,6 +2371,10 @@ end subroutine radiationHydro
        end if
 
        sourceInThickCell = .false.
+       allocate(maxDiffRadius(1:globalnSource))
+       allocate(maxDiffRadius1(1:globalnSource))
+       allocate(maxDiffRadius2(1:globalnSource))
+       allocate(maxDiffRadius3(1:globalnSource))
        maxDiffRadius = 0.d0
        nSmallPackets = 0
 
@@ -2433,10 +2439,14 @@ end subroutine radiationHydro
              smallPhotonPacketWeight = 1.d0/(dble(nSmallPackets))
           endif
        end if
+       deallocate(maxDiffRadius)
+       deallocate(maxDiffRadius1)
+       deallocate(maxDiffRadius2)
+       deallocate(maxDiffRadius3)
        if (radPressureTest) nSmallPackets = 0
-    if (writeoutput) then
-       write(*,*) myrankGlobal, " Setting nSmallPackets to ",nSmallPackets
-    endif
+       if (writeoutput) then
+          write(*,*) myrankGlobal, " Setting nSmallPackets to ",nSmallPackets
+       endif
 
 
 
@@ -10501,13 +10511,15 @@ end subroutine putStarsInGridAccordingToDensity
              weight = thisOctal%ne(subcell)**2 
           elseif (weighting=='mass') then
              ! ionized mass
-             if (thisOctal%ionfrac(subcell, 1) < 0.1d0) then
+!             if (thisOctal%ionfrac(subcell, 1) < 0.1d0) then
+             if (thisOctal%ionfrac(subcell, 2) > 0.99d0) then
                 weight = thisOctal%rho(subcell) * dv 
              else
                 weight = 0.d0
              endif
           elseif (weighting=='ionNone') then
-             if (thisOctal%ionfrac(subcell, 1) < 0.1d0) then
+!             if (thisOctal%ionfrac(subcell, 1) < 0.1d0) then
+             if (thisOctal%ionfrac(subcell, 2) > 0.99d0) then
                 weight = 1.d0 
              else
                 weight = 0.d0
@@ -10578,13 +10590,15 @@ end subroutine putStarsInGridAccordingToDensity
                    weight = thisOctal%ne(subcell)**2 
                 elseif (weighting=='mass') then
                    ! ionized mass
-                   if (thisOctal%ionfrac(subcell, 1) < 0.1d0) then
+!                   if (thisOctal%ionfrac(subcell, 1) < 0.1d0) then
+                   if (thisOctal%ionfrac(subcell, 2) > 0.99d0) then
                       weight = thisOctal%rho(subcell) * dv 
                    else
                       weight = 0.d0
                    endif
                 elseif (weighting=='ionNone') then
-                   if (thisOctal%ionfrac(subcell, 1) < 0.1d0) then
+!                   if (thisOctal%ionfrac(subcell, 1) < 0.1d0) then
+                   if (thisOctal%ionfrac(subcell, 2) > 0.99d0) then
                       weight = 1.d0 
                    else
                       weight = 0.d0
@@ -10611,6 +10625,86 @@ end subroutine putStarsInGridAccordingToDensity
     enddo
     
   end subroutine calculateAverageTemperature
+  recursive subroutine calculateAveragePressure(thisOctal, grid, sigma, total, weighting, correction, p0, sigmaNe, n0, comp)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: sigma, total, sigmaNe
+    character(len=*) :: weighting,comp
+    logical :: correction
+    real(double) :: p0, n0, dx, pressure, mu
+    real(double) :: weight, dv
+
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calculateAveragePressure(child, grid, sigma, total, weighting, correction, p0, sigmaNe, n0, comp)
+                exit
+             end if
+          end do
+       else
+          if(.not. thisoctal%ghostcell(subcell)) then
+             if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+                dx = thisoctal%subcellsize * 1.d10 ! cm
+                dv = cellVolume(thisOctal, subcell) * 1.d30 ! cm
+
+                if (comp=='gas') then
+                   mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
+                   pressure = thisOctal%rho(subcell)*kerg*thisOctal%temperature(subcell)/(mu*mHydrogen)
+                elseif (comp=='rad') then
+                   pressure = dx * sqrt(thisOctal%radiationMomentum(subcell)%x**2 + &
+                                        thisOctal%radiationMomentum(subcell)%y**2 + &
+                                        thisOctal%radiationMomentum(subcell)%z**2)
+                endif
+
+                weight = 0.d0
+                if (weighting=='mass') then
+                   weight = thisOctal%rho(subcell) * dv 
+
+                ! V is ionized volume 
+                elseif (weighting=='ionNone') then
+                   if (thisOctal%ionfrac(subcell, 2) > 0.99d0) then
+                      weight = 1.d0 
+                   else
+                      weight = 0.d0
+                   endif
+
+                ! V is neutral volume
+                elseif (weighting=='neuNone') then
+                   if (thisOctal%ionfrac(subcell, 1) > 0.99d0) then
+                      weight = 1.d0 
+                   else
+                      weight = 0.d0
+                   endif
+
+                elseif (weighting=='none') then
+                   weight = 1.d0
+                endif
+                if (correction) then
+                   ! rms^2 deviation 
+                   sigma = sigma + (pressure-p0)**2 *weight*dv 
+                   total = total + weight*dv
+                   sigmaNe = sigmaNe + (thisOctal%ne(subcell)-n0)**2 *weight*dv 
+                else
+                   sigma = sigma + pressure*weight*dv
+                   total = total + weight*dv
+                   sigmaNe = sigmaNe + thisOctal%ne(subcell)*weight*dv
+                endif
+
+
+
+             endif
+          endif
+       endif
+    enddo
+    
+  end subroutine calculateAveragePressure
+
 
   subroutine createTdustColumnImage(grid, direction, image, weighting, meanImage)
     use mpi
@@ -10869,6 +10963,122 @@ end subroutine putStarsInGridAccordingToDensity
 
     end do
   end subroutine emissionMeasureAlongPathAMR
+  subroutine createPressureImage(grid, direction, image, variable)
+    use mpi
+    use inputs_mod, only : maxDepthAMR, amrGridSize
+    real(double), pointer :: image(:,:)
+    real(double) :: halfGridSize, cellSize, xVal, yVal, sigma, tempDouble
+    type(VECTOR) :: direction, pos, centre, xAxisDir, yAxisDir
+    type(GRIDTYPE) :: grid
+    integer :: npix, i, j, ierr
+    character(len=*) :: variable
+
+    if (abs(direction%x) > 0.d0) then
+       xAxisDir = VECTOR(0.d0, 1.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 0.d0, 1.d0)
+    else if (abs(direction%y) > 0.d0) then
+       xAxisDir = VECTOR(1.d0, 0.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 0.d0, 1.d0)
+    else
+       xAxisDir = VECTOR(1.d0, 0.d0, 0.d0)
+       yAxisDir = VECTOR(0.d0, 1.d0, 0.d0)
+    endif
+    npix = 2**maxDepthAmr
+    centre = grid%octreeRoot%centre
+    halfGridSize = grid%octreeRoot%subcellSize
+    cellSize = amrGridSize/dble(npix)
+    if (associated(image)) deallocate(image)
+    allocate(image(1:npix, 1:npix))
+    image = 0.d0
+    do i = 1, nPix
+       do j = 1, nPix
+          pos = centre - (halfGridSize*direction) + (1.d-4*cellSize)*direction
+          xVal = -halfGridSize + ((dble(i-1)/dble(npix))) * amrGridSize + cellSize/2.d0
+          yVal = -halfGridSize + ((dble(j-1)/dble(npix))) * amrGridSize + cellSize/2.d0
+          pos = pos + (xVal * xAxisDir) + (yVal * yAxisDir)
+          sigma = 0.d0
+          tempDouble = 0.d0
+          if (myrankGlobal /= 0) then
+             call PressureAlongPathAMR(grid, pos, direction, sigma, variable)
+          endif
+          call MPI_ALLREDUCE(sigma, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_SUM, zeroPlusAMRCommunicator, ierr)
+          image(i,j) = tempDouble
+       enddo
+    enddo
+  end subroutine createPressureImage
+  subroutine PressureAlongPathAMR(grid, rVec, direction, sigma, variable)
+    use mpi
+    use inputs_mod, only : vtkIncludeGhosts
+    type(GRIDTYPE) :: grid
+    type(VECTOR) :: rVec, direction, currentPosition
+    real(double) :: sigma, distToNextCell, pressure, dx, mu, pgas, prad, r, pbol
+    type(OCTAL), pointer :: thisOctal, sOctal
+    real(double) :: fudgeFac = 1.d-3
+    integer :: subcell, i
+    character(len=*) :: variable
+
+    sigma = 0.d0
+    currentPosition = rVec
+
+    CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
+
+    if (.not.inOctal(grid%octreeRoot, currentPosition)) write(*,*) "pos not in grid"
+
+    do while (inOctal(grid%octreeRoot, currentPosition))
+
+       call findSubcellLocal(currentPosition,thisOctal,subcell)
+
+       sOctal => thisOctal
+       call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
+  
+       currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
+       if (myrankGlobal == thisOctal%mpiThread(subcell)) then
+
+          dx = thisoctal%subcellsize * 1.d10 ! cm
+          if (thisOctal%undersampled(subcell)) then
+             prad = 1.d-30
+          else
+             prad = dx * sqrt(thisOctal%radiationMomentum(subcell)%x**2 + &
+                                  thisOctal%radiationMomentum(subcell)%y**2 + &
+                                  thisOctal%radiationMomentum(subcell)%z**2)
+          endif
+
+          ! like Lopez et al. 2011 equation 1
+          pbol = 0.d0
+          do i = 1, globalnSource
+             r = modulus(globalSourceArray(i)%position - subcellCentre(thisOctal, subcell)) * 1.d10 ! cm
+             pbol = pbol + globalSourceArray(i)%luminosity / (fourPi * r**2 * cspeed)
+          enddo
+
+          mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
+          pgas = thisOctal%rho(subcell)*kerg*thisOctal%temperature(subcell)/(mu*mHydrogen)
+          if (trim(variable) == 'prad') then
+             pressure = prad
+          elseif (trim(variable) == 'pgas') then
+             pressure = pgas
+          elseif (trim(variable) == 'ratio') then
+             pressure = prad/pgas
+          elseif (trim(variable) == 'pbol') then
+             pressure = pbol
+          elseif (trim(variable) == 'pradOverPbol') then
+             pressure = prad/pbol
+          else
+             write(*,*) "variable not recognised ", trim(variable)
+             stop
+          endif
+
+          if (vtkIncludeGhosts) then
+!             sigma = sigma + distToNextCell*1.d10*pressure/thisOctal%rho(subcell)
+             sigma = sigma + pressure
+          else
+             if (.not. thisOctal%ghostCell(subcell)) then
+                sigma = sigma + pressure
+             endif
+          endif
+       endif
+
+    end do
+  end subroutine PressureAlongPathAMR
 
   
   subroutine writeLuminosities(grid) 
