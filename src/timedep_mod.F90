@@ -36,7 +36,7 @@ module timedep_mod
 contains
 
   subroutine runTimeDependentRT(grid, source, nSource, nLambda, xArray)
-    use inputs_mod, only : teff, rCore, rInner, mCore
+    use inputs_mod, only : teff, rInner, mCore
     use inputs_mod, only : timeStart, timeEnd, varyStart, varyEnd
     use inputs_mod, only : nphotons, ntime, gridInputFilename
     use sed_mod, only:  SEDlamMin, SEDlamMax, SEDnumLam
