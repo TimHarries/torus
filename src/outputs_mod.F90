@@ -578,7 +578,8 @@ if (.false.) then
           call writeRadialMolecular(grid, radialFilename, globalMolecule, itrans)
        else
 #endif
-          call writeRadial(grid, radialFilename)
+          call writeValuesNoDomain(radialFilename, grid)
+!          call writeRadial(grid, radialFilename)
 #ifdef MOLECULAR
        endif
 #endif
@@ -705,5 +706,26 @@ if (.false.) then
     close(33)
   end subroutine writeEduard
 
+  subroutine writeValuesNoDomain(outputFilename, grid)
+    type(GRIDTYPE) :: grid
+    real(double) ::  tVal
+    character(len=*) :: outputFilename
+    type(VECTOR) :: rVec, uHat, cVec
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    open(21, file=outputFilename, status="unknown", form="formatted")
+    rVec = VECTOR(0.d0, 0.d0, 0.d0)
+    uHat = VECTOR(1.d0, 0.d0, 0.d0)
+    thisOctal => grid%octreeRoot
+    call findSubcellLocal(rVec, thisOctal, subcell)
+    do while(inOctal(grid%octreeRoot, rVec))
+       call findSubcellLocal(rVec, thisOctal, subcell)
+       cVec = subcellCentre(thisOctal, subcell)
+       write(21, *) modulus(cVec)*1.d10/autocm, thisOctal%temperature(subcell)
+       call distanceToCellBoundary(grid, rVec, uHat, tVal, sOctal=thisOctal)
+       rVec = rVec + (tVal + 1.d-3*grid%halfSmallestSubcell) * uHat
+    enddo
+    close (21)
+  end subroutine writeValuesNoDomain
 
 end module outputs_mod

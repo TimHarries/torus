@@ -1377,6 +1377,36 @@ contains
 666   continue
     end function findilambda
 
+    integer function findIlambdaDouble(lambda, xArray, nLambda, ok)
+      implicit none
+      integer :: nlambda, i
+      real(double) :: lambda
+      real(double) :: xArray(:)
+      logical, intent(out) :: ok
+
+      ok = .true.
+
+      if (lambda < (xArray(1))) then
+         findiLambdaDouble = 1
+         ok = .false.
+         goto 666
+      endif
+      if (lambda > (xArray(nLambda))) then
+         findiLambdaDouble = nLambda
+         ok = .false.
+         goto 666
+      endif
+
+      call locate(xArray, nLambda, lambda, i)
+      if (i /= nLambda) then
+         if (lambda > 0.5*(xArray(i)+xArray(i+1))) then
+            i= i+1
+         endif
+      endif
+      findilambdaDouble = min(i,nLambda)
+666   continue
+    end function findilambdaDouble
+
     real function interpLinearSingle(xArray, yArray, n, x)
       real :: xarray(:), yArray(:)
       real :: x, t

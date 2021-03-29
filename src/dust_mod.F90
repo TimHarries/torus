@@ -914,9 +914,9 @@ contains
           z = rVec%z
           thisOctal%dustTypeFraction(subcell,1:nDustType) = grainFrac(1:nDustType)
 !          write(*,*) r/1496.,thisRsub/1496.d0
-          if (modulus(rVec) < rSublimation) then
-             thisOctal%dustTypeFraction(subcell,1:nDustType) = 1.d-25
-          endif
+!          if (modulus(rVec) < rSublimation) then
+!             thisOctal%dustTypeFraction(subcell,1:nDustType) = 1.d-25
+!          endif
 
           if (curvedInnerEdge.and.(r < thisRsub).and.(modulus(rVec) < 2.d0*rsublimation)) then
              fac = (thisRsub-r)/(0.002d0*rSublimation)

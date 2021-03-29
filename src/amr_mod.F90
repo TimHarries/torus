@@ -5478,8 +5478,8 @@ CONTAINS
           cfac = (eRouter/1.d10)**(-1./2.) / tan(cavAngle)**(3./2.)
           if (cavdens > 1.d-30) then
              dr = (abs(cellCentre%z)/cfac)**(2./3.)
-             if ( (abs(cellCentre%x-dr) < cellsize).and.(cellSize > dr/50.d0) &
-                  .and. (modulus(cellCentre)>erInner/1.d10).and.(modulus(cellCentre)<eRouter/1.d10) ) then
+             if ( (abs(cellCentre%x-dr) < 4.*cellsize).and.(cellSize > dr/100.d0) &
+                  .and. (modulus(cellCentre)>(erInner/1.d10-cellSize)).and.(modulus(cellCentre)<(eRouter/1.d10+cellSize)) ) then
                 split = .true.
              endif
           endif
@@ -12953,9 +12953,9 @@ end function readparameterfrom2dmap
        z = rVec%z
        thisOctal%dustTypeFraction(subcell,1:nDustType) = grainFrac(1:nDustType)
        !          write(*,*) r/1496.,thisRsub/1496.d0
-       if (modulus(rVec) < rSublimation) then
-          thisOctal%dustTypeFraction(subcell,1:nDustType) = 1.d-25
-       endif
+!       if (modulus(rVec) < rSublimation) then
+!          thisOctal%dustTypeFraction(subcell,1:nDustType) = 1.d-10
+!       endif
 
        if (curvedInnerEdge.and.(r < thisRsub).and.(modulus(rVec) < 2.d0*rsublimation)) then
           fac = (thisRsub-r)/(0.002d0*rSublimation)
