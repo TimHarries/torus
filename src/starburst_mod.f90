@@ -1680,7 +1680,7 @@ contains
 !      call freeglobalsourcearray()
 !      globalnsource = 1
 !      allocate(globalsourceArray(1:globalnsource))
-!      globalSourcearray(1:globalnsource)%mass = 500.d0 * msol
+!      globalSourcearray(1:globalnsource)%mass = 1000.d0 * msol
 !      globalSourcearray(1:globalnsource)%age = 0.d0
 !
 !!      do i = 1, globalnsource
@@ -1706,15 +1706,7 @@ contains
 !      ! update ages
 !      t = 0.d0
 !      dt = 1.d4
-!      do while (t <= 3.d6)
-!         ! update from track
-!         do i = 1, globalnSource
-!            do j = 1, globalsourceArray(i)%nSubsource
-!               call updateSourceProperties(globalsourcearray(i)%subsourceArray(j))
-!            enddo
-!         enddo
-!         
-!
+!      do while (t <= 3.4d6)
 !         ! write out 
 !         if (writeoutput) then
 !            do i = 1, globalnSource
@@ -1738,6 +1730,13 @@ contains
 !            endif
 !         enddo
 !         t = t + dt
+!
+!         ! update from track
+!         do i = 1, globalnSource
+!            do j = 1, globalsourceArray(i)%nSubsource
+!               call updateSourceProperties(globalsourcearray(i)%subsourceArray(j))
+!            enddo
+!         enddo
 !      enddo
 !      stop
 !   end subroutine testTracks

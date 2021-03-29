@@ -361,6 +361,36 @@ contains
 
     call getLogical("clustersinks", clusterSinks, cLine, fLine, nLines, &
          "Sinks represent clusters: ", "(a,1l,1x,a)", .false., ok, .false.)
+    if (clusterSinks) then
+       call getString("population", populationMethod, cLine, fLine, nLines, &
+            "Cluster population method: ","(a,a,1x,a)","threshold", ok, .true.)
+
+       call getDouble("criticalmass", criticalMass, mSol, cLine, fLine, nLines, &
+            "Critical mass for creating subsources (msol): ","(a,f6.1,a)", 600.d0, ok, .false.)
+
+       call getDouble("sfe", starFormationEfficiency, 1.d0, cLine, fLine, nLines, &
+            "Clustersink star formation efficiency: ","(a,f6.1,a)", 1.d0, ok, .true.)
+
+       call getLogical("readimf", readimf, cLine, fLine, nLines, &
+            "Read IMF from file: ", "(a,1l,1x,a)", .false., ok, .false.)
+
+       if (readIMF) then
+          call getString("imffile", imfFilename, cLine, fLine, nLines, &
+               "Filename of IMF to read in: ","(a,a,1x,a)","imf.dat", ok, .true.)
+       else
+          call getDouble("popmass", populationMass, mSol, cLine, fLine, nLines, &
+               "Total mass to generate in IMF list (msol): ","(a,e12.3,a)", 1.d5, ok, .false.)
+       endif
+
+       call getString("imf", imfType, cLine, fLine, nLines, &
+            "Initial mass function: ","(a,a,1x,a)","chabrier", ok, .false.)
+
+       call getDouble("imfmin", imfMin, 1.d0, cLine, fLine, nLines, &
+            "IMF minimum mass (msol): ","(a,f6.1,a)", 0.8d0, ok, .false.)
+
+       call getDouble("imfmax", imfMax, 1.d0, cLine, fLine, nLines, &
+            "IMF maximum mass (msol): ","(a,f6.1,a)", 120.d0, ok, .false.)
+    endif
 
 
     if (nBodyPhysics) then
@@ -387,46 +417,6 @@ contains
 
        call getLogical("movesinks", moveSources, cLine, fLine, nLines, &
             "Allow sources to move: ", "(a,1l,1x,a)", .true., ok, .false.)
-
-       if (clusterSinks) then
-          call getString("population", populationMethod, cLine, fLine, nLines, &
-               "Cluster population method: ","(a,a,1x,a)","threshold", ok, .true.)
-
-          call getDouble("criticalmass", criticalMass, mSol, cLine, fLine, nLines, &
-               "Critical mass for creating subsources (msol): ","(a,f6.1,a)", 600.d0, ok, .false.)
-
-          call getDouble("sfe", starFormationEfficiency, 1.d0, cLine, fLine, nLines, &
-               "Clustersink star formation efficiency: ","(a,f6.1,a)", 1.d0, ok, .false.)
-
-          call getLogical("readimf", readimf, cLine, fLine, nLines, &
-               "Read IMF from file: ", "(a,1l,1x,a)", .false., ok, .false.)
-
-          if (readIMF) then
-             call getString("imffile", imfFilename, cLine, fLine, nLines, &
-                  "Filename of IMF to read in: ","(a,a,1x,a)","imf.dat", ok, .true.)
-          else
-             call getDouble("popmass", populationMass, mSol, cLine, fLine, nLines, &
-                  "Total mass to generate in IMF list (msol): ","(a,e12.3,a)", 1.d5, ok, .false.)
-          endif
-
-          call getString("imf", imfType, cLine, fLine, nLines, &
-               "Initial mass function: ","(a,a,1x,a)","chabrier", ok, .false.)
-
-          call getDouble("imfmin", imfMin, 1.d0, cLine, fLine, nLines, &
-               "IMF minimum mass (msol): ","(a,f6.1,a)", 0.8d0, ok, .false.)
-
-          call getDouble("imfmax", imfMax, 1.d0, cLine, fLine, nLines, &
-               "IMF maximum mass (msol): ","(a,f6.1,a)", 120.d0, ok, .false.)
-
-          call getLogical("splitclusters", splitClusters, cLine, fLine, nLines, &
-               "Split low-mass stars from clusters: ", "(a,1l,1x,a)", .false., ok, .false.)
-          if (splitClusters .and. starFormationEfficiency < 1.d0) then
-             ! this is required to make the clusterReservoir calculation simple, and also it means
-             ! the cluster potential won't be dominated by a massive clustersink
-             call writeFatal("Splitting clusters requires SFE = 1")
-          endif
-       endif
-
     endif
 
     call getLogical("evolvesources", evolveSources, cLine, fLine, nLines, &
@@ -737,12 +727,22 @@ contains
             "Find number of undersampled cells: ","(a,1l,1x,a)", .false., ok, .false.)
       call getLogical("calchabing", findHabing, cLine, fLine, nLines, &
             "Write Habing flux to file: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("calchabingcluster", findHabingCluster, cLine, fLine, nLines, &
+            "Write Habing flux to file for clustersinks: ","(a,1l,1x,a)", .false., ok, .false.)
       call getLogical("taufuv", calculateTauFUV, cLine, fLine, nLines, &
             "Calculate tau(FUV) between points: ","(a,1l,1x,a)", .false., ok, .false.)
       call getInteger("nionloops", nClusterIonLoops, cLine, fLine, nLines, &
             "Number of photoionization loops: ","(a,i8,a)", 0, ok, .false.)
       call getInteger("primary", primarySource, cLine, fLine, nLines, &
             "Primary source for G0/tau rays: ","(a,i8,a)", 1, ok, .false.)
+      call getLogical("globalavgpres", calculateAvgPressure, cLine, fLine, nLines, &
+            "Calculate volume average pressure: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("clusterprofile", clusterRadial, cLine, fLine, nLines, &
+            "Dump radial profile for cluster: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("radiustotals", radiusTotals, cLine, fLine, nLines, &
+            "Calculate total inside radii: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("hiiradius", findHIIRadius, cLine, fLine, nLines, &
+            "Calculate total inside radii: ","(a,1l,1x,a)", .false., ok, .false.)
     endif
 
     call getLogical("spectrum", calcSpectrum, cLine, fLine, nLines, &
@@ -3609,7 +3609,7 @@ contains
     call getReal("tminglobal", TMinGlobal, 1., cLine, fLine, nLines, &
          "Minimum Temperature (K): ","(a,f4.1,1x,a)", 10., ok, .false.)
     call getReal("tmaxglobal", TMaxGlobal, 1., cLine, fLine, nLines, &
-         "Maximum Temperature (K): ","(a,f4.1,1x,a)", 2.e4, ok, .false.)
+         "Maximum Temperature (K): ","(a,f7.1,1x,a)", 2.e4, ok, .false.)
 
     if(splitovermpi) then
        call getLogical("optimizeStack", optimizeStack, cLine, fLine, nLines, &

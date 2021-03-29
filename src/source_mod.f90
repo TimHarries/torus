@@ -48,7 +48,7 @@
 
   type(SOURCETYPE), pointer :: globalSourceArray(:) => null()
   integer :: globalnSource
-  integer, parameter :: globalMaxNsubsource=5000
+  integer, parameter :: globalMaxNsubsource=500
 
   contains
 
@@ -162,7 +162,7 @@
       integer :: nSource
       real(double) :: fromSpec
 !      real(double) :: tot
-      integer :: i, j
+      integer :: i
 
 
       if ( nsource<1 ) return
@@ -191,24 +191,24 @@
 !         tot = tot * fourPi*source(i)%radius**2 * 1.d20
 !         write(*,*) myrankWorldGlobal, " source lum ",tot/lsol
          
-         if (source(i)%nSubsource > 0) then
-            do j = 1, source(i)%nSubsource
-!               fromSpec = sumSourceLuminosity(source(i)%subsourceArray(j:j), 1, 1.0, 1.e30)
-               fromSpec = 0.d0
-               if (writeoutput) &
-                    write(*, &
-               '(a4,i3.3,1x,i4.4, f8.3, f8.3, 1p, e12.3, e12.3, e12.3, e12.3,e12.3,e12.3,e12.3,e12.3,e12.3)') &
-                    "sub ", myrankWorldGlobal, j,&
-                    source(i)%subsourceArray(j)%mass/msol, &
-                    source(i)%subsourceArray(j)%radius*1.d10/rsol, source(i)%subsourceArray(j)%luminosity/lsol, fromspec/lsol, &
-                    source(i)%subsourceArray(j)%position%x, &
-                    source(i)%subsourceArray(j)%position%y, &
-                    source(i)%subsourceArray(j)%position%z, &
-                    source(i)%subsourceArray(j)%velocity%x/1.d5, &
-                    source(i)%subsourceArray(j)%velocity%y/1.d5, &
-                    source(i)%subsourceArray(j)%velocity%z/1.d5
-            enddo
-         endif
+!         if (source(i)%nSubsource > 0) then
+!            do j = 1, source(i)%nSubsource
+!!               fromSpec = sumSourceLuminosity(source(i)%subsourceArray(j:j), 1, 1.0, 1.e30)
+!               fromSpec = 0.d0
+!               if (writeoutput) &
+!                    write(*, &
+!               '(a4,i3.3,1x,i4.4, f8.3, f8.3, 1p, e12.3, e12.3, e12.3, e12.3,e12.3,e12.3,e12.3,e12.3,e12.3)') &
+!                    "sub ", myrankWorldGlobal, j,&
+!                    source(i)%subsourceArray(j)%mass/msol, &
+!                    source(i)%subsourceArray(j)%radius*1.d10/rsol, source(i)%subsourceArray(j)%luminosity/lsol, fromspec/lsol, &
+!                    source(i)%subsourceArray(j)%position%x, &
+!                    source(i)%subsourceArray(j)%position%y, &
+!                    source(i)%subsourceArray(j)%position%z, &
+!                    source(i)%subsourceArray(j)%velocity%x/1.d5, &
+!                    source(i)%subsourceArray(j)%velocity%y/1.d5, &
+!                    source(i)%subsourceArray(j)%velocity%z/1.d5
+!            enddo
+!         endif
       enddo
     end subroutine writeSourceList
 
@@ -1372,6 +1372,7 @@
        endif
     enddo
   end function insideSource
+
 
   real(double) function clusterReservoir(cluster) ! [g]
     use inputs_mod, only : starFormationEfficiency

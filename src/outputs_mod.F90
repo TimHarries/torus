@@ -184,7 +184,7 @@ contains
 #ifdef MPI
        call clusterAnalysis(grid, globalSourceArray, globalnSource, nLambda, xArray, miePhase, nMuMie)
 #else
-       call clusterAnalysis(grid)
+       call clusterAnalysis(grid, globalSourceArray, globalnSource)
 #endif
     endif
 
