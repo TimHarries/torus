@@ -1970,6 +1970,144 @@ contains
        call getLogical("discwind", discWind, cLine, fLine, nLines, &
                "Include disc wind: : ","(a,1l,1x,a)", .false., ok, .false.)
 
+    CASE("spiraldisc")
+
+       oneKappa = .true.
+       call getLogical("gasopacity", includeGasOpacity, cLine, fLine, nLines, &
+            "Include gas opacity: ","(a,1l,a)", .false., ok, .false.)
+
+       call getReal("mdot", mdot,  real(msol * secstoyears), cLine, fLine, nLines, &
+            "Mass accretion  rate (msol/yr): ","(a,1p,e12.5,a)", 0.0,  ok, .false.)
+
+       call getLogical("noscat", noScattering, cLine, fLine, nLines, &
+            "No scattering opacity in model: ","(a,1l,1x,a)", .false., ok, .false.)
+
+       call getLogical("smoothinneredge", smoothInnerEdge, cLine, fLine, nLines, &
+            "Smooth density drop at inner edge: ","(a,1l,1x,a)", .false., ok, .false.)
+
+       call getLogical("curvedinneredge", curvedInnerEdge, cLine, fLine, nLines, &
+            "Curved inner edge: ","(a,1l,1x,a)", .false., ok, .false.)
+
+       call getReal("radius1", rCore, real(rsol/1.e10), cLine, fLine, nLines, &
+            "Core radius (solar radii): ","(a,f7.3,a)", 10., ok, .true.)
+
+       call getReal("rinner", rInner, real(autocm/1.d10), cLine, fLine, nLines, &
+            "Inner Radius (AU): ","(a,f7.3,a)", 12., ok, .true.)
+
+       call getReal("rspiral", rSpiral, real(autocm/1.d10), cLine, fLine, nLines, &
+            "Spiral inner radius (AU): ","(a,f7.3,a)", 12., ok, .true.)
+
+       
+       call getReal("teff1", teff, 1., cLine, fLine, nLines, &
+            "Source effective temperature: ","(a,f7.1,a)", 12., ok, .true.)
+
+          call getReal("rsub", rSublimation, rcore, cLine, fLine, nLines, &
+               "Sublimation radius (rstar): ","(a,f5.1,a)", 0., ok, .false.)
+
+       call getLogical("setsubradius", setSubRadius, cLine, fLine, nLines, &
+            "Set sublimation radius empirically (Whitney et al 2004): ","(a,1l,1x,a)", .false., ok, .false.)
+
+       call getDouble("rhofloor", rhoFloor, 1.d0, cLine, fLine, nLines, &
+            "Minimum density:  ","(a,e12.3,1x,a)", 1.d-30, ok, .false.)
+
+       if (.not.setSubRadius) then
+          if (rSublimation == 0.) then
+             rSublimation = rInner
+             write(message, '(a,f7.1,a)') "Dust sublimation radius is ",rSublimation/rcore, " stellar radii"
+             call writeInfo(message,TRIVIAL)
+          endif
+       else
+          rsublimation = rCore * (1600./teff)**(-2.1) ! Robitaille 2006 equation 7
+          write(message, '(a,f7.1,a)') "Dust sublimation radius is ",rSublimation/rcore, " stellar radii"
+          call writeInfo(message,TRIVIAL)
+       endif
+
+
+
+       call getReal("router", rOuter, real(autocm/1.d10), cLine, fLine, nLines, &
+            "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
+
+       call getReal("rgapinner", rGapInner, real(autocm/1.d10), cLine, fLine, nLines, &
+            "Inner gap  radius (AU): ","(a,f5.1,a)", 1.e30, ok, .false.)
+
+       call getReal("rgapouter", rGapOuter, real(autocm/1.d10), cLine, fLine, nLines, &
+            "Outer gap  radius (AU): ","(a,f5.1,a)", 1.e30, ok, .false.)
+
+       call getReal("rhogap", rhoGap, 1., cLine, fLine, nLines, &
+            "Density in gap (g/cc): ","(a,f5.1,a)", 1.e-30, ok, .false.)
+
+       call getReal("deltacav", deltaCav, 1., cLine, fLine, nLines, &
+            "Scaling factor for inner disc: ","(a,1p,e9.3,a)", 1., ok, .false.)
+
+
+       call getDouble("phiref", phiRefine, 1.d0, cLine, fLine, nLines, &
+            "Range of azimuthal refinement (degrees): ","(a,f5.1,a)", 180.d0, ok, .false.)
+
+       call getDouble("dphiref", dphiRefine, 1.d0, cLine, fLine, nLines, &
+            "Level of azimuthal refinement (degrees): ","(a,f5.1,a)", 10.d0, ok, .false.)
+
+       call getDouble("minphi", minPhiResolution, degtorad, cLine, fLine, nLines, &
+            "Level of azimuthal refinement (degrees): ","(a,f5.1,a)", 1.d30, ok, .false.)
+
+
+       call getReal("height", height, real(autocm/1.d10), cLine, fLine, nLines, &
+            "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+
+       call getReal("mass1", mCore, real(msol), cLine, fLine, nLines, &
+            "Core mass (solar masses): ","(a,f8.4,a)", 0.5, ok, .true.)
+
+       call getReal("mdisc", mDisc, real(msol), cLine, fLine, nLines, &
+            "Disc mass (solar masses): ","(a,f8.4,a)", 1.e-4, ok, .true.)
+
+       call getReal("alphadisc", alphaDisc, 1., cLine, fLine, nLines, &
+            "Disc alpha parameter: ","(a,f5.3,a)", 2.25, ok, .true.)
+
+       call getReal("betadisc", betaDisc, 1., cLine, fLine, nLines, &
+            "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
+
+       call getLogical("hydro", solveVerticalHydro, cLine, fLine, nLines, &
+            "Solve vertical hydrostatical equilibrium: ","(a,1l,1x,a)", .false., ok, .false.)
+
+       call getLogical("opaquecore", opaqueCore, cLine, fLine, nLines, &
+            "Opaque Core: ","(a,1l,a)", .true., ok, .false.)
+
+       call getLogical("dospiral", dospiral, cLine, fLine, nLines, &
+               "Add a spiral density wave: : ","(a,1l,1x,a)", .false., ok, .false.)
+
+       call getLogical("planetdisc", planetDisc, cLine, fLine, nLines, &
+               "Add a disc around the planet: : ","(a,1l,1x,a)", .false., ok, .false.)
+
+       if (solveVerticalHydro) then
+          call getInteger("nhydro", nhydro,  cline, fLine, nLines, &
+               "Max number of hydro iterations : ","(a,i4,a)", 5, ok, .true.)
+       endif
+
+
+       call getReal("heightsplitfac", heightSplitFac, 1., cLine, fLine, nLines, &
+            "Splitting factor for scale height (local scale heights): ","(a,f5.2,a)", 0.2, ok, .false.)
+
+
+       call getDouble("erinner", erInner, autocm, cLine, fLine, nLines, &
+            "Envelope inner radius (AU): ","(a,f10.2,a)", 100.d0, ok, .false.)
+
+       call getDouble("erouter", erOuter, autocm, cLine, fLine, nLines, &
+            "Envelope outer radius (AU): ","(a,f10.2,a)", 1.d5, ok, .false.)
+
+
+       call getDouble("mdotenv", mDotEnv, msol * secstoyears, cLine, fLine, nLines, &
+            "Envelope accretion rate (msol/yr): ","(a,f5.2,a)", 1.d-30, ok, .false.)
+
+
+       call getDouble("cavangle", cavAngle, degToRad, cLine, fLine, nLines, &
+            "Cavity angle (deg): ","(a,f5.2,a)", 40.d0, ok, .false.)
+
+       call getDouble("cavdens", cavDens, 1.d0, cLine, fLine, nLines, &
+            "Cavity density (g/cc): ","(a,e12.2,a)", 1d-30, ok, .false.)
+
+
+       call getLogical("discwind", discWind, cLine, fLine, nLines, &
+               "Include disc wind: : ","(a,1l,1x,a)", .false., ok, .false.)
+
 
 
 

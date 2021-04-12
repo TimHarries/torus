@@ -155,7 +155,7 @@ gridanalysis_mod.o: amr_mod.o amr_utils_mod.o gridtype_mod.o \
 	hydrodynamics_mod.o image_mod.o inputs_modV2.o ion_mod.o kind_mod.o \
 	mpi_amr_mod.o phasematrix_mod.o photoionAMR_mod.o \
 	photoion_utils_mod.o random_mod.o source_mod.o utils_mod.o \
-	vector_mod.o
+	vector_mod.o vtk_mod.o
 gridFromFitsFile.o: constants_mod.o fits_utils_mod.o kind_mod.o \
 	messages_mod.o octal_mod.o utils_mod.o
 gridFromFlash.o: kind_mod.o messages_mod.o octal_mod.o vector_mod.o

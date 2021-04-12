@@ -1147,6 +1147,9 @@ CONTAINS
 
     CASE ("shakara","aksco","circumbin")
        CALL shakaraDisk(thisOctal, subcell ,grid)
+       
+    CASE ("spiraldisc")
+       CALL spiralDisc(thisOctal, subcell)
 
     CASE ("modular")
        CALL modularDisc(thisOctal, subcell)
@@ -3614,7 +3617,7 @@ CONTAINS
     use inputs_mod, only : amrtolerance, refineonJeans, rhoThreshold, smallestCellSize, ttauriMagnetosphere, rCavity
     use inputs_mod, only : cavdens, limitscalar, addDisc, flatdisc, ttauristellarwind, SW_rMax, SW_rmin
     use inputs_mod, only : discWind, planetDisc, sourceMass, sourceRadius, sourceTeff, rGapInner1, accretionFeedback
-    use inputs_mod, only : nDiscModule, rOuterMod, rInnerMod, betaMod, heightMod, tiltAngleMod
+    use inputs_mod, only : nDiscModule, rOuterMod, rInnerMod, betaMod, heightMod, tiltAngleMod, rSpiral
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use magnetic_mod, only : accretingAreaMahdavi
@@ -5367,6 +5370,46 @@ CONTAINS
              endif
           endif
 
+       case("spiraldisc")
+          ! used to be 5
+          if (thisOctal%ndepth  < mindepthamr) split = .true.
+          cellSize = thisOctal%subcellSize
+          cellCentre = subcellCentre(thisOctal,subCell)
+          r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+          thisHeightSplitFac = heightSplitFac
+          if (r < rSublimation) thisheightSplitFac = 1.
+
+          hr = height * (r / (100.d0*autocm/1.d10))**betadisc
+
+!          write(*,*) hr, height, r, betadisc
+
+          if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > thisheightSplitFac)) split = .true.
+
+          if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+
+          if ((.not.smoothinneredge).and.(.not.variableDustSublimation)) then
+             if (((r-cellsize/2.d0) < rSublimation).and. ((r+cellsize/2.d0) > rSublimation) .and. &
+                  (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 1.d0) .and. &
+                  (.not.thisOctal%cylindrical)) split=.true.
+         endif
+
+         if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter)) then
+            if ((thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0)) then
+               if (.not.thisOctal%cylindrical) split = .true.
+            endif
+         endif
+
+         if (r < 0.9*rInner) split = .false.
+             
+
+          if (thisOctal%cylindrical) then
+             if ((thisOctal%nDepth < minDepthAMR).and.(r > rSpiral)) then
+                splitInAzimuth = .true.
+                split = .true.
+             endif
+          endif
+          
+      
        case("shakara","aksco","HD169142","MWC275")
           ! used to be 5
           if (thisOctal%ndepth  < mindepthamr) split = .true.
@@ -5606,7 +5649,7 @@ CONTAINS
           endif
 
        case("modular")
-
+          
           splitInAzimuth = .false.
           ! first off, make sure the cell splits if the depth of the cell depth is less than mindepthamr:
           if (thisOctal%ndepth < mindepthamr) split = .true.
@@ -13016,6 +13059,45 @@ end function readparameterfrom2dmap
 
   end subroutine shakaraDisk
 
+  subroutine spiralDisc(thisOctal, subcell)
+    use inputs_mod, only : rOuter, rInner, height, alphaDisc, betaDisc, rho0, rSpiral
+    type(octal) :: thisOctal
+    integer :: subcell
+    real(double) :: angSpiral, rs, fac, phiSpiral, pitchAngle, widthSpiral, scaleFac
+    type(VECTOR) :: cen, midVec, rVec
+    real(double) :: h, r
+    integer :: i, j, nSpiralArms
+
+    nSpiralArms = 3
+    pitchAngle = 20.d0 * degtoRad
+    widthSpiral = 10.d0*autocm/1.d10
+    cen = subcellCentre(thisOctal,subcell)
+    midVec = VECTOR(cen%x, cen%y, 0.d0)
+    r = sqrt(cen%x**2 + cen%y**2)
+
+    if ((r < rOuter).and.(r>rinner)) then
+       h = height * (r / (100.d0*autocm/1.d10))**betaDisc
+       fac = -0.5d0 * (dble(cen%z)/h)**2
+       fac = max(-50.d0,fac)
+       thisOctal%rho(subcell) = dble(rho0) * (dble(rInner/r))**dble(alphaDisc) * exp(fac)
+    endif
+
+    scaleFac = 0.
+    do i = 1, nSpiralArms
+       phiSpiral = dble(i-1)*twoPi/dble(nSpiralArms)
+       do j = 1, 360
+          angSpiral = (twoPi*(dble(j-1)/359.d0))
+          rs = rSpiral*exp(tan(pitchAngle)*angSpiral)
+          rVec = VECTOR(rs*cos(angSpiral+phiSpiral), rs*sin(angSpiral+phiSpiral),0.d0)
+          fac = modulus(rVec-midVec)/widthSpiral
+          scaleFac = max(scaleFac, exp(-fac))
+       enddo
+    enddo
+    if (r > rSpiral) thisOctal%rho(subcell) = thisOctal%rho(subcell) * scaleFac
+  end subroutine spiralDisc
+          
+       
+  
   subroutine modularDisc(thisOctal, subcell)
 
     use inputs_mod, only : rho0, rSublimation ! real precision disc module-independent param
@@ -13137,6 +13219,7 @@ end function readparameterfrom2dmap
 
   end subroutine cassandraDisc
 
+  
   subroutine HD169142Disk(thisOctal,subcell,grid)
     use density_mod, only: density, HD169142Disc
     use inputs_mod, only : rOuter, betaDisc !, rGapOuter2, rInner, erInner, erOuter, alphaDisc

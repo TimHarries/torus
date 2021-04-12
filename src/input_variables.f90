@@ -632,7 +632,7 @@
   real :: mdot1, mdot2
   real :: Mbol
   real :: radius, kfac, xfac
-  real :: rCore, rInner
+  real :: rCore, rInner, rSpiral
   real :: rTorus, rOuter, rSublimation
   real :: rho
   real(double) :: rho0
