@@ -12871,7 +12871,7 @@ end function readparameterfrom2dmap
     use inputs_mod, only : rOuter, betaDisc !, rInner, erInner, erOuter, alphaDisc
     use inputs_mod, only : curvedInnerEdge, nDustType, grainFrac, gridDistanceScale, rInner
     use inputs_mod, only : height, hydrodynamics, dustPhysics, mCore, molecularPhysics, photoionization
-    use inputs_mod, only : rSublimation, erInner, erOuter, mDotEnv, rhofloor, cavAngle, cavDens
+    use inputs_mod, only : rSublimation, erInner, erOuter, mDotEnv, rhofloor, cavAngle, cavDens, rCavity
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     complex(double) :: a(3), za(3)
@@ -13041,11 +13041,11 @@ end function readparameterfrom2dmap
     cfac = (eRouter/1.d10)**(-1./2.) / tan(cavAngle)**(3./2.)
     dr = (abs(rVec%z)/cfac)**(2./3.)
 
-    if ((r < dr).and.(modulus(rVec)<(erouter/1.d10))) then
+    if ((r < dr).and.(modulus(rVec)<(rCavity/1.d10))) then
        thisOctal%rho(subcell) = max(cavdens, discDens)
     endif
 
-    if (modulus(rVec) < erInner/1.d10) then
+    if (modulus(rVec) < rCavity/1.d10) then
        thisOctal%rho(subcell) = max(cavDens,thisOctal%rho(subcell))
     endif
 

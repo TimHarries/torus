@@ -1966,6 +1966,8 @@ contains
        call getDouble("cavdens", cavDens, 1.d0, cLine, fLine, nLines, &
             "Cavity density (g/cc): ","(a,e12.2,a)", 1d-30, ok, .false.)
 
+       call getDouble("rcavity", rCavity, autocm, cLine, fLine, nLines, &
+               "Cavity radius (AU): ","(a,1pe8.1,1x,a)", erOuter/autocm, ok, .false.)
 
        call getLogical("discwind", discWind, cLine, fLine, nLines, &
                "Include disc wind: : ","(a,1l,1x,a)", .false., ok, .false.)
