@@ -1029,7 +1029,6 @@ contains
        rhoOut = dble(rho0) * (dble(rInner/r))**dble(alphaDisc) * exp(fac)
 
 
-
        if (smoothInnerEdge) then
           fac = 1.d0
           if (r < 1.02d0*rinner) then

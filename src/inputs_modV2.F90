@@ -1972,6 +1972,87 @@ contains
        call getLogical("discwind", discWind, cLine, fLine, nLines, &
                "Include disc wind: : ","(a,1l,1x,a)", .false., ok, .false.)
 
+
+
+       if (discwind) then
+          ! --- parameters for ttauri wind
+          call getDouble("DW_Rmin", DW_Rmin, autocm/1.d10, cLine, fLine, nLines, &
+               "Disc wind:: Inner radius of the wind [magnetospheric radii]: ", &
+               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.)
+          call getDouble("DW_Rmax", DW_rMax, autocm/1.d10, cLine, fLine, nLines, &
+               "Disc wind:: Outer radius of the disc [magnetospheric radii]: ", &
+               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.)
+          call getDouble("DW_d", DW_d, DW_rMin, cLine, fLine, nLines, &
+               "Disc wind:: Wind source displacement [inner wind radii]: ", &
+               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.)
+          call getDouble("DW_Tmax", DW_Tmax,  1.d0, cLine, fLine, nLines, &
+               "Disc wind:: Temperature of disc at inner radius [K]: ", &
+               "(a,1p,e9.3,1x,a)", 2000.0d0, ok, .true.)
+          call getDouble("DW_gamma", DW_gamma,  1.d0, cLine, fLine, nLines, &
+               "Disc wind:: Exponent in the disc temperature power law [-]: ", &
+               "(a,f8.3,1x,a)", -0.5d0, ok, .true.)
+          call getDouble("DW_Mdot", DW_Mdot,  1.d0, cLine, fLine, nLines, &
+               "Disc wind:: Total mass-loss rate from disc [Msun/yr]: ", &
+               "(a,1p,e9.3,1x,a)", 1.0d-8, ok, .true.)
+          call getDouble("DW_alpha", DW_alpha,  1.d0, cLine, fLine, nLines, &
+               "Disc wind:: Exponent in the mass-loss rate per unit area [-]: ", &
+               "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.)
+          call getDouble("DW_beta", DW_beta,  1.d0, cLine, fLine, nLines, &
+               "Disc wind:: Exponent in the modefied beta-velocity law [-]: ", &
+               "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.)
+          call getDouble("DW_Rs", DW_Rs,  DW_rMin, cLine, fLine, nLines, &
+               "Disc wind:: Effective acceleration length [inner wind radii]: ", &
+               "(a,1p,e9.3,1x,a)", 50.0d0, ok, .true.)
+          call getDouble("DW_f", DW_f,  1.d0, cLine, fLine, nLines, &
+               "Disc wind:: Scaling on the terminal velocity [-]: ", &
+               "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.)
+          call getDouble("DW_Twind", DW_Twind,  1.d0, cLine, fLine, nLines, &
+               "Disc wind:: Isothermal temperature of disc wind [K]: ", &
+               "(a,1p,e9.3,1x,a)", 5000.0d0, ok, .true.)
+       endif
+
+
+
+       call getInteger("ndusttype", nDustType, cLine, fLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)
+
+       call getLogical("dustsettling", dustSettling, cLine, fLine, nLines, &
+               "Dust settling model: : ","(a,1l,1x,a)", .false., ok, .false.)
+
+
+       do i = 1, nDustType
+
+
+          write(heightLabel, '(a,i1.1)') "fracheight",i
+          call getDouble(heightLabel, fracdustHeight(i), 1.d0, cLine, fLine, nLines, &
+               "Dust scale height as fraction of gas scale height: ","(a,f10.5,1x,a)", 1.d0, ok, .false.)
+
+
+          write(heightLabel, '(a,i1.1)') "dustheight",i
+          call getDouble(heightLabel, dustHeight(i), autocm/1.d10, cLine, fLine, nLines, &
+               "Dust scale height at 100 AU (AU): ","(a,f10.5,1x,a)", dble(height)*1.d10/autocm, ok, .false.)
+
+          write(betaLabel, '(a,i1.1)') "dustbeta",i
+          call getDouble(betaLabel, dustBeta(i), 1.d0, cLine, fLine, nLines, &
+               "Dust beta law (AU): ","(a,f10.5,1x,a)", dble(betaDisc), ok, .false.)
+
+       enddo
+
+!       rCore = rCore * rSol / 1.e10
+!       rinner = (rinner * (rCore * 1e10)) / autocm
+!
+!       rho0 = densityfrommass(mdisc, height, rinner, router, 100.0, alphadisc, betadisc)
+!
+!       rInner = rInner * autocm / 1.e10
+!       rOuter = rOuter * autoCm / 1.e10
+!       height = height * autoCm / 1.e10
+!       mCore = mCore * mSol
+!       mDisc = mDisc * mSol
+
+       rho0  = real(dble(mDisc)*(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * (dble(height)*1.d10)/dble(100.d0*autocm)**betaDisc  &
+            * (dble(rInner)*1.d10)**alphaDisc * &
+            (((dble(rOuter)*1.d10)**(betaDisc-alphaDisc+2.)-(dble(rInner)*1.d10)**(betaDisc-alphaDisc+2.))) ))
+       if (Writeoutput) write(*,*) "rho0: ",rho0
+
     CASE("spiraldisc")
 
        oneKappa = .true.

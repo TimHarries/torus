@@ -13038,7 +13038,7 @@ end function readparameterfrom2dmap
 
     rVec = subcellCentre(thisOctal, subcell)
     r = sqrt(rVec%x**2 + rVec%y**2) 
-    cfac = (eRouter/1.d10)**(-1./2.) / tan(cavAngle)**(3./2.)
+    cfac = (rCavity/1.d10)**(-1./2.) / tan(cavAngle)**(3./2.)
     dr = (abs(rVec%z)/cfac)**(2./3.)
 
     if ((r < dr).and.(modulus(rVec)<(rCavity/1.d10))) then
@@ -13048,7 +13048,7 @@ end function readparameterfrom2dmap
     if (modulus(rVec) < rCavity/1.d10) then
        thisOctal%rho(subcell) = max(cavDens,thisOctal%rho(subcell))
     endif
-
+    
 
     if (modulus(rVec) < rInner) then
        thisOctal%rho(subcell) = rhoFloor
