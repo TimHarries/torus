@@ -2361,12 +2361,13 @@ contains
   end subroutine timeBinPhoton
 
   recursive subroutine packvalues(thisOctal,nIndex,&
-       distanceGridAdot, distanceGridPhotonFromSource, distanceGridPhotonFromGas)
+       distanceGridAdot, distanceGridPhotonFromSource, distanceGridPhotonFromGas, nCrossingsArray)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: distanceGridAdot(:)
   real(double) :: distanceGridPhotonFromSource(:)
   real(double) :: distanceGridPhotonFromGas(:)
+  integer :: nCrossingsArray(:)
   integer :: nIndex
   integer :: subcell, i
   
@@ -2377,7 +2378,7 @@ contains
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
                 call packvalues(child,nIndex, distanceGridAdot, distanceGridPhotonFromSource, &
-                     distanceGridPhotonFromGas)
+                     distanceGridPhotonFromGas, nCrossingsArray)
                 exit
              end if
           end do
@@ -2386,18 +2387,20 @@ contains
           distanceGridAdot(nIndex) = thisOctal%distanceGridAdot(subcell)
           distanceGridPhotonFromSource(nIndex) = thisOctal%distanceGridPhotonFromSource(subcell)
           distanceGridPhotonFromGas(nIndex) = thisOctal%distanceGridPhotonFromGas(subcell)
+          nCrossingsArray(nIndex) = thisOctal%nCrossings(subcell)
 
        endif
     enddo
   end subroutine packvalues
 
   recursive subroutine unpackvalues(thisOctal,nIndex,distanceGridAdot, distanceGridPhotonFromSource, &
-       distanceGridPhotonFromGas)
+       distanceGridPhotonFromGas, nCrossingsArray)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: distanceGridAdot(:)
   real(double) :: distanceGridPhotonFromSource(:)
   real(double) :: distanceGridPhotonFromGas(:)
+  integer :: nCrossingsArray(:)
   integer :: nIndex
   integer :: subcell, i
   
@@ -2408,7 +2411,7 @@ contains
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
                 call unpackvalues(child,nIndex,distanceGridAdot, &
-                     distanceGridPhotonFromSource, distanceGridPhotonFromGas)
+                     distanceGridPhotonFromSource, distanceGridPhotonFromGas, nCrossingsArray)
                 exit
              end if
           end do
@@ -2417,6 +2420,7 @@ contains
           thisOctal%distanceGridAdot(subcell) = distanceGridAdot(nIndex) 
           thisOctal%distanceGridPhotonFromSource(subcell) = distanceGridPhotonFromSource(nIndex)
           thisOctal%distanceGridPhotonFromGas(subcell) = distanceGridPhotonFromGas(nIndex) 
+          thisOctal%nCrossings(subcell) = nCrossingsArray(nIndex) 
        endif
     enddo
   end subroutine unpackvalues
@@ -2429,10 +2433,11 @@ contains
 
     type(gridtype) :: grid
     integer :: nOctals, nVoxels
+    integer, allocatable :: nCrossingsArray(:)
     real(double), allocatable :: distanceGridAdot(:)
     real(double), allocatable :: distanceGridPhotonFromSource(:)
     real(double), allocatable :: distanceGridPhotonFromGas(:)
-    real(double), allocatable :: tempDoubleArray(:)
+    real(double), allocatable :: tempDoubleArray(:), tempIntegerArray(:)
     integer :: ierr, nIndex
 
     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
@@ -2442,13 +2447,15 @@ contains
     allocate(distanceGridAdot(1:nVoxels))
     allocate(distanceGridPhotonFromSource(1:nVoxels))
     allocate(distanceGridPhotonFromGas(1:nVoxels))
+    allocate(nCrossingsArray(1:nVoxels))
 
 
     nIndex = 0
     call packValues(grid%octreeRoot,nIndex, &
-         distanceGridAdot, distanceGridPhotonFromSource, distanceGridPhotonFromGas)
+         distanceGridAdot, distanceGridPhotonFromSource, distanceGridPhotonFromGas,ncrossingsArray)
 
     allocate(tempDoubleArray(nVoxels))
+    allocate(tempIntegerArray(nVoxels))
 
 
     tempDoubleArray = 0.d0
@@ -2466,15 +2473,20 @@ contains
          MPI_SUM,MPI_COMM_WORLD,ierr)
     distanceGridPhotonFromGas = tempDoubleArray 
 
-    deallocate(tempDoubleArray)
+    tempIntegerArray = 0.d0
+    call MPI_ALLREDUCE(nCrossingsArray,tempDoubleArray,nVoxels,MPI_INTEGER,&
+         MPI_SUM,MPI_COMM_WORLD,ierr)
+    nCrossingsArray = tempIntegerArray 
+
+    deallocate(tempDoubleArray, tempIntegerArray)
      
     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
     
     nIndex = 0
     call unpackValues(grid%octreeRoot,nIndex, &
-         distanceGridAdot, distanceGridPhotonFromSource, distanceGridPhotonFromGas)
+         distanceGridAdot, distanceGridPhotonFromSource, distanceGridPhotonFromGas, nCrossingsArray)
 
-    deallocate(distanceGridAdot, distanceGridPhotonFromSource,DistanceGridPhotonFromGas)
+    deallocate(distanceGridAdot, distanceGridPhotonFromSource,DistanceGridPhotonFromGas, nCrossingsArray)
 
   end subroutine updateGridMPI
 #endif
