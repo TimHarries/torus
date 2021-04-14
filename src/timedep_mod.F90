@@ -845,7 +845,6 @@ contains
 #endif
 
 
-
      if (writeoutput) then
         write(*,*) "Sanity check for luminosity ", checkLum/deltaT, luminosity+sourceLuminosity
         write(*,*) "Sanity check for source luminosity ", checkLumSource/deltaT, sourceLuminosity
@@ -2367,7 +2366,7 @@ contains
   real(double) :: distanceGridAdot(:)
   real(double) :: distanceGridPhotonFromSource(:)
   real(double) :: distanceGridPhotonFromGas(:)
-  integer :: nCrossingsArray(:)
+  real(double) :: nCrossingsArray(:)
   integer :: nIndex
   integer :: subcell, i
   
@@ -2387,7 +2386,7 @@ contains
           distanceGridAdot(nIndex) = thisOctal%distanceGridAdot(subcell)
           distanceGridPhotonFromSource(nIndex) = thisOctal%distanceGridPhotonFromSource(subcell)
           distanceGridPhotonFromGas(nIndex) = thisOctal%distanceGridPhotonFromGas(subcell)
-          nCrossingsArray(nIndex) = thisOctal%nCrossings(subcell)
+          nCrossingsArray(nIndex) = dble(thisOctal%nCrossings(subcell))
 
        endif
     enddo
@@ -2400,7 +2399,7 @@ contains
   real(double) :: distanceGridAdot(:)
   real(double) :: distanceGridPhotonFromSource(:)
   real(double) :: distanceGridPhotonFromGas(:)
-  integer :: nCrossingsArray(:)
+  real(double) :: nCrossingsArray(:)
   integer :: nIndex
   integer :: subcell, i
   
@@ -2420,7 +2419,7 @@ contains
           thisOctal%distanceGridAdot(subcell) = distanceGridAdot(nIndex) 
           thisOctal%distanceGridPhotonFromSource(subcell) = distanceGridPhotonFromSource(nIndex)
           thisOctal%distanceGridPhotonFromGas(subcell) = distanceGridPhotonFromGas(nIndex) 
-          thisOctal%nCrossings(subcell) = nCrossingsArray(nIndex) 
+          thisOctal%nCrossings(subcell) = nint(nCrossingsArray(nIndex))
        endif
     enddo
   end subroutine unpackvalues
@@ -2433,11 +2432,11 @@ contains
 
     type(gridtype) :: grid
     integer :: nOctals, nVoxels
-    integer, allocatable :: nCrossingsArray(:)
+    real(double), allocatable :: nCrossingsArray(:)
     real(double), allocatable :: distanceGridAdot(:)
     real(double), allocatable :: distanceGridPhotonFromSource(:)
     real(double), allocatable :: distanceGridPhotonFromGas(:)
-    real(double), allocatable :: tempDoubleArray(:), tempIntegerArray(:)
+    real(double), allocatable :: tempDoubleArray(:)
     integer :: ierr, nIndex
 
     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
@@ -2455,7 +2454,6 @@ contains
          distanceGridAdot, distanceGridPhotonFromSource, distanceGridPhotonFromGas,ncrossingsArray)
 
     allocate(tempDoubleArray(nVoxels))
-    allocate(tempIntegerArray(nVoxels))
 
 
     tempDoubleArray = 0.d0
@@ -2473,12 +2471,12 @@ contains
          MPI_SUM,MPI_COMM_WORLD,ierr)
     distanceGridPhotonFromGas = tempDoubleArray 
 
-    tempIntegerArray = 0.d0
-    call MPI_ALLREDUCE(nCrossingsArray,tempDoubleArray,nVoxels,MPI_INTEGER,&
+    tempDoubleArray = 0.d0
+    call MPI_ALLREDUCE(nCrossingsArray,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
          MPI_SUM,MPI_COMM_WORLD,ierr)
-    nCrossingsArray = tempIntegerArray 
-
-    deallocate(tempDoubleArray, tempIntegerArray)
+    nCrossingsArray = tempDoubleArray
+    
+    deallocate(tempDoubleArray)
      
     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
     
