@@ -14,7 +14,7 @@ module timedep_mod
   use math_mod
   use gridio_mod
   use timing, only: tune
-
+  use lucy_mod, only : quickSublimateLucy
   implicit none
 
 
@@ -77,7 +77,7 @@ contains
     real(double) :: inc, fac, initialRadius
     type(VECTOR) :: observerDirection, observerposition
     logical :: lastTime, ok
-    logical :: seedRun, doUdensUpdate
+    logical :: seedRun
 
     allocate(sedTime(1:nTime))
     allocate(sedWavelength(sedNumLam))
@@ -189,7 +189,6 @@ contains
     finalTime = timeEnd + nBookend*deltaT
     
     lastTime = .false.
-    doUdensUpdate = .false.
     do while (currentTime < finalTime)
        iter = iter + 1
        if (myrankWorldGlobal == 0) then
@@ -218,7 +217,6 @@ contains
              thisTeff = teff 
              if (writeoutput) write(*,*) "Luminosity of source increased by factor ",fac
              thisRadius = thisRadius * sqrt(fac)
-             doUdensUpdate = .true.
           endif
              
 
@@ -282,7 +280,7 @@ contains
             nsource, source, deltaT, newDeltaT, deltaTmax, deltaTmin, &
             nMonte, xArray, nLambda, varyingSource, currentTime, &
             sednumlam, nTime, sedWavelength, sedTime, sedFluxStep, sedFluxScatStep, dumpFromNow, &
-            observerPosition, observerDirection, seedRun, doUdensUpdate)
+            observerPosition, observerDirection, seedRun)
        if (doTuning) call tune(6, "Time dependent RT step") 
 
        sedFlux  = sedFlux + sedFluxStep
@@ -313,7 +311,12 @@ contains
           write(*,*) "Next dump time ",nextDumpTime
           write(*,*) "Dump Now? ",dumpNow
        endif
-       
+
+       call writeVtkFile(grid, "thisstep.vtk", &
+            valueTypeString=(/"rho        ", "temperature", "edens_g    ", "edens_s    ", &
+            "crossings  ", &
+            "dust1      "/))
+
        if (dumpNow) then
           nextDumpTime = nextDumpTime + tDump
           if (nextDumpTime > timeEnd) nextDumpTime = 1.d30
@@ -323,7 +326,8 @@ contains
              write(*,*) "vtkfilename ",trim(vtkfilename)
              call writeVtkFile(grid, vtkfilename, &
                   valueTypeString=(/"rho        ", "temperature", "edens_g    ", "edens_s    ", &
-                  "crossings  "/))
+                  "crossings  ", &
+                  "dust1      "/))
              write(vtkFilename, '(a,i4.4,a)') "radial",idump,".dat"
              call writeValues(vtkFilename, grid, currentTime)
 
@@ -423,10 +427,11 @@ contains
   subroutine timeDependentRTStep(grid, oldStack, oldStacknStack, oldStackFilename, currentStackFilename, &
        nsource, source, deltaT, newDeltaT, deltaTmax, deltaTmin, nMonte, lamArray, nLambda, varyingSource, currentTime, &
        nSedWavelength, nTime, sedWavelength, sedTime, sedFlux, sedFluxScat, dumpFromNow, observerPosition, observerDirection, &
-       seedRun, doUdensUpdate)
+       seedRun)
 #ifdef MPI
     use mpi
 #endif
+    use inputs_mod, only : quickSublimate
     type(GRIDTYPE) :: grid
     integer :: nSource
     logical :: varyingSource
@@ -447,7 +452,7 @@ contains
     real :: lamArray(:)
     real(double) :: deltaT, deltaTmax, deltaTmin
     type(SOURCETYPE) :: source(:)
-    logical :: photonFromSource, photonFromGas, doUdensUpdate
+    logical :: photonFromSource, photonFromGas
     integer :: nMonte, iMonte, nFromGas, nFromSource
     integer :: i
     real(double) :: freqArray(2000), dnu(2000), kAbsArray(2000), kAbsArray2(2000)
@@ -483,7 +488,10 @@ contains
     logical :: radiativeEquPhoton, seedRun
     integer :: nEscaped
     integer :: nFromMatterThisThread
-    real(double) :: photonPacketWeight ! Thaw added to satisfy getWavelength, dummy. 
+    real(double) :: photonPacketWeight ! Thaw added to satisfy getWavelength, dummy.
+    real :: totFrac
+    integer :: nFrac
+
 #ifdef MPI
     integer :: ierr
     real(double) :: tempDouble
@@ -857,17 +865,23 @@ contains
      call calculateEnergyDensity(grid%octreeRoot, deltaT, photonSpeed)
 
 
+     call updateUDens(grid%octreeRoot, deltaT, grid, currentTime)
 
-    if (.not.seedRun) then
-
-       if (varyingSource) then
-          if (doUdensUpdate) call updateUDens(grid%octreeRoot, deltaT, grid, currentTime)
-       else
-          call updateUDens(grid%octreeRoot, deltaT, grid, 1.d30)
-       endif
-    endif
+!    if (.not.seedRun) then
+!
+!       if (varyingSource) then
+!          if (doUdensUpdate) call updateUDens(grid%octreeRoot, deltaT, grid, currentTime)
+!       else
+!          call updateUDens(grid%octreeRoot, deltaT, grid, 1.d30)
+!       endif
+!    endif
 
     call calculateTemperatureFromUdens(grid%octreeRoot)
+
+    if (quickSublimate) call quickSublimateLucy(grid%octreeRoot, minLevel=1.d-6)
+
+
+
     call calculateEtaContLocal(grid, grid%octreeRoot)
 
     if (doTuning) call tune(6, "Calculate new energy densities") 

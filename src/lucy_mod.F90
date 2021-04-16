@@ -258,7 +258,7 @@ contains
        endif
 
 
-
+       
        if (object == "ab_aur") then
           call writeInfo("Filling dust with large dust in midplane", FORINFO)
           call fillDustUniform(grid, grid%octreeRoot)
@@ -278,7 +278,7 @@ contains
           call stripDustAway(grid%octreeRoot, 1.d-2, 1.d30)
        endif
 
-       if (variableDustSublimation) then
+       if (variableDustSublimation.or.quicksublimate) then
           call setupOrigDustFraction(grid%octreeRoot)
           tauMax = 1.e-20
           call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
@@ -918,7 +918,7 @@ contains
           call fillDustUniform(grid, grid%octreeRoot)
        endif
 
-       if (quickSublimate) call quickSublimateLucy(grid%octreeRoot)
+       if (quickSublimate) call quickSublimateLucy(grid%octreeRoot, minLevel=1.d-6)
 
 
 
@@ -4247,9 +4247,11 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
   end subroutine refineDiscGrid
 
 
-recursive subroutine quickSublimateLucy(thisOctal)
+recursive subroutine quickSublimateLucy(thisOctal, minLevel)
   use inputs_mod, only : grainFrac, nDustType, tsub
   type(octal), pointer   :: thisOctal
+  real(double), optional :: minLevel
+  real(double) :: thisMinLevel
   type(octal), pointer  :: child 
   ! Where dust is present set dustTypeFraction to this value. 
   integer :: subcell, i, idust
@@ -4260,16 +4262,20 @@ recursive subroutine quickSublimateLucy(thisOctal)
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call quickSublimateLucy(child)
+                call quickSublimateLucy(child, minLevel)
                 exit
              end if
           end do
        else
 
-
+          if (present(minLevel)) then
+             thisMinLevel = minLevel
+          else
+             thisMinLevel = 1.d-20
+          endif
           do idust = 1, nDustType
              if (thisOctal%temperature(subcell) > tsub(idust)) then
-                thisOctal%dustTypeFraction(subcell,idust) = 1.d-20
+                thisOctal%dustTypeFraction(subcell,idust) = thisMinLevel
              else
                 thisOctal%dustTypeFraction(subcell,iDust) = grainFrac(iDust)
              endif

@@ -608,7 +608,15 @@ doGridshuffle: if(gridShuffle) then
              if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
              call scaleDensityAMR(grid%octreeRoot, dble(scaleFac))
 #endif
+          case("spiraldisc")
+             totalMass = 0.d0
+             call findTotalMass(grid%octreeRoot, totalMass)
+             write(*,*) "total mass ",totalmass
+             scaleFac = real(mdisc / totalMass)
+             if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
+             call scaleDensityAMR(grid%octreeRoot, dble(scaleFac))
 
+             
           case("HD169142")
              totalMass = 0.d0
              call findTotalMass(grid%octreeRoot, totalMass)

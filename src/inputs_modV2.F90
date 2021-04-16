@@ -3089,6 +3089,9 @@ contains
     call getBigInteger("nphotons", nPhotons, cLine, fLine, nLines,"Number of photons per timestep: ",&
          "(a,i12,a)",1_bigint,ok,.false.)
 
+    call getLogical("quicksublimate", quickSublimate, cLine, fLine, nLines, &
+         "Quick and dirty dust sublimation: ","(a,1l,1x,a)", .false., ok, .false.)
+
     call getInteger("ntime", nTime, cLine, fLine, nLines,"Number of timesteps: ","(a,i12,a)",1,ok,.false.)
 
     call getReal("inclination", thisinclination, real(degtorad), cLine, fLine, nLines, &

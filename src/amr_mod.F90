@@ -13060,7 +13060,7 @@ end function readparameterfrom2dmap
   end subroutine shakaraDisk
 
   subroutine spiralDisc(thisOctal, subcell)
-    use inputs_mod, only : rOuter, rInner, height, alphaDisc, betaDisc, rho0, rSpiral
+    use inputs_mod, only : rOuter, rInner, height, alphaDisc, betaDisc, rho0, rSpiral, nDustType, grainfrac
     type(octal) :: thisOctal
     integer :: subcell
     real(double) :: angSpiral, rs, fac, phiSpiral, pitchAngle, widthSpiral, scaleFac
@@ -13068,13 +13068,15 @@ end function readparameterfrom2dmap
     real(double) :: h, r
     integer :: i, j, nSpiralArms
 
-    nSpiralArms = 3
+    nSpiralArms = 8
     pitchAngle = 20.d0 * degtoRad
     widthSpiral = 10.d0*autocm/1.d10
     cen = subcellCentre(thisOctal,subcell)
     midVec = VECTOR(cen%x, cen%y, 0.d0)
     r = sqrt(cen%x**2 + cen%y**2)
 
+    
+    
     if ((r < rOuter).and.(r>rinner)) then
        h = height * (r / (100.d0*autocm/1.d10))**betaDisc
        fac = -0.5d0 * (dble(cen%z)/h)**2
@@ -13094,6 +13096,10 @@ end function readparameterfrom2dmap
        enddo
     enddo
     if (r > rSpiral) thisOctal%rho(subcell) = thisOctal%rho(subcell) * scaleFac
+
+    thisOctal%dustTypeFraction(subcell,1:nDustType) = grainFrac(1:nDustType)
+    if (r < rSpiral*0.9) thisOctal%dustTypeFraction(subcell,1:nDustType) = 1.d-10
+    if (r < rSpiral*0.9) thisOctal%rho(subcell) = thisOctal%rho(subcell) * 0.01d0
   end subroutine spiralDisc
           
        
