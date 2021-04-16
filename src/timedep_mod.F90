@@ -489,8 +489,6 @@ contains
     integer :: nEscaped
     integer :: nFromMatterThisThread
     real(double) :: photonPacketWeight ! Thaw added to satisfy getWavelength, dummy.
-    real :: totFrac
-    integer :: nFrac
 
 #ifdef MPI
     integer :: ierr
