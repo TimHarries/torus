@@ -3705,7 +3705,6 @@ CONTAINS
 #endif
     real(double) :: chi, zeta0dash, psi, eta, zeta
     real(double) :: dx, cornerDist(8), d, muval(8), r1, r2, v, enhancedheight, cfac
-    real(double) :: phiStart,PhiEnd,cresentThickness
 
     splitInAzimuth = .false.
     split = .false.
