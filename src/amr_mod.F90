@@ -3705,6 +3705,7 @@ CONTAINS
 #endif
     real(double) :: chi, zeta0dash, psi, eta, zeta
     real(double) :: dx, cornerDist(8), d, muval(8), r1, r2, v, enhancedheight, cfac
+    real(double) :: phiStart,PhiEnd,cresentThickness
 
     splitInAzimuth = .false.
     split = .false.
@@ -5371,14 +5372,13 @@ CONTAINS
           endif
 
        case("spiraldisc")
+          splitInAzimuth = .false.
           ! used to be 5
-          if (thisOctal%ndepth  < mindepthamr) split = .true.
+          if (thisOctal%ndepth  < 5) split = .true.
           cellSize = thisOctal%subcellSize
           cellCentre = subcellCentre(thisOctal,subCell)
           r = sqrt(cellcentre%x**2 + cellcentre%y**2)
-          thisHeightSplitFac = heightSplitFac
-          if (r < rSublimation) thisheightSplitFac = 1.
-
+          thisheightsplitfac = 1.
           hr = height * (r / (100.d0*autocm/1.d10))**betadisc
 
 !          write(*,*) hr, height, r, betadisc
@@ -5387,29 +5387,14 @@ CONTAINS
 
           if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
-          if ((.not.smoothinneredge).and.(.not.variableDustSublimation)) then
-             if (((r-cellsize/2.d0) < rSublimation).and. ((r+cellsize/2.d0) > rSublimation) .and. &
-                  (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 1.d0) .and. &
-                  (.not.thisOctal%cylindrical)) split=.true.
-         endif
-
-         if (((r-cellsize/2.d0) < rOuter).and. ((r+cellsize/2.d0) > rOuter)) then
-            if ((thisOctal%subcellSize/rOuter > 0.01) .and. (abs(cellCentre%z/hr) < 7.d0)) then
-               if (.not.thisOctal%cylindrical) split = .true.
-            endif
-         endif
-
-         if (r < 0.9*rInner) split = .false.
-             
-
-          if (thisOctal%cylindrical) then
-             if ((thisOctal%nDepth < minDepthAMR).and.(r > rSpiral)) then
-                splitInAzimuth = .true.
-                split = .true.
-             endif
+          if ((thisOctal%dphi*radtodeg > 20.).and.(r > 0.1 * rSpiral)) then
+             splitInAzimuth = .true.
+             split = .true.
           endif
           
-      
+
+
+          
        case("shakara","aksco","HD169142","MWC275")
           ! used to be 5
           if (thisOctal%ndepth  < mindepthamr) split = .true.
@@ -12872,6 +12857,7 @@ end function readparameterfrom2dmap
     use inputs_mod, only : curvedInnerEdge, nDustType, grainFrac, gridDistanceScale, rInner
     use inputs_mod, only : height, hydrodynamics, dustPhysics, mCore, molecularPhysics, photoionization
     use inputs_mod, only : rSublimation, erInner, erOuter, mDotEnv, rhofloor, cavAngle, cavDens, rCavity
+    use inputs_mod, only : ambientDens
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     complex(double) :: a(3), za(3)
@@ -13041,8 +13027,10 @@ end function readparameterfrom2dmap
     cfac = (rCavity/1.d10)**(-1./2.) / tan(cavAngle)**(3./2.)
     dr = (abs(rVec%z)/cfac)**(2./3.)
 
-    if ((r < dr).and.(modulus(rVec)<(rCavity/1.d10))) then
+    if (r < dr) then
        thisOctal%rho(subcell) = max(cavdens, discDens)
+    else
+       thisOctal%rho(subcell) = max(thisOctal%rho(subcell), ambientDens)
     endif
 
     if (modulus(rVec) < rCavity/1.d10) then
@@ -13065,15 +13053,18 @@ end function readparameterfrom2dmap
     integer :: subcell
     real(double) :: angSpiral, rs, fac, phiSpiral, pitchAngle, widthSpiral, scaleFac
     type(VECTOR) :: cen, midVec, rVec
-    real(double) :: h, r
+    real(double) :: h, r, phi,phiStart,phiEnd, cresentThickness, fac2
     integer :: i, j, nSpiralArms
-
+    real(double) :: rc,phic,sigmaphi,sigmar,dphi
     nSpiralArms = 8
     pitchAngle = 20.d0 * degtoRad
     widthSpiral = 10.d0*autocm/1.d10
     cen = subcellCentre(thisOctal,subcell)
     midVec = VECTOR(cen%x, cen%y, 0.d0)
     r = sqrt(cen%x**2 + cen%y**2)
+    thisOctal%velocity(subcell) = keplerianVelocity(cen)
+!    CALL fillVelocityCorners(thisOctal,keplerianVelocity)
+    thisOctal%iAnalyticalVelocity(subcell) = 2
 
     
     
@@ -13098,8 +13089,27 @@ end function readparameterfrom2dmap
     if (r > rSpiral) thisOctal%rho(subcell) = thisOctal%rho(subcell) * scaleFac
 
     thisOctal%dustTypeFraction(subcell,1:nDustType) = grainFrac(1:nDustType)
-    if (r < rSpiral*0.9) thisOctal%dustTypeFraction(subcell,1:nDustType) = 1.d-10
-    if (r < rSpiral*0.9) thisOctal%rho(subcell) = thisOctal%rho(subcell) * 0.01d0
+    if (r < rSpiral*0.8) thisOctal%dustTypeFraction(subcell,1:nDustType) = 1.d-20
+    thisOctal%dustTYpeFraction(subcell,2) = 1.d-20
+    phiStart = 180.*degtorad
+    phiEnd = 210.*degtorad
+    phi = atan2(cen%y,cen%x)
+    if (phi < 0.) phi = phi+twopi
+    cresentThickness = 0.1*rSpiral*sin(pi*(phi-phiStart)/(phiEnd-phiStart))
+    r = sqrt(cen%x**2 + cen%y**2)
+
+    rc = 155.*autocm/1.d10
+    sigmar = 30.*autocm/1.d10
+    !    phic = 250. * degtorad
+    phic = 200.* degtorad
+    sigmaphi =  64. * degtorad
+    dphi = abs(phic - phi)
+    if (dphi > pi) dphi = 2.*pi - dphi
+
+    fac2 = -0.5d0 * (dble(cen%z)/(h/2.))**2
+
+    fac = exp(-(r-rc)**2 / (2.*sigmar**2)) * exp(-dphi**2/(2.*sigmaphi**2))
+    thisOctal%dustTypeFraction(subcell,2) = grainFrac(2) * fac * exp(fac2)
   end subroutine spiralDisc
           
        

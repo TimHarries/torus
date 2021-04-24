@@ -33,7 +33,7 @@ contains
     use inputs_mod, only : amrGridSize, doSmoothGrid, ttauriMagnetosphere, discWind
     use inputs_mod, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp, ttauriStellarWind
     use inputs_mod, only : limitScalar, limitScalar2, smoothFactor, onekappa
-    use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, mDisc
+    use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, mDisc, nDustType
     use inputs_mod, only : rCore, rInner, rOuter, gridDistance, massEnvelope, readTurb, virialAlpha, restartLucy
     use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, logspacegrid, nmag, dospiral, sphereMass, &
          sphereRadius, sourceRadius, pionAMR
@@ -68,7 +68,7 @@ contains
 #endif
     use gridFromFlash
     use ramses_mod, only: rd_gas
-
+    use dust_mod, only : sumDustMass
     implicit none
 
     ! For romanova geometry case
@@ -93,6 +93,8 @@ contains
     type(vector), pointer :: posArray(:) => null(), velArray(:) => null()
     real(double), pointer :: rhoArray(:) => null()
     integer :: npoints,fp
+    real(double),allocatable :: dustMass(:)
+    real(double) :: gasMass
 #ifdef SPH
     type(cluster) :: young_cluster
     real(double)  ::  removedMass
@@ -615,7 +617,10 @@ doGridshuffle: if(gridShuffle) then
              scaleFac = real(mdisc / totalMass)
              if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
              call scaleDensityAMR(grid%octreeRoot, dble(scaleFac))
-
+             allocate(dustmass(1:nDustType))
+             dustMass = 0.; gasMass = 0.
+             call sumDustMass(grid%octreeRoot, gasMass, dustMass)
+             write(*,*) "Dust mass is ",dustmass/mearth, " earth masses"
              
           case("HD169142")
              totalMass = 0.d0

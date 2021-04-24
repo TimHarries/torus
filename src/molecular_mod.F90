@@ -1243,7 +1243,7 @@ module molecular_mod
 
 #ifdef PHOTOION
      if(usedust) then
-        call quickSublimate(grid%octreeRoot, 0.01) ! do dust sublimation  
+!        if () call quickSublimate(grid%octreeRoot, 0.01) ! do dust sublimation  
 
         write(mpiFilename,'(a, i4.4, a)') "quickDump.vtk"
         call writeVtkFile(grid, mpiFilename, &                                               

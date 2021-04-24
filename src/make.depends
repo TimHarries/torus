@@ -273,9 +273,9 @@ physics_mod.o: amr_mod.o biophysics_mod.o chemistry_mod.o cmf_mod.o \
 random_mod.o: kind_mod.o messages_mod.o mpi_global_mod.o
 setupamr_mod.o: TTauri_mod.o amr_mod.o biophysics_mod.o cluster_class.o \
 	cmf_mod.o cmfgen_class.o constants_mod.o disc_class.o \
-	discwind_class.o gridFromFitsFile.o gridFromFlash.o grid_mod.o \
-	gridio_mod.o gridtype_mod.o image_mod.o inputs_modV2.o lucy_mod.o \
-	magnetic_mod.o memory_mod.o messages_mod.o mpi_amr_mod.o \
+	discwind_class.o dust_mod.o gridFromFitsFile.o gridFromFlash.o \
+	grid_mod.o gridio_mod.o gridtype_mod.o image_mod.o inputs_modV2.o \
+	lucy_mod.o magnetic_mod.o memory_mod.o messages_mod.o mpi_amr_mod.o \
 	mpi_global_mod.o octal_mod.o parallel_mod.o photoionAMR_mod.o \
 	ramses_mod.o sph_data_class.o stateq_mod.o turbulence_mod.o \
 	utils_mod.o vector_mod.o vh1_mod.o vtk_mod.o
