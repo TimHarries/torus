@@ -41,6 +41,7 @@ contains
     use inputs_mod, only : nphotons, ntime, gridInputFilename
     use sed_mod, only:  SEDlamMin, SEDlamMax, SEDnumLam
     use inputs_mod, only : lumFactor, lumDecayTime, gridDistance, thisinclination
+    use inputs_mod, only : imageSize, nPix
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
     integer :: nSource
@@ -72,13 +73,15 @@ contains
     real(double), allocatable :: sedFluxScat(:,:)
     real(double), allocatable :: sedFluxStep(:,:)
     real(double), allocatable :: sedFluxScatStep(:,:)
+    real(double), allocatable :: image(:,:,:)
     real(double) :: w1, w2, thisTeff, thisRadius
     real(double) :: sourceLuminosity
     real(double) :: inc, fac, initialRadius
+    real(double), allocatable :: outputImage(:,:)
     type(VECTOR) :: observerDirection, observerposition
     logical :: lastTime, ok
     logical :: seedRun
-
+    
     allocate(sedTime(1:nTime))
     allocate(sedWavelength(sedNumLam))
     allocate(outputFlux(sedNumLam, nTime))
@@ -87,8 +90,10 @@ contains
     allocate(sedFluxScat(sedNumLam, nTime))
     allocate(sedFluxStep(sedNumLam, nTime))
     allocate(sedFluxScatStep(sedNumLam, nTime))
+    allocate(outputImage(nPix, nPix))
 
-
+    allocate(image(nPix, nPix, nTime))
+    image = 0.d0
 
     seedRun = .false.
     inc = thisinclination
@@ -279,8 +284,9 @@ contains
        call  timeDependentRTStep(grid, oldStack, nStack, oldStackFilename, currentStackFilename, &
             nsource, source, deltaT, newDeltaT, deltaTmax, deltaTmin, &
             nMonte, xArray, nLambda, varyingSource, currentTime, &
-            sednumlam, nTime, sedWavelength, sedTime, sedFluxStep, sedFluxScatStep, dumpFromNow, &
-            observerPosition, observerDirection, seedRun)
+            sednumlam, nTime, sedWavelength, sedTime, sedFluxStep, &
+            sedFluxScatStep, image, npix,dumpFromNow, &
+            observerPosition, observerDirection, seedRun, imageSize)
        if (doTuning) call tune(6, "Time dependent RT step") 
 
        sedFlux  = sedFlux + sedFluxStep
@@ -371,6 +377,12 @@ contains
                 enddo
                 close(32)
              enddo
+             do i = 1, nTime
+                write(vtkFilename, '(a,i5.5,a)') "image",i,".fits"
+                outputImage = (image(:,:,i) / deltaT / observerDistance**2)
+                call writeTempDepFitsImage(outputImage, nPix, vtkFilename)
+             enddo
+
           endif
           dumpNow = .false.
        endif
@@ -415,27 +427,36 @@ contains
                 enddo
                 close(32)
              enddo
-          
 
+
+             do i = 1, nTime
+                write(vtkFilename, '(a,i5.5,a)') "image",i,".fits"
+                outputImage = (image(:,:,i) / deltaT / observerDistance**2)
+                call writeTempDepFitsImage(outputImage, nPix, vtkFilename)
+             enddo
+          endif
        endif
-    endif
-
+       
 
 
   end subroutine runTimeDependentRT
 
   subroutine timeDependentRTStep(grid, oldStack, oldStacknStack, oldStackFilename, currentStackFilename, &
        nsource, source, deltaT, newDeltaT, deltaTmax, deltaTmin, nMonte, lamArray, nLambda, varyingSource, currentTime, &
-       nSedWavelength, nTime, sedWavelength, sedTime, sedFlux, sedFluxScat, dumpFromNow, observerPosition, observerDirection, &
-       seedRun)
+       nSedWavelength, nTime, sedWavelength, sedTime, sedFlux, sedFluxScat, &
+       image, nPix, dumpFromNow, observerPosition, observerDirection, &
+       seedRun, imageSize)
 #ifdef MPI
     use mpi
 #endif
     use inputs_mod, only : quickSublimate
     type(GRIDTYPE) :: grid
     integer :: nSource
+    real(double) :: imageSize
     logical :: varyingSource
     integer :: nLambda
+    integer :: nPix
+    real(double) :: image(:,:,:)
     integer :: nFreq
     integer :: nSedWavelength, nTime
     real(double) :: sedWavelength(:)
@@ -489,17 +510,26 @@ contains
     integer :: nEscaped
     integer :: nFromMatterThisThread
     real(double) :: photonPacketWeight ! Thaw added to satisfy getWavelength, dummy.
+    type(VECTOR) :: xAxis, yAxis
 
+    
+    
 #ifdef MPI
     integer :: ierr
     real(double) :: tempDouble
-    real(double), allocatable :: tempDoubleArray(:)
+    real(double), allocatable :: tempDoubleArray(:), tempDoubleArray2(:), tempImage(:,:)
 #endif
     treal= real(dumpfromnow)
     firstObserverTime = sedTime(1)
     lastObserverTime = sedTime(nTime)
     
+    xAxis = VECTOR(1.d0,0.d0,0.d0)
+    yAxis = observerDirection.cross.xAxis
+    call normalize(yAxis)
 
+    
+
+    
 
     useFileForStack = .true.
 
@@ -615,8 +645,12 @@ contains
                 call tauAlongPath(ilambda, grid, rVec, observerDirection, tau)
                 timeToObserver = distanceToObserver(rVec, observerPosition, observerDirection)/cspeed
                 photonTagTime = currentTime + photonTime + timeToObserver
-                call timeBinPhoton(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
-                  sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT)
+                call timeBinPhotonSED(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
+                     sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT)
+
+                call timeBinPhotonImage(photonTagTime, wavelength, eps, tau, nPix, nTime, &
+                     sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
+
              endif
 
 
@@ -671,20 +705,27 @@ contains
                 if (seedRun) then
                    if (photonTagTime > lastObserverTime) then
                       do i = 1, nTime
-                         call timeBinPhoton(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
+                         call timeBinPhotonSED(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
                               sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT)
+                         call timeBinPhotonImage(photonTagTime, wavelength, eps, tau, nPix, nTime, &
+                     sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
+
                       enddo
                    endif
                    if (photonTagTime < firstObserverTime) then
                       do i = 1, nTime
-                         call timeBinPhoton(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
+                         call timeBinPhotonSED(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
                               sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT)
+                         call timeBinPhotonImage(sedTime(i), wavelength, eps, tau, nPix, nTime, &
+                     sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
                       enddo
                    endif
                 endif
                 if (.not.seedRun) then
-                   call timeBinPhoton(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
+                   call timeBinPhotonSED(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
                         sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT)
+                         call timeBinPhotonImage(photonTagTime, wavelength, eps, tau, nPix, nTime, &
+                     sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
                 endif
              endif
                 
@@ -739,20 +780,28 @@ contains
                    if (seedRun) then
                       if (photonTagTime < firstObserverTime) then
                          do i = 1, nTime
-                            call timeBinPhoton(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
+                            call timeBinPhotonSED(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
                                  sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT)
+                            call timeBinPhotonImage(sedTime(i), wavelength, eps, tau, nPix, nTime, &
+                                 sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
+
                          enddo
                       endif
                       if (photonTagTime > lastObserverTime) then
                          do i = 1, nTime
-                            call timeBinPhoton(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
+                            call timeBinPhotonSED(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
                                  sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT)
+                            call timeBinPhotonImage(sedTime(i), wavelength, eps, tau, nPix, nTime, &
+                                 sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
+
                          enddo
                       endif
                    endif
                    if (.not.seedRun) then
-                      call timeBinPhoton(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
+                      call timeBinPhotonSED(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
                            sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT)
+                      call timeBinPhotonImage(photonTagTime, wavelength, eps, tau, nPix, nTime, &
+                           sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
                    endif
 
                 endif
@@ -844,6 +893,22 @@ contains
      enddo
 
      deallocate(tempDoubleArray)
+     allocate(tempDoubleArray(nPix*nPix))
+     allocate(tempDoubleArray2(nPix*nPix))
+     allocate(tempImage(nPix,nPix))
+     
+     do i = 1, nTime
+        tempImage = image(:,:,i)
+        tempDoubleArray = reshape(tempImage,(/SIZE(tempDoubleArray)/))
+        call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
+                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
+        tempImage = reshape(tempDoubleArray,SHAPE(tempImage))
+        image(:,:,i) = tempImage
+     enddo
+
+
+     
+     deallocate(tempDoubleArray,tempDoubleArray2, tempImage)
 
 
     if (doTuning) call tune(6, "MPI communication") 
@@ -877,7 +942,10 @@ contains
     call calculateTemperatureFromUdens(grid%octreeRoot)
 
     if (quickSublimate) call quickSublimateLucy(grid%octreeRoot, minLevel=1.d-6)
-
+!    if (instantSublimate) then
+!    rsublimation = rCore * (1600./teff)**(-2.1) ! Robitaille 2006 equation 7
+!    endif
+    
 
 
     call calculateEtaContLocal(grid, grid%octreeRoot)
@@ -2340,7 +2408,7 @@ contains
     v%z = 0.d0
   end function randomUnitVector2
 
-  subroutine timeBinPhoton(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
+  subroutine timeBinPhotonSED(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
                sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered,deltaT)
     real(double) :: photonTagTime
     real(double) :: wavelength
@@ -2369,7 +2437,46 @@ contains
           endif
        endif
     endif
-  end subroutine timeBinPhoton
+  end subroutine timeBinPhotonSED
+
+  subroutine timeBinPhotonImage(photonTagTime, wavelength, eps, tau, nPix, nTime, &
+       sedTime, deltaT, photonPos, image, imageSize, xAxis, yAxis)
+    use inputs_mod, only : lamstart,lamend
+    real(double) :: photonTagTime
+    real(double) :: wavelength
+    real(double) :: eps, deltaT
+    real(double) :: tau
+    integer :: nTime
+    real(double) :: sedTime(:), xVal, yVal
+    integer :: nPix, iPix, jPix, iTime
+    real(double) :: image(nPix, nPIx, nTime)
+    real(double) :: imageSize, dx
+    type(VECTOR) :: xAxis, yAxis, photonPos
+
+
+    lamStart = 1.d5
+    lamEnd = 2.d5
+    xVal = photonPos.dot.xAxis
+    yVal = photonPos.dot.yAxis
+    
+    dx = imageSize/dble(npix)
+    iPix = (xVal / dx) + nPix/2
+    jPix = (yVal / dx) + nPix/2
+
+
+    if ((photonTagTime >= sedTime(1)).and.(photonTagTime <= (sedTime(nTime)+deltaT))) then
+       if ((iPix >= 1).and.(iPix <= nPix).and.(jPix>=1).and.(jPix<=nPix)) then
+          if ((wavelength > lamStart).and. (wavelength < lamEnd)) then
+             if (photonTagTime < sedTime(nTime)) then
+                call locate(sedTime, nTime, photonTagTime, iTime)
+             else
+                iTime = nTime
+             endif
+             image(iPix,jPix,iTime) = image(iPix, jPix, iTime) + eps * exp(-tau)/fourPi
+          endif
+       endif
+    endif
+  end subroutine timeBinPhotonImage
 
   recursive subroutine packvalues(thisOctal,nIndex,&
        distanceGridAdot, distanceGridPhotonFromSource, distanceGridPhotonFromGas, nCrossingsArray)
@@ -2768,5 +2875,70 @@ contains
       enddo
     end subroutine calculateTranportTerms
       
+    subroutine writeTempDepFitsImage(thisImage, nPix, filename)
+      use image_mod, only : deleteFile
+      use fits_utils_mod
+      real(double) :: thisImage(:,:)
+      integer :: nPix
+      character(len=*) :: filename
+      integer :: unit, status
+      logical :: simple, extend
+      integer :: nAxis, nAxes(2)
+      integer :: bitpix, blocksize, fpixel,group, nElements
+      logical :: oldFilepresent
+      real, allocatable :: realImage(:,:)
 
+
+      allocate(realImage(1:nPix,1:nPix))
+      realImage = real(thisImage)
+       status=0
+       !
+       !  Delete the file if it already exists, so we can then recreate it.
+       !
+       inquire(file=filename, exist=oldFilePresent)
+       if (oldFilePresent) then 
+          call deleteFile(filename, status)
+       end if
+
+       !
+       !  Get an unused Logical Unit Number to use to open the FITS file.
+       !
+       call ftgiou ( unit, status )
+       !
+       !  Create the new empty FITS file.
+       !
+       blocksize=1
+       call ftinit(unit,filename,blocksize,status)
+       !
+       !  Initialize parameters about the FITS image (300 x 200 16-bit integers).
+       !
+       simple=.true.
+       bitpix=-32
+       naxis=2
+       naxes(1)=nPIx
+       naxes(2)=nPix
+       extend=.true.
+       !
+       !  Write the required header keywords.
+       !
+       call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+       !
+       !  Write the array to the FITS file.
+       !
+       group=1
+       fpixel=1
+       nelements=naxes(1)*naxes(2)
+
+       call addScalingKeywords(maxval(realImage), minval(realImage), unit, bitpix)
+
+       call ftppre(unit,group,fpixel,nelements,realimage,status)
+
+              !
+       !  Close the file and free the unit number.
+       !
+       call ftclos(unit, status)
+       call ftfiou(unit, status)
+       deallocate(realImage)
+     end subroutine writeTempDepFitsImage
+    
 end module timeDep_mod

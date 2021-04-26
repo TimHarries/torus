@@ -553,6 +553,8 @@
   character(len=30), protected :: cutType    !direction of cut (horizontal or vertical)
   integer, protected :: sliceIndex !pixel through which the cut runs (x or y depends on cutType)
 
+  
+
 !--------------------------------
 ! Image and data cube parameters
 !--------------------------------
@@ -1101,6 +1103,9 @@
   real, allocatable :: lamLineArray(:)
   real    :: massEnvelope
   integer(bigInt) :: inputSeed
+
+  integer :: nPix
+  real(double) :: imageSize, lamStart, lamEnd
 
 !Cass change
   integer :: irrchoice ! Choice of irradiation
