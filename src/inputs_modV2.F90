@@ -3116,20 +3116,28 @@ contains
     call getInteger("sednumlam", SEDnumLam, cLine, fLine, nLines, &
          "Number of SED points: ", "(a,i3,1x,a)", 50, ok, .false.)
 
+    call getDouble("sedradius", sedRadius, autocm/1.d10, cLine, fLine, nLines, &
+         "Radius of aperture for SED (au): ", "(a,f8.1,1x,a)", 1.d30, ok, .false.)
+        
     call getInteger("npix", npix, cLine, fLine, nLines, &
          "Number of npixels across image: ", "(a,i3,1x,a)", 50, ok, .true.)
 
-    call getDouble("imagesize", imageSize, autocm/1.d10, cLine, fLine, nLines, &
-         "Image size (au):  ","(a,f5.1,1x,a)", 1500.d0, ok, .true.)
+      call getLogical("timedepimage", timedepImage, cLine, fLine, nLines, &
+           "Calculate time dependent images: ","(a,1l,1x,a)", .false., ok, .false.)
 
-        call getDouble("lamstart", lamStart, 1.d4, cLine, fLine, nLines, &
-         "Start wavelength for image (microns):  ","(a,f5.1,1x,a)", 1500.d0, ok, .true.)
+      if (timedepImage) then
+         call getDouble("imagesize", imageSize, autocm/1.d10, cLine, fLine, nLines, &
+              "Image size (au):  ","(a,f5.1,1x,a)", 1500.d0, ok, .true.)
 
-        call getDouble("lamend", lamEnd, 1.d4, cLine, fLine, nLines, &
-         "End wavelength (microns):  ","(a,f5.1,1x,a)", 1500.d0, ok, .true.)
+         call getDouble("lamstart", lamStart, 1.d4, cLine, fLine, nLines, &
+              "Start wavelength for image (microns):  ","(a,f5.1,1x,a)", 1500.d0, ok, .true.)
 
-            call getDouble("imagesize", imageSize, autocm/1.d10, cLine, fLine, nLines, &
-         "Image size (au):  ","(a,f5.1,1x,a)", 1500.d0, ok, .true.)
+         call getDouble("lamend", lamEnd, 1.d4, cLine, fLine, nLines, &
+              "End wavelength (microns):  ","(a,f5.1,1x,a)", 1500.d0, ok, .true.)
+
+         call getDouble("imagesize", imageSize, autocm/1.d10, cLine, fLine, nLines, &
+              "Image size (au):  ","(a,f5.1,1x,a)", 1500.d0, ok, .true.)
+      endif
 
   end subroutine readTimeDependentRTParameters
 

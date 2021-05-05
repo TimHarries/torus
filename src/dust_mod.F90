@@ -1188,7 +1188,7 @@ contains
     if (present(minLevel)) then
        smallVal = minLevel
     else
-       smallVal = 1.d-20
+       smallVal = 1.d-25
     endif
 
     do subcell = 1, thisOctal%maxChildren

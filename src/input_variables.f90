@@ -1078,6 +1078,8 @@
   logical :: radPressureTest ! perform on the spot absorption for radiation pressure tests
   logical :: UV_vector
   logical :: excludeScatteredLight ! don't include dust-scattered light in images
+  real(double) :: sedRadius
+  logical :: timedepImage
 
 ! Other physical parameters
   real    :: vturb        ! Subsonic turbulent velocity

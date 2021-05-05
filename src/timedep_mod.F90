@@ -41,7 +41,7 @@ contains
     use inputs_mod, only : nphotons, ntime, gridInputFilename
     use sed_mod, only:  SEDlamMin, SEDlamMax, SEDnumLam
     use inputs_mod, only : lumFactor, lumDecayTime, gridDistance, thisinclination
-    use inputs_mod, only : imageSize, nPix
+    use inputs_mod, only : imageSize, nPix, timedepImage
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
     integer :: nSource
@@ -90,10 +90,12 @@ contains
     allocate(sedFluxScat(sedNumLam, nTime))
     allocate(sedFluxStep(sedNumLam, nTime))
     allocate(sedFluxScatStep(sedNumLam, nTime))
-    allocate(outputImage(nPix, nPix))
 
-    allocate(image(nPix, nPix, nTime))
-    image = 0.d0
+    if (timeDepImage) then
+       allocate(outputImage(nPix, nPix))
+       allocate(image(nPix, nPix, nTime))
+       image = 0.d0
+    endif
 
     seedRun = .false.
     inc = thisinclination
@@ -377,12 +379,13 @@ contains
                 enddo
                 close(32)
              enddo
-             do i = 1, nTime
-                write(vtkFilename, '(a,i5.5,a)') "image",i,".fits"
-                outputImage = (image(:,:,i) / deltaT / observerDistance**2)
-                call writeTempDepFitsImage(outputImage, nPix, vtkFilename)
-             enddo
-
+             if (timedepImage) then
+                do i = 1, nTime
+                   write(vtkFilename, '(a,i5.5,a)') "image",i,".fits"
+                   outputImage = (image(:,:,i) / deltaT / observerDistance**2)
+                   call writeTempDepFitsImage(outputImage, nPix, vtkFilename)
+                enddo
+             endif
           endif
           dumpNow = .false.
        endif
@@ -428,12 +431,13 @@ contains
                 close(32)
              enddo
 
-
-             do i = 1, nTime
-                write(vtkFilename, '(a,i5.5,a)') "image",i,".fits"
-                outputImage = (image(:,:,i) / deltaT / observerDistance**2)
-                call writeTempDepFitsImage(outputImage, nPix, vtkFilename)
-             enddo
+             if (timedepImage) then
+                do i = 1, nTime
+                   write(vtkFilename, '(a,i5.5,a)') "image",i,".fits"
+                   outputImage = (image(:,:,i) / deltaT / observerDistance**2)
+                   call writeTempDepFitsImage(outputImage, nPix, vtkFilename)
+                enddo
+             endif
           endif
        endif
        
@@ -449,7 +453,7 @@ contains
 #ifdef MPI
     use mpi
 #endif
-    use inputs_mod, only : quickSublimate
+    use inputs_mod, only : quickSublimate, timedepImage
     type(GRIDTYPE) :: grid
     integer :: nSource
     real(double) :: imageSize
@@ -646,9 +650,9 @@ contains
                 timeToObserver = distanceToObserver(rVec, observerPosition, observerDirection)/cspeed
                 photonTagTime = currentTime + photonTime + timeToObserver
                 call timeBinPhotonSED(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
-                     sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT)
+                     sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT, rVec, xAxis, yAxis)
 
-                call timeBinPhotonImage(photonTagTime, wavelength, eps, tau, nPix, nTime, &
+                if (timedepImage) call timeBinPhotonImage(photonTagTime, wavelength, eps, tau, nPix, nTime, &
                      sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
 
              endif
@@ -706,8 +710,8 @@ contains
                    if (photonTagTime > lastObserverTime) then
                       do i = 1, nTime
                          call timeBinPhotonSED(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
-                              sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT)
-                         call timeBinPhotonImage(photonTagTime, wavelength, eps, tau, nPix, nTime, &
+                              sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT, rVec, xAxis, yAxis)
+                         if (timedepImage) call timeBinPhotonImage(photonTagTime, wavelength, eps, tau, nPix, nTime, &
                      sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
 
                       enddo
@@ -715,16 +719,16 @@ contains
                    if (photonTagTime < firstObserverTime) then
                       do i = 1, nTime
                          call timeBinPhotonSED(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
-                              sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT)
-                         call timeBinPhotonImage(sedTime(i), wavelength, eps, tau, nPix, nTime, &
+                              sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT, rVec, xAxis, yAxis)
+                         if (timedepImage) call timeBinPhotonImage(sedTime(i), wavelength, eps, tau, nPix, nTime, &
                      sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
                       enddo
                    endif
                 endif
                 if (.not.seedRun) then
                    call timeBinPhotonSED(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
-                        sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT)
-                         call timeBinPhotonImage(photonTagTime, wavelength, eps, tau, nPix, nTime, &
+                        sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT, rVec, xAxis, yAxis)
+                         if (timeDepImage) call timeBinPhotonImage(photonTagTime, wavelength, eps, tau, nPix, nTime, &
                      sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
                 endif
              endif
@@ -781,8 +785,8 @@ contains
                       if (photonTagTime < firstObserverTime) then
                          do i = 1, nTime
                             call timeBinPhotonSED(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
-                                 sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT)
-                            call timeBinPhotonImage(sedTime(i), wavelength, eps, tau, nPix, nTime, &
+                                 sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT, rVec, xAxis, yAxis)
+                            if (timedepImage) call timeBinPhotonImage(sedTime(i), wavelength, eps, tau, nPix, nTime, &
                                  sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
 
                          enddo
@@ -790,8 +794,8 @@ contains
                       if (photonTagTime > lastObserverTime) then
                          do i = 1, nTime
                             call timeBinPhotonSED(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
-                                 sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT)
-                            call timeBinPhotonImage(sedTime(i), wavelength, eps, tau, nPix, nTime, &
+                                 sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT, rVec, xAxis, yAxis)
+                            if (timedepImage) call timeBinPhotonImage(sedTime(i), wavelength, eps, tau, nPix, nTime, &
                                  sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
 
                          enddo
@@ -799,8 +803,8 @@ contains
                    endif
                    if (.not.seedRun) then
                       call timeBinPhotonSED(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
-                           sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT)
-                      call timeBinPhotonImage(photonTagTime, wavelength, eps, tau, nPix, nTime, &
+                           sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT, rVec, xAxis, yAxis)
+                      if (timedepImage) call timeBinPhotonImage(photonTagTime, wavelength, eps, tau, nPix, nTime, &
                            sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
                    endif
 
@@ -893,22 +897,24 @@ contains
      enddo
 
      deallocate(tempDoubleArray)
-     allocate(tempDoubleArray(nPix*nPix))
-     allocate(tempDoubleArray2(nPix*nPix))
-     allocate(tempImage(nPix,nPix))
-     
-     do i = 1, nTime
-        tempImage = image(:,:,i)
-        tempDoubleArray = reshape(tempImage,(/SIZE(tempDoubleArray)/))
-        call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
-                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-        tempImage = reshape(tempDoubleArray,SHAPE(tempImage))
-        image(:,:,i) = tempImage
-     enddo
 
 
+     if (timeDepImage) then
+        allocate(tempDoubleArray(nPix*nPix))
+        allocate(tempDoubleArray2(nPix*nPix))
+        allocate(tempImage(nPix,nPix))
+        
      
-     deallocate(tempDoubleArray,tempDoubleArray2, tempImage)
+        do i = 1, nTime
+           tempImage = image(:,:,i)
+           tempDoubleArray = reshape(tempImage,(/SIZE(tempDoubleArray)/))
+           call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
+                MPI_SUM,0,MPI_COMM_WORLD,ierr)
+           tempImage = reshape(tempDoubleArray,SHAPE(tempImage))
+           image(:,:,i) = tempImage
+        enddo
+        deallocate(tempDoubleArray,tempDoubleArray2, tempImage)
+     endif
 
 
     if (doTuning) call tune(6, "MPI communication") 
@@ -2409,7 +2415,8 @@ contains
   end function randomUnitVector2
 
   subroutine timeBinPhotonSED(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
-               sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered,deltaT)
+       sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered,deltaT, rVec, xAxis, yAxis)
+    use inputs_mod, only : sedRadius
     real(double) :: photonTagTime
     real(double) :: wavelength
     real(double) :: eps, deltaT
@@ -2417,23 +2424,28 @@ contains
     integer :: nSedWavelength, nTime
     real(double) :: sedTime(:), sedWavelength(:)
     real(double) :: sedFlux(nSedWavelength, nTime)
-    real(double) :: sedFluxScat(nSedWavelength, nTime)
+    real(double) :: sedFluxScat(nSedWavelength, nTime), thisRadius
+    type(VECTOR) :: rVec, xAxis, yAxis
     logical :: beenScattered, ok
     integer :: iwavelength, iTime
 
-    if ((photonTagTime >= sedTime(1)).and.(photonTagTime <= (sedTime(nTime)+deltaT))) then
-       if ((wavelength >= sedWavelength(1)).and.(wavelength <= sedWavelength(nSedWavelength))) then
-!          call locate(sedWavelength, nSedWavelength, wavelength, iWavelength)
-          iWavelength = findIlambdaDouble(wavelength, sedWavelength, nSedWavelength, ok)
-          if (photonTagTime < sedTime(nTime)) then
-             call locate(sedTime, nTime, photonTagTime, iTime)
-          else
-             iTime = nTime
-          endif
-          sedFlux(iWavelength, iTime) = sedFlux(iWavelength, iTime) + eps * exp(-tau)/fourPi
-          if (beenScattered) then
-             sedFluxScat(iWavelength, iTime) = sedFluxScat(iWavelength, iTime) + eps * exp(-tau)/fourPi
-             if (tau < 0.d0) write(*,*) "tau warning ",tau
+    thisRadius = sqrt((rVec.dot.xAxis)**2 + (rVec.dot.yAxis)**2)
+    if (thisRadius < SEDradius) then
+    
+       if ((photonTagTime >= sedTime(1)).and.(photonTagTime <= (sedTime(nTime)+deltaT))) then
+          if ((wavelength >= sedWavelength(1)).and.(wavelength <= sedWavelength(nSedWavelength))) then
+             !          call locate(sedWavelength, nSedWavelength, wavelength, iWavelength)
+             iWavelength = findIlambdaDouble(wavelength, sedWavelength, nSedWavelength, ok)
+             if (photonTagTime < sedTime(nTime)) then
+                call locate(sedTime, nTime, photonTagTime, iTime)
+             else
+                iTime = nTime
+             endif
+             sedFlux(iWavelength, iTime) = sedFlux(iWavelength, iTime) + eps * exp(-tau)/fourPi
+             if (beenScattered) then
+                sedFluxScat(iWavelength, iTime) = sedFluxScat(iWavelength, iTime) + eps * exp(-tau)/fourPi
+                if (tau < 0.d0) write(*,*) "tau warning ",tau
+             endif
           endif
        endif
     endif
