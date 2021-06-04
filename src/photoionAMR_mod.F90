@@ -9269,6 +9269,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
   subroutine propagateObserverPhoton(grid, thisPhoton, addToImage, newThread, freefreeImage, lambdaImage)
     use stateq_mod, only : alpkk
+    use inputs_mod, only : amrgridsize
     type(GRIDTYPE) :: grid
     type(PHOTON) :: thisPhoton
     logical,intent(out) :: addToImage
@@ -9293,7 +9294,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     endLoop = .false.
     do while (.not.endLoop)
        if (.not.inSubcell(thisOctal, subcell, thisPhoton%position)) then
-          write(*,*) myrankGlobal, " bug in propagate observer ", thisphoton%position
+          write(*,*) myrankGlobal, " bug in propagate observer ", thisphoton%position,modulus(thisPhoton%position),amrgridsize
        endif
        call distanceToCellBoundary(grid, thisPhoton%position, thisPhoton%direction, tval, thisOctal, subcell)
        if (freeFreeImage) then

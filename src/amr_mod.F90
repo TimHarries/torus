@@ -5596,7 +5596,7 @@ CONTAINS
                 endif
 
 
-                if (r < hillRadius) then
+                if (r < hillRadius*0.5) then
                    fac = radtodeg*(0.02d0 * hillradius / sqrt(cellCentre%x**2 + cellCentre%y**2))
                    if (dPhi*radtodeg > fac) then
                       splitInAzimuth = .true.
@@ -13923,7 +13923,7 @@ end function readparameterfrom2dmap
   SUBROUTINE checkAMRgrid(grid,checkNoctals)
     ! does some checking that the cells in an AMR grid are
     !   set up and linked to correctly.
-    use inputs_mod, only : amr1d, spherical, hydrodynamics, maxDepthAMR
+    use inputs_mod, only : amr1d, spherical, maxDepthAMR
     TYPE(gridType), INTENT(IN) :: grid
     LOGICAL, INTENT(IN) :: checkNoctals ! whether to confirm grid%nOctals
 
@@ -14059,7 +14059,7 @@ end function readparameterfrom2dmap
 
           ! see if the child's coordinates really lie in the parent subcell
           IF ( .NOT. inSubcell(thisOctal,iSubcell,point=thisOctal%child(iIndex)%centre) ) THEN
-             if (.not.(hydrodynamics.and.amr1d.and.spherical)) then
+             if (.not.(amr1d.and.spherical)) then
             PRINT *, "Error: In checkAMRgridPrivate, child isn't in parentSubcell"
             PRINT *, "       thisOctal%centre = ",thisOctal%centre
             PRINT *, "       iSubcell = ", iSubcell
@@ -20827,7 +20827,34 @@ END SUBROUTINE assignDensitiesStellarWind
     end do
   end subroutine tauAlongPathCMF
 
+  subroutine writeScatteringSurfaceFile(thisFile, grid)
+    use inputs_mod, only : lambdaTau
+    character(len=*) :: thisFile
+    type(GRIDTYPE) :: grid
+    real(double) :: theta,  sArray(10000),tauArray(10000), s, tau
+    type(VECTOR) :: rVec, radialVec
+    integer :: i, ntau, iLambda, itau
 
+    call locate(grid%lamArray, grid%nLambda, lambdaTau, iLambda)
+
+    open(33, file=thisFile, status="unknown", form="formatted")
+    do i = 1, 500
+       theta = dble(i-1)/499. * pi /2.d0
+       radialVec = VECTOR(cos(theta),0.d0, sin(theta))
+       rVec = VECTOR(0.d0, 0.d0, 0.d0)
+       call tauAlongPath(ilambda, grid, rVec, radialVec, tau, tauMax=10.d0, nTau=nTau, &
+            xArray=sArray, tauArray=tauArray)
+       if (tau < 1.d0) cycle
+       call locate(tauArray, nTau, 1.d0, iTau)
+       s = sArray(iTau) + sArray(iTau+1)*(tauArray(iTau+1) - 1.d0)/(tauArray(iTau+1) - tauArray(iTau))
+       write(33,*) s*1.d10/autocm/cos(theta),s * sin(theta)*1.d10/autocm
+    enddo
+    close(33)
+  end subroutine writeScatteringSurfaceFile
+    
+    
+
+  
   recursive subroutine addWarpedDisc(thisOctal)
     use inputs_mod, only : ttauriROuter, hOverR, ttauriRinner
     type(octal), pointer   :: thisOctal

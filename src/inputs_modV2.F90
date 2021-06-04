@@ -50,7 +50,7 @@ contains
 
     integer :: error
     logical :: parameterCheckMode
-
+    
     datadirectory = " "
     done = .false.
     ok = .true.
@@ -760,6 +760,17 @@ contains
     if (dowriteRadialFile) then
        call getString("radialfilename", radialFilename, cLine, fLine, nLines, &
             "Radial filename: ","(a,a,1x,a)",  " ", ok, .true.)
+    endif
+
+    call getLogical("writescatsurface", scatteringSurface, cLine, fLine, nLines, &
+         "Write out a scattering surface file: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    if (scatteringSurface) then
+       call getReal("lambdatau", lambdatau, 1.0, cLine, fLine, nLines, &
+         "Lambda for tau (angstroms): ","(a,1PE10.3,1x,a)", 5500.0, ok, .true.)
+
+       call getString("scatteringfilename", scatteringSurfaceFilename, cLine, fLine, nLines, &
+            "Scattering surface filename: ","(a,a,1x,a)",  " ", ok, .true.)
     endif
 
     if (sourceHistory) then
@@ -2943,6 +2954,11 @@ contains
     if (amr1d.and.(.not.checkPresent("amrgridcentrex", cline, nlines))) &
          amrGridCentrex = amrGridSize/2.d0
 
+    if (spherical) then
+       amrGridCentreX = amrgridsize/2.
+    endif
+
+    
     call getDouble("limitscalar", limitScalar, 1.d0, cLine, fLine, nLines, &
          "Scalar limit for subcell division: ","(a,1p,e9.3,1x,a)", 1000._db, ok, .false.)
 

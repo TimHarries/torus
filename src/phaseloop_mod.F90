@@ -3525,7 +3525,7 @@ end subroutine rdintpro
        endif
     end if
 
-33  format(6(1x, 1PE14.5))
+33  format(6(1x, 1PE16.5))
        !34   format(a1, a14, 5(a6))
        ! You should always put a header!
        !     write(20, "(a)") "# Writteng by writeSpectrum."

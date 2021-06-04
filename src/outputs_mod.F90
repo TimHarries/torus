@@ -22,6 +22,7 @@ contains
     use inputs_mod, only : mie, gridDistance, nLambda, ncubes
     use inputs_mod, only : postsublimate, lineEmission, nv
     use inputs_mod, only : dowriteradialfile, radialfilename
+    use inputs_mod, only : scatteringSurface, ScatteringSurfaceFilename
     use inputs_mod, only : sourcelimbaB, sourcelimbbB ,sourcelimbaV, sourcelimbbV
     use sed_mod, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
     use image_mod
@@ -122,6 +123,12 @@ contains
 
 
     endif
+
+    if (scatteringSurface) then
+       call writeInfo("Writing scattering surface file")
+       call writeScatteringSurfaceFile(scatteringSurfaceFilename, grid)
+    endif
+
 
     if (geometry == "envelope") then
        if (writeoutput.and.amr2d) call writeEduard(grid)
@@ -564,7 +571,7 @@ if (.false.) then
        call writeSourceHistory(sourceHistoryfilename,globalSourceArray,globalnSource, oldMass, oldAge)
     endif
 
-
+    
 
 
     if (dowriteRadialFile) then

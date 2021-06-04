@@ -1059,6 +1059,8 @@
 
   type(VECTOR) :: bondiCentre
 
+  logical :: scatteringSurface
+  character(len=120) :: scatteringSurfaceFilename
 
 ! Parameters which control Torus behaviour
   logical           :: debug
