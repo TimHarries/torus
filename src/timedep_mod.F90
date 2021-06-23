@@ -481,7 +481,8 @@ contains
     integer :: nMonte, iMonte, nFromGas, nFromSource
     integer :: i
     real(double) :: freqArray(2000), dnu(2000), kAbsArray(2000), kAbsArray2(2000)
-    real(double) :: prob(2000), luminosity, sourceLuminosity
+    real(double) :: prob(2000), prob2(2000),luminosity, sourceLuminosity, biasArray(2000)
+    real(double) :: probLongWavelength, lambda
     integer :: nFromMatter, nPhotons
     real(double) :: fracSource, chanceSource, chanceGas, weightSource, weightGas
     real(double) :: weightSource2
@@ -496,7 +497,7 @@ contains
     real :: treal
     type(SOURCETYPE) :: thisSource
     type(OCTAL), pointer :: thisOctal
-    integer :: subcell, iSource, iLam
+    integer :: subcell, iSource
     integer :: oldStackUnit, currentStackUnit
     logical :: absorbed, scattered, outOfTime, finished, ok
     real(double) :: kappaAbs, kappaSca, albedo
@@ -516,7 +517,8 @@ contains
     real(double) :: photonPacketWeight ! Thaw added to satisfy getWavelength, dummy.
     type(VECTOR) :: xAxis, yAxis
 
-    
+    integer :: iFreq
+    real(double) :: specWeight
     
 #ifdef MPI
     integer :: ierr
@@ -672,20 +674,73 @@ contains
              call amrGridValues(grid%octreeRoot, rVec, startOctal=thisOctal, &
                   actualSubcell=subcell, temperature=treal,grid=grid, kappaAbsArray=kAbsArray)
              tdble = dble(tReal)
-             do i = 1, nLambda
-                iLam = nfreq - i + 1
-                kAbsArray2(i) = kabsArray(ilam)
+             do i = 1, nFreq
+                kAbsArray2(i) = kabsArray(nFreq-i+1)
              enddo
              prob(1) = 0.d0
              do i = 2, nFreq
                 prob(i) = prob(i-1) + kAbsArray2(i)*bnu(freqArray(i), tdble)*dnu(i)
              enddo
              prob = prob / prob(nFreq)
+
+             
+
+             
              call randomNumberGenerator(getDouble=r)
              call locate(prob, nFreq, r, i)
              freq = freqArray(i)
              wavelength = (cSpeed/freq)*1.d8
              eps = (1.d0/thisOctal%biasCont3D(subcell)) * weightGas * totalluminosity * deltaT / dble(nFromMatter)
+
+             ! TJH changed 21/6/2021 to give better S/N across complete dust emission spectrum
+
+             
+             lambda = 1d2*micronTocm
+             call locate(freqArray, nFreq, cspeed/lambda, iFreq)
+             do i = 1, nFreq
+                prob(i) = kAbsArray2(i)*bnu(freqArray(i), tdble)*dnu(i)
+             enddo
+        
+
+             probLongWavelength = SUM(prob(1:iFreq))/SUM(prob(1:nFreq))
+
+             if (probLongWavelength > 0.01d0) then
+                biasArray(1:iFreq) = 1.d0
+                biasArray(iFreq+1:nFreq) = 0.1d0
+                biasArray = biasArray / SUM(biasArray(1:nFreq))
+
+                do i = 1, nFreq
+                   prob(i) = kAbsArray2(i)*bnu(freqArray(i), tdble)*dnu(i)
+                enddo
+                prob = prob/SUM(prob(1:nFreq))
+                
+
+                
+                prob2(1) = 0.d0
+                do i = 2, nFreq
+                   prob2(i) = prob2(i-1) +  biasArray(i)
+                  
+                enddo
+                prob2 = prob2 / prob2(nFreq)
+
+
+             
+                call randomNumberGenerator(getDouble=r)
+                call locate(prob2, nFreq, r, iFreq)
+
+
+                freq = freqArray(iFreq)
+                wavelength = (cSpeed/freq)*1.d8
+
+
+                
+                specWeight = prob(ifreq) * 1.d0/biasArray(min(nFreq,iFreq+1))
+!                write(*,*) "spec weight ",1.d0/biasArray(iFreq)
+                eps = (1.d0/thisOctal%biasCont3D(subcell)) * weightGas * specWeight * &
+                     totalluminosity * deltaT / dble(nFromMatter)
+!                write(*,*) freq,wavelength,eps
+             endif
+
 !             write(*,*) "gas eps ",eps, luminosity, weightgas, thisOctal%biasCont3d(subcell)
 !             write(*,*) "Wavelength, temp ", wavelength/1.e4,thisOctal%temperature(subcell), &
 !                  modulus(subcellCentre(thisOctal,subcell))*1.d10/autocm
