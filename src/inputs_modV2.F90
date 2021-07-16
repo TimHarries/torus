@@ -3132,9 +3132,13 @@ contains
     call getInteger("sednumlam", SEDnumLam, cLine, fLine, nLines, &
          "Number of SED points: ", "(a,i3,1x,a)", 50, ok, .false.)
 
-    call getDouble("sedradius", sedRadius, autocm/1.d10, cLine, fLine, nLines, &
-         "Radius of aperture for SED (au): ", "(a,f8.1,1x,a)", 1.d30, ok, .false.)
-        
+    call getInteger("nsedradius", nSedRadius, cLine, fLine, nLines, &
+         "Number of SED apertures: ", "(a,i3,1x,a)", 1, ok, .false.)
+
+    call getDoubleArray("sedradius", sedRadius(1:nSedRadius), autocm/1.d10, cLine, fLine, nLines, &
+         "Radius of aperture for SED (au): ", 1.d30, ok, .false.)
+
+    
     call getInteger("npix", npix, cLine, fLine, nLines, &
          "Number of npixels across image: ", "(a,i3,1x,a)", 50, ok, .true.)
 

@@ -41,7 +41,7 @@ contains
     use inputs_mod, only : nphotons, ntime, gridInputFilename
     use sed_mod, only:  SEDlamMin, SEDlamMax, SEDnumLam
     use inputs_mod, only : lumFactor, lumDecayTime, gridDistance, thisinclination
-    use inputs_mod, only : imageSize, nPix, timedepImage
+    use inputs_mod, only : imageSize, nPix, timedepImage, nSedRadius
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
     integer :: nSource
@@ -64,15 +64,15 @@ contains
     logical :: varyingSource
     real(double) :: photonsPerStep
     real(double) :: gridCrossingTime, finalTime
-    integer :: i, nBookend
+    integer :: i, j, nBookend
     real(double), allocatable :: sedTime(:)
     real(double), allocatable :: sedWavelength(:)
-    real(double), allocatable :: outputFlux(:,:)
-    real(double), allocatable :: outputFluxScat(:,:)
-    real(double), allocatable :: sedFlux(:,:)
-    real(double), allocatable :: sedFluxScat(:,:)
-    real(double), allocatable :: sedFluxStep(:,:)
-    real(double), allocatable :: sedFluxScatStep(:,:)
+    real(double), allocatable :: outputFlux(:,:,:)
+    real(double), allocatable :: outputFluxScat(:,:,:)
+    real(double), allocatable :: sedFlux(:,:,:)
+    real(double), allocatable :: sedFluxScat(:,:,:)
+    real(double), allocatable :: sedFluxStep(:,:,:)
+    real(double), allocatable :: sedFluxScatStep(:,:,:)
     real(double), allocatable :: image(:,:,:)
     real(double) :: w1, w2, thisTeff, thisRadius
     real(double) :: sourceLuminosity
@@ -84,12 +84,12 @@ contains
     
     allocate(sedTime(1:nTime))
     allocate(sedWavelength(sedNumLam))
-    allocate(outputFlux(sedNumLam, nTime))
-    allocate(outputFluxScat(sedNumLam, nTime))
-    allocate(sedFlux(sedNumLam, nTime))
-    allocate(sedFluxScat(sedNumLam, nTime))
-    allocate(sedFluxStep(sedNumLam, nTime))
-    allocate(sedFluxScatStep(sedNumLam, nTime))
+    allocate(outputFlux(nSedRadius, sedNumLam, nTime))
+    allocate(outputFluxScat(nSedRadius,sedNumLam, nTime))
+    allocate(sedFlux(nSedRadius,sedNumLam, nTime))
+    allocate(sedFluxScat(nSedRadius,sedNumLam, nTime))
+    allocate(sedFluxStep(nSedRadius,sedNumLam, nTime))
+    allocate(sedFluxScatStep(nSedRadius,sedNumLam, nTime))
 
     if (timeDepImage) then
        allocate(outputImage(nPix, nPix))
@@ -286,7 +286,7 @@ contains
        call  timeDependentRTStep(grid, oldStack, nStack, oldStackFilename, currentStackFilename, &
             nsource, source, deltaT, newDeltaT, deltaTmax, deltaTmin, &
             nMonte, xArray, nLambda, varyingSource, currentTime, &
-            sednumlam, nTime, sedWavelength, sedTime, sedFluxStep, &
+            sednumlam, nTime, sedWavelength, sedTime, nSedRadius, sedFluxStep, &
             sedFluxScatStep, image, npix,dumpFromNow, &
             observerPosition, observerDirection, seedRun, imageSize)
        if (doTuning) call tune(6, "Time dependent RT step") 
@@ -302,9 +302,9 @@ contains
 
 
           do iTime = 1, nTime-1
-             sedFlux(1:sedNumLam, itime) = (sedFlux(1:sedNumLam, itime) / deltaT) &
+             sedFlux(1:nSedRadius, 1:sedNumLam, itime) = (sedFlux(1:nSedRadius,1:sedNumLam, itime) / deltaT) &
                   * (sedTime(itime+1)-sedTime(itime))
-             sedFluxScat(1:sedNumLam, itime) = (sedFluxScat(1:sedNumLam, itime) / deltaT) &
+             sedFluxScat(1:nSedRadius,1:sedNumLam, itime) = (sedFluxScat(1:nSedRadius,1:sedNumLam, itime) / deltaT) &
                   * (sedTime(itime+1)-sedTime(itime))
           enddo
 
@@ -346,38 +346,40 @@ contains
 
           if (writeoutput) then
              do i = 1, sedNumLam-1
-                outputFlux(i,1:nTime) = sedFlux(i,1:nTime) / &
+                outputFlux(1:nSedRadius,i,1:nTime) = sedFlux(1:nSedRadius,i,1:nTime) / &
                      (sedWavelength(i+1)-sedWavelength(i))
              enddo
-             outputFlux(sedNumLam,1:nTime) = sedFlux(sedNumLam,1:nTime) / &
+             outputFlux(1:nSedRadius,sedNumLam,1:nTime) = sedFlux(1:nSedRadius,sedNumLam,1:nTime) / &
                   (2.*(sedWavelength(sedNumLam)-sedWavelength(sedNumLam-1)))
 
              do i = 1, sedNumLam-1
-                outputFluxScat(i,1:nTime) = sedFluxScat(i,1:nTime) / &
+                outputFluxScat(1:nSedRadius,i,1:nTime) = sedFluxScat(1:nSedRadius,i,1:nTime) / &
                      (sedWavelength(i+1)-sedWavelength(i))
              enddo
-             outputFluxScat(sedNumLam,1:nTime) = sedFluxScat(sedNumLam,1:nTime) / &
+             outputFluxScat(1:nSedRadius,sedNumLam,1:nTime) = sedFluxScat(1:nSedRadius,sedNumLam,1:nTime) / &
                   (2.*(sedWavelength(sedNumLam)-sedWavelength(sedNumLam-1)))
 
-             do itime = 1, nTime
-                write(vtkFilename, '(a,i5.5,a)') "sed",itime,".dat"
-                open(32, file=vtkFilename, status="unknown", form="formatted")
-                write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT*secsToYears, " years"
-                do i = 1, sedNumLam
-                   write(32,'(1p,2e10.3)') sedWavelength(i), &
-                        real(outputFlux(i, itime)/deltaT/observerDistance**2)
+             do j = 1, nSedRadius
+                do itime = 1, nTime
+                   write(vtkFilename, '(a,i2.2,a,i5.5,a)') "sed_",j,"_",itime,".dat"
+                   open(32, file=vtkFilename, status="unknown", form="formatted")
+                   write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT*secsToYears, " years"
+                   do i = 1, sedNumLam
+                      write(32,'(1p,2e10.3)') sedWavelength(i), &
+                           real(outputFlux(j,i, itime)/deltaT/observerDistance**2)
+                   enddo
+                   close(32)
+                   
+                   write(vtkFilename, '(a,i2.2,a,i5.5,a)') "scat_",j,"_",itime,".dat"
+                   open(32, file=vtkFilename, status="unknown", form="formatted")
+                   write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT*secsToYears, " years"
+                   
+                   do i = 1, sedNumLam-1
+                      write(32,'(1p,2e10.3)') sedWavelength(i), &
+                           real(outputFluxScat(j,i, itime)/deltaT/observerDistance**2)
+                   enddo
+                   close(32)
                 enddo
-                close(32)
-
-                write(vtkFilename, '(a,i5.5,a)') "scat",itime,".dat"
-                open(32, file=vtkFilename, status="unknown", form="formatted")
-                write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT*secsToYears, " years"
-
-                do i = 1, sedNumLam-1
-                   write(32,'(1p,2e10.3)') sedWavelength(i), &
-                        real(outputFluxScat(i, itime)/deltaT/observerDistance**2)
-                enddo
-                close(32)
              enddo
              if (timedepImage) then
                 do i = 1, nTime
@@ -397,40 +399,40 @@ contains
        if (writeoutput) then
 
              do i = 1, sedNumLam-1
-                outputFlux(i,1:nTime) = sedFlux(i,1:nTime) / &
+                outputFlux(1:nSedRadius,i,1:nTime) = sedFlux(1:nSedRadius,i,1:nTime) / &
                      (sedWavelength(i+1)-sedWavelength(i))
              enddo
-             outputFlux(sedNumLam,1:nTime) = sedFlux(sedNumLam,1:nTime) / &
+             outputFlux(1:nSedRadius,sedNumLam,1:nTime) = sedFlux(1:nSedRadius,sedNumLam,1:nTime) / &
                   (2.*(sedWavelength(sedNumLam)-sedWavelength(sedNumLam-1)))
 
              do i = 1, sedNumLam-1
-                outputFluxScat(i,1:nTime) = sedFluxScat(i,1:nTime) / &
+                outputFluxScat(1:nSedRadius,i,1:nTime) = sedFluxScat(1:nSedRadius,i,1:nTime) / &
                      (sedWavelength(i+1)-sedWavelength(i))
              enddo
-             outputFluxScat(sedNumLam,1:nTime) = sedFluxScat(sedNumLam,1:nTime) / &
+             outputFluxScat(1:nSedRadius,sedNumLam,1:nTime) = sedFluxScat(1:nSedRadius,sedNumLam,1:nTime) / &
                   (2.*(sedWavelength(sedNumLam)-sedWavelength(sedNumLam-1)))
+             do j = 1, nSedRadius
+                do itime = 1, nTime
+                   write(vtkFilename, '(a,i2.2,a,i5.5,a)') "sed_",j,"_",itime,".dat"
+                   open(32, file=vtkFilename, status="unknown", form="formatted")
+                   write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT*secsToYears, " years"
+                   do i = 1, sedNumLam
+                      write(32,'(1p,2e10.3)') sedWavelength(i), &
+                           real(outputFlux(j,i, itime)/deltaT/observerDistance**2)
+                   enddo
+                   close(32)
 
-             do itime = 1, nTime
-                write(vtkFilename, '(a,i5.5,a)') "sed",itime,".dat"
-                open(32, file=vtkFilename, status="unknown", form="formatted")
-                write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT*secsToYears, " years"
-                do i = 1, sedNumLam
-                   write(32,'(1p,2e10.3)') sedWavelength(i), &
-                        real(outputFlux(i, itime)/deltaT/observerDistance**2)
+                   write(vtkFilename, '(a,i2.2,a,i5.5,a)') "scat_",j,"_",itime,".dat"
+                   open(32, file=vtkFilename, status="unknown", form="formatted")
+                   write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT*secsToYears, " years"
+                   
+                   do i = 1, sedNumLam-1
+                      write(32,'(1p,2e10.3)') sedWavelength(i), &
+                           real(outputFluxScat(j,i, itime)/DeltaT/observerDistance**2)
+                   enddo
+                   close(32)
                 enddo
-                close(32)
-
-                write(vtkFilename, '(a,i5.5,a)') "scat",itime,".dat"
-                open(32, file=vtkFilename, status="unknown", form="formatted")
-                write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT*secsToYears, " years"
-
-                do i = 1, sedNumLam-1
-                   write(32,'(1p,2e10.3)') sedWavelength(i), &
-                        real(outputFluxScat(i, itime)/DeltaT/observerDistance**2)
-                enddo
-                close(32)
              enddo
-
              if (timedepImage) then
                 do i = 1, nTime
                    write(vtkFilename, '(a,i5.5,a)') "image",i,".fits"
@@ -447,7 +449,7 @@ contains
 
   subroutine timeDependentRTStep(grid, oldStack, oldStacknStack, oldStackFilename, currentStackFilename, &
        nsource, source, deltaT, newDeltaT, deltaTmax, deltaTmin, nMonte, lamArray, nLambda, varyingSource, currentTime, &
-       nSedWavelength, nTime, sedWavelength, sedTime, sedFlux, sedFluxScat, &
+       nSedWavelength, nTime, sedWavelength, sedTime, nSedRadius, sedFlux, sedFluxScat, &
        image, nPix, dumpFromNow, observerPosition, observerDirection, &
        seedRun, imageSize)
 #ifdef MPI
@@ -456,6 +458,7 @@ contains
     use inputs_mod, only : quickSublimate, timedepImage
     type(GRIDTYPE) :: grid
     integer :: nSource
+    integer :: nSedRadius
     real(double) :: imageSize
     logical :: varyingSource
     integer :: nLambda
@@ -465,8 +468,8 @@ contains
     integer :: nSedWavelength, nTime
     real(double) :: sedWavelength(:)
     real(double) :: sedTime(:)
-    real(double) :: sedFlux(nSedWavelength,  nTime)
-    real(double) :: sedFluxScat(nSedWavelength,  nTime)
+    real(double) :: sedFlux(nSedRadius,nSedWavelength,  nTime)
+    real(double) :: sedFluxScat(nSedRadius,nSedWavelength,  nTime)
     real(double) :: currentTime, dumpFromNow
     integer :: oldStacknStack
     integer :: currentStacknStack
@@ -517,7 +520,7 @@ contains
     real(double) :: photonPacketWeight ! Thaw added to satisfy getWavelength, dummy.
     type(VECTOR) :: xAxis, yAxis
 
-    integer :: iFreq
+    integer :: iFreq, j
     real(double) :: specWeight
     
 #ifdef MPI
@@ -652,7 +655,7 @@ contains
                 timeToObserver = distanceToObserver(rVec, observerPosition, observerDirection)/cspeed
                 photonTagTime = currentTime + photonTime + timeToObserver
                 call timeBinPhotonSED(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
-                     sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT, rVec, xAxis, yAxis)
+                     sedTime, sedWavelength, nSedRadius,sedFlux, sedFluxScat, beenScattered, deltaT, rVec, xAxis, yAxis)
 
                 if (timedepImage) call timeBinPhotonImage(photonTagTime, wavelength, eps, tau, nPix, nTime, &
                      sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
@@ -681,7 +684,7 @@ contains
              do i = 2, nFreq
                 prob(i) = prob(i-1) + kAbsArray2(i)*bnu(freqArray(i), tdble)*dnu(i)
              enddo
-             prob = prob / prob(nFreq)
+             prob(1:nFreq) = prob(1:nFreq) / prob(nFreq)
 
              
 
@@ -712,7 +715,7 @@ contains
                 do i = 1, nFreq
                    prob(i) = kAbsArray2(i)*bnu(freqArray(i), tdble)*dnu(i)
                 enddo
-                prob = prob/SUM(prob(1:nFreq))
+                prob(1:nFreq) = prob(1:nFreq)/SUM(prob(1:nFreq))
                 
 
                 
@@ -721,7 +724,7 @@ contains
                    prob2(i) = prob2(i-1) +  biasArray(i)
                   
                 enddo
-                prob2 = prob2 / prob2(nFreq)
+                prob2(1:nFreq) = prob2(1:nFreq) / prob2(nFreq)
 
 
              
@@ -765,7 +768,7 @@ contains
                    if (photonTagTime > lastObserverTime) then
                       do i = 1, nTime
                          call timeBinPhotonSED(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
-                              sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT, rVec, xAxis, yAxis)
+                              sedTime, sedWavelength, nSedRadius, sedFlux, sedFluxScat, beenScattered, deltaT, rVec, xAxis, yAxis)
                          if (timedepImage) call timeBinPhotonImage(photonTagTime, wavelength, eps, tau, nPix, nTime, &
                      sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
 
@@ -774,7 +777,7 @@ contains
                    if (photonTagTime < firstObserverTime) then
                       do i = 1, nTime
                          call timeBinPhotonSED(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
-                              sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT, rVec, xAxis, yAxis)
+                              sedTime, sedWavelength, nSedRadius, sedFlux, sedFluxScat, beenScattered, deltaT, rVec, xAxis, yAxis)
                          if (timedepImage) call timeBinPhotonImage(sedTime(i), wavelength, eps, tau, nPix, nTime, &
                      sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
                       enddo
@@ -782,7 +785,7 @@ contains
                 endif
                 if (.not.seedRun) then
                    call timeBinPhotonSED(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
-                        sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT, rVec, xAxis, yAxis)
+                        sedTime, sedWavelength, nSedRadius, sedFlux, sedFluxScat, beenScattered, deltaT, rVec, xAxis, yAxis)
                          if (timeDepImage) call timeBinPhotonImage(photonTagTime, wavelength, eps, tau, nPix, nTime, &
                      sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
                 endif
@@ -840,7 +843,8 @@ contains
                       if (photonTagTime < firstObserverTime) then
                          do i = 1, nTime
                             call timeBinPhotonSED(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
-                                 sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT, rVec, xAxis, yAxis)
+                                 sedTime, sedWavelength, nSedRadius, sedFlux, sedFluxScat, beenScattered, deltaT, &
+                                 rVec, xAxis, yAxis)
                             if (timedepImage) call timeBinPhotonImage(sedTime(i), wavelength, eps, tau, nPix, nTime, &
                                  sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
 
@@ -849,7 +853,8 @@ contains
                       if (photonTagTime > lastObserverTime) then
                          do i = 1, nTime
                             call timeBinPhotonSED(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
-                                 sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT, rVec, xAxis, yAxis)
+                                 sedTime, sedWavelength, nSedRadius, sedFlux, sedFluxScat, beenScattered, deltaT, &
+                                 rVec, xAxis, yAxis)
                             if (timedepImage) call timeBinPhotonImage(sedTime(i), wavelength, eps, tau, nPix, nTime, &
                                  sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
 
@@ -858,7 +863,8 @@ contains
                    endif
                    if (.not.seedRun) then
                       call timeBinPhotonSED(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
-                           sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered, deltaT, rVec, xAxis, yAxis)
+                           sedTime, sedWavelength, nSedRadius, sedFlux, sedFluxScat, beenScattered, deltaT, &
+                           rVec, xAxis, yAxis)
                       if (timedepImage) call timeBinPhotonImage(photonTagTime, wavelength, eps, tau, nPix, nTime, &
                            sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
                    endif
@@ -937,20 +943,23 @@ contains
 
      allocate(tempDoubleArray(1:nSedWavelength))
 
-     do i = 1, nTime
-        tempDoubleArray = 0.d0
-        call MPI_ALLREDUCE(sedFlux(1:nSedWavelength, i),tempDoubleArray,&
-             nSedWavelength,MPI_DOUBLE_PRECISION,MPI_SUM, MPI_COMM_WORLD,ierr)
-        sedFlux(1:nSedWavelength,i) = tempDoubleArray
+     do j = 1, nSedRadius
+        do i = 1, nTime
+           tempDoubleArray = 0.d0
+           call MPI_ALLREDUCE(sedFlux(j,1:nSedWavelength, i),tempDoubleArray,&
+                nSedWavelength,MPI_DOUBLE_PRECISION,MPI_SUM, MPI_COMM_WORLD,ierr)
+           sedFlux(j,1:nSedWavelength,i) = tempDoubleArray
+        enddo
      enddo
 
-     do i = 1, nTime
-        tempDoubleArray = 0.d0
-        call MPI_ALLREDUCE(sedFluxScat(1:nSedWavelength, i),tempDoubleArray,&
-             nSedWavelength,MPI_DOUBLE_PRECISION,MPI_SUM, MPI_COMM_WORLD,ierr)
-        sedFluxScat(1:nSedWavelength,i) = tempDoubleArray
+     do j = 1, nSedRadius
+        do i = 1, nTime
+           tempDoubleArray = 0.d0
+           call MPI_ALLREDUCE(sedFluxScat(j,1:nSedWavelength, i),tempDoubleArray,&
+                nSedWavelength,MPI_DOUBLE_PRECISION,MPI_SUM, MPI_COMM_WORLD,ierr)
+           sedFluxScat(j,1:nSedWavelength,i) = tempDoubleArray
+        enddo
      enddo
-
      deallocate(tempDoubleArray)
 
 
@@ -2470,40 +2479,43 @@ contains
   end function randomUnitVector2
 
   subroutine timeBinPhotonSED(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
-       sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered,deltaT, rVec, xAxis, yAxis)
-    use inputs_mod, only : sedRadius
+       sedTime, sedWavelength, nSedRadius,sedFlux, sedFluxScat, beenScattered,deltaT, rVec, xAxis, yAxis)
+    use inputs_mod, only :  sedRadius
     real(double) :: photonTagTime
     real(double) :: wavelength
     real(double) :: eps, deltaT
     real(double) :: tau
-    integer :: nSedWavelength, nTime
+    integer :: nSedWavelength, nTime, nSedRadius
     real(double) :: sedTime(:), sedWavelength(:)
-    real(double) :: sedFlux(nSedWavelength, nTime)
-    real(double) :: sedFluxScat(nSedWavelength, nTime), thisRadius
+    real(double) :: sedFlux(nSedRadius,nSedWavelength, nTime)
+    real(double) :: sedFluxScat(nSedRadius, nSedWavelength, nTime)
+    real(double) :: thisRadius
     type(VECTOR) :: rVec, xAxis, yAxis
     logical :: beenScattered, ok
-    integer :: iwavelength, iTime
+    integer :: iwavelength, iTime, j
 
     thisRadius = sqrt((rVec.dot.xAxis)**2 + (rVec.dot.yAxis)**2)
-    if (thisRadius < SEDradius) then
-    
-       if ((photonTagTime >= sedTime(1)).and.(photonTagTime <= (sedTime(nTime)+deltaT))) then
-          if ((wavelength >= sedWavelength(1)).and.(wavelength <= sedWavelength(nSedWavelength))) then
-             !          call locate(sedWavelength, nSedWavelength, wavelength, iWavelength)
-             iWavelength = findIlambdaDouble(wavelength, sedWavelength, nSedWavelength, ok)
-             if (photonTagTime < sedTime(nTime)) then
-                call locate(sedTime, nTime, photonTagTime, iTime)
-             else
-                iTime = nTime
-             endif
-             sedFlux(iWavelength, iTime) = sedFlux(iWavelength, iTime) + eps * exp(-tau)/fourPi
-             if (beenScattered) then
-                sedFluxScat(iWavelength, iTime) = sedFluxScat(iWavelength, iTime) + eps * exp(-tau)/fourPi
-                if (tau < 0.d0) write(*,*) "tau warning ",tau
+    do j = 1, nSedRadius
+       if (thisRadius < SEDradius(j)) then
+          
+          if ((photonTagTime >= sedTime(1)).and.(photonTagTime <= (sedTime(nTime)+deltaT))) then
+             if ((wavelength >= sedWavelength(1)).and.(wavelength <= sedWavelength(nSedWavelength))) then
+                !          call locate(sedWavelength, nSedWavelength, wavelength, iWavelength)
+                iWavelength = findIlambdaDouble(wavelength, sedWavelength, nSedWavelength, ok)
+                if (photonTagTime < sedTime(nTime)) then
+                   call locate(sedTime, nTime, photonTagTime, iTime)
+                else
+                   iTime = nTime
+                endif
+                sedFlux(j,iWavelength, iTime) = sedFlux(j,iWavelength, iTime) + eps * exp(-tau)/fourPi
+                if (beenScattered) then
+                   sedFluxScat(j,iWavelength, iTime) = sedFluxScat(j,iWavelength, iTime) + eps * exp(-tau)/fourPi
+                   if (tau < 0.d0) write(*,*) "tau warning ",tau
+                endif
              endif
           endif
        endif
-    endif
+    enddo
   end subroutine timeBinPhotonSED
 
   subroutine timeBinPhotonImage(photonTagTime, wavelength, eps, tau, nPix, nTime, &
