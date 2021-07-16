@@ -524,7 +524,7 @@ contains
     real(double) :: specWeight
     
 #ifdef MPI
-    integer :: ierr
+    integer :: ierr, j
     real(double) :: tempDouble
     real(double), allocatable :: tempDoubleArray(:), tempDoubleArray2(:), tempImage(:,:)
 #endif
