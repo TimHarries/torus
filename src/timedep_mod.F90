@@ -520,7 +520,7 @@ contains
     real(double) :: photonPacketWeight ! Thaw added to satisfy getWavelength, dummy.
     type(VECTOR) :: xAxis, yAxis
 
-    integer :: iFreq, j
+    integer :: iFreq
     real(double) :: specWeight
     
 #ifdef MPI
