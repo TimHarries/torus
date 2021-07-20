@@ -11,7 +11,9 @@ module gridFromFitsFile
   use constants_mod
   implicit none
 
-  public :: read_fits_file_for_grid, assign_from_fitsfile, setGridFromFitsParameters, checkFitsSplit
+  public :: read_fits_file_for_grid, assign_from_fitsfile, setGridFromFitsParameters, &
+       checkFitsSplit, &
+       setGridFromFitsParametersPionAMR
 
   private :: setup_axes, read_lutable
 

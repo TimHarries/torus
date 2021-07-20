@@ -3050,7 +3050,7 @@ contains
                  "FITS file for making grid: ","(a,a,a)","default",ok, .true.)
 
          enddo
-         call setGridFromFitsParametersPionAMR(nFitsLevels, pionFitsAMRfile,amr2d,amr3d, pionAMR, maxdepthamr)
+         call setGridFromFitsParametersPionAMR(nFitsLevels, pionFitsAMRfile,amr2d,amr3d, pionAMR,maxdepthamr)
       else
 
          call getString("fitsgridfile", filename, cLine, fLine, nLines, &
