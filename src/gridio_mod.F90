@@ -1043,7 +1043,6 @@ contains
     integer               :: error         ! status code
     integer :: nOctal
     character(len=80) :: absolutePath, inFile, updatedFilename
-    integer :: ithread
 
     type(OCTAL), pointer :: mynull => null()
 
