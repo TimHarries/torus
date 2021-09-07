@@ -1086,7 +1086,7 @@ contains
 
       logical, intent(in)  :: fileFormatted
       integer :: nOctal
-
+      integer :: ithread
       type(octal), pointer :: childPointer
       type(octal), pointer :: thisChild => null()
       type(octal), pointer :: topOctal => null()
@@ -1094,6 +1094,7 @@ contains
       type(octal), pointer :: tempChildPointer2 => null()
       integer              :: iChild
       logical :: foundBranch
+
 
       
 
