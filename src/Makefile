@@ -140,7 +140,7 @@ ifeq ($(SYSTEM), gfortran)
     OPENMPFLAG = -fopenmp 
 # -Wl,-stack_size,0x40000000,-stack_addr,0xf0000000
 # -static-libgcc fixes linking problems under Mac OS
-    STARLIBS += -static-libgcc -static-libgfortran
+#    STARLIBS += -static-libgcc -static-libgfortran
     INCLUDEFLAG = -I/usr/local/include -L/usr/local/lib
 #    HEALPIXLIB = -lhealpix
     EXE = torus.gfortran
