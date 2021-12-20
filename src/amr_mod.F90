@@ -16503,36 +16503,48 @@ END SUBROUTINE assignDensitiesStellarWind
   ! end subroutine assignDensitiesStellarWind
 
 
-  recursive subroutine outputTempRhoVel(grid, thisOctal,fp)
-    integer, intent(in) :: fp
-    integer :: subcell, i
-    type(VECTOR) :: cellCentre
-    type(GRIDTYPE) :: grid
+  subroutine outputTempRhoVel(thisOctal)
+    use inputs_mod, only : ttauriRinner, ttauriRouter
+    integer :: fp
+    integer :: subcell, i, j, nLines
+    type(VECTOR) :: cellCentre, pos
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child
-    real(double) :: thisR, theta, cylR
+    real(double) :: thisR
+    real(double) :: rDif
+    real(double), dimension (10) :: rRange
+    real(double), dimension (100) :: thetaRange
 
-    do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child =>thisOctal%child(i)
-                call outputTempRhoVel(grid, child,fp)
-                exit
-             end if
-          end do
-       else
-         if (thisOCtal%inFlow(subcell)) then
-           cellCentre = subcellCentre(thisOctal, subcell)
-           thisR = modulus(cellCentre)*1.d10
-           theta = acos(cellCentre%z / thisR)
-           cylR = sqrt((cellCentre%x*cellCentre%x) + (cellCentre%y*cellCentre%y))*1.d10
-           write(fp,*) thisR, cylR, thisOCtal%temperature(subcell), &
-                thisOctal%rho(subcell), modulus(thisOctal%velocity(subcell))
-         end if
-       end if
+    open (UNIT=fp, FILE="radiusTempRhoVel.dat",ACTION="WRITE")
+
+
+    nLines = 10
+    rDif = (ttauriRouter - ttauriRinner)/nLines
+    do i = 1,nLines
+      rRange(i) = (i-1)*rDif + ttauriRinner
     end do
+
+    do i = 1, 100
+      thetaRange(i) = 0.015708d0*i !90deg (in rad) divided by 100, for 100 points to check
+    end do
+
+
+    do i = 1, 10
+      do j = 1, 100
+        thisR = (rRange(i)*sin(thetaRange(j))**2.)/1.d10
+        pos%x = thisR*sin(thetaRange(j))
+        pos%z = thisR*cos(thetaRange(j))
+        pos%y = 0.d0
+        call findSubcellLocal(pos,thisOctal,subcell)
+        if (thisOCtal%inFlow(subcell)) then
+          cellCentre = subcellCentre(thisOctal, subcell)
+          write(fp,*) pos%x,pos%z,thisOCtal%temperature(subcell), &
+                        thisOctal%rho(subcell), modulus(thisOctal%velocity(subcell))
+        end if
+      end do
+      write(fp,*) "% % %"
+    end do
+
+    close(fp)
   end subroutine outputTempRhoVel
 
 

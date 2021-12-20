@@ -31,7 +31,7 @@ contains
     use inputs_mod, only : amrGridCentreX, amrGridCentreY, amrGridCentreZ, flatdisc
     use inputs_mod, only : amr1d, amr2d, amr3d, splitOverMPI, atomicPhysics, molecularPhysics, variableDustSublimation
     use inputs_mod, only : amrGridSize, doSmoothGrid, ttauriMagnetosphere, discWind
-    use inputs_mod, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp, ttauriStellarWind
+    use inputs_mod, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp, ttauriStellarWind, dipoleOffset
     use inputs_mod, only : limitScalar, limitScalar2, smoothFactor, onekappa
     use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, mDisc
     use inputs_mod, only : rCore, rInner, rOuter, gridDistance, massEnvelope, readTurb, virialAlpha, restartLucy
@@ -394,9 +394,9 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
              call assignTemperaturesMahdavi(grid, grid%octreeRoot, astar, mDotparameter1*mSol/(365.25d0*24.d0*3600.d0), &
                      minRCubedRhoSquared)
              fp = 10
-             open (UNIT=fp, FILE="radiusTempRhoVel.dat",ACTION="WRITE") !!writes out radial temperature, Desnity and
-             call outputTempRhoVel(grid, grid%octreeRoot, fp)           !!Velocity distribution into data file - tjgw201 27/02/19
-             close(fp)
+             ! if (dipoleOffset <= 1.e10) then
+             !   call outputTempRhoVel(grid%octreeRoot)           !!temp rho and Velocity distribution into data file - tjgw201 27/02/19
+             ! endif
           endif
 
        call writeVtkFile(grid, "temp1.vtk",  valueTypeString=(/"temperature"/))
@@ -759,7 +759,7 @@ doGridshuffle: if(gridShuffle) then
      allocate(x(1:nPoints), y(1:nPoints), z(1:nPoints))
 
 !     write(fn,*) "rosette-rho.txt"
-     write(fn,*) trim(rhoFile) 
+     write(fn,*) trim(rhoFile)
      open(11,file=fn,form='formatted')
      read(11, '(a)') junk
      read(11, '(a)') junk
@@ -781,7 +781,7 @@ doGridshuffle: if(gridShuffle) then
 
      if (Writeoutput) write(*,*) "Grid size is (TU) ",(x(npoints)-x(1))+(x(2)-x(1))
    end subroutine readMgAsciiFile
- 
+
 
 subroutine assignMgAsciiValues(grid, posArray, rhoArray, nPoints)
   type(GRIDTYPE) :: grid
@@ -791,9 +791,9 @@ subroutine assignMgAsciiValues(grid, posArray, rhoArray, nPoints)
   real(double) :: rhoArray(:)
 
   thisOctal => grid%octreeRoot
-  do i = 1, nPoints 
+  do i = 1, nPoints
      call findSubcellLocal(posArray(i),thisOctal,subcell)
-     if (octalOnThread(thisOctal, subcell, myrankGlobal)) then 
+     if (octalOnThread(thisOctal, subcell, myrankGlobal)) then
         thisOctal%rho(subcell) = rhoArray(i)
         thisOctal%temperature(subcell) = 10.
 !        thisOctal%tdust(subcell) = 10.d0
@@ -1692,7 +1692,7 @@ end subroutine assignMgAsciiValues
 
     case("Gareth")
        call finishRamses
-       
+
     case("fitsfile")
        call writeVTKfile(grid, "gridFromFitsFile.vtk",  &
             valueTypeString=(/"rho        ", "temperature", "dust1      ","velocity   "/))
@@ -3101,7 +3101,7 @@ end subroutine populateJaehan
                                                              "etaline     "/))
 
    end subroutine readJaehan2d
-     
+
 
 
 
@@ -3111,12 +3111,12 @@ recursive subroutine populateJaehan2d(thisOctal,  nr, nphi, rho, vr, vphi, rArra
   integer :: nr, nphi
   real(double) :: r, phi
   type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
+  type(octal), pointer  :: child
   type(VECTOR) :: rVec,rHat,phiHat
   real(double) :: height, fac
   integer ::  iPhi, ir
   integer :: subcell, i
-  
+
   do subcell = 1, thisOctal%maxChildren
      if (thisOctal%hasChild(subcell)) then
         ! find the child
@@ -3127,7 +3127,7 @@ recursive subroutine populateJaehan2d(thisOctal,  nr, nphi, rho, vr, vphi, rArra
               exit
            end if
         end do
-     else 
+     else
         rVec = subcellCentre(thisOctal, subcell)
         r = sqrt(rVec%x**2 + rVec%y**2)
         rHat = VECTOR(rVec%x,rVec%y,0.d0)
@@ -3156,7 +3156,7 @@ recursive subroutine fillVelocityCornersFromCentresCylindrical(grid, thisOctal)
   integer :: subcell, i, j, k, neighbourSubcell
   type(VECTOR) :: cornerPos(27), probe(8), vel, point
   real(double) :: r1, r2, r3, z1, z2, z3, phi1, phi2, phi3, d,d2
-  
+
   do subcell = 1, thisOctal%maxChildren
      if (thisOctal%hasChild(subcell)) then
         ! find the child
@@ -3167,7 +3167,7 @@ recursive subroutine fillVelocityCornersFromCentresCylindrical(grid, thisOctal)
               exit
            end if
         end do
-     else 
+     else
              if (.not.associated(thisOctal%cornerVelocity)) allocate(thisOCtal%cornerVelocity(1:27))
 
              d = smallestcellSize/10.d0
@@ -3251,7 +3251,7 @@ recursive subroutine fillVelocityCornersFromCentresCylindrical(grid, thisOctal)
              r1 = thisOctal%r - thisOctal%subcellSize
              r2 = thisOctal%r
              r3 = thisOctal%r + thisOctal%subcellSize
-             
+
 
              ! bottom level
 

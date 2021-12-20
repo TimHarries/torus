@@ -157,7 +157,7 @@ TYPE (VECTOR) FUNCTION TTauriStellarWindVelocity(point)
 
   openAngleDash = SW_openAngle - beta
   rVecDash = rotateY(rVec, -beta)
-  rDash = modulus(rVec)!![10^10]
+  rDash = max(1.d-20,modulus(rVec))!![10^10]
   theta = ACOS(rVec%z/rDash)
   thetaDash = ACOS(rVecDash%z/rDash)
   IF (thetaDash == 0.d0) thetaDash = 1.d-20
