@@ -1133,7 +1133,6 @@ contains
                "T Tauri outer flow radius (in R_star): ","(a,f7.1,1x,a)", 3.0, ok, .true.)
           call getReal("ttauririnner", TTauriRinner, TTaurirStar, cLine, fLine, nLines, &
             "T Tauri inner flow radius (in R_star): ","(a,f7.1,1x,a)", 2.2, ok, .true.)
-
           call getReal("thotspot", thotspot, 1., cLine, fLine, nLines, &
                "Hot spot temperature (K): ","(a,f8.1,1x,a)", 0., ok, .false.)
           call getReal("dipoleoffset", dipoleOffset, real(degtorad), cLine, fLine, nLines, &
@@ -1146,6 +1145,8 @@ contains
                "Isothermal temperature (K): ","(a,f7.1,1x,a)", 6500.0, ok, .false.)
           call getReal("rotvel", rotVel, 1.e5, cLine, fLine, nLines, &
                "Rotation velocity at Equator (km/s): ","(a,f7.1,1x,a)", 0., ok, .false.)
+          call getReal("curtainangle", curtainangle,real(degToRad), cLine, fLine, nLines, &
+               "Width of accretion funnel (deg): ","(a,f7.1,1x,a)", 0., ok, .false.)
           if (.not.(useHartmannTemp .or. isoTherm)) then
              if (writeoutput)  write(*,'(a)') "WARNING: neither useHartmannTemp nor isoTherm specified!"
              call torus_stop

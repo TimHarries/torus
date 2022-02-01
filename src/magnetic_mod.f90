@@ -175,11 +175,12 @@ END FUNCTION stellarWindDensity
 
   logical function inFlowMahdaviSingle(rVec)
     use inputs_mod, only : ttauriRinner, ttauriRouter, dipoleOffset, ttauriRstar, &
-         TTauriDiskHeight
+         TTauriDiskHeight, curtainangle
     type(VECTOR) :: rVec
     real(double) :: r, theta, phi
     real(double) :: rDash, thetaDash, phiDash, beta
     real(double) :: thisRmax, sin2theta0dash,rmaxmin, rmaxmax,thisY, thisX
+    real(double) :: curtainHalfAngle
 
     beta = dipoleOffset
     r = modulus(rVec)
@@ -221,6 +222,20 @@ END FUNCTION stellarWindDensity
 !    pMahdavi = 0.5d0*(1.d0+tan(beta)**2 * cos(phiDash)**2)**(-1.d0)
 !    if (pMahdavi < 1.d0) inflowMahdaviSingle = .false.
 
+    curtainHalfAngle = 0.5d0*curtainangle
+
+    if (curtainHalfAngle > 0.d0) then
+       if (cos(theta) > 0.d0) then
+          if (phi < ( -1.d0*curtainHalfAngle)) inFlowMahdaviSingle = .false.
+          if (phi > (curtainHalfAngle)) inFlowMahdaviSingle = .false.
+        else
+          if ((phi > (-1.d0*(pi-curtainHalfAngle))).and.(phi < 0.d0)) inFlowMahdaviSingle = .false.
+          if ((phi < (pi-curtainHalfAngle)).and.(phi >= 0.d0)) inFlowMahdaviSingle = .false.
+          ! if (phi > (-1.d0*piBy2-curtainHalfAngle)) inFlowMahdaviSingle = .false.
+          ! if (phi < (-1.d0*piBy2+curtainHalfAngle)) inFlowMahdaviSingle = .false.
+
+       endif
+    endif
 
     if (beta /= 0.d0) then
        if (cos(theta) > 0.d0) then

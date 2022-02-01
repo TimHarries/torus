@@ -669,6 +669,7 @@
   real :: MdotParameter5, MdotParameter6
   real :: TTauriRinner, TTauriRouter ! disc sizes (in R_star units)
   real :: Thotspot
+  real :: curtainangle ! width of accretion funnels
   real :: rotVel
   logical :: ttauriwarp, ttauriwind, ttauridisc, ttauriMagnetosphere, flatDisc
   logical :: discWind

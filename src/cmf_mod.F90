@@ -4437,7 +4437,6 @@ END FUNCTION intensityAlongRayGeneric
              yPoints(nPoints) = (sourceArray(isource)%position.dot.yproj) + r * sin (phi)
           enddo
        enddo
-
     enddo
 
     if (ttauriMagnetosphere) then
@@ -4463,6 +4462,7 @@ END FUNCTION intensityAlongRayGeneric
           enddo
        enddo
     endif
+
     if (ttauriWind) then
        rmin = ttaurirOuter/1.d10 !dw_rmin
        rMax = amrGridSize
@@ -4547,17 +4547,8 @@ END FUNCTION intensityAlongRayGeneric
           nPoints = nPoints + 1
           xPoints(nPoints) = cube%xAxis(ix) + dx / 4.d0 + dxOffset
           yPoints(nPoints) = cube%yAxis(iy) - dy / 4.d0 + dyOffset
-
        enddo
     enddo
-    if (writeoutput) then
-       open(23,file="rays.dat", status="unknown",form="formatted")
-       do ix = 1, nPoints
-          write(23,*) xPoints(ix),yPoints(ix)
-       enddo
-       close(23)
-    endif
-
   end subroutine createRayGridGeneric
 
   subroutine removeIdenticalPoints(n, x, y)
