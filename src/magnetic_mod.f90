@@ -231,9 +231,6 @@ END FUNCTION stellarWindDensity
         else
           if ((phi > (-1.d0*(pi-curtainHalfAngle))).and.(phi < 0.d0)) inFlowMahdaviSingle = .false.
           if ((phi < (pi-curtainHalfAngle)).and.(phi >= 0.d0)) inFlowMahdaviSingle = .false.
-          ! if (phi > (-1.d0*piBy2-curtainHalfAngle)) inFlowMahdaviSingle = .false.
-          ! if (phi < (-1.d0*piBy2+curtainHalfAngle)) inFlowMahdaviSingle = .false.
-
        endif
     endif
 
