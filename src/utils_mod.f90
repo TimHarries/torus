@@ -2091,7 +2091,6 @@ contains
     integer :: nx
     real(double) :: x(:)
     real(double) :: xtol
-    real(double), allocatable :: xtemp(:)
     integer :: i, newNx
 
 
