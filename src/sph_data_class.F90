@@ -123,7 +123,7 @@ module sph_data_class
 ! This is the maximum line length when reading an ASCII file, specified as a module parameter
 ! as it appears in multiple subroutines. If the line is longer than this length itype is likely 
 ! to be lost leading to out of bounds array access. 
-  integer, parameter, private :: MaxAsciiLineLength=800
+  integer, parameter, private :: MaxAsciiLineLength=1024
 ! Maximum number of words per line when reading an ASCII file
   integer, parameter, private :: MaxWords=50
 ! Flag to specify when we are reading a Gadget ASCII dump 
@@ -391,7 +391,7 @@ contains
 ! Read SPH data from a splash ASCII dump.
   subroutine new_read_sph_data(rootfilename)
     use inputs_mod, only: convertRhoToHI, sphh2col, sphmolcol, sphwithchem, iModel, discardSinks
-    use inputs_mod, only: dragon, sphdensitycut
+    use inputs_mod, only: dragon, sphdensitycut, sphVelOffset, sphPosOffset
     use angularImage_utils, only:  internalView, galaxyPositionAngle, galaxyInclination
     use utils_mod, only : findMultiFilename
     use parallel_mod, only: torus_abort
@@ -400,11 +400,11 @@ contains
 
     character(LEN=*), intent(in)  :: rootfilename
     character(LEN=80) :: filename
-    character(len=20) :: word(MaxWords), unit(MaxWords), pType(MaxWords)
+    character(len=24) :: word(MaxWords), unit(MaxWords), pType(MaxWords), unitName(maxWords)
     integer :: nword, nunit, npType, status
     !   
     integer, parameter  :: LUIN = 10 ! logical unit # of the data file
-    real(double) :: udist, umass, utime,  time, uvel, utemp
+    real(double) :: udist, umass, utime,  time, uvel, utemp, ufac
     real(double) :: xn, yn, zn, vx, vy, vz, gaspartmass, rhon, u, h, h2ratio, gmw
     integer :: itype ! splash particle type, different convention to SPHNG 
     integer :: ipart, icount, iptmass, igas, istar, idead, i
@@ -414,7 +414,7 @@ contains
     real(double), allocatable :: junkArray(:,:)
     character(LEN=1)  :: junkchar
     character(LEN=150) :: message
-    character(len=MaxAsciiLineLength) :: namestring, unitString, pTypeString
+    character(len=MaxAsciiLineLength) :: namestring, unitString, pTypeString, unitNameString
     integer :: ix, iy, iz, ivx, ivy, ivz, irho, iu, iitype, ih, imass, iUoverT, ipType, iDustTemperature
     logical :: haveUandUoverT, haveDustTemperature
     integer :: iDustfrac
@@ -430,7 +430,7 @@ contains
 ! Account for time in Galactic plane surveys
     logical, parameter :: multiTime=.false.
     real(double) :: extraPA
-
+    
 
 !
 ! 1. Read in data from an ASCII SPH dump
@@ -465,7 +465,11 @@ contains
     read(LUIN,'(a)') pTypeString
 ! Discard the first 8 characters ("# npart:"). 
     pTypeString = pTypeString(9:)
+    write(*,*) "*",trim(pTypeString)
     call splitintoWords(pTypeString, pType, npType, wordLen=13, adjL=.false.)
+    do i = 1, npType
+       ptype(i) = adjustl(ptype(i))
+    enddo
     
 ! Read in number of particles
     allocate(pNumArray(npType))
@@ -522,18 +526,21 @@ contains
 ! Read in units
 ! Initialise the unit string so that printing the itype unit doesn't give junk
     unit(:) = "No unit            "
+    unitname(:) = "No unit            "
     read(LUIN,*)
     read(LUIN,'(a)') unitString
     unitString = unitstring(2:)
-    read(LUIN,*)
+    read(LUIN,'(a)') unitnameString
+    unitnameString = unitnamestring(2:)
     read(LUIN,*)
     read(LUIN,'(a)') nameString
     nameString = nameString(2:)
+    call splitIntoWords(unitnameString, unitname, nunit)
     call splitintoWords(unitString, unit, nunit)
     call splitIntoWords(nameString, word, nWord)
     write(*,*) "Words: "
     do i = 1, nWord
-       write(*,*) trim(word(i)),": ",trim(unit(i))
+       write(*,*) trim(word(i)),": ",trim(unit(i)), " ",trim(unitname(i))
     enddo
 
 ! Gadget doesn't have itype so just set iitype to zero explicitly to avoid 
@@ -566,7 +573,8 @@ contains
     iz = indexWord("z",word,nWord)
 
     read(unit(ix),*) uDist
-
+    uDist =  toTorusUnits(unitName(ix))
+    
 ! Check how the velocity columns are labelled, there are two possibilities so handle both
     if ( wordIsPresent("v\dx",word,nWord) ) then
        ivx = indexWord("v\dx",word,nWord)
@@ -587,10 +595,12 @@ contains
 
 
     read(unit(ivx),*) uvel
+    uVel = toTorusUnits(unitName(ivx))
 
     imass = indexWord("particle mass",word,nWord)
 
     read(unit(imass),*) umass
+    umass = toTorusUnits(unitName(imass))
 
     if(dragon) then
        iu = indexWord("temperature",word,nWord)
@@ -598,7 +608,7 @@ contains
        iu = indexWord("u",word,nWord)
     endif
     utemp = 1.d0
-    if (iu /=0) read(unit(iu),*) utemp
+!    if (iu /=0) read(unit(iu),*) utemp
     
     irho = indexWord("density",word,nWord)
     ih = indexWord("h",word,nWord)
@@ -718,8 +728,10 @@ contains
 
 ! Allocate storage for SPH data     
     call init_sph_data(udist, umass, utime, time, nptmass, uvel, utemp)
-! velocity unit is derived from distance and time unit (converted to seconds from years)
+    ! velocity unit is derived from distance and time unit (converted to seconds from years)
+    write(*,*) "uvel ",uvel
     sphdata%codeVelocitytoTORUS = uvel / cspeed
+    write(*,*) "code velocity to torus ",uvel/cspeed
 
 !
 ! Chemistry section: allocates memory for chemistry data if required
@@ -785,7 +797,11 @@ part_loop: do ipart=1, nlines
        if (internalView) call rotate_particles(galaxyPositionAngle+extraPA, galaxyInclination)
 
        u = 0.d0
-       if (iu /= 0) u = junkArray(iu,ipart)
+       if (iu /= 0) then
+          u = junkArray(iu,ipart)
+          read(unit(iu),*) ufac
+          u = u / ufac
+       endif
        rhon = junkArray(irho,ipart)
        h = junkArray(ih,ipart)
 
@@ -813,16 +829,16 @@ part_loop: do ipart=1, nlines
           
           igas = igas + 1
 
-          sphdata%xn(igas) = xn
-          sphdata%yn(igas) = yn
-          sphdata%zn(igas) = zn
+          sphdata%xn(igas) = xn + sphPosOffset%x
+          sphdata%yn(igas) = yn + sphPosOffset%y
+          sphdata%zn(igas) = zn + sphPosOffset%z
 
 
           sphdata%gasmass(igas) = gaspartmass
 
-          sphdata%vxn(igas) = vx
-          sphdata%vyn(igas) = vy
-          sphdata%vzn(igas) = vz
+          sphdata%vxn(igas) = vx + sphVelOffset%x
+          sphdata%vyn(igas) = vy + sphVelOffset%y
+          sphdata%vzn(igas) = vz + sphVelOffset%z
 
           if (idustfrac/=0) sphdata%dustfrac = dustfrac
 
@@ -847,7 +863,7 @@ part_loop: do ipart=1, nlines
              sphdata%temperature(igas) = u
           end if
 
-          sphdata%hn(igas) = h
+          sphdata%hn(igas) = h 
 
           if(rhon .gt. 0.d0) then
              sphdata%rhon(igas) = rhon
@@ -3355,7 +3371,7 @@ contains
           vz = vz + partArray(i) * VelocityArray(3, indexArray(i))
        enddo
           
-       Clusterparameter = VECTOR(vx * fac, vy * fac, vz * fac) ! Velocity 
+       Clusterparameter = VECTOR(vx * fac, vy * fac, vz * fac) ! Velocity
        oldvel = clusterparameter ! store this point in case it's nearby an empty cell (for velocity)
        oldpoint = point
 
@@ -3450,9 +3466,12 @@ contains
     udist = get_udist()
     utime = get_utime()
     umass = get_umass()
-    codeLengthtoTORUS = udist * 1d-10
+    codeLengthtoTORUS =  udist*1d-10
     codeVelocitytoTORUS = sphdata%codeVelocitytoTORUS
-    codeDensitytoTORUS = umass / ((udist) ** 3)
+    codeDensitytoTORUS = 1.d0 !umass / ((udist) ** 3)
+    write(*,*) "code length to torus ",codeLengthToTorus
+    write(*,*) "code vel to torus ",codeVelocityToTorus
+    write(*,*) "code density to torus ",codeDensityToTorus
        
     allocate(PositionArray(3,npart)) ! allocate memory
     allocate(xArray(npart))
@@ -3837,6 +3856,7 @@ contains
              r2test = (xarray(testIndex) - x)**2 + & !The kernel will do the rest of the work for those outside the sphere
                   ydiff ** 2 + zdiff ** 2
 
+!             write(*,*) "r^2 h^2 x ", r2test,1.d0/OneOverHsquared(testindex),x
              q2test = r2test * OneOverHsquared(testIndex) ! dimensionless parameter that we're interested in
              
              if(q2test .lt. fac2) then
@@ -3925,7 +3945,7 @@ contains
   end function SmoothingKernel3d
   
  subroutine splitIntoWords(longString, word, nWord, wordLen, adjL)
-   character(len=20) :: word(MaxWords)
+   character(len=24) :: word(MaxWords)
    integer :: nWord, thisLen
    character(len=*) :: longString
    character(len=MaxAsciiLineLength) :: tempString
@@ -3937,7 +3957,7 @@ contains
    if (present(wordLen)) then
       thisLen = wordLen
    else
-      thisLen = 16
+      thisLen = 24
    end if
 
 ! Decide whether to left adjust the string we have been given. Default is to left adjust.
@@ -3969,12 +3989,13 @@ contains
 
  integer function indexWord(inputword, wordarray, nword) 
    character(len=*) :: inputWord
-   character(len=20) :: wordArray(:)
-   integer :: nWord, i
+   character(len=24) :: wordArray(:)
+   integer :: nWord, i, j
    
    indexWord = 0 
    do i = 1, nWord
-      if (inputWord == adjustl(wordArray(i))) then
+      j = len(inputWord)
+      if (inputWord(1:j) == adjustl(wordArray(i)(1:j))) then
          indexWord = i
          exit
       endif
@@ -3989,12 +4010,12 @@ contains
 ! Check if the specified word is present in the list
  logical function wordIsPresent(inputword, wordarray, nword)
    character(len=*) :: inputWord
-   character(len=20) :: wordArray(:)
+   character(len=24) :: wordArray(:)
    integer :: nWord, i
    
    wordIsPresent = .false.
    do i = 1, nWord
-      if (inputWord == wordArray(i)) then
+      if (inputWord(1:len(inputWord)) == wordArray(i)(1:len(inputWord))) then
          wordIsPresent = .true.
          exit
       endif
@@ -4114,6 +4135,26 @@ contains
        endif
      end subroutine domainCentreAndSize
 
+     real(double) function toTorusUnits(unitName)
+       character(len=*) :: unitName
+       select case (unitName)
+          case("[au]")
+             toTorusUnits = autocm
+          case("[M_{Sun}]")
+             toTorusUnits = mSol
+          case("[g/cm^3]")
+             toTorusUnits = 1.d0
+          case("[km/s]")
+             toTorusUnits = 1.d5
+          case("[erg/g]")
+             toTorusUnits = 1.d0
+          case DEFAULT
+             write(*,*) "Unit not recognised ",trim(unitName)
+             write(*,*) "Setting conversion factor to unity"
+             toTorusUnits  = 1.d0
+          end select
+        end function toTorusUnits
+     
 end module sph_data_class
 
 #endif

@@ -127,7 +127,7 @@ contains
 
     kappa = 0.d0
 
-    do i = 1, 15
+    do i = 1, 10
         thresh =( 13.598d0-eh(i))
         if (transe > thresh) then
            kappa = kappa + nsaha(i)*annudouble(i,freq)

@@ -114,7 +114,7 @@ contains
     if (Writeoutput) write(45,'(a)') "Step      Time (s)     position x y z..." 
        do j = 1, globalnSource
           call emptySurface(globalsourceArray(j)%surface)
-          call buildSphereNbody(globalsourceArray(j)%position, 0.01d0, &
+          call buildSphereNbody(globalsourceArray(j)%position, 1.d0, &
                globalsourceArray(j)%surface, 20)
        enddo
 

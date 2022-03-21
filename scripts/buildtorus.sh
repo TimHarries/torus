@@ -171,7 +171,7 @@ fi
 
 if [[ -e ${base_dir}/lib/cfitsio/libcfitsio.a ]]; then
     echo "Found ${base_dir}/lib/cfitsio/libcfitsio.a"
-    export LIBRARY_PATH=${LIBRARY_PATH}:${base_dir}/lib/cfitsio
+    export LIBRARY_PATH=${LIBRARY_PATH}:/opt/homebrew/lib:${base_dir}/lib/cfitsio
     make_args="${make_args} curlflag=yes"
 else
     echo "Checking that we can link with a cfitsio library"

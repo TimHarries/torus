@@ -1042,7 +1042,7 @@
   real(double), protected :: sphdensitycut
   real(double) :: rCut
   logical :: doDiscSplit
-
+  type(VECTOR) :: sphVelOffset, sphPosOffset
 !------------------
 ! Other parameters
 !------------------

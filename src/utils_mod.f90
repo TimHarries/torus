@@ -2069,25 +2069,22 @@ contains
     integer :: nx
     real :: x(:)
     real :: xtol
-    real, allocatable :: xtemp(:)
     integer :: i, newNx
 
-    allocate(xtemp(1:nx))
+
 
     call sort(nx, x)
 
     newnx = 1
-    xtemp(newnx) = x(1)
     do i = 2, nx
-       if (abs(xtemp(newnx)-x(i)) > xTol) then
+       if (abs(x(newnx)-x(i)) > xTol) then
           newnx = newnx  + 1
-          xtemp(newnx) = x(i)
+          x(newnx) = x(i)
        endif
     enddo
 
-    x(1:newnx) = xtemp(1:newnx)
     nx = newnx
-    deallocate(xtemp)
+  
   end subroutine stripSimilarValuesSingle
 
   subroutine stripSimilarValuesDouble(x, nx, xtol)
@@ -2097,22 +2094,21 @@ contains
     real(double), allocatable :: xtemp(:)
     integer :: i, newNx
 
-    allocate(xtemp(1:nx))
 
     call sort(nx, x)
 
     newnx = 1
-    xtemp(newnx) = x(1)
+  
     do i = 2, nx
-       if (abs(xtemp(newnx)-x(i)) > xTol) then
+       if (abs(x(newnx)-x(i)) > xTol) then
           newnx = newnx  + 1
-          xtemp(newnx) = x(i)
+          x(newnx) = x(i)
        endif
     enddo
 
-    x(1:newnx) = xtemp(1:newnx)
+  
     nx = newnx
-    deallocate(xtemp)
+   
   end subroutine stripSimilarValuesDouble
 
 

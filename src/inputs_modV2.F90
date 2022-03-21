@@ -1667,6 +1667,14 @@ contains
           call getLogical("sphonepercell", SphOnePerCell, cLine, fLine, nLines, &
             "Split to one particle per cell:", "(a,1l,1x,a)", .false., ok, .false.)
 
+          call getVector("sphveloffset", sphVelOffset, 1.d0, cLine, fLine, nLines, &
+               "SPH offset velocity (km/s): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .false.)
+
+          call getVector("sphposoffset", sphPosOffset, 1.d0, cLine, fLine, nLines, &
+               "SPH position offset (au): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .false.)
+
+
+          
           call getString("inputFileFormat", inputFileFormat, cLine, fLine, nLines, &
                "Input file format: ","(a,a,1x,a)","ascii", ok, .false.)
 
@@ -3513,8 +3521,10 @@ contains
                 sourceRadius(i) = sqrt(sourceLum(i) / (fourPi * sourceTeff(i)**4 * stefanBoltz))/1.d10
                 if (writeoutput) write(*,'(a,f7.1)') "Source radius (rsol): ",sourceRadius(i)*1.d10/rsol
              else
-                call writeFatal("Source underspecified - need two of radius, teff and lum")
-                call torus_stop
+                if (.not.nbodyPhysics) then
+                   call writeFatal("Source underspecified - need two of radius, teff and lum")
+                   call torus_stop
+                endif
              endif
 
              write(keyword, '(a,i1)') "mass",i

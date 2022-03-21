@@ -20914,7 +20914,8 @@ END SUBROUTINE assignDensitiesStellarWind
     use mpi_global_mod, only : loadBalancingThreadGlobal, copyOfThread
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
-    integer :: myRank, thisRank
+    integer, intent(in) :: myRank
+    integer ::thisRank
     logical :: check
     integer :: nFirstLevel
 

@@ -145,7 +145,7 @@ ifeq ($(SYSTEM), gfortran)
 #    HEALPIXLIB = -lhealpix
     EXE = torus.gfortran
     KNOWN_SYSTEM = yes
-    CFITSIOLIBS = -L${HOME}/cfitsio/lib -lcfitsio
+    CFITSIOLIBS =-L/opt/homebrew/lib -lcfitsio
     KROMELIBS = -L${HOME}/krome/build -lkrome
     ifeq ($(chemistry), yes)
        F95COMP+=-I${HOME}/krome/build

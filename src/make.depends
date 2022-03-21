@@ -24,10 +24,10 @@ detector_mod.o: constants_mod.o inputs_modV2.o spectrum_mod.o vector_mod.o
 dimensionality_mod.o: kind_mod.o messages_mod.o
 disc_class.o: constants_mod.o gridtype_mod.o kind_mod.o octal_mod.o \
 	vector_mod.o
-disc_hydro_mod.o: amr_mod.o constants_mod.o density_mod.o dust_mod.o \
-	gridtype_mod.o inputs_modV2.o kind_mod.o lucy_mod.o messages_mod.o \
-	octal_mod.o parallel_mod.o phasematrix_mod.o source_mod.o utils_mod.o \
-	vector_mod.o vtk_mod.o
+disc_hydro_mod.o: amr_mod.o amr_utils_mod.o constants_mod.o density_mod.o \
+	dust_mod.o gridtype_mod.o inputs_modV2.o kind_mod.o lucy_mod.o \
+	messages_mod.o octal_mod.o parallel_mod.o phasematrix_mod.o \
+	source_mod.o utils_mod.o vector_mod.o vtk_mod.o
 discwind_class.o: constants_mod.o gridtype_mod.o inputs_modV2.o kind_mod.o \
 	octal_mod.o vector_mod.o
 distortion_mod.o: blob_mod.o constants_mod.o grid_mod.o gridtype_mod.o \

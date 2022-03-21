@@ -60,6 +60,7 @@ CONTAINS
        IF ((imag(z(1)) /= 0.d0).OR.(imag(z(2))==0.d0).OR.(imag(z(3))==0.d0)) THEN
           WRITE(*,*)"problem with cubic solver"
        ENDIF
+       mu_0 = min(mu_0,1.d0)
        sintheta0 = SQRT(1.d0 - mu_0**2)
        costheta = point%z*1.d10/r
        sintheta = SQRT(1.d0- costheta**2)
