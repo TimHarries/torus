@@ -13923,7 +13923,7 @@ end function readparameterfrom2dmap
   SUBROUTINE checkAMRgrid(grid,checkNoctals)
     ! does some checking that the cells in an AMR grid are
     !   set up and linked to correctly.
-    use inputs_mod, only : amr1d, spherical, maxDepthAMR
+    use inputs_mod, only : spherical, maxDepthAMR
     TYPE(gridType), INTENT(IN) :: grid
     LOGICAL, INTENT(IN) :: checkNoctals ! whether to confirm grid%nOctals
 
