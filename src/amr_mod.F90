@@ -13930,7 +13930,7 @@ end function readparameterfrom2dmap
     TYPE(OCTAL), POINTER :: rootOctal
     INTEGER :: nOctals
 
-    nOctals = 1
+    nOctals = 0
     rootOctal => grid%octreeRoot
 
     CALL checkAMRgridPrivate(grid=grid,              &
@@ -13952,6 +13952,7 @@ end function readparameterfrom2dmap
     RECURSIVE SUBROUTINE checkAMRgridPrivate(grid,thisOctal, thisDepth ,&
                                              thisParent,thisParentSubcell,  &
                                              nOctals)
+      use inputs_mod, only : amr1d,amr2d,amr3d
       TYPE(gridType), INTENT(IN) :: grid
       TYPE(OCTAL), INTENT(IN), TARGET :: thisOctal
       INTEGER, INTENT(IN) :: thisDepth
@@ -13964,6 +13965,21 @@ end function readparameterfrom2dmap
       REAL(oct) :: sizeRatio
 
       nOctals = nOctals + 1
+
+      if (thisOctal%oneD.and.(.not.amr1d)) then
+         PRINT *, "Error: In checkAMRgridPrivate, octal is oneD but amr1d is false"
+         CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
+      endif
+
+      if (thisOctal%twoD.and.(.not.amr2d)) then
+         PRINT *, "Error: In checkAMRgridPrivate, octal is twoD but amr2d is false"
+         CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
+      endif
+
+      if (thisOctal%threeD.and.(.not.amr3d)) then
+         PRINT *, "Error: In checkAMRgridPrivate, octal is threeD but amr3d is false"
+         CALL printErrorPrivate(grid,thisOctal,thisDepth,nOctals)
+      endif
 
       IF ( thisOctal%nDepth /= thisDepth ) THEN
         PRINT *, "Error: In checkAMRgridPrivate, depth mismatch"

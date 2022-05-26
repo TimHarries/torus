@@ -287,6 +287,7 @@ contains
     call countVoxels(grid%octreeRoot,nOctals,nVoxels)    
     nx = nVoxels
     allocate(xAxis(nx))
+    nx = 0
     call getxValues(grid%octreeRoot,nx,xAxis)
     
     
@@ -376,7 +377,7 @@ contains
     use phasematrix_mod, only: PHASEMATRIX
     use lucy_mod, only: refineDiscGrid, getSublimationRadius, putTau, unrefineBack
     use vtk_mod, only: writeVtkFile
-    use amr_mod, only: myScaleSmooth, myTauSmooth, findTotalMass
+    use amr_mod, only: myScaleSmooth, myTauSmooth, findTotalMass, checkAMRgrid
     use utils_mod, only: locate
     use dust_mod, only : findDustMass
 
@@ -515,6 +516,7 @@ contains
           nUnrefine = 0
           call refineDiscGrid(grid%octreeRoot, grid, betaEstimate, heightEstimate, rSub, gridconverged, &
                inheritprops = .false., interpProps = .true.)
+          call checkAMRgrid(grid, checkNOctals=.true.)
        end do
        if (writeoutput) then
           write(*,*) "done."
@@ -607,8 +609,10 @@ contains
                   gridConverged,  inheritProps = .false., interpProps = .true.)
              if (gridConverged) exit
           end do
+          call checkAMRgrid(grid, checkNoctals=.true.)
           call writeInfo("...grid smoothing complete", TRIVIAL)
 
+          
           if(myRankIsZero) &
                write(*,*) "...grid smoothing complete"
 

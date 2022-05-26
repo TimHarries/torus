@@ -1747,6 +1747,7 @@ end subroutine assignMgAsciiValues
 #endif
     case DEFAULT
     end select
+    call checkAMRgrid(grid,checkNoctals=.true.)
   end subroutine postSetupChecks
 
 
