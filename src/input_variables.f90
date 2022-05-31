@@ -935,7 +935,7 @@
   ! empty geometry
   real(double) :: centralMass
 
-  ! "modular" geometry parameters: -------------------------------------------------------
+  ! "modular" and "modular_shakara" geometry parameters: -----------------------------------------------------
   integer, parameter :: maxDiscMods = 9
   integer :: nDiscModule
   real(double) :: tiltAngleMod(maxDiscMods)  ! tiltAngle for disc module

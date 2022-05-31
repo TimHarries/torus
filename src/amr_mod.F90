@@ -1155,6 +1155,12 @@ CONTAINS
        CALL modularDisc(thisOctal, subcell)
 !   modular disc geometry - cdavies
 
+    CASE ("modular_shakara")
+       CALL modularshakaraDisc(thisOctal, subcell)
+!   modular disc geometry using shakara geometries
+!   modular origionally written by cdavies
+!   modular_shakara written by EAR
+
     CASE ("cassandra")
        CALL cassandraDisc(thisOctal, subcell)
 
@@ -5633,6 +5639,61 @@ CONTAINS
           endif
 
        case("modular")
+          
+          splitInAzimuth = .false.
+          ! first off, make sure the cell splits if the depth of the cell depth is less than mindepthamr:
+          if (thisOctal%ndepth < mindepthamr) split = .true.
+          if (thisOctal%ndepth < 4) splitInAzimuth = .true.
+          ! Then find your location in the disk and the size of the cell:
+          cellSize = thisOctal%subcellSize
+          cellCentre = subcellCentre(thisOctal, subcell)
+
+
+          rVec = cellCentre
+          rVec = rotateX(rVec, -tiltAngleMod(nDiscModule)) ! rotate to midplane of outer disc
+
+          r = dble(SQRT(rVec%x**2 + rVec%y**2))           ! locate your disc midplane position
+          z = dble(rVec%z)                                ! locate your position above the disc midplane
+          thisHeightSplitFac = heightSplitFac
+          ! Don't split the cells if you're more than half a cell radius outside (the outer disk edge + 10%):
+          if (((r + cellSize/2.d0) > MAXVAL(rOuterMod)*1.1d0).and.(thisOctal%ndepth >= mindepthamr)) then
+             split = .false.
+          endif
+          ! refine on the outermost edge of the disk :
+          hr = heightMod(nDiscModule) * (r/rInnerMod(nDiscModule))**betaMod(nDiscModule)
+          if (((r - cellSize/2.d0) < (rOuterMod(nDiscModule)*1.01d0)).and. &
+             ((r + cellSize/2.d0) > (rOuterMod(nDiscModule)*0.99d0)).and.(ABS(cellCentre%z/hr) < 7.d0).and. &
+             (cellSize/hr > thisheightSplitFac)) split = .true.
+
+          do iMod = 1, nDiscModule
+             rVec = cellCentre
+             rVec = rotateX(rVec, -tiltAngleMod(iMod)) ! rotate to midplane of outer disc
+
+             r = dble(SQRT(rVec%x**2 + rVec%y**2))           ! locate your disc midplane position
+             z = dble(rVec%z)                                ! locate your position above the disc midplane
+
+
+             if ((r > rInnerMod(iMod)).and.(r < rOuterMod(iMod))) then
+                hr = heightMod(iMod) * (r/rInnerMod(iMod))**betaMod(iMod)
+                if ((ABS(cellCentre%z/hr) < 7.d0).and.(cellSize/hr > thisHeightSplitFac).and. &
+                   (thisOctal%ndepth < maxdepthamr)) split = .true.
+                if ((ABS(cellCentre%z/hr) > 2.d0).and.(ABS(cellCentre%z/cellSize) < 2.d0).and. &
+                   (thisOctal%nDepth < maxdepthamr)) split = .true.
+                if (tiltAngleMod(iMod) /= 0.d0) splitInAzimuth = .true.
+             endif
+             if (((r - cellSize) < rInnerMod(1)).and.((r + cellSize/2.d0) > rInnerMod(1))) then
+                hr = heightMod(1) * (r/rInnerMod(1))**betaMod(1)
+                if ((ABS(cellCentre%z/hr) < 7.d0).and.(cellSize/hr > thisHeightSplitFac).and. &
+                   (thisOctal%ndepth < maxdepthamr)) split = .true.
+                if ((ABS(cellCentre%z/hr) > 2.d0).and.(ABS(cellCentre%z/cellSize) < 2.d0).and. &
+                   (thisOctal%nDepth < maxdepthamr)) split = .true.
+                if (tiltAngleMod(iMod) /= 0.d0) splitInAzimuth = .true.
+             endif
+
+          enddo
+          if (thisOctal%dPhi*radtodeg < 1.d0) splitInAzimuth = .false.
+
+       case("modular_shakara")
           
           splitInAzimuth = .false.
           ! first off, make sure the cell splits if the depth of the cell depth is less than mindepthamr:
@@ -13182,6 +13243,77 @@ end function readparameterfrom2dmap
       enddo
 
   end subroutine modularDisc
+
+
+  subroutine modularshakaraDisc(thisOctal, subcell)
+
+    use inputs_mod, only : rho0, rSublimation ! real precision disc module-independent param
+    use inputs_mod, only : nDiscModule, nDustType ! counting params
+    use inputs_mod, only : alphaMod, betaMod, heightMod, rInnerMod, rOuterMod, tiltAngleMod, prod ! 1D array params
+    use inputs_mod, only : dustFracMod, dustHeightMod, dustBetaMod ! 2D array params
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: r, z, h, thisHeight, fracDust
+    integer :: iMod, iDust
+
+      ! Fill the entire grid with default values
+      thisOctal%rho(subcell) = 1.d-30                           ! default value of gas density
+      thisOctal%temperature(subcell) = 1.d1                     ! default value of temperature
+      thisOctal%dustTypeFraction(subcell,1:nDustType) = 1.d-30  ! default dust fraction
+      thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)    ! default velocity value
+      rVec = subcellCentre(thisOctal, subcell)        ! locate your position in the grid
+      thisOctal%velocity(subcell) = keplerianVelocity(rvec)
+      thisOctal%iAnalyticalVelocity(subcell) = 2
+
+      ! Determine which disc module you are located in and assign a gas density
+      do iMod = 1, nDiscModule
+
+
+         rVec = subcellCentre(thisOctal, subcell)        ! locate your position in the grid
+
+         ! now we need to rotate this position so r and z refer to the midplane of the tilted disc
+         ! the tilt angle is zero by default so this doesn't do anything to most modules
+
+         rVec = rotateX(rVec, -tiltAngleMod(iMod))
+
+         r = dble(SQRT(rVec%x**2 + rVec%y**2))           ! locate your disc midplane position
+         z = dble(rVec%z)                                ! locate your position above the disc midplane
+
+
+
+
+        if ((rOuterMod(iMod) > r).and.(rInnerMod(iMod) < r)) then
+          h = heightMod(iMod) * (r/rInnerMod(iMod))**betaMod(iMod)
+          ! determine the scale height of the gas disc at your position, r
+          thisOctal%rho(subcell) = MAX(dble(rho0) * rInnerMod(1)**alphaMod(1) * prod(iMod) * &
+                                   (1/r)**alphaMod(iMod) * EXP(-0.5d0 * (z/h)**2), 1.d-30)
+          ! determine the density of the gas in the current disc module
+        endif
+        if (dble(rSublimation) < r) then
+          if ((rOuterMod(iMod) > r).and.(rInnerMod(iMod) < r)) then
+            do iDust = 1, nDustType
+              h = heightMod(iMod) * (r/rInnerMod(iMod))**betaMod(iMod)
+              thisHeight = dustHeightMod(iMod, iDust) * (r/rInnerMod(iMod))**dustBetaMod(iMod, iDust)
+              ! determines the dust scale height at position, r
+              if (real(dustHeightMod(iMod, iDust)) <= real(heightMod(iMod))) then
+                fracDust = MAX(2.d0*(1.d0/dble(SQRT(twopi)*ERF(1/SQRT(2.d0))))*EXP(-0.5d0*(z/thisHeight)**2), 1.d-30)
+                ! normalisation for the dust settling exponential profile.
+              else
+                fracDust = 1.d0
+              endif
+              thisOctal%dustTypeFraction(subcell, iDust) = MAX(dustFracMod(iMod, iDust) * fracDust, 1.d-30)
+              ! determine the grain fraction of each grain type in the current disc module
+              if ((z <= -h).or.(z >= h)) then
+                thisOctal%dustTypeFraction(subcell, iDust) = MAX(dustFracMod(iMod, iDust), 1.d-30)
+              endif
+            enddo
+          endif
+        endif
+      enddo
+
+  end subroutine modularshakaraDisc
 
   subroutine cassandraDisc(thisOctal, subcell)
     use eos_mod

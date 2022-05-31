@@ -1687,6 +1687,8 @@ end subroutine assignMgAsciiValues
     case ("modular")
        call testAMRmass(grid, dble(mdisc))
 
+    case ("modular_shakara")
+       call testAMRmass(grid, dble(mdisc))
 
 #ifdef SPH
     case("molcluster", "theGalaxy", "cluster","sphfile", "dale")

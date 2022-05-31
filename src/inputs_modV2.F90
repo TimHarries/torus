@@ -2812,6 +2812,124 @@ contains
                (1/SUM(rhoNought)) )
 !      density integration constant for full disc
 
+    case("modular_shakara")
+
+       oneKappa = .true.
+! -- Define the disc-module independent geometry-specific parameters:
+       call getReal("radius1", rCore, real(rsol/1.e10), cLine, fLine, nLines, &
+            "Core radius (solar radii): ","(a,f7.3,a)", 10., ok, .true.)
+!      Stellar radius (as for shakara)
+
+       call getReal("teff1", teff, 1., cLine, fLine, nLines, &
+            "Source effective temperature: ","(a,f7.1,a)", 12., ok, .true.)
+!      Stellar effective temperature (as for shakara)
+
+       call getReal("rsub", rSublimation, rCore, cLine, fLine, nLines, &
+            "Sublimation radius (rstar): ","(a,f5.1,a)", rCore*(1600./teff)**(-2.1), ok, .true.)
+!      Sublimation radius (defaults to Whitney+04 prescription if not defined)
+
+       call getReal("mass1", mCore, real(msol), cLine, fLine, nLines, &
+            "Core mass (solar masses): ","(a,f8.4,a)", 0.5, ok, .true.)
+!      Stellar mass (as for shakara)
+
+       call getReal("mdisc", mDisc, real(msol), cLine, fLine, nLines, &
+            "Mass of disc contained in gas (solar masses): ","(a,f8.4,a)", 1.e-4, ok, .true.)
+!      Disc (gas plus dust) mass (as for shakara)
+
+! -- Define the AMR parameters
+       call getLogical("smoothgridtau", doSmoothGridtau, cLine, fLine, nLines, &
+            "Smooth AMR grid using tau: ","(a,1l,1x,a)", .false., ok, .true.)
+
+       call getLogical("dosmoothgrid", doSmoothGrid, cLine, fLine, nLines, &
+            "Smooth AMR grid: ","(a,1l,1x,a)", .false., ok, .true.)
+
+       call getReal("heightsplitfac", heightSplitFac, 1., cLine, fLine, nLines, &
+            "Splitting factor for scale height (local scale heights): ","(a,f5.2,a)", 0.2, ok, .true.)
+
+! -- Count the number of disc modules
+       call getInteger("ndiscmodule", nDiscModule, cLine, fLine, nLines, &
+            "Number of different disc modules: ","(a,i12,a)", 1, ok, .true.)
+
+! -- Count the number of dust species and check whether dust settling is specified
+       call getInteger("ndusttype", nDustType, cLine, fLine, nLines, &
+            "Number of different dust types: ","(a,i12,a)", 1, ok, .true.)
+
+       call getLogical("dustsettling", dustSettling, cLine, fLine, nLines, &
+            "Dust settling model: : ","(a,1l,1x,a)", .false., ok, .false.)
+
+! -- Define the geometry parameters specific to each disc module:
+       do i = 1, nDiscModule
+
+          write(alphaDiscLabel, '(a,i1.1)') "tiltangle",i
+          call getDouble(alphaDiscLabel, tiltAngleMod(i), degtoRad, cLine, fLine, nLines, &
+               "Tilt angle for disc module: ","(a,f8.3,a)", 0.d0, ok, .false.)
+!         tilt angle for each module of the disc
+
+          write(alphaDiscLabel, '(a,i1.1)') "alphamod",i
+          call getDouble(alphaDiscLabel, alphaMod(i), 1.d0, cLine, fLine, nLines, &
+               "Alpha parameter for disc module: ","(a,f8.3,a)", 2.25d0, ok, .true.)
+!         alpha parameter for each module of the disc
+
+          write(betaDiscLabel, '(a,i1.1)') "betamod",i
+          call getDouble(betaDiscLabel, betaMod(i), 1.d0, cLine, fLine, nLines, &
+               "Beta parameter for disc module: ","(a,f8.3,a)", 1.25d0, ok, .true.)
+!         beta parameter for each module of the disc
+
+          write(hDiscLabel, '(a,i1.1)') "heightmod",i
+          call getDouble(hDiscLabel, heightMod(i), autocm/1.d10, cLine, fLine, nLines, &
+               "Gas scale height at inner radius of disc module (au): ","(a,1pe8.2,a)", 1.d0, ok, .true.)
+!         scale height at inner radius of each module of the disc.
+
+          write(rinDiscLabel, '(a,i1.1)') "rinnermod",i
+          call getDouble(rinDiscLabel, rInnerMod(i), autocm/1.d10, cLine, fLine, nLines, &
+               "Inner radius of disc module (au): ","(a,f7.3,a)", 12.d0, ok, .true.)
+!         inner radius of each module of the disc
+
+          write(routDiscLabel, '(a,i1.1)') "routermod",i
+          call getDouble(routDiscLabel, rOuterMod(i), autocm/1.d10, cLine, fLine, nLines, &
+               "Outer radius of disc module (au): ","(a,f7.3,a)", 20.d0, ok, .true.)
+!         outer radius of each module of the disc
+
+          do j = 1, nDustType
+             write(dustFracLabel, '(a,i1.1,i1.1)') "dustfrac",i,j
+             call getDouble(dustFracLabel, dustFracMod(i,j), 1.d0, cLine, fLine, nLines, &
+                  "Fraction of dust species in disc module :","(a,f10.5,1x,a)", dble(0.01), ok, .true.)
+!            fraction of each dust species in each modular section of the disc
+
+             write(betaLabel, '(a,i1.1,i1.1)') "settlebeta",i,j
+             call getDouble(betaLabel, dustBetaMod(i,j), 1.d0, cLine, fLine, nLines, &
+                  "Dust beta parameter for disc module: ","(a,f10.5,1x,a)", betaMod(i), ok, .false.)
+!            beta parameter for each dust prescription (default is that of the gas in that disc module)
+
+             write(heightLabel, '(a,i1.1,i1.1)') "settleheight",i,j
+             call getDouble(heightLabel, dustHeightMod(i,j), autocm/1.d10, cLine, fLine, nLines, &
+                  "Dust scale height at inner radius of disc module (au): ","(a,f10.5,1x,a)", &
+                  heightMod(i), ok, .false.)
+!            scale height for each dust prescription (default is that of the gas in that disc module)
+
+          enddo
+       if (writeoutput) write(*,*)
+       enddo
+!      Calculate the density normalisation assuming that the midplane density at r_out,i which is prescribed by disk
+!      module 'i' is the same as that at r_in,i+1 which is prescribed by the next adjacent disk module, 'i+1'.
+       prod(1) = 1.d0
+       if (nDiscModule > 1) then
+          do i = 2, nDiscModule
+             prod(i) = prod(i-1)*((rInnerMod(i)*1.d10)**(alphaMod(i)-alphaMod(i-1)))
+          enddo
+       endif
+       do i = 1, nDiscModule
+          rhoNought(i) = heightMod(i)*1.d10*(rInnerMod(i)*1.d10)**(betaMod(i)*(-1.d0))*prod(i)* &
+                         ( ((rOuterMod(i)*1.d10)**(betaMod(i)-alphaMod(i)+2.d0) - &
+                         (rInnerMod(i)*1.d10)**(betaMod(i)-alphaMod(i)+2.d0) ) / &
+                         (betaMod(i)-alphaMod(i)+2.d0) )
+!         density integration constant for each module of the disc
+       enddo
+
+       rho0  = dble( (mDisc / twoPi**1.5) * (1/ERF(1.d0/SQRT(2.d0))) * (rInnerMod(1)*1.d10)**((-1.d0)*alphaMod(1)) * &
+               (1/SUM(rhoNought)) )
+!      density integration constant for full disc
+
     end select
   end subroutine readGeometrySpecificParameters
 
