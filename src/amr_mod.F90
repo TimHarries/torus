@@ -20847,29 +20847,130 @@ END SUBROUTINE assignDensitiesStellarWind
     use inputs_mod, only : lambdaTau
     character(len=*) :: thisFile
     type(GRIDTYPE) :: grid
-    real(double) :: theta,  sArray(10000),tauArray(10000), s, tau
+    real(double) :: theta,  sArray(10000),tauArray(10000), s1,s2,s3,s4, tau
     type(VECTOR) :: rVec, radialVec
     integer :: i, ntau, iLambda, itau
 
     call locate(grid%lamArray, grid%nLambda, lambdaTau, iLambda)
 
     open(33, file=thisFile, status="unknown", form="formatted")
+    !write(33,*) "midr 1/4 (au)", "1/4 tau height (au)", "midr 1/2 (au)", "1/2 tau height(au)", "midr &
+    !       3/4 (au)", "3/4 tau height (au)", "midr 1 (au)", "1 tau height (au)"
     do i = 1, 500
        theta = dble(i-1)/499. * pi /2.d0
        radialVec = VECTOR(cos(theta),0.d0, sin(theta))
        rVec = VECTOR(0.d0, 0.d0, 0.d0)
-       call tauAlongPath(ilambda, grid, rVec, radialVec, tau, tauMax=10.d0, nTau=nTau, &
+       call tauAlongPath(ilambda, grid, rVec, radialVec, tau, tauMax=10.d0,nTau=nTau, &
             xArray=sArray, tauArray=tauArray)
-       if (tau < 1.d0) cycle
-       call locate(tauArray, nTau, 1.d0, iTau)
-       s = sArray(iTau) + sArray(iTau+1)*(tauArray(iTau+1) - 1.d0)/(tauArray(iTau+1) - tauArray(iTau))
-       write(33,*) s*1.d10/autocm/cos(theta),s * sin(theta)*1.d10/autocm
+       !if (i == 80) then !Used for diagnosing issues with surface. EAR
+       !    call tauAlongPath(ilambda, grid, rVec, radialVec, tau, tauMax=10.d0, nTau=nTau, &
+       !         xArray=sArray, tauArray=tauArray,savefile=i)
+       !else
+       !    call tauAlongPath(ilambda, grid, rVec, radialVec, tau, tauMax=10.d0, nTau=nTau, &
+       !         xArray=sArray, tauArray=tauArray)
+       !endif
+       !there are four tau surfaces calculated, 0.01, 0.1, 0.5, and 1. The r and
+       !    z value are saved in units of au to a text file. EAR
+       if (tau < 0.01d0) cycle
+       call locate(tauArray, nTau, 0.01d0, iTau)
+       s1 = sArray(iTau) - (sArray(iTau+1)-sArray(iTau))*(tauArray(iTau) - 0.01d0)/(tauArray(iTau+1) - tauArray(iTau))
+       if (tau < 0.1d0) then
+           s2 = -999.0d0
+           s3 = -999.0d0
+           s4 = -999.0d0
+       else
+           call locate(tauArray, nTau, 0.1d0, iTau)
+           s2 = sArray(iTau) - (sArray(iTau+1)-sArray(iTau))*(tauArray(iTau) - 0.1d0)/(tauArray(iTau+1) - tauArray(iTau))
+           if (tau < 0.5d0) then
+               s3 = -999.0d0
+               s4 = -999.0d0
+           else
+               call locate(tauArray, nTau, 0.5d0, iTau)
+               s3 = sArray(iTau) - (sArray(iTau+1)-sArray(iTau))*(tauArray(iTau) - 0.5d0) &
+                    /(tauArray(iTau+1) - tauArray(iTau))
+               if (tau < 1.0d0) then
+                   s4 = -999.0d0
+               else
+                   call locate(tauArray, nTau, 1.0d0, iTau)
+                   s4 = sArray(iTau) - (sArray(iTau+1)-sArray(iTau))*(tauArray(iTau) - &
+                          1.0d0)/(tauArray(iTau+1) - tauArray(iTau))
+               endif
+           endif
+       endif
+       write(33,*) s1*1.d10/autocm*cos(theta),s1 * sin(theta)*1.d10/autocm,s2*1.d10/autocm*cos(theta) &
+             ,s2 * sin(theta)*1.d10/autocm,s3*1.d10/autocm*cos(theta),s3 * sin(theta)*1.d10/autocm &
+             ,s4*1.d10/autocm*cos(theta),s4 * sin(theta)*1.d10/autocm
     enddo
     close(33)
-  end subroutine writeScatteringSurfaceFile
-    
-    
 
+  end subroutine writeScatteringSurfaceFile    
+
+  subroutine writeObsScatteringSurfaceFile(thisFile, grid)
+    use inputs_mod, only : lambdaTau
+    character(len=*) :: thisFile
+    type(GRIDTYPE) :: grid
+    real(double) :: radius,sArray(10000),tauArray(10000),s1,s2,s3,s4,tau,height
+    type(VECTOR) :: rVec, radialVec
+    integer :: i, ntau, iLambda, itau
+
+    call locate(grid%lamArray, grid%nLambda, lambdaTau, iLambda)
+    height=150000.d0 !This is where the tau tracing begins above the disk.
+                     !   Should be much larger than the disk vertical extent.
+                     !   EAR
+    open(33, file=thisFile, status="unknown", form="formatted")
+    do i = 1, 500
+       radius = dble(i-1) * 600.d0 !calcs tau=1 surface value every 600 10^10 cm
+       radialVec = VECTOR(0.d0,0.d0, -1.d0) !Points donw along z axis. EAR
+       rVec = VECTOR(radius, 0.d0, height) !Ensure z val well above disk. EAR
+       call tauAlongPath(ilambda, grid, rVec, radialVec, tau, tauMax=10.d0, nTau=nTau, &
+            xArray=sArray, tauArray=tauArray)
+       !if (tau < 1.d0) cycle
+       !call locate(tauArray, nTau, 1.d0, iTau)
+       !s = sArray(iTau) - (sArray(iTau+1)-sArray(iTau)) *(tauArray(iTau) - 1.d0)/(tauArray(iTau+1) - tauArray(iTau))
+       !if (i == 53) then
+       !    open(34, file="s_tau_polar.dat", status="unknown", form="formatted")
+       !    do j = 1, nTau
+       !        write(34,*) j, sArray(j), tauArray(j)
+       !    end do
+       !    close(34) 
+       !end if
+       !write(*,*) i, s, sArray(iTau),  iTau, nTau
+       !write(33,*) radius*1.d10/autocm,  (150000.d0 - s)*1.d10/autocm
+       !Output is the same as writeScatteringSurfaceFile. See subroutine for
+       !    details. EAR
+       if (tau < 0.01d0) cycle
+       call locate(tauArray, nTau, 0.01d0, iTau)
+       s1 = sArray(iTau) - (sArray(iTau+1)-sArray(iTau))*(tauArray(iTau) - 0.01d0)/(tauArray(iTau+1) - tauArray(iTau))
+       if (tau < 0.1d0) then
+           s2 = -999.0d0
+           s3 = -999.0d0
+           s4 = -999.0d0
+       else
+           call locate(tauArray, nTau, 0.1d0, iTau)
+           s2 = sArray(iTau) - (sArray(iTau+1)-sArray(iTau))*(tauArray(iTau) - 0.1d0)/(tauArray(iTau+1) - tauArray(iTau))
+           if (tau < 0.5d0) then
+               s3 = -999.0d0
+               s4 = -999.0d0
+           else
+               call locate(tauArray, nTau, 0.5d0, iTau)
+               s3 = sArray(iTau) - (sArray(iTau+1)-sArray(iTau))*(tauArray(iTau) - 0.5d0) &
+                    /(tauArray(iTau+1) - tauArray(iTau))
+               if (tau < 1.0d0) then
+                   s4 = -999.0d0
+               else
+                   call locate(tauArray, nTau, 1.0d0, iTau)
+                   s4 = sArray(iTau) - (sArray(iTau+1)-sArray(iTau))*(tauArray(iTau) - &
+                          1.0d0)/(tauArray(iTau+1) - tauArray(iTau))
+               endif
+           endif
+       endif
+       write(33,*) radius*1.d10/autocm,(height - s1)*1.d10/autocm,radius*1.d10/autocm &
+             ,(height - s2)*1.d10/autocm,radius*1.d10/autocm,(height - s3) * 1.d10/autocm &
+             ,radius*1.d10/autocm,(height - s4) * 1.d10/autocm
+
+    enddo
+    close(33)
+    end subroutine writeObsScatteringSurfaceFile
   
   recursive subroutine addWarpedDisc(thisOctal)
     use inputs_mod, only : ttauriROuter, hOverR, ttauriRinner

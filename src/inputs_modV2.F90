@@ -771,6 +771,9 @@ contains
 
        call getString("scatteringfilename", scatteringSurfaceFilename, cLine, fLine, nLines, &
             "Scattering surface filename: ","(a,a,1x,a)",  " ", ok, .true.)
+       
+       call getString("scatteringobsfilename", scatteringObsSurfaceFilename, cLine, fLine, nLines, &
+            "Scattering Obs surface filename: ","(a,a,1x,a)",  " ", ok, .true.) !EAR
     endif
 
     if (sourceHistory) then

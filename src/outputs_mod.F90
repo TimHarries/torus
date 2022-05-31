@@ -22,7 +22,7 @@ contains
     use inputs_mod, only : mie, gridDistance, nLambda, ncubes
     use inputs_mod, only : postsublimate, lineEmission, nv
     use inputs_mod, only : dowriteradialfile, radialfilename
-    use inputs_mod, only : scatteringSurface, ScatteringSurfaceFilename
+    use inputs_mod, only : scatteringSurface, ScatteringSurfaceFilename, ScatteringObsSurfaceFilename
     use inputs_mod, only : sourcelimbaB, sourcelimbbB ,sourcelimbaV, sourcelimbbV
     use sed_mod, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
     use image_mod
@@ -127,6 +127,8 @@ contains
     if (scatteringSurface) then
        call writeInfo("Writing scattering surface file")
        call writeScatteringSurfaceFile(scatteringSurfaceFilename, grid)
+       call writeObsScatteringSurfaceFile(scatteringObsSurfaceFilename, grid)
+       !ADDED by EAR
     endif
 
 

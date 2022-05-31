@@ -1061,6 +1061,7 @@
 
   logical :: scatteringSurface
   character(len=120) :: scatteringSurfaceFilename
+  character(len=120) :: scatteringObsSurfaceFilename
 
 ! Parameters which control Torus behaviour
   logical           :: debug
