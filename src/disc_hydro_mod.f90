@@ -91,7 +91,7 @@ contains
        endif
     endif
 
-
+    !EAR need to rewrite for modular_sh
     scalefac = 0.5 * (sigma0 * fac * (radius/rinner)**(betaDisc-alphaDisc)) / sigma
 
 
@@ -405,6 +405,7 @@ contains
     
     lamSmoothArray = (/5500., 1.e4, 2.e4, 5.e4, 10.e4/)
 
+    !EAR, rewrite to calc sigma0 based on grid rather than parameters
     sigma0 = real(rho0 * (height*1.e10) * ((rinner*1.e10) / (100.d0*autocm))**betaDisc * sqrt(twopi))
 
 
@@ -459,7 +460,7 @@ contains
 
        if(myRankIsZero) &
             write(*,*) "Zeroing new density values..."
-       call zeroChiline(grid%octreeRoot)       
+       call zeroChiline(grid%octreeRoot) !EARQ, what is the chiline?      
 
        if(myRankIsZero) then
           if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) &
