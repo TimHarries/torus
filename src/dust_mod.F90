@@ -2234,6 +2234,20 @@ real function getMedianSize(aMin, aMax, a0, qDist, pDist) result(aMedian)
      aMedian = a(i+1)
   endif
 end function getMedianSize
+  
+  subroutine normDustSettled(grid) !Written by EAR
+    type(GRIDTYPE) :: grid
+    real(double) :: gasMass, dustMass(1:10)
+    !For MODULAR disk. normalizes the dust to gas ratio similar to 
+    ! what is done for shakara disks but keeps features of modular
+    gasMass = 0.d0
+    dustMass = 0.d0
+    call sumDustMass(grid%octreeRoot, gasMass, dustMass)
+    call normDustMass(grid%octreeRoot, gasMass, dustMass)
+    write(*,*) "Normalized gas/dust", gasMass, dustMass
+    call writeInfo("Done.",TRIVIAL)
+  end subroutine normDustSettled
+
   subroutine fillDustSettled(grid)
     type(GRIDTYPE) :: grid
     real(double) :: gasMass, dustMass(1:10)

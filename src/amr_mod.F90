@@ -13255,7 +13255,7 @@ end function readparameterfrom2dmap
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
-    real(double) :: r, z, h, thisHeight, fracDust
+    real(double) :: r, z, h, thisHeight, fracDust, rho1
     integer :: iMod, iDust
 
       ! Fill the entire grid with default values
@@ -13282,35 +13282,34 @@ end function readparameterfrom2dmap
          z = dble(rVec%z)                                ! locate your position above the disc midplane
 
 
-
-
         if ((rOuterMod(iMod) > r).and.(rInnerMod(iMod) < r)) then
           h = heightMod(iMod) * (r/rInnerMod(iMod))**betaMod(iMod)
           ! determine the scale height of the gas disc at your position, r
           thisOctal%rho(subcell) = MAX(dble(rho0) * rInnerMod(1)**alphaMod(1) * prod(iMod) * &
                                    (1/r)**alphaMod(iMod) * EXP(-0.5d0 * (z/h)**2), 1.d-30)
-          ! determine the density of the gas in the current disc module
+          rho1 = MAX(dble(rho0) * rInnerMod(1)**alphaMod(1) * prod(iMod) * &
+                                   (1/r)**alphaMod(iMod), 1.d-30) ! gas density at z=0 EAR
         endif
+
+        !This begins a new dust distributuion including normalization thus the
+        !amount of dust is conserved regardless of dust height distribution
+        !This section is written by EAR.
         if (dble(rSublimation) < r) then
           if ((rOuterMod(iMod) > r).and.(rInnerMod(iMod) < r)) then
             do iDust = 1, nDustType
               h = heightMod(iMod) * (r/rInnerMod(iMod))**betaMod(iMod)
-              thisHeight = dustHeightMod(iMod, iDust) * (r/rInnerMod(iMod))**dustBetaMod(iMod, iDust)
-              ! determines the dust scale height at position, r
-              if (real(dustHeightMod(iMod, iDust)) <= real(heightMod(iMod))) then
-                fracDust = MAX(2.d0*(1.d0/dble(SQRT(twopi)*ERF(1/SQRT(2.d0))))*EXP(-0.5d0*(z/thisHeight)**2), 1.d-30)
-                ! normalisation for the dust settling exponential profile.
-              else
-                fracDust = 1.d0
-              endif
-              thisOctal%dustTypeFraction(subcell, iDust) = MAX(dustFracMod(iMod, iDust) * fracDust, 1.d-30)
-              ! determine the grain fraction of each grain type in the current disc module
-              if ((z <= -h).or.(z >= h)) then
-                thisOctal%dustTypeFraction(subcell, iDust) = MAX(dustFracMod(iMod, iDust), 1.d-30)
-              endif
+              thisHeight = dustHeightMod(iMod, iDust) * &
+                           (r/rInnerMod(iMod))**dustBetaMod(iMod, iDust)
+              fracDust = MAX(EXP(-0.5d0*(z/thisHeight)**2) * dustFracMod(iMod,iDust) * rho1 / thisOctal%rho(subcell), 1.d-30)
+                !The dust amount is not normalized here. This will be done later
+                ! similar to what is done with the shakara disks by summing the
+                ! amount of gas and dust and normalizing the fractions based on
+                ! the intended dust to gas mass ratio.
+              thisOctal%dustTypeFraction(subcell, iDust) = MAX(fracDust, 1.d-30)
             enddo
           endif
         endif
+
       enddo
 
   end subroutine modularshakaraDisc
@@ -18389,14 +18388,16 @@ END SUBROUTINE assignDensitiesStellarWind
        endif
 
 
-       tau = tau + distToNextCell*kappaExt
+       !tau = tau + distToNextCell*kappaExt !Wrong tau missing fudgeFac
+       tau = tau + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*kappaExt !EAR
        if (PRESENT(nTau)) then
           nTau = nTau + 1
           if (nTau > nArray) then
              call writeFatal("Tau array size exceeded")
              stop
           endif
-          xArray(nTau) = xArray(nTau-1) + distToNextCell
+          !xArray(nTau) = xArray(nTau-1) + distToNextCell !Wrong dist, missing fudgeFac
+          xArray(nTau) = xArray(nTau-1) + (distToNextCell+fudgeFac*grid%halfSmallestSubcell) !EAR
           tauArray(nTau) = tau
        endif
        if (PRESENT(distanceToEdge)) distanceToEdge = distanceToEdge + distToNextCell
@@ -20985,24 +20986,17 @@ END SUBROUTINE assignDensitiesStellarWind
 
     call locate(grid%lamArray, grid%nLambda, lambdaTau, iLambda)
 
+    !Calculates tau surface from the grid centers location. Outputs detailed
+    !   below. Origionally written by CDavies. Edited by EAR 
     open(33, file=thisFile, status="unknown", form="formatted")
-    !write(33,*) "midr 1/4 (au)", "1/4 tau height (au)", "midr 1/2 (au)", "1/2 tau height(au)", "midr &
-    !       3/4 (au)", "3/4 tau height (au)", "midr 1 (au)", "1 tau height (au)"
+    !write(33,*) "midr 0.01 (au)", "0.01 tau height (au)", "midr 0.1 (au)", "0.1 tau height(au)", "midr &
+    !       0.5 (au)", "0.5 tau height (au)", "midr 1 (au)", "1 tau height (au)"
     do i = 1, 500
        theta = dble(i-1)/499. * pi /2.d0
        radialVec = VECTOR(cos(theta),0.d0, sin(theta))
        rVec = VECTOR(0.d0, 0.d0, 0.d0)
        call tauAlongPath(ilambda, grid, rVec, radialVec, tau, tauMax=10.d0,nTau=nTau, &
             xArray=sArray, tauArray=tauArray)
-       !if (i == 80) then !Used for diagnosing issues with surface. EAR
-       !    call tauAlongPath(ilambda, grid, rVec, radialVec, tau, tauMax=10.d0, nTau=nTau, &
-       !         xArray=sArray, tauArray=tauArray,savefile=i)
-       !else
-       !    call tauAlongPath(ilambda, grid, rVec, radialVec, tau, tauMax=10.d0, nTau=nTau, &
-       !         xArray=sArray, tauArray=tauArray)
-       !endif
-       !there are four tau surfaces calculated, 0.01, 0.1, 0.5, and 1. The r and
-       !    z value are saved in units of au to a text file. EAR
        if (tau < 0.01d0) cycle
        call locate(tauArray, nTau, 0.01d0, iTau)
        s1 = sArray(iTau) - (sArray(iTau+1)-sArray(iTau))*(tauArray(iTau) - 0.01d0)/(tauArray(iTau+1) - tauArray(iTau))
@@ -21044,7 +21038,9 @@ END SUBROUTINE assignDensitiesStellarWind
     real(double) :: radius,sArray(10000),tauArray(10000),s1,s2,s3,s4,tau,height
     type(VECTOR) :: rVec, radialVec
     integer :: i, ntau, iLambda, itau
-
+    ! Written to calcualte the tau surface from perspective of observer (z-direction)
+    !  same as writeScatteringSurfaceFile function above with different
+    !  persepctive. Written by EAR 
     call locate(grid%lamArray, grid%nLambda, lambdaTau, iLambda)
     height=150000.d0 !This is where the tau tracing begins above the disk.
                      !   Should be much larger than the disk vertical extent.
@@ -21056,20 +21052,6 @@ END SUBROUTINE assignDensitiesStellarWind
        rVec = VECTOR(radius, 0.d0, height) !Ensure z val well above disk. EAR
        call tauAlongPath(ilambda, grid, rVec, radialVec, tau, tauMax=10.d0, nTau=nTau, &
             xArray=sArray, tauArray=tauArray)
-       !if (tau < 1.d0) cycle
-       !call locate(tauArray, nTau, 1.d0, iTau)
-       !s = sArray(iTau) - (sArray(iTau+1)-sArray(iTau)) *(tauArray(iTau) - 1.d0)/(tauArray(iTau+1) - tauArray(iTau))
-       !if (i == 53) then
-       !    open(34, file="s_tau_polar.dat", status="unknown", form="formatted")
-       !    do j = 1, nTau
-       !        write(34,*) j, sArray(j), tauArray(j)
-       !    end do
-       !    close(34) 
-       !end if
-       !write(*,*) i, s, sArray(iTau),  iTau, nTau
-       !write(33,*) radius*1.d10/autocm,  (150000.d0 - s)*1.d10/autocm
-       !Output is the same as writeScatteringSurfaceFile. See subroutine for
-       !    details. EAR
        if (tau < 0.01d0) cycle
        call locate(tauArray, nTau, 0.01d0, iTau)
        s1 = sArray(iTau) - (sArray(iTau+1)-sArray(iTau))*(tauArray(iTau) - 0.01d0)/(tauArray(iTau+1) - tauArray(iTau))

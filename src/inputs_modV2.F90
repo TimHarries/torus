@@ -2908,28 +2908,33 @@ contains
 !            scale height for each dust prescription (default is that of the gas in that disc module)
 
           enddo
-       if (writeoutput) write(*,*)
+       !if (writeoutput) write(*,*)
        enddo
 !      Calculate the density normalisation assuming that the midplane density at r_out,i which is prescribed by disk
 !      module 'i' is the same as that at r_in,i+1 which is prescribed by the next adjacent disk module, 'i+1'.
        prod(1) = 1.d0
        if (nDiscModule > 1) then
           do i = 2, nDiscModule
-             prod(i) = prod(i-1)*((rInnerMod(i)*1.d10)**(alphaMod(i)-alphaMod(i-1)))
+             prod(i) = prod(i-1)*((rInnerMod(i-1)*1.d10)/(rOuterMod(i-1)*1.d10))**alphaMod(i-1) !EAR
+             !prod(i) = prod(i-1)*((rInnerMod(i)*1.d10)**(alphaMod(i)-alphaMod(i-1)))
           enddo
        endif
-       do i = 1, nDiscModule
-          rhoNought(i) = heightMod(i)*1.d10*(rInnerMod(i)*1.d10)**(betaMod(i)*(-1.d0))*prod(i)* &
-                         ( ((rOuterMod(i)*1.d10)**(betaMod(i)-alphaMod(i)+2.d0) - &
-                         (rInnerMod(i)*1.d10)**(betaMod(i)-alphaMod(i)+2.d0) ) / &
-                         (betaMod(i)-alphaMod(i)+2.d0) )
+       !do i = 1, nDiscModule
+       !   rhoNought(i) = heightMod(i)*1.d10*(rInnerMod(i)*1.d10)**(betaMod(i)*(-1.d0))*prod(i)* &
+       !                  ( ((rOuterMod(i)*1.d10)**(betaMod(i)-alphaMod(i)+2.d0) - &
+       !                  (rInnerMod(i)*1.d10)**(betaMod(i)-alphaMod(i)+2.d0) ) / &
+       !                  (betaMod(i)-alphaMod(i)+2.d0) )
 !         density integration constant for each module of the disc
-       enddo
-
-       rho0  = dble( (mDisc / twoPi**1.5) * (1/ERF(1.d0/SQRT(2.d0))) * (rInnerMod(1)*1.d10)**((-1.d0)*alphaMod(1)) * &
-               (1/SUM(rhoNought)) )
-!      density integration constant for full disc
-
+       !enddo
+       !EAR Origional rho0
+       !rho0  = dble( (mDisc / twoPi**1.5) * (1/ERF(1.d0/SQRT(2.d0))) * (rInnerMod(1)*1.d10)**((-1.d0)*alphaMod(1)) * &
+       !        (1/SUM(rhoNought)) )
+!      density integration constant for full disc from shakara 
+       rho0  = real(dble(mDisc)*(betaMod(1)-alphaMod(1)+2.) / ( twoPi**1.5 *(dble(heightMod(1))*1.d10)/ & 
+            dble(dble(rInnerMod(1))*1.d10)**betaMod(1) * (dble(rInnerMod(1))*1.d10)**alphaMod(1) * &
+            (((dble(rOuterMod(nDiscModule))*1.d10)**(betaMod(1)-alphaMod(1)+2.)- &
+            (dble(rInnerMod(1))*1.d10)**(betaMod(1)-alphaMod(1)+2.)))))
+       if (Writeoutput) write(*,*) "rho0 before normailzation: ",rho0
     end select
   end subroutine readGeometrySpecificParameters
 

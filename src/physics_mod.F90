@@ -535,6 +535,9 @@ contains
            call fillDustShakara(grid, grid%octreeRoot, dustmass)
            if (dustSettling) call fillDustSettled(grid)
         endif
+        if ((grid%geometry == "modular_sh").and.(.not.restartLucy)) then !EAR
+            call normDustSettled(grid)
+        endif
 !        call fillDustUniform(grid, grid%octreeRoot)
 #ifdef MPI
         call randomNumberGenerator(syncIseed=.true.)
