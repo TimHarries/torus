@@ -1155,11 +1155,11 @@ CONTAINS
        CALL modularDisc(thisOctal, subcell)
 !   modular disc geometry - cdavies
 
-    CASE ("modular_shakara")
+    CASE ("modular_sh")
        CALL modularshakaraDisc(thisOctal, subcell)
 !   modular disc geometry using shakara geometries
 !   modular origionally written by cdavies
-!   modular_shakara written by EAR
+!   modular_sh written by EAR
 
     CASE ("cassandra")
        CALL cassandraDisc(thisOctal, subcell)
@@ -5693,7 +5693,7 @@ CONTAINS
           enddo
           if (thisOctal%dPhi*radtodeg < 1.d0) splitInAzimuth = .false.
 
-       case("modular_shakara")
+       case("modular_sh")
           
           splitInAzimuth = .false.
           ! first off, make sure the cell splits if the depth of the cell depth is less than mindepthamr:

@@ -2812,7 +2812,7 @@ contains
                (1/SUM(rhoNought)) )
 !      density integration constant for full disc
 
-    case("modular_shakara")
+    case("modular_sh")
 
        oneKappa = .true.
 ! -- Define the disc-module independent geometry-specific parameters:

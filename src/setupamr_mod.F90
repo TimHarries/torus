@@ -1687,7 +1687,7 @@ end subroutine assignMgAsciiValues
     case ("modular")
        call testAMRmass(grid, dble(mdisc))
 
-    case ("modular_shakara")
+    case ("modular_sh")
        call testAMRmass(grid, dble(mdisc))
 
 #ifdef SPH
