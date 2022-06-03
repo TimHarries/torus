@@ -2934,7 +2934,8 @@ contains
             dble(dble(rInnerMod(1))*1.d10)**betaMod(1) * (dble(rInnerMod(1))*1.d10)**alphaMod(1) * &
             (((dble(rOuterMod(nDiscModule))*1.d10)**(betaMod(1)-alphaMod(1)+2.)- &
             (dble(rInnerMod(1))*1.d10)**(betaMod(1)-alphaMod(1)+2.)))))
-       if (Writeoutput) write(*,*) "rho0 before normailzation: ",rho0
+       if (Writeoutput) write(*,*) "rho0 before normailzation: ",rho0*prod(1),&
+            rho0*prod(2), rho0*prod(3)
     end select
   end subroutine readGeometrySpecificParameters
 

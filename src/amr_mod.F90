@@ -13285,9 +13285,9 @@ end function readparameterfrom2dmap
         if ((rOuterMod(iMod) > r).and.(rInnerMod(iMod) < r)) then
           h = heightMod(iMod) * (r/rInnerMod(iMod))**betaMod(iMod)
           ! determine the scale height of the gas disc at your position, r
-          thisOctal%rho(subcell) = MAX(dble(rho0) * rInnerMod(1)**alphaMod(1) * prod(iMod) * &
+          thisOctal%rho(subcell) = MAX(dble(rho0) * rInnerMod(iMod)**alphaMod(iMod) * prod(iMod) * &
                                    (1/r)**alphaMod(iMod) * EXP(-0.5d0 * (z/h)**2), 1.d-30)
-          rho1 = MAX(dble(rho0) * rInnerMod(1)**alphaMod(1) * prod(iMod) * &
+          rho1 = MAX(dble(rho0) * rInnerMod(iMod)**alphaMod(iMod) * prod(iMod) * &
                                    (1/r)**alphaMod(iMod), 1.d-30) ! gas density at z=0 EAR
         endif
 
@@ -20991,8 +20991,8 @@ END SUBROUTINE assignDensitiesStellarWind
     open(33, file=thisFile, status="unknown", form="formatted")
     !write(33,*) "midr 0.01 (au)", "0.01 tau height (au)", "midr 0.1 (au)", "0.1 tau height(au)", "midr &
     !       0.5 (au)", "0.5 tau height (au)", "midr 1 (au)", "1 tau height (au)"
-    do i = 1, 500
-       theta = dble(i-1)/499. * pi /2.d0
+    do i = 1, 50000
+       theta = dble(i-1)/49999. * pi /2.d0
        radialVec = VECTOR(cos(theta),0.d0, sin(theta))
        rVec = VECTOR(0.d0, 0.d0, 0.d0)
        call tauAlongPath(ilambda, grid, rVec, radialVec, tau, tauMax=10.d0,nTau=nTau, &
