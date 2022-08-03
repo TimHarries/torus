@@ -868,7 +868,7 @@ contains
     logical :: fLine(:)
     logical :: ok
     logical :: setSubRadius, oldWindUnits
-    character(len=20) :: heightLabel, betaLabel, dustFracLabel
+    character(len=20) :: heightLabel, betaLabel, dustFracLabel, dustslLabel
     character(len=20) :: alphaDiscLabel, betaDiscLabel, hDiscLabel, rinDiscLabel, routDiscLabel
     integer :: i, j
 
@@ -2894,6 +2894,11 @@ contains
              write(dustFracLabel, '(a,i1.1,i1.1)') "dustfrac",i,j
              call getDouble(dustFracLabel, dustFracMod(i,j), 1.d0, cLine, fLine, nLines, &
                   "Fraction of dust species in disc module :","(a,f10.5,1x,a)", dble(0.01), ok, .true.)
+!            fraction of each dust species in each modular section of the disc
+
+             write(dustslLabel, '(a,i1.1,i1.1)') "dustslope",i,j
+             call getDouble(dustslLabel, dustslMod(i,j), 1.d10/autocm, cLine, fLine, nLines, &
+                  "Dust Slope to simulate  in disc module :","(a,f10.5,1x,a)", dble(0.0), ok, .true.)
 !            fraction of each dust species in each modular section of the disc
 
              write(betaLabel, '(a,i1.1,i1.1)') "settlebeta",i,j

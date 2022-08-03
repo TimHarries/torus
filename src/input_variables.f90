@@ -949,6 +949,7 @@
   real(double) :: dustHeightMod(maxDiscMods, maxDustTypes) ! dust sale height at 100 au for each grain species
   real(double) :: dustBetaMod(maxDiscMods, maxDustTypes)   ! dust beta for each grain species in each disc module
   real(double) :: dustFracMod(maxDiscMods, maxDustTypes)   ! dust fraction for each grain type in each disc module
+  real(double) :: dustslMod(maxDiscMods, maxDustTypes)   ! dust slope for each grain type in each disc module
   ! --------------------------------------------------------------------------------------
 
 !----------------------

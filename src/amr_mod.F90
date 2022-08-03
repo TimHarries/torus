@@ -13247,10 +13247,10 @@ end function readparameterfrom2dmap
 
   subroutine modularshakaraDisc(thisOctal, subcell)
 
-    use inputs_mod, only : rho0, rSublimation ! real precision disc module-independent param
+    use inputs_mod, only : rho0, rSublimation, molecularPhysics ! real precision disc module-independent param
     use inputs_mod, only : nDiscModule, nDustType ! counting params
     use inputs_mod, only : alphaMod, betaMod, heightMod, rInnerMod, rOuterMod, tiltAngleMod, prod ! 1D array params
-    use inputs_mod, only : dustFracMod, dustHeightMod, dustBetaMod ! 2D array params
+    use inputs_mod, only : dustFracMod, dustHeightMod, dustBetaMod, dustslMod ! 2D array params
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -13266,7 +13266,17 @@ end function readparameterfrom2dmap
       rVec = subcellCentre(thisOctal, subcell)        ! locate your position in the grid
       thisOctal%velocity(subcell) = keplerianVelocity(rvec)
       thisOctal%iAnalyticalVelocity(subcell) = 2
+      if(molecularPhysics) then
+ !        if(modulus(rvec) .lt. 1000.) then
+          thisOctal%velocity(subcell) = keplerianVelocity(rvec)
+          thisOctal%iAnalyticalVelocity(subcell) = 2
+      endif
 
+      if (molecularPhysics) then
+           thisOctal%microturb(subcell) = &
+                sqrt((2.d0*kErg*thisOctal%temperature(subcell))/(29.0 * amu))/cspeed
+           thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.*mhydrogen)
+      endif
       ! Determine which disc module you are located in and assign a gas density
       do iMod = 1, nDiscModule
 
@@ -13300,7 +13310,8 @@ end function readparameterfrom2dmap
               h = heightMod(iMod) * (r/rInnerMod(iMod))**betaMod(iMod)
               thisHeight = dustHeightMod(iMod, iDust) * &
                            (r/rInnerMod(iMod))**dustBetaMod(iMod, iDust)
-              fracDust = MAX(EXP(-0.5d0*(z/thisHeight)**2) * dustFracMod(iMod,iDust) * rho1 / thisOctal%rho(subcell), 1.d-30)
+              fracDust = MAX(EXP(-0.5d0*(z/thisHeight)**2) * dustFracMod(iMod,iDust) * rho1 * &
+                         (1 - dustslMod(iMOd,iDust) * r) / thisOctal%rho(subcell), 1.d-30)
                 !The dust amount is not normalized here. This will be done later
                 ! similar to what is done with the shakara disks by summing the
                 ! amount of gas and dust and normalizing the fractions based on
