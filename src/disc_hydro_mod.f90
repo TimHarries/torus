@@ -12,7 +12,8 @@ module disc_hydro_mod
   use constants_mod
   use vector_mod
   use messages_mod
-  use inputs_mod
+  use inputs_mod, only: smoothfactor,flaringpower, rho0, sigmapower, rsmooth, rcore, nhydro, &
+       height, rheight, geometry,lambdasmooth,lucy_undersampled, rinner, betadisc,dustsettling
   use gridtype_mod, only: GRIDTYPE
   use octal_mod, only: OCTAL, subcellCentre
   use lucy_mod, only: lucyRadiativeEquilibriumAMR
@@ -266,23 +267,32 @@ contains
   subroutine throughoutMidpane(grid, mStar, sigma0,  drho)
     use amr_mod, only: getxValues
     use utils_mod, only: stripSimilarValues
-    type(GRIDTYPE) :: grid
+    use amr_utils_mod, only : countVoxels
     integer, parameter :: maxvals = 200000
-    real(double) :: zAxis(maxVals)
-    real(double) :: rho(maxVals)
-    real :: temperature(maxVals)
+    type(GRIDTYPE) :: grid
+    real(double) :: zAxis(maxvals)
+    real(double) :: rho(maxvals)
+    real :: temperature(maxvals)
     real(double) :: subcellsize(maxvals)
     real :: mStar, sigma0
     integer :: nz
     real :: xpos, ypos, radius, drho, smallestSubcell
     logical :: converged 
-    real(double) :: xAxis(maxVals*10)
+    real(double), allocatable :: xAxis(:)
     integer :: nx, i
+    integer :: nOctals, nVoxels
     converged = .false.; nz = 0; temperature = 0.; zAxis = 0.; subcellSize = 0.
 
+    
+    call countVoxels(grid%octreeRoot,nOctals,nVoxels)    
+    nx = nVoxels
+    allocate(xAxis(nx))
     nx = 0
     call getxValues(grid%octreeRoot,nx,xAxis)
+    
+    
     call stripSimilarValues(xAxis,nx,1.d-5*grid%halfSmallestSubcell)
+    
     xAxis(1:nx) = xAxis(1:nx) + 1.d-5*grid%halfSmallestSubcell
 
     xPos = real(grid%halfSmallestSubcell - grid%octreeRoot%subcellSize)
@@ -299,24 +309,28 @@ contains
 !
 
     do i = 1, nx
+      
        radius = real(xAxis(i))
        xPos = real(xAxis(i))
        if ((radius > grid%rInner).and.(radius < grid%rOuter)) then
           call getTemperatureDensityRun(grid, zAxis, subcellsize, rho, temperature, xPos, yPos, nz, +1.)
-
+         
           if (nz > 1) then
              call solveHydro(temperature, zAxis, subcellsize, rho, nz, radius, mStar, &
-                  sigma0, converged, drho)                
+                  sigma0, converged, drho)
+            
 
              call putDensityRun(grid, zAxis, rho, nz, xPos, yPos, +1.)
+            
           endif
 
           call getTemperatureDensityRun(grid, zAxis, subcellsize, rho, temperature, xPos, yPos, nz, -1.)
-
+          
           if (nz > 1) then
              call solveHydro(temperature, zAxis, subcellsize, rho, nz, radius, mStar, sigma0,  converged, drho)
              
              call putDensityRun(grid, zAxis, rho, nz, xPos, yPos, -1.)
+             
           endif
        endif
 !       xPos = xPos + smallestSubcell
@@ -351,7 +365,8 @@ contains
        xPos = xPos + smallestSubcell
     enddo
    end if
-  end subroutine throughoutMidpane
+   
+ end subroutine throughoutMidpane
 
   subroutine verticalHydrostatic(grid, mStar, sigma0,  miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope)
@@ -362,7 +377,7 @@ contains
     use phasematrix_mod, only: PHASEMATRIX
     use lucy_mod, only: refineDiscGrid, getSublimationRadius, putTau, unrefineBack
     use vtk_mod, only: writeVtkFile
-    use amr_mod, only: myScaleSmooth, myTauSmooth, findTotalMass
+    use amr_mod, only: myScaleSmooth, myTauSmooth, findTotalMass, checkAMRgrid
     use utils_mod, only: locate
     use dust_mod, only : findDustMass
 
@@ -452,7 +467,7 @@ contains
        endif
 
        if(myRankIsZero) &
-            write(*,*) "Solving the vertical hydrostatic equilibrium..."
+            write(*,*) "Solving the vertical hydrostatic equilibrium...",mstar,sigma0,drho,grid%rinner
        drho = 0.
        call throughoutMidpane(grid, mStar, sigma0,  drho)
 
@@ -501,6 +516,7 @@ contains
           nUnrefine = 0
           call refineDiscGrid(grid%octreeRoot, grid, betaEstimate, heightEstimate, rSub, gridconverged, &
                inheritprops = .false., interpProps = .true.)
+          call checkAMRgrid(grid, checkNOctals=.true.)
        end do
        if (writeoutput) then
           write(*,*) "done."
@@ -593,8 +609,10 @@ contains
                   gridConverged,  inheritProps = .false., interpProps = .true.)
              if (gridConverged) exit
           end do
+          call checkAMRgrid(grid, checkNoctals=.true.)
           call writeInfo("...grid smoothing complete", TRIVIAL)
 
+          
           if(myRankIsZero) &
                write(*,*) "...grid smoothing complete"
 

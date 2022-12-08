@@ -331,6 +331,7 @@ module amr_utils_mod
                t1 = MAX(0.0_oc, (r1 - (r2 - inc)) / resultOctal%subcellSize)
                t2 = (phi1 - (phi2 - resultOctal%dPhi/4.d0))/(resultOctal%dPhi/2.d0)
                t3 = MAX(0.0_oc, (point_local%z - (centre%z - inc)) / resultOctal%subcellSize)
+!               WRITE(*,*) "t1, t2, t3 ",t1,t2,t3
                select case(subcell)
             CASE(1)
                amrGridVelocity = &

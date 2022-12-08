@@ -91,6 +91,7 @@ contains
 !    if (writeoutput) then
        write(*,'(a,a,a)') "FATAL ERROR: ", trim(wstring)
 !    endif
+       stop
   end subroutine writefatal
 
   subroutine writeInfo(wstring, level)

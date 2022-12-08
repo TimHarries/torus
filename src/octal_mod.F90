@@ -458,7 +458,7 @@ CONTAINS
           case(2)
              subcellCentre = thisOctal%centre + d * xHat
           case DEFAULT
-             write(*,*) "bug - one-d cell has more than 3 children"
+             write(*,*) "subcellcentre: bug - one-d cell has more than 3 children"
        end select
        goto 666
     endif
@@ -601,7 +601,7 @@ CONTAINS
           case(2)
              cellCentre = thisOctal%centre + d * xHat
           case DEFAULT
-             write(*,*) "bug - one-d cell has more than 3 children"
+             write(*,*) "subcellcorners: bug - one-d cell has more than 3 children"
        end select
        goto 666
     endif

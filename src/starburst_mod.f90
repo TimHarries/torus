@@ -168,7 +168,7 @@ contains
 
   subroutine populateClusters(clusters, nClusters, age, populated, doMorePhoto, imf, iIMF, nIMF) 
     use inputs_mod, only : criticalMass ! [g]
-    use inputs_mod, only : populationMethod
+    use inputs_mod, only : populationMethod, splitClusters
     use source_mod, only : clusterReservoir
     type(SOURCETYPE), pointer :: clusters(:)
     logical, intent(out) :: populated(:), doMorePhoto
@@ -177,10 +177,11 @@ contains
     real(double) :: reservoir ! [g] 
     real(double) :: age ! [yr]
     integer, optional :: iImf, nIMF
-    integer :: nClusters, i, iEligible, nEligible
-    real(double) :: thisMass, starsForCluster(1:nClusters, 100000), reservoirs(1:nClusters) ! [g]
-    integer, dimension(1:nClusters) :: nStarsForCluster, eligibleClusters
-    logical :: done
+    integer :: nClusters, i, iEligible, nEligible, oldnClusters, oldN, newN
+    real(double) :: thisMass, reservoirs(1:nClusters) ! [g]
+    real(double) :: starsForCluster(1:nClusters, 100000), offshootsForCluster(1:nClusters, 100000) ! [msol]
+    integer, dimension(1:nClusters) :: nStarsForCluster, eligibleClusters, nOffshootsForCluster
+    logical :: done, addToCluster
     character(len=80) :: message
 
     createdMass = 0.d0
@@ -189,10 +190,12 @@ contains
 
     if (nClusters == 0) goto 666
 
+    oldnClusters = nClusters
+
     select case (populationMethod)
        ! when a sink's reservoir exceeds a specified threshold mass, convert mass to stars
        case ("threshold")
-          do i = 1, nClusters
+          do i = 1, oldnClusters
              reservoir = clusterReservoir(clusters(i))
              if (reservoir >= criticalMass) then
                 if (writeoutput) write(*,*) "Creating subsources for cluster ", i
@@ -208,13 +211,13 @@ contains
        case ("list")
 
           ! initial reservoirs
-          do i = 1, nClusters
+          do i = 1, oldnClusters
              reservoirs(i) = clusterReservoir(clusters(i)) ! [g]
           enddo
 
           ! check if clusters can take the next star off the list
+          nOffshootsForCluster(:) = 0
           nStarsForCluster(:) = 0
-          starsForCluster(:,:) = 0.d0
           done = .false.
           do while (.not. done) 
              if (iIMF > nIMF) then
@@ -226,8 +229,7 @@ contains
              thisMass = imf(iImf) ! [g]
              ! pick out the clusters with massive enough reservoirs
              nEligible = 0
-             eligibleClusters(:) = 0
-             do i = 1, nClusters
+             do i = 1, oldnClusters
                 if (reservoirs(i) >= thisMass) then
                    nEligible = nEligible + 1
                    eligibleClusters(nEligible) = i 
@@ -237,14 +239,21 @@ contains
                 ! randomly select a cluster from the eligible list
                 call randomSourceUniform(nEligible, iEligible)
                 i = eligibleClusters(iEligible)
-                ! save the star to add in later
-                nStarsForCluster(i) = nStarsForCluster(i) + 1
-                starsForCluster(i, nStarsForCluster(i)) = thisMass/msol ! [msol]
-                reservoirs(i) = reservoirs(i) - thisMass
-                populated(i) = .true.  ! tell radhydro routine to calculate spectra for cluster i
-                if (thisMass/Msol >= 8.d0) then
-                   doMorePhoto = .true. ! tell radhydro routine to do additional photoion iterations
+                addToCluster = (thisMass >= 8.d0*msol) .or. (.not. splitClusters)
+                if (addToCluster) then
+                   ! save the star to add in later
+                   nStarsForCluster(i) = nStarsForCluster(i) + 1
+                   starsForCluster(i, nStarsForCluster(i)) = thisMass/msol ! [msol]
+                   populated(i) = .true.  ! tell radhydro routine to calculate spectra for cluster i
+                   if (thisMass >= 8.d0*msol) then
+                      doMorePhoto = .true.  ! tell radhydro routine to do additional photoion iterations
+                   endif
+                else
+                   ! create low-mass stars as new clustersinks instead
+                   nOffshootsForCluster(i) = nOffshootsForCluster(i) + 1
+                   offshootsForCluster(i, nOffshootsForCluster(i)) = thisMass/msol ! [msol]
                 endif
+                reservoirs(i) = reservoirs(i) - thisMass
                 ! go to next star in list
                 done = .false.
                 iImf = iImf + 1
@@ -254,8 +263,8 @@ contains
              endif
           enddo
 
-          ! now actually put the stars in the clusters
-          do i = 1, nClusters
+          do i = 1, oldnClusters
+             ! now actually put the stars in the clusters
              if (nStarsForCluster(i) > 0) then
                 if (writeoutput) write(*,*) "Creating subsources for cluster ", i
                 call createSources(clusters(i)%nSubsource, clusters(i)%subsourceArray, "list", age, & 
@@ -264,8 +273,20 @@ contains
                 if (writeoutput) write(*,*) " ... created ", createdMass, " Msol" 
                 call writeClusterIMF(clusters(i), i)
              endif
+
+             ! create new clustersinks around the original cluster
+             if (nOffshootsForCluster(i) > 0) then
+                if (writeoutput) write(*,*) "Creating offshoot stars around cluster ", i
+                oldN = nClusters
+                call createSources(nClusters, clusters, "list", age, & 
+                      sum(offshootsForCluster(i,1:nOffshootsForCluster(i))), 0.d0, createdMass, zeroNsource=.false., &
+                      list=offshootsForCluster(i,1:nOffshootsForCluster(i)), nlist=nOffshootsForCluster(i))
+                if (writeoutput) write(*,*) " ... created ", createdMass, " Msol" 
+                newN = nClusters
+                call offshootProperties(clusters, i, oldN+1, newN)
+                clusters(i)%mass = clusters(i)%mass - createdMass*msol
+              endif
           enddo
-             
 
        case DEFAULT
           write(message,'(a,a)') "Population method not recognised: ", trim(populationMethod)
@@ -276,18 +297,18 @@ contains
        if (clusters(i)%nSubsource > 0) then
           clusters(i)%subsourceArray(1:clusters(i)%nSubsource)%position = clusters(i)%position
           clusters(i)%subsourceArray(1:clusters(i)%nSubsource)%velocity = clusters(i)%velocity
-
-          clusters(i)%stellar = .true.
-          clusters(i)%viscosity = .false.
-          clusters(i)%pointSource = .true.
-          clusters(i)%diffuse = .false.
-          clusters(i)%outsideGrid = .false.
-          clusters(i)%prob = 0.d0
        endif
+       clusters(i)%stellar = .true.
+       clusters(i)%viscosity = .false.
+       clusters(i)%pointSource = .true.
+       clusters(i)%diffuse = .false.
+       clusters(i)%outsideGrid = .false.
+       clusters(i)%prob = 0.d0
     enddo
 
 666 continue 
   end subroutine populateClusters
+
 
   subroutine writeClusterIMF(cluster, i)
     type(SOURCETYPE) :: cluster
@@ -553,7 +574,7 @@ contains
 !    call  readTlustyGrid(klabel, kspectrum, nKurucz)
 
     if (present(zeroNsource)) then
-       ! may want to keep nsource as it is (e.g. if creating more subsources in a cluster)
+       ! reset nsource - note, want zeroNsource=.false. if e.g. creating more subsources in a cluster
        if (zeroNsource) then
           nSource = 0
        endif
@@ -655,7 +676,7 @@ contains
           endif
 !          ! extend source array if necessary
           if ((initialnSource+thisNsource) > size(source)) then
-             if (writeoutput) write(*,*) "RESIZING (A) ", initialnsource, thisNsource
+             if (writeoutput) write(*,*) "NEED TO RESIZE nSOURCE (A) ", initialnsource, thisNsource
              stop ! FIXME
 !             allocate(tempSourceArray(1:initialnSource))
 !             tempSourceArray(1:initialnSource) = source(1:initialnSource)
@@ -668,7 +689,7 @@ contains
 
           ! update nSource
           nSource = nSource + thisNsource
-          if (writeoutput) write(*,*) "NEW NSOURCE", nSource, thisNsource
+          if (writeoutput) write(*,*) "NEW NSOURCE", nSource, " AFTER ADDING", thisNsource
           
           ! add to actual source array
           source(initialNsource+1:nSource)%initialMass = list(1:thisNsource) 
@@ -698,8 +719,8 @@ contains
 
       if (Writeoutput) then
          write(*,*) "number of sources in this burst ", nSource-initialNsource
-         write(*,*) "burst mass ",totMass
-         write(*,*) "using ", trim(imfType), " imf"
+!         write(*,*) "burst mass ",totMass
+!         write(*,*) "using ", trim(imfType), " imf"
       endif
 
       ! now get actual masses, temps, and luminosities, and radii for age from evolution tracks
@@ -1659,7 +1680,7 @@ contains
 !      call freeglobalsourcearray()
 !      globalnsource = 1
 !      allocate(globalsourceArray(1:globalnsource))
-!      globalSourcearray(1:globalnsource)%mass = 500.d0 * msol
+!      globalSourcearray(1:globalnsource)%mass = 1000.d0 * msol
 !      globalSourcearray(1:globalnsource)%age = 0.d0
 !
 !!      do i = 1, globalnsource
@@ -1685,15 +1706,7 @@ contains
 !      ! update ages
 !      t = 0.d0
 !      dt = 1.d4
-!      do while (t <= 3.d6)
-!         ! update from track
-!         do i = 1, globalnSource
-!            do j = 1, globalsourceArray(i)%nSubsource
-!               call updateSourceProperties(globalsourcearray(i)%subsourceArray(j))
-!            enddo
-!         enddo
-!         
-!
+!      do while (t <= 3.4d6)
 !         ! write out 
 !         if (writeoutput) then
 !            do i = 1, globalnSource
@@ -1717,6 +1730,13 @@ contains
 !            endif
 !         enddo
 !         t = t + dt
+!
+!         ! update from track
+!         do i = 1, globalnSource
+!            do j = 1, globalsourceArray(i)%nSubsource
+!               call updateSourceProperties(globalsourcearray(i)%subsourceArray(j))
+!            enddo
+!         enddo
 !      enddo
 !      stop
 !   end subroutine testTracks
@@ -1899,6 +1919,93 @@ contains
 !
 !
 !  end subroutine testClusterSpectra
+
+  subroutine offshootProperties(clusters, iParent, iStart, iEnd)
+    type(SOURCETYPE), pointer :: clusters(:)
+    integer, intent(in) :: iParent, iStart, iEnd
+    type(VECTOR) :: uvec
+    integer ::  i
+    real(double) :: sigma, fac, r
+
+    ! set the new clusters' properties based on the parent cluster properties
+
+    do i = iStart, iEnd
+       call randomNumberGenerator(getDouble=r)
+       fac = clusters(iParent)%accretionRadius/1.d10 * r**2
+       uvec = randomUnitVector()
+       clusters(i)%position%x = clusters(iParent)%position%x + fac * uvec%x
+       clusters(i)%position%y = clusters(iParent)%position%y + fac * uvec%y
+       clusters(i)%position%z = clusters(iParent)%position%z + fac * uvec%z
+
+       sigma = sqrt(kerg*10.d0/mHydrogen) ! TODO use soundSpeed? would need MPI'ifying to get octal
+       fac = randomValueGaussian(sigma, 0.d0)
+       uvec = randomUnitVector()
+       clusters(i)%velocity%x = clusters(iParent)%velocity%x + fac * uvec%x
+       clusters(i)%velocity%y = clusters(iParent)%velocity%y + fac * uvec%y
+       clusters(i)%velocity%z = clusters(iParent)%velocity%z + fac * uvec%z
+
+       clusters(i)%accretionRadius = 0.d0
+       clusters(i)%luminosity = 0.d0
+    enddo
+  end subroutine offshootProperties
+
+  subroutine testClusterSplit
+!     use starburst_mod, only : populateClusters, getStarList
+     use inputs_mod, only : accretionRadius, smallestCellSize
+     integer :: i, j, iImf, nIMF
+     character(len=80) :: mpifilename
+     logical :: populated(1000), domorephoto
+     real(double), pointer :: imf(:)
+     type(SOURCETYPE), pointer :: star
+
+     iIMF = 0
+     nimf = 0
+     call getStarList(imf, iIMF, nIMF)
+     if (writeoutput) write(*,*) "START iIMF, nIMF: ", iIMF, nIMF
+
+     ! populate clusters continuously given a pre-tabulated IMF
+     if (associated(globalSourceArray)) deallocate(globalSourceArray)
+
+     globalnsource = 1
+     allocate(globalsourcearray(1:1000))
+     do i = 1, globalnSource
+        globalSourceArray(i)%mass = 100.d0 * msol
+        globalSourceArray(i)%position = VECTOR(10.d0*smallestCellSize, 0.d0, 0.d0)
+        globalSourceArray(i)%velocity = VECTOR(10.d5, 10.d5, 0.d0)
+        globalSourceArray(i)%accretionRadius = accretionRadius * smallestCellSize * 1.d10
+     enddo
+
+     call randomNumberGenerator(randomSeed=.true.)
+     call randomNumberGenerator(syncIseed=.true.)
+
+     call populateClusters(globalSourceArray, globalnSource, 0.d0, populated, doMorePhoto, &
+       imf=imf, iIMF=iIMF, nIMF=nIMF)
+
+     call randomNumberGenerator(randomSeed=.true.)
+
+     if (writeoutput) then
+        do i = 1, globalnsource
+           write(*,*) i, globalSourceArray(i)%accretionRadius/1.d10
+
+           write(mpiFilename, '(a,i4.4,a)') "starinfo_", i, ".dat"
+           open(68,file=mpiFilename,status="replace",form="formatted")
+           write(68,'(a4,a12,6a13)') "i", "mass", "x", "y", "z", "vx", "vy", "vz"
+
+           star => globalSourceArray(i)
+           write(68,'(i4.4,f12.5,6(e13.5))') i, star%mass/msol, star%position%x, star%position%y, star%position%z, &
+              star%velocity%x/1e5, star%velocity%y/1e5, star%velocity%z/1e5
+
+           do j = 1, globalSourceArray(i)%nSubsource
+              star => globalSourceArray(i)%subsourceArray(j)
+              write(68,'(i4.4,f12.5,6(e13.5))') i, star%mass/msol, star%position%x, star%position%y, star%position%z, &
+                 star%velocity%x/1e5, star%velocity%y/1e5, star%velocity%z/1e5
+           enddo
+        enddo
+        close(68)
+     endif
+  end subroutine testClusterSPlit
+
+
 
 
 end module starburst_mod

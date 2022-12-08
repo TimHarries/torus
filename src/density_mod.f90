@@ -958,7 +958,7 @@ contains
     use inputs_mod, only: massRatio, binarySep, rInner, rOuter, betaDisc, height, &
          alphaDisc, rho0, smoothInnerEdge, streamFac, rGapInner, rGapOuter, rhoGap, &
          deltaCav,  rhoAmbient, planetDisc
-    use inputs_mod, only : sourcePos, sourceMass, sourceRadius, hydrodynamics, cavDens, rhoFloor
+    use inputs_mod, only : sourcePos, sourceMass, sourceRadius, hydrodynamics, rhoFloor
     use utils_mod, only: solveQuad
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(VECTOR), INTENT(IN) :: point
@@ -971,7 +971,7 @@ contains
     type(VECTOR),save :: stream1(nStream), stream2(nStream), rPlanet
     real(double) :: rSpiralInner, rSpiralOuter
     real(double) :: rInnerPlanetDisc, rOuterPlanetDisc, heightPlanetDisc, alphaPlanetDisc, betaPlanetDisc, rhoPlanetDisc
-    real(double) :: mPlanetDisc, hillRadius
+    real(double) :: mPlanetDisc, hillRadius, thisRho
     logical :: ok
     real :: x1, x2
 
@@ -1027,7 +1027,6 @@ contains
        fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
        fac = max(-50.d0,fac)
        rhoOut = dble(rho0) * (dble(rInner/r))**dble(alphaDisc) * exp(fac)
-
 
 
        if (smoothInnerEdge) then
@@ -1102,7 +1101,7 @@ contains
     endif
     
 
-    rhoOut = max(rhoOut, cavDens)
+!    rhoOut = max(rhoOut, cavDens)
 
 
 
@@ -1125,13 +1124,12 @@ contains
 
 
        r = sqrt((point%x-rplanet%x)**2 + (point%y-rPlanet%y)**2)
-!       write(*,*) r/rOuterPlanetDisc
        if ((r < rOuterPlanetDisc).and.(r>rInnerPlanetDisc)) then
           h = heightPlanetDisc * (r / (100.d0*autocm/1.d10))**betaPlanetDisc
           fac = -0.5d0 * (dble(point%z)/h)**2
           fac = max(-50.d0,fac)
-          rhoOut = rhoPlanetDisc * (dble(rInnerPlanetDisc/r))**dble(alphaPlanetDisc) * exp(fac)
-!          write(*,*) "planet disc ",rhoout
+          thisRho = rhoPlanetDisc * (dble(rInnerPlanetDisc/r))**dble(alphaPlanetDisc) * exp(fac)
+          rhoOut = max(thisRho,rhoOut)
        endif
     endif
        

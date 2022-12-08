@@ -322,7 +322,7 @@ contains
 ! This function returns density, temperature and H2 (if required) 
     clusterparam = Clusterparameter(point, thisoctal, subcell, rho_out=rho, rhoH2_out=rhoH2, rhoCO_out=rhoCO, &
          temp_out=temp, dustfrac_out=dustfrac)
-
+    thisOctal%velocity(subcell)  = clusterparam
 ! Set octal density
     thisOctal%rho(subcell) = rho
 
@@ -491,7 +491,7 @@ contains
        ! units of sphData
        umass = get_umass()  ! [g]
        udist = get_udist()  ! [cm]
-       udent = umass/udist**3
+       udent = 1.d0 !umass/udist**3
 
        ! convert units
        udist = udist/1.0d10  ! [10^10cm]
@@ -530,6 +530,7 @@ contains
           ! quick check to see if this gas particle is
           ! belongs to this cell.
 
+
           ! For 2D octals x is cylindrical polar r
           if (node%twoD) x = sqrt(x**2 + y**2)
 
@@ -559,7 +560,7 @@ contains
                 vymax = max(this_v%y, vymax)
                 vzmax = max(this_v%z, vzmax)
              endif
-!             !$OMP END CRITICAL
+             !             !$OMP END CRITICAL
           end if
           
        end do
@@ -584,6 +585,7 @@ contains
     if (n>0) then
        rho_ave = rho_ave/dble(n)
 
+!       write(*,*) "rho_ave ",rho_ave,udent
        rho_ave = rho_ave*udent  ! [g/cm^3]
        if ( present(rho_min) ) rho_min = rho_min * udent
        if ( present(rho_max) ) rho_max = rho_max * udent

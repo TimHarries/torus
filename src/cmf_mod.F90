@@ -1015,6 +1015,7 @@ contains
         !!if ((thisAtom%name=="HI").and.(thisOctal%microturb(subcell)==0.d0).and.(starkBroaden)) then
     if ((thisAtom%name=="HI").and.(starkBroaden)) then
        phiProf = phiProfStark(dv, thisOctal, subcell, nu, thisAtom)
+!       write(*,*) "phiprof ",phiprof
     else
        phiProf = phiProfTurb(dv, thisOctal%microturb(subcell))
     endif
@@ -1388,13 +1389,13 @@ END SUBROUTINE calculateJbar
     real(double), allocatable :: Hcol(:), HeICol(:), HeIICol(:)
     integer :: nRay
     type(OCTAL), pointer :: thisOctal
-    integer, parameter :: maxIter = 100, maxRay = 200000
+    integer, parameter :: maxIter = 20, maxRay = 200000
     logical :: popsConverged, gridConverged
     integer :: iRay, iTrans, iter,i
     integer :: iStage
     real(double), allocatable :: oldpops(:,:), newPops(:,:), dPops(:,:), mainoldpops(:,:)
     real(double) :: newNe
-    real(double), parameter :: underCorrect = 0.5d0
+    real(double), parameter :: underCorrect = 1.d0
     real(double), parameter :: underCorrectne = 1.d0
     real(double) :: dne
     logical :: sobolevApprox
@@ -1421,7 +1422,7 @@ END SUBROUTINE calculateJbar
     integer :: iAtom
     integer :: nHAtom, nHeIAtom, nHeIIatom !, ir, ifreq
     real(double) :: nstar, ratio, ntot
-    real(double), parameter :: convergeTol = 1.d-4, gridtolerance = 1.d-2
+    real(double), parameter :: convergeTol = 1.d-3, gridtolerance = 1.d-2
     integer :: neIter, itmp
     logical :: recalcJbar,  firstCheckonTau
     character(len=80) :: message, ifilename
@@ -2027,7 +2028,7 @@ END SUBROUTINE calculateJbar
                       !                      write(*,*) "Main iteration route converged after ", iter, " iterations"
 
                       thisOctal%ne(subcell) = ne
-                      if (debug) then
+                      if (debug.and.writeoutput) then
                          write(*,*) "Iteration: ",iter
                          do iatom = 1, size(thisAtom)
                             write(*,*) "Atom: ",thisAtom(iatom)%name
@@ -3426,10 +3427,11 @@ FUNCTION intensityAlongRayGeneric(position, direction, grid,deltaV, source, nSou
               tau = tau + tauStep
               !                if ((myrankGlobal==1).and.(iomp==0).and.(tau > 0.01d0))write(*,*) "i0, tau ",real(i0),real(tau),real(taustep)
            ENDIF
-           IF ((.NOT. ok).AND.(ntau > 100000)) THEN
+           IF ((.NOT. ok).AND.(ntau > 1000000)) THEN
               WRITE(*,*) "ntau cap limit reached ",alphanu, " dust ",dustopac, &
                    " tau ",tau, " dtau ",dtau, " temp ",thisOctal%temperature(subcell)
               WRITE(*,*) "line, continuum opac ",alphanuLine, bfOpac
+              write(*,*) "close to resonance/passes through resonance ",closeToResonance,passThroughResonance
               ok = .TRUE.
            ENDIF
         ENDDO
@@ -3643,7 +3645,7 @@ END FUNCTION intensityAlongRayGeneric
 
 
     do iv = iv1, iv2
-!       write(*,*) iv,varray(iv)*cspeed/1.d5
+       write(*,*) iv,varray(iv)*cspeed/1.d5
        deltaV  = vArray(iv)
 
        iray1 = 1
@@ -3750,15 +3752,18 @@ END FUNCTION intensityAlongRayGeneric
     real(double) :: xPos, yPos, zPos
     integer :: nr1, nr2, nr3, nr4,  i
 
-    nr1 = 200
-    nr2 = 100
+    nr1 = 20
+    nr2 = 10
     nr3 = 100
     nr4 = 100
+
+    nphi = 20
+
+
     if (.not.(ttauriWind)) nr3 = 0
     if (.not.(ttauriStellarWind)) nr4 = 0
 
     nr = nr1 + nr2 + nr3 + nr4
-    nphi = 200
     nray = 0
     i = 0
 

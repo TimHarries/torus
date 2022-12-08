@@ -835,13 +835,12 @@ contains
        else
           fac = 1.
 
-!          if ((grid%geometry == "shakara").or. &
-           if (((grid%geometry == "ttauri").and.ttauriDisc)) then
+!          if (((grid%geometry == "shakara").and.(.not.variableDustSublimation)).or. &
+           if ((grid%geometry == "ttauri").and.ttauriDisc) then
               rVec = subCellCentre(thisOctal, Subcell)
               r = sqrt(rVec%x**2 + rVec%y**2)
               if (r < 1.01d0*rSublimation) then
                  fac = (1.01d0*rSublimation - r)/(0.01d0*rSublimation)
-                 fac = 5.d0*fac
                  fac = exp(-fac)
               endif
            endif
@@ -915,9 +914,9 @@ contains
           z = rVec%z
           thisOctal%dustTypeFraction(subcell,1:nDustType) = grainFrac(1:nDustType)
 !          write(*,*) r/1496.,thisRsub/1496.d0
-          if (modulus(rVec) < rSublimation) then
-             thisOctal%dustTypeFraction(subcell,1:nDustType) = 1.d-25
-          endif
+!          if (modulus(rVec) < rSublimation) then
+!             thisOctal%dustTypeFraction(subcell,1:nDustType) = 1.d-25
+!          endif
 
           if (curvedInnerEdge.and.(r < thisRsub).and.(modulus(rVec) < 2.d0*rsublimation)) then
              fac = (thisRsub-r)/(0.002d0*rSublimation)
@@ -958,6 +957,7 @@ contains
     end do
 
   end subroutine fillDustShakara
+
 
   recursive subroutine fillDustJaehan(grid, thisOctal, dustmass)
     use inputs_mod, only : grainFrac, nDustType
@@ -1185,12 +1185,10 @@ contains
     underCorrect = 1.
 
     kappaSca = 0.d0; kappaAbs = 0.d0
-    subrange = 10.d0
-
     if (present(minLevel)) then
        smallVal = minLevel
     else
-       smallVal = 1.d-20
+       smallVal = 1.d-25
     endif
 
     do subcell = 1, thisOctal%maxChildren
@@ -2205,6 +2203,7 @@ real function getMedianSize(aMin, aMax, a0, qDist, pDist) result(aMedian)
   real :: a(n)     ! grain sizes 
   real :: f(n)     
   real :: g(n)
+  character(len=80) :: message
 
   if (aMin == aMax) then
      aMedian = aMin
@@ -2225,6 +2224,11 @@ real function getMedianSize(aMin, aMax, a0, qDist, pDist) result(aMedian)
      do i = 2, n
         g(i) = g(i) + g(i-1)
      enddo
+! If a0 is small compared to the grain size the exponential term underflows and we cannot normalise g
+     if (g(n) == 0.0) then
+        write(message,'(3(a,f10.5),a,f4.1)') "aMin=", aMin, " aMax=", aMax, " a0=", a0, " pDist=", pDist
+        call writeFatal("dust_mod::getMedianSize: cannot normalise grain size distribution "//message)
+     end if
      g(:) = g(:)/g(n)
      call locate(g, n, 0.5, i)
      aMedian = a(i+1)

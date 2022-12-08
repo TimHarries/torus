@@ -60,6 +60,7 @@ CONTAINS
        IF ((imag(z(1)) /= 0.d0).OR.(imag(z(2))==0.d0).OR.(imag(z(3))==0.d0)) THEN
           WRITE(*,*)"problem with cubic solver"
        ENDIF
+       mu_0 = min(mu_0,1.d0)
        sintheta0 = SQRT(1.d0 - mu_0**2)
        costheta = point%z*1.d10/r
        sintheta = SQRT(1.d0- costheta**2)
@@ -70,7 +71,7 @@ CONTAINS
 
        vr = -v * SQRT(1.d0 + costheta/mu_0)
        vt = v * (mu_0 - costheta) * SQRT(ABS((mu_0+costheta)/(mu_0*costheta)))
-       vp = v * (sintheta0/sintheta) * SQRT(1.d0-costheta/mu_0)
+       vp = v * (sintheta0/sintheta) * SQRT(MAX(0.d0,1.d0-costheta/mu_0))
 
        vx = vr * cosphi * sintheta + vt * cosphi * costheta - vp * sinphi
        vy = vr * sinphi * sintheta + vt * sinphi * costheta + vp * cosphi

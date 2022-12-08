@@ -1243,7 +1243,7 @@ module molecular_mod
 
 #ifdef PHOTOION
      if(usedust) then
-        call quickSublimate(grid%octreeRoot, 0.01) ! do dust sublimation  
+!        if () call quickSublimate(grid%octreeRoot, 0.01) ! do dust sublimation  
 
         write(mpiFilename,'(a, i4.4, a)') "quickDump.vtk"
         call writeVtkFile(grid, mpiFilename, &                                               
@@ -2951,7 +2951,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
         call setObserverVectors(viewvec, observerVec, imagebasis)
      else
         viewVec = inputViewVec
-        observerVec = dble(-griddistance*1e-10) * viewVec ! This is the EXACT position of the observer in space
+        observerVec = dble(-griddistance*pctocm*1e-10) * viewVec ! This is the EXACT position of the observer in space
         imagebasis(1) = viewvec .cross. VECTOR(0.d0, 0.d0, 1.d0)
         imagebasis(2) = imagebasis(1) .cross. viewvec
         call normalize(imagebasis(1))
@@ -3100,7 +3100,6 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
       integer :: subpixels
       integer :: ipixels, jpixels
 
-      print *, "making image"
 ! pixelcorner initialised to TOPLEFT      
 ! Previous method: only works for cubes with equal sized spatial axes
 !      dnpixels    = dble(npixels) 
@@ -3132,7 +3131,6 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 !$OMP END DO
 !$OMP END PARALLEL
       enddo
-    print *, "image made"
     end subroutine makeImageGrid
 
  !!! Calculates the intensity for a square pixel of arbitrary size, position, orientation
@@ -3211,6 +3209,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
       rayposition = pixelcorner + r(iray,1) * pixelbasis(1) + r(iray,2) * pixelbasis(2) ! random position in pixel
 
+      
       if(maxrhocalc) then
          call intensityalongray(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0, &
                                 tau = opticaldepth, rhomax = rhomax)
@@ -3222,7 +3221,9 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 !            if(present(sink)) then
             if (.not.grid%splitOverMPI) then
                if(isinlte) then
-                  call lteintensityalongray2(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0, &
+!                  call lteintensityalongray2(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0, &
+!                                             tau = opticaldepth, ncol = ncol)
+                  call intensityalongraynew(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0, &
                                              tau = opticaldepth, ncol = ncol)
                else
                   call intensityalongray2(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0, &
@@ -3368,11 +3369,11 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
         endif
      endif
 
-     cube%obsDistance = gridDistance !(in cm) Additional information that will be useful
-     if (gridDistance/pctocm < 1000.0) then 
-        write(message,'(a,f10.3,a)') "Observer Distance        : ",gridDistance/pctocm, " pc"
+     cube%obsDistance = gridDistance*pctocm !(in cm) Additional information that will be useful
+     if (gridDistance < 1000.0) then 
+        write(message,'(a,f10.3,a)') "Observer Distance        : ",gridDistance, " pc"
      else
-        write(message,'(a,f10.3,a)') "Observer Distance        : ",gridDistance/kpctocm, " kpc"
+        write(message,'(a,f10.3,a)') "Observer Distance        : ",gridDistance, " kpc"
      endif
      call writeinfo(message, TRIVIAL)
      write(message,'(a,1pe12.3,a)') "Finest grid resolution   : ",grid%halfsmallestsubcell*2d10/autocm, " AU"
@@ -3481,7 +3482,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
            endif
 
            intensitysum = sum(temp(:,:,1)) / dble(cube%nx*cube%ny)
-           fluxsum = intensitytoflux(intensitysum, dble(imageside), dble(gridDistance), thisMolecule)
+           fluxsum = intensitytoflux(intensitysum, dble(imageside), dble(gridDistance*pctocm), thisMolecule)
 
            if(iv .eq. 1) then
               if(lineimage) then
@@ -3493,7 +3494,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
               background = Bnu(linefreq, Tcbr)
               write(message, *) "Background Intensity: ",background
               call writeinfo(message, TRIVIAL)
-              background = intensitytoflux(background, dble(imageside), dble(gridDistance), thisMolecule)
+              background = intensitytoflux(background, dble(imageside), dble(gridDistance*pctocm), thisMolecule)
               write(message, *) "Background Flux: ",background
               call writeinfo(message, TRIVIAL)
               write(message, *) ""
@@ -4757,7 +4758,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
         imagebasis(2) = imagebasis(2) * pixelwidth
 ! This is a vector parallel to the line of sight *from* the observer to the grid centre
         unitVec = (-1.d0) * viewvec 
-        observerVec = dble(griddistance*1e-10) * unitvec ! This is the EXACT position of the observer in space
+        observerVec = dble(griddistance*pctocm*1e-10) * unitvec ! This is the EXACT position of the observer in space
 
         if(paraxial) then
            ! Paraxial case 
@@ -5837,7 +5838,7 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
 
    fac =  pi*(cube%telescope%Diameter/2.d0)**2 / (2.d0*kerg) ! Effective Telescope Area / 2k - Flux -> Antenna Temp
 
-   dA = ((cube%xaxis(2) - cube%xaxis(1)) / (gridDistance/1.d10)) ** 2
+   dA = ((cube%xaxis(2) - cube%xaxis(1)) / (gridDistance*pctocm/1.d10)) ** 2
 
    fac2 = (1.d0* (cspeed**2 / thisMolecule%transFreq(iTrans)**2) &
                     / (pi * (cube%telescope%diameter / 2.d0)**2 )) / dA
@@ -5871,6 +5872,93 @@ endif
 
  end subroutine createFluxSpectra
 
+ subroutine returnValuesAlongPath(deltaV, grid, obsPoint, direction, nPoints, distArray, &
+      rhoArray, velArray ,&
+      alphaDust, jnuDust, alphaLine, jnuLine)
+   type(GRIDTYPE) :: grid
+   integer :: npoints
+   type(VECTOR) :: position, direction, obsPoint
+   real(double) :: deps, distToGrid, tval, deltaV,dv, nmol, phiProfVal
+   real(double) :: distArray(:), rhoArray(:), velArray(:), alphaDust(:), jnuDust(:)
+   real(double) :: alphaLine(:), jnuLine(:)
+   type(OCTAL), pointer :: thisOctal
+   integer :: subcell
+   character(len=80) :: message
+
+
+   if(inOctal(grid%octreeRoot, obsPoint)) then
+        disttogrid = 0.
+        call writeinfo("inside",TRIVIAL)
+        write(*,*) obsPoint
+     else
+        distToGrid = distanceToGridFromOutside(grid, obsPoint, direction) 
+     endif
+
+     if (distToGrid > 1.e29) then
+        call writeFatal("ray does not intersect grid")
+        write(message, *) obsPoint
+        call writeinfo(message, FORINFO)
+        stop
+     endif
+        
+     deps = grid%halfSmallestSubcell ! small value to add on to distance from grid to ensure we get onto grid
+     position = obsPoint + (distToGrid + deps) * direction
+     nPoints = 1
+     thisOctal => grid%octreeRoot
+     if (.not.inOctal(grid%OctreeRoot, position)) then
+        write(*,*) "error ",position
+        goto 666
+     endif
+     
+     call findSubcellLocal(position, thisOctal, subcell)
+
+     deps = 1.d-2*grid%halfSmallestSubcell 
+
+     distArray(1) = 0.
+     rhoArray(1) = tiny(rhoArray(1))
+     velArray(1) = thisOctal%velocity(subcell).dot.direction
+     alphaDust(1) = tiny(alphaDust(1))
+     jnuDust(1) = tiny(jnuDust(1))
+
+     alphaLine(1) = 1.d-30
+     jnuLine(1) = 1.d-30
+     do while(inOctal(grid%octreeRoot, position))
+        call findSubcellLocal(position, thisOctal, subcell)
+        call distanceToCellBoundary(grid, position, direction, tVal, sOctal=thisOctal)
+        nPoints = nPoints + 1
+        distArray(nPoints) = distArray(nPoints-1) + tVal / 2.
+        rhoArray(nPoints) = thisOctal%rho(subcell)
+        velArray(nPoints) = thisOctal%velocity(subcell).dot.direction
+
+
+        dv = velArray(nPoints) - deltaV
+         
+        phiProfval = phiProf(dv, thisOctal%molmicroturb(subcell))
+
+        nmol = thisoctal%molcellparam(1,subcell)
+
+        alphaLine(nPoints) = nmol * thisOctal%molcellparam(6,subcell) * phiprofval                 
+
+        jnuLine(nPoints) = nmol * thisOctal%molcellparam(5,subcell) * phiProfVal
+
+        
+        alphaDust(nPoints) = thisOctal%molcellparam(7,subcell)
+        jnuDust(nPoints) = thisOctal%molcellparam(8,subcell)
+
+        position = position + (tval + deps) * direction
+     enddo
+     nPoints = nPoints + 1
+     distArray(nPoints) = distArray(nPoints-1) + tval/2.
+     rhoArray(npoints) = tiny(rhoArray(1))
+     velArray(npoints) = 0.
+     alphaDust(npoints) = tiny(alphaDust(1))
+     jnuDust(npoints) = tiny(jnuDust(1))
+     alphaLine(npoints) = tiny(alphaLine(1))
+     jnuLine(npoints) = tiny(jnuLine(1))
+     666 continue
+   end subroutine returnValuesAlongPath
+     
+ 
  subroutine cubeIntensityToFlux(cube,thisMolecule,itrans,doreverse)
 
    use inputs_mod, only : gridDistance, nv
@@ -5888,7 +5976,7 @@ endif
    endif
 
    dx = cube%xAxis(2) - cube%xAxis(1) ! pixelwidth in torus units
-   dx = (dx / (gridDistance*1e-10))**2 ! not in steradians (* 2 pi)
+   dx = (dx / (gridDistance*pctocm*1e-10))**2 ! not in steradians (* 2 pi)
 
    do ipixel = 1,cube%nx
       do jpixel = 1,cube%ny
@@ -5917,7 +6005,7 @@ endif
    real(double) :: dx
 
    dx = cube%xAxis(2) - cube%xAxis(1) ! pixelwidth in torus units
-   dx = (dx / (gridDistance*1e-10))**2 ! not in steradians (* 2 pi)
+   dx = (dx / (gridDistance*pctocm*1e-10))**2 ! not in steradians (* 2 pi)
 
    do ipixel = 1,cube%nx
       do jpixel = 1,cube%ny
@@ -5960,8 +6048,8 @@ endif
 
    do i=1,npix ! Where are all the pixels (top left corners) - what are all their weights
       do j=1,npix
-         rr = (cube%xAxis(i)/(gridDistance*1d-10))**2 + & 
-              (cube%yAxis(j)/(gridDistance*1d-10))**2
+         rr = (cube%xAxis(i)/(gridDistance*pctocm*1d-10))**2 + & 
+              (cube%yAxis(j)/(gridDistance*pctocm*1d-10))**2
 
          cube%Weight(i,j) = exp(-0.5d0*(rr/sigma2))
 
@@ -6010,7 +6098,7 @@ endif
                x = cube%xAxis(i) + real(k-10)/20. * deltax  
                y = cube%yAxis(j) + real(l-10)/20. * deltay
 
-               rr = (x/(gridDistance*1d-10))**2 + (y/(gridDistance*1d-10))**2
+               rr = (x/(gridDistance*pctocm*1d-10))**2 + (y/(gridDistance*pctocm*1d-10))**2
                f = exp(-0.5d0*(rr/sigma2))
                Weight(i,j) = Weight(i,j) + f*0.01
 
@@ -6611,6 +6699,75 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
     enddo
   end subroutine getRadialMolecular
 
+subroutine intensityAlongRayNew(position, direction, grid, thisMolecule, iTrans, deltaV,i0, &
+     tau,tautest,rhomax, i0max, nCol, observerVelocity)
+!     use inputs_mod, only : useDust, densitysubsample, lowmemory
+     type(VECTOR) :: position, direction
+     type(GRIDTYPE) :: grid
+     type(MOLECULETYPE) :: thisMolecule
+     integer :: itrans
+!     real(double) :: nMol
+     real(double), intent(out) :: i0
+!     real(double), optional, intent(out) :: nCol,ncol2
+     real(double), optional, intent(out) :: nCol
+!     integer, optional, intent(in) :: tunable
+     type(VECTOR), optional, intent(in) ::  observerVelocity
+     real(double) :: snu
+     real(double)  :: deltaV
+     integer :: i
+!     integer :: nTau
+     real(double) ::  x, ds
+     logical, optional :: tautest
+
+     real(double) :: dTau
+     real(double), intent(out), optional :: tau
+!     real(double), save :: BnuBckGrnd
+
+
+     real(double) :: dI, dIovercell,  opticaldepth
+     real(double), optional, intent(out) :: rhomax
+     real(double), optional, intent(in) :: i0max
+
+!     integer :: iupper, ilower
+!     real(double) :: nlower, nupper
+     real(double) :: distArray(10000), rhoArray(10000), velArray(10000), alphaDust(10000), jnuDust(10000)
+     real(double) :: alphaLine(10000), jnuLine(10000)
+     real(double) :: alphanu, jnu
+     integer :: nPoints
+
+     i = itrans
+     i = thisMolecule%ntrans
+     if (present(i0max)) x = i0max
+     if (present(rhomax)) x = rhoMax
+     if (present(tautest)) i =0
+     if (present(observerVelocity)) i = 0
+     ncol = 0.d0
+     call returnValuesAlongPath(deltaV, grid, position, direction, nPoints, distArray, &
+          rhoArray, velArray, alphaDust, jnuDust, alphaLine, jnuLine)
+     i0 = tiny(i0)
+     if (npoints == 1) goto 666
+
+     velArray(1:npoints) = velArray(1:npoints) - deltaV
+
+     do i = 2, nPoints
+        ds = distArray(i) - distArray(i-1)
+        alphanu = alphaDust(i) + alphaLine(i)
+        jnu = jnuDust(i) + jnuLine(i)
+        dTau = alphanu * ds * 1.d10
+        
+        snu = jnu/alphanu
+
+        opticaldepth = exp(-tau)
+        dI = (1.d0-exp(-dtau))*snu
+        dIovercell = dIovercell + dI
+        tau = tau + dtau
+        
+        dI = opticaldepth * dI
+        i0 = i0 + dI
+     enddo
+666 continue     
+end subroutine intensityAlongRayNew
+
 
 
 #ifdef MPI
@@ -6719,6 +6876,10 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
 666 continue
  end subroutine intensityAlongRaySplitOverMPI
 
+
+
+
+ 
  subroutine intensityAlongRayServer(grid, thisMolecule)
    use mpi
    type(GRIDTYPE) :: grid

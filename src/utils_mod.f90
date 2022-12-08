@@ -1377,6 +1377,36 @@ contains
 666   continue
     end function findilambda
 
+    integer function findIlambdaDouble(lambda, xArray, nLambda, ok)
+      implicit none
+      integer :: nlambda, i
+      real(double) :: lambda
+      real(double) :: xArray(:)
+      logical, intent(out) :: ok
+
+      ok = .true.
+
+      if (lambda < (xArray(1))) then
+         findiLambdaDouble = 1
+         ok = .false.
+         goto 666
+      endif
+      if (lambda > (xArray(nLambda))) then
+         findiLambdaDouble = nLambda
+         ok = .false.
+         goto 666
+      endif
+
+      call locate(xArray, nLambda, lambda, i)
+      if (i /= nLambda) then
+         if (lambda > 0.5*(xArray(i)+xArray(i+1))) then
+            i= i+1
+         endif
+      endif
+      findilambdaDouble = min(i,nLambda)
+666   continue
+    end function findilambdaDouble
+
     real function interpLinearSingle(xArray, yArray, n, x)
       real :: xarray(:), yArray(:)
       real :: x, t
@@ -2039,50 +2069,45 @@ contains
     integer :: nx
     real :: x(:)
     real :: xtol
-    real, allocatable :: xtemp(:)
     integer :: i, newNx
 
-    allocate(xtemp(1:nx))
+
 
     call sort(nx, x)
 
     newnx = 1
-    xtemp(newnx) = x(1)
     do i = 2, nx
-       if (abs(xtemp(newnx)-x(i)) > xTol) then
+       if (abs(x(newnx)-x(i)) > xTol) then
           newnx = newnx  + 1
-          xtemp(newnx) = x(i)
+          x(newnx) = x(i)
        endif
     enddo
 
-    x(1:newnx) = xtemp(1:newnx)
     nx = newnx
-    deallocate(xtemp)
+  
   end subroutine stripSimilarValuesSingle
 
   subroutine stripSimilarValuesDouble(x, nx, xtol)
     integer :: nx
     real(double) :: x(:)
     real(double) :: xtol
-    real(double), allocatable :: xtemp(:)
     integer :: i, newNx
 
-    allocate(xtemp(1:nx))
 
     call sort(nx, x)
 
     newnx = 1
-    xtemp(newnx) = x(1)
+  
     do i = 2, nx
-       if (abs(xtemp(newnx)-x(i)) > xTol) then
+       if (abs(x(newnx)-x(i)) > xTol) then
           newnx = newnx  + 1
-          xtemp(newnx) = x(i)
+          x(newnx) = x(i)
        endif
     enddo
 
-    x(1:newnx) = xtemp(1:newnx)
+  
     nx = newnx
-    deallocate(xtemp)
+   
   end subroutine stripSimilarValuesDouble
 
 
@@ -3767,5 +3792,32 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
       ENDIF
    ENDIF
  END FUNCTION PLGNDR
+
+ ! returns a random value from a Gaussian PDF between +/- 5*sigma of the mean
+ function randomValueGaussian(sigma, xMean) result (xOut)
+   real(double) :: xMin, xMax, xOut, sigma, xMean
+   integer, parameter :: nx = 100
+   integer :: i
+   real(double) :: xArray(nx), prob(nx), r, t
+
+   xMin = xMean - 5.d0*sigma
+   xMax = xMean + 5.d0*sigma
+
+   do i = 1, nx
+      xArray(i) = xMin + (dble(i-1)/dble(nx-1)) * (xMax-xMin)
+   enddo
+
+   ! gaussian pdf
+   prob = 1.d0/(sigma*sqrt(twoPi)) * exp(-(xArray(:)-xMean)**2/(2.d0*sigma**2))
+   do i = 2, nx
+      prob(i) = prob(i) + prob(i-1)
+   enddo
+   prob(1:nx) = prob(1:nx) - prob(1)
+   prob(1:nx) = prob(1:nx) / prob(nx)
+   call randomNumberGenerator(getDouble=r)
+   call locate(prob, nx, r, i)
+   t = (r - prob(i))/(prob(i+1)-prob(i))
+   xOut = xArray(i) + t * (xArray(i+1)-xArray(i))
+ end function randomValueGaussian
 
 end module utils_mod

@@ -1043,7 +1043,6 @@ contains
     integer               :: error         ! status code
     integer :: nOctal
     character(len=80) :: absolutePath, inFile, updatedFilename
-    integer :: ithread
 
     type(OCTAL), pointer :: mynull => null()
 
@@ -1086,7 +1085,7 @@ contains
 
       logical, intent(in)  :: fileFormatted
       integer :: nOctal
-
+      integer :: ithread
       type(octal), pointer :: childPointer
       type(octal), pointer :: thisChild => null()
       type(octal), pointer :: topOctal => null()
@@ -1094,6 +1093,7 @@ contains
       type(octal), pointer :: tempChildPointer2 => null()
       integer              :: iChild
       logical :: foundBranch
+
 
       
 
@@ -4625,7 +4625,7 @@ contains
          type(GRIDTYPE) :: grid
          logical :: fileFormatted
          character(len=20) :: tag
-         character(len=80) :: message
+         character(len=200) :: message
 
          do while(.true.)
             if (fileFormatted) then 

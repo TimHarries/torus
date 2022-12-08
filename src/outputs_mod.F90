@@ -12,23 +12,24 @@ SUBROUTINE doOutputs(grid)
   USE cmf_mod, ONLY : calculateAtomSpectrum
   USE modelatom_mod, ONLY : globalAtomArray
 #endif
-  USE source_mod, ONLY : globalNSource, globalSourceArray, writeSourceHistory
-  USE inputs_mod, ONLY : gridOutputFilename, writegrid, calcPhotometry, amr2d
-  USE inputs_mod, ONLY : calcDataCube, atomicPhysics, nAtom, sourceHistory, calcDustCube, doAnalysis, doClusterAnalysis
-  USE inputs_mod, ONLY : iTransLine, iTransAtom, gridDistance, gasOpacityPhysics
-  USE inputs_mod, ONLY : writePolar
-  USE inputs_mod, ONLY : calcImage, calcSpectrum, calcBenchmark, calcMovie, calcColumnImage
-  USE inputs_mod, ONLY : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
-  USE inputs_mod, ONLY : mie, gridDistance, nLambda, ncubes
-  USE inputs_mod, ONLY : postsublimate, lineEmission, nv
-  USE inputs_mod, ONLY : dowriteradialfile, radialfilename
-  USE inputs_mod, ONLY : sourcelimbaB, sourcelimbbB ,sourcelimbaV, sourcelimbbV
-  USE sed_mod, ONLY : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
-  USE image_mod
-  USE image_utils_mod, ONLY: getImageWavelength, getnImage, getimageFilename, getImagenPixelsX, &
-       getImageNPixelsY,getImageSizeX, &
-       getImageSizeY, getFluxUnits
-  USE vtk_mod, ONLY : writeVtkFilenBody
+    use source_mod, only : globalNSource, globalSourceArray, writeSourceHistory
+    use inputs_mod, only : gridOutputFilename, writegrid, calcPhotometry, amr2d
+    use inputs_mod, only : calcDataCube, atomicPhysics, nAtom, sourceHistory, calcDustCube, doAnalysis, doClusterAnalysis
+    use inputs_mod, only : iTransLine, iTransAtom, gridDistance, gasOpacityPhysics
+    use inputs_mod, only : writePolar
+    use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark, calcMovie, calcColumnImage
+    use inputs_mod, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
+    use inputs_mod, only : mie, gridDistance, nLambda, ncubes
+    use inputs_mod, only : postsublimate, lineEmission, nv
+    use inputs_mod, only : dowriteradialfile, radialfilename
+    use inputs_mod, only : scatteringSurface, ScatteringSurfaceFilename
+    use inputs_mod, only : sourcelimbaB, sourcelimbbB ,sourcelimbaV, sourcelimbbV
+    use sed_mod, only : SEDlamMin, SEDlamMax, SEDwavLin, SEDnumLam
+    use image_mod
+    use image_utils_mod, only: getImageWavelength, getnImage, getimageFilename, getImagenPixelsX, &
+         getImageNPixelsY,getImageSizeX, &
+         getImageSizeY, getFluxUnits
+    use vtk_mod, only : writeVtkFilenBody
 #ifdef MPI
 #ifdef HYDRO
   USE hydrodynamics_mod, ONLY : checkMaclaurinBenchmark
@@ -123,10 +124,16 @@ SUBROUTINE doOutputs(grid)
 
   ENDIF
 
-  IF (geometry == "envelope") THEN
-     IF (writeoutput.AND.amr2d) CALL writeEduard(grid)
-     GOTO 666
-  ENDIF
+    if (scatteringSurface) then
+       call writeInfo("Writing scattering surface file")
+       call writeScatteringSurfaceFile(scatteringSurfaceFilename, grid)
+    endif
+
+
+    if (geometry == "envelope") then
+       if (writeoutput.and.amr2d) call writeEduard(grid)
+       goto 666
+    endif
 
   IF (geometry == "mgascii") THEN
      CALL writeVtkFilenBody(globalnSource, globalsourceArray, "nbody_rosette.vtk")
@@ -184,7 +191,7 @@ SUBROUTINE doOutputs(grid)
 #ifdef MPI
      CALL clusterAnalysis(grid, globalSourceArray, globalnSource, nLambda, xArray, miePhase, nMuMie)
 #else
-     CALL clusterAnalysis(grid)
+       call clusterAnalysis(grid, globalSourceArray, globalnSource)
 #endif
   ENDIF
 
@@ -419,42 +426,42 @@ SUBROUTINE doOutputs(grid)
            CALL quickSublimate(grid%octreeRoot)
         END IF
 #endif
-        !          call getSublimationRadius(grid, rSub)
-        !          write(message, '(a, f7.3,a )') "Final inner radius is: ",(1.d10*rSub/rSol), " solar radii"
-        !          call writeInfo(message, FORINFO)
-        !          write(message, '(a, f7.3,a )') "Final inner radius is: ",(rSub/globalSourceArray(1)%radius), " core radii"
-        !          call writeInfo(message, FORINFO)
+!          call getSublimationRadius(grid, rSub)
+!          write(message, '(a, f7.3,a )') "Final inner radius is: ",(1.d10*rSub/rSol), " solar radii"
+!          call writeInfo(message, FORINFO)
+!          write(message, '(a, f7.3,a )') "Final inner radius is: ",(rSub/globalSourceArray(1)%radius), " core radii"
+!          call writeInfo(message, FORINFO)
 
 
-        fastIntegrate=.TRUE.
-        nPhotons = nPhotSpec
-        CALL do_phaseloop(grid, .FALSE., 20000, miePhase, globalnsource, globalsourcearray, nmumie)
-     END IF
+          fastIntegrate=.true.
+          nPhotons = nPhotSpec
+          call do_phaseloop(grid, .false., 50000, miePhase, globalnsource, globalsourcearray, nmumie)
+       end if
 
-     IF ((calcImage.OR.calcMovie).AND.(.NOT.calcDustCube)) THEN
-        DO i = 1, nImage
-           nlambda = 1
-           lambdaImage = getImageWavelength(i)
-           lambdatau = lambdaimage
-           CALL setupXarray(grid, xarray, nlambda, lamMin=lambdaImage, lamMax=lambdaImage, &
-                wavLin=.TRUE., numLam=1, dustRadEq=.TRUE.)
+       if ((calcImage.or.calcMovie).and.(.not.calcDustCube)) then
+          do i = 1, nImage
+             nlambda = 1
+             lambdaImage = getImageWavelength(i)
+             lambdatau = lambdaimage
+             call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage, lamMax=lambdaImage, &
+                  wavLin=.true., numLam=1, dustRadEq=.true.)
 
-           CALL setupDust(grid, xArray, nLambda, miePhase, nMumie)
-           polarWavelength = lambdaimage
-           WRITE(polarFilename,'(a,i6.6,a)') "polar",NINT(polarwavelength/1d4),".dat"
-           CALL dumpPolarizability(miePhase, nMuMie, xarray, nLambda)
-           IF (gasOpacityPhysics) THEN
-              ALLOCATE(xArrayDouble(1:nLambda))
-              xArrayDouble = DBLE(xArray)
-              CALL createAllMolecularTables(nLambda, xArrayDouble)
-              DEALLOCATE(xArrayDouble)
-              IF (writeoutput) THEN
-                 DO j = 1, nLambda
-                    CALL returnGasKappaValue(grid, 2000., 1.d0, kappaAbs=kabs, kappaSca=ksca, lambda=xarray(j), ilambda=j)
-                    WRITE(*,'(1p,5e13.4)') xArray(j),kabs+ksca,kabs,ksca, ksca/(ksca+kabs)
-                 ENDDO
-              ENDIF
-           ENDIF
+             call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+             polarWavelength = lambdaimage
+             write(polarFilename,'(a,i6.6,a)') "polar",nint(polarwavelength/1d4),".dat"
+             call dumpPolarizability(miePhase, nMuMie, xarray, nLambda)
+             if (gasOpacityPhysics) then
+                allocate(xArrayDouble(1:nLambda))
+                xArrayDouble = dble(xArray)
+                call createAllMolecularTables(nLambda, xArrayDouble)
+                deallocate(xArrayDouble)
+                if (writeoutput) then
+                   do j = 1, nLambda
+                      call returnGasKappaValue(grid, 2000., 1.d0, kappaAbs=kabs, kappaSca=ksca, lambda=xarray(j), ilambda=j)
+                      write(*,'(1p,5e13.4)') xArray(j),kabs+ksca,kabs,ksca, ksca/(ksca+kabs)
+                   enddo
+                endif
+             endif
 
 
 #ifdef PHOTOION
@@ -463,51 +470,51 @@ SUBROUTINE doOutputs(grid)
               CALL quickSublimate(grid%octreeRoot)
            END IF
 #endif
-           nPhotons = nPhotImage
-           fastIntegrate=.TRUE.
+             nPhotons = nPhotImage
+             fastIntegrate=.true.
 
 
-           !             call setDustInsideRadiusTozero(grid%octreeRoot, dble(rgapinner1))
-           !             write(*,*) "setting inner dust to zero"
+!             call setDustInsideRadiusTozero(grid%octreeRoot, dble(rgapinner1))
+!             write(*,*) "setting inner dust to zero"
 
 
-           CALL do_phaseloop(grid, .FALSE., 10000, &
-                miePhase, globalnsource, globalsourcearray, nmumie, imNum=i)
-        ENDDO
-     ENDIF
+                call do_phaseloop(grid, .false., 50000, &
+                     miePhase, globalnsource, globalsourcearray, nmumie, imNum=i)
+             enddo
+          endif
 
-     IF (calcImage.AND.calcDustCube) THEN
-        CALL readLambdaFile(lambdaFilename, lambdaArray, nCubeLambda)
+       if (calcImage.and.calcDustCube) then
+          call readLambdaFile(lambdaFilename, lambdaArray, nCubeLambda)
 
-        DO i = 1, nImage
+          do i = 1, nImage
 
-           npixels = getImagenPixelsY(i)
-           CALL setCubeParams(getImagenPixelsX(i), 1., -1.)
-           CALL initCube(thisCube, nv=nCubeLambda)
-           CALL addWavelengthAxis(thiscube, lambdaArray(1:nCubeLambda))
-           CALL addSpatialAxes(thisCube, DBLE(-getImageSizeY(i)/2.e10), DBLE(getImageSizeY(i)/2.e10), &
-                griddistance, 1.d-30)
-           DO j = 1, nCubeLambda
-              imageSlice = initImage(i)
-              nlambda = 1
-              lambdaImage = REAL(lambdaArray(j))
-              lambdatau = lambdaimage
-              CALL setupXarray(grid, xarray, nlambda, lamMin=lambdaImage, lamMax=lambdaImage, &
-                   wavLin=.TRUE., numLam=1, dustRadEq=.TRUE.)
+             npixels = getImagenPixelsY(i)
+             call setCubeParams(getImagenPixelsX(i), 1., -1.)
+             call initCube(thisCube, nv=nCubeLambda)
+             call addWavelengthAxis(thiscube, lambdaArray(1:nCubeLambda))
+             call addSpatialAxes(thisCube, dble(-getImageSizeY(i)/2.e10), dble(getImageSizeY(i)/2.e10), &
+                  griddistance, 1.d-30)
+             do j = 1, nCubeLambda
+                imageSlice = initImage(i)
+                nlambda = 1
+                lambdaImage = real(lambdaArray(j))
+                lambdatau = lambdaimage
+                call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage, lamMax=lambdaImage, &
+                     wavLin=.true., numLam=1, dustRadEq=.true.)
 
-              CALL setupDust(grid, xArray, nLambda, miePhase, nMumie)
-              fastIntegrate=.TRUE.
-              CALL do_phaseloop(grid, .FALSE., 10000, &
-                   miePhase, globalnsource, globalsourcearray, nmumie, imNum=i, returnImage=imageSlice)
-              dx = imageSlice%xAxisCentre(2) - imageSlice%xAxisCentre(1)
-              ALLOCATE(tarray(1:thiscube%nx,1:thiscube%ny))
-              tarray = REAL(imageSlice%pixel(:,:)%i)
-              CALL ConvertArrayToMJanskiesPerStr(tarray, lambdaImage, dx, DBLE(gridDistance))
-              imageSlice%pixel(:,:)%i = tarray(:,:)
-              DEALLOCATE(tarray)
-              CALL addImageSliceToCube(thisCube, imageSlice, j)
-              CALL freeImage(imageSlice)
-           ENDDO
+                call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+                fastIntegrate=.true.
+                call do_phaseloop(grid, .false., 50000, &
+                     miePhase, globalnsource, globalsourcearray, nmumie, imNum=i, returnImage=imageSlice)
+                dx = imageSlice%xAxisCentre(2) - imageSlice%xAxisCentre(1)
+                allocate(tarray(1:thiscube%nx,1:thiscube%ny))
+                tarray = real(imageSlice%pixel(:,:)%i)
+                call ConvertArrayToMJanskiesPerStr(tarray, lambdaImage, dx, dble(gridDistance))
+                imageSlice%pixel(:,:)%i = tarray(:,:)
+                deallocate(tarray)
+                call addImageSliceToCube(thisCube, imageSlice, j)
+                call freeImage(imageSlice)
+             enddo
 #ifdef USECFITSIO
            !             call convertSpatialAxes(thisCube, "au")
            IF (myrankGlobal == 0) CALL writeDataCube(thisCube, getImageFilename(i))
@@ -515,60 +522,60 @@ SUBROUTINE doOutputs(grid)
 #else
            CALL writeWarning("Torus was build without FITS support. No data cube written.")
 #endif
-        ENDDO
-     ENDIF
+          enddo
+       endif
 
-  ENDIF
+    endif
 
-  !#ifdef CMFATOM
-  IF (atomicPhysics.AND.(calcspectrum.OR.calcimage.OR.calcMovie)) THEN
-     mie = .FALSE.
-     lineEmission = .TRUE.
-     grid%lineEmission = .TRUE.
-     IF ( calcspectrum ) THEN
-        WRITE(*,*) "calling setupxarray ",nv
-        CALL setupXarray(grid, xarray, nv, phaseloop=.TRUE.)
-        WRITE(*,*) "nlambda after setupxarray",nlambda,nv
-        nlambda = nv
-        CALL do_phaseloop(grid, .TRUE., 10000, miePhase, globalnsource, globalsourcearray, nmumie)
-     END IF
+!#ifdef CMFATOM
+    if (atomicPhysics.and.(calcspectrum.or.calcimage.or.calcMovie)) then
+       mie = .false.
+       lineEmission = .true.
+       grid%lineEmission = .true.
+       if ( calcspectrum ) then
+          write(*,*) "calling setupxarray ",nv
+          call setupXarray(grid, xarray, nv, phaseloop=.true.)
+          write(*,*) "nlambda after setupxarray",nlambda,nv
+          nlambda = nv
+          call do_phaseloop(grid, .true., 50000, miePhase, globalnsource, globalsourcearray, nmumie)
+       end if
 
-     IF (calcImage.OR.calcMovie) THEN
-        IF (dustPhysics) THEN
-           DO i = 1, nImage
-              nlambda = 1
-              lambdaImage = getImageWavelength(i)
-              CALL setupXarray(grid, xarray, nlambda, lamMin=lambdaImage, lamMax=lambdaImage, &
-                   wavLin=.TRUE., numLam=1, dustRadEq=.TRUE.)
+       if (calcImage.or.calcMovie) then
+          if (dustPhysics) then
+             do i = 1, nImage
+                nlambda = 1
+                lambdaImage = getImageWavelength(i)
+                call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage, lamMax=lambdaImage, &
+                     wavLin=.true., numLam=1, dustRadEq=.true.)
 
-              CALL do_phaseloop(grid, .FALSE., 10000, &
-                   miePhase, globalnsource, globalsourcearray, nmumie, imNum=i)
-           ENDDO
-        ELSE
-           nv = 200
-           WRITE(*,*) "calling setupxarray for image ",nv
-           CALL setupXarray(grid, xarray, nv, phaseloop=.TRUE.)
-           WRITE(*,*) "nlambda after setupxarray",nlambda,nv
-           nlambda = nv
-           DO i = 1, nImage
-              CALL do_phaseloop(grid, .TRUE., 10000, miePhase, globalnsource, globalsourcearray, nmumie,imnum=i)
-           ENDDO
-        ENDIF
-
-
-     ENDIF
-
-  ENDIF
-  !#endif
-  IF (sourceHistory) THEN
-     CALL writeSourceHistory(sourceHistoryfilename,globalSourceArray,globalnSource, oldMass, oldAge)
-  ENDIF
+                call do_phaseloop(grid, .false., 50000, &
+                     miePhase, globalnsource, globalsourcearray, nmumie, imNum=i)
+             enddo
+          else
+             nv = 200
+             write(*,*) "calling setupxarray for image ",nv
+             call setupXarray(grid, xarray, nv, phaseloop=.true.)
+             write(*,*) "nlambda after setupxarray",nlambda,nv
+             nlambda = nv
+             do i = 1, nImage
+                call do_phaseloop(grid, .true., 50000, miePhase, globalnsource, globalsourcearray, nmumie,imnum=i)
+             enddo
+          endif
 
 
+       endif
+
+    endif
+!#endif
+    if (sourceHistory) then
+       call writeSourceHistory(sourceHistoryfilename,globalSourceArray,globalnSource, oldMass, oldAge)
+    endif
 
 
-  IF (dowriteRadialFile) THEN
-     IF (splitOverMpi) THEN
+
+
+    if (dowriteRadialFile) then
+       if (splitOverMpi) then
 #ifdef MPI
         CALL writeRadialFile(radialfilename, grid)
 #endif
@@ -578,7 +585,8 @@ SUBROUTINE doOutputs(grid)
            CALL writeRadialMolecular(grid, radialFilename, globalMolecule, itrans)
         ELSE
 #endif
-           CALL writeRadial(grid, radialFilename)
+          call writeValuesNoDomain(radialFilename, grid)
+!          call writeRadial(grid, radialFilename)
 #ifdef MOLECULAR
         ENDIF
 #endif
@@ -706,5 +714,26 @@ END SUBROUTINE doOutputs
     close(33)
   end subroutine writeEduard
 
+  subroutine writeValuesNoDomain(outputFilename, grid)
+    type(GRIDTYPE) :: grid
+    real(double) ::  tVal
+    character(len=*) :: outputFilename
+    type(VECTOR) :: rVec, uHat, cVec
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    open(21, file=outputFilename, status="unknown", form="formatted")
+    rVec = VECTOR(0.d0, 0.d0, 0.d0)
+    uHat = VECTOR(1.d0, 0.d0, 0.d0)
+    thisOctal => grid%octreeRoot
+    call findSubcellLocal(rVec, thisOctal, subcell)
+    do while(inOctal(grid%octreeRoot, rVec))
+       call findSubcellLocal(rVec, thisOctal, subcell)
+       cVec = subcellCentre(thisOctal, subcell)
+       write(21, *) modulus(cVec)*1.d10/autocm, thisOctal%temperature(subcell)
+       call distanceToCellBoundary(grid, rVec, uHat, tVal, sOctal=thisOctal)
+       rVec = rVec + (tVal + 1.d-3*grid%halfSmallestSubcell) * uHat
+    enddo
+    close (21)
+  end subroutine writeValuesNoDomain
 
 end module outputs_mod

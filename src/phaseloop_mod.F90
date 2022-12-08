@@ -343,6 +343,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      if (thisImageType(1:6) == "stokes") then 
         stokesImage=.true.
      endif
+     write(*,*) "debug ",stokesimage,thisimagetype(1:6)
      ! Images call phaseloop once per image and looping is done by doOutputs
      nInclination = 1 
      positionAngle = GetImagePA(imNum)
@@ -1107,9 +1108,17 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
            viewVec     = getSedViewVec(iInclination)
         end if
 
-        xAxisImage = rotateX(xAxisImage, dble(inclination))
-        yAxisImage = rotateX(yAxisImage, dble(inclination))
-        
+        if (inclination /= 0.) then
+           xAxisImage = viewVec.cross.VECTOR(0.d0, 0.d0, 1.d0)
+        else
+           xAxisImage = VECTOR(1.d0, 0.d0, 0.d0)
+        endif
+        call normalize(xAxisImage)
+        yAxisImage =  viewVec .cross. xAxisimage
+        call normalize(yAxisImage)
+        write(*,*) "xAxis image ",xAxisImage
+        write(*,*) "yAxis image ",yAxisImage
+        write(*,*) "Viewvec ", viewvec
 
         imagePA = real(thisimagePA)
 
@@ -1169,6 +1178,10 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
     end if
 
      write(message,'(a,f6.3,a,f6.3,a,f6.3,a)') "Viewing vector: (",viewVec%x,",",viewVec%y,",", viewVec%z,")"
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a,f6.3,a,f6.3,a,f6.3,a)') "X-Axis vector: (",xaxisImage%x,",",xaxisImage%y,",", xaxisImage%z,")"
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a,f6.3,a,f6.3,a,f6.3,a)') "Y-Axis vector: (",yaxisImage%x,",",yaxisImage%y,",", yaxisImage%z,")"
      call writeInfo(message, TRIVIAL)
      write(message,*) " "
      call writeInfo(message, TRIVIAL)
@@ -1640,7 +1653,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      endif
   endif
 
-!     write(*,*) "stokesimage ",stokesimage, " present ",present(returnimage)
+     write(*,*) "stokesimage ",stokesimage, " present ",present(returnimage)
 
      if (stokesimage.and.myrankIsZero) then
         do i1 = 1, nImageLocal
@@ -3509,13 +3522,13 @@ end subroutine rdintpro
        write(20,*) '# Columns are: Lambda (Microns) and Flux (janskies)'
     else
        if (sedlambdainmicrons) then
-          write(20,*) '# Columns are: Lambda (Microns) and Flux (ergs/s/cm^2/Hz)'
+          write(20,*) '# Columns are: Lambda (Microns) and Flux (ergs/s/cm^2/A)'
        else
-          write(20,*) '# Columns are: Lambda (Angstroms) and Flux (ergs/s/cm^2/Hz)'
+          write(20,*) '# Columns are: Lambda (Angstroms) and Flux (ergs/s/cm^2/A)'
        endif
     end if
 
-33  format(6(1x, 1PE14.5))
+33  format(6(1x, 1PE16.5))
        !34   format(a1, a14, 5(a6))
        ! You should always put a header!
        !     write(20, "(a)") "# Writteng by writeSpectrum."

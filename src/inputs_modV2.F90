@@ -50,7 +50,7 @@ contains
 
     integer :: error
     logical :: parameterCheckMode
-
+    
     datadirectory = " "
     done = .false.
     ok = .true.
@@ -361,6 +361,36 @@ contains
 
     call getLogical("clustersinks", clusterSinks, cLine, fLine, nLines, &
          "Sinks represent clusters: ", "(a,1l,1x,a)", .false., ok, .false.)
+    if (clusterSinks) then
+       call getString("population", populationMethod, cLine, fLine, nLines, &
+            "Cluster population method: ","(a,a,1x,a)","threshold", ok, .true.)
+
+       call getDouble("criticalmass", criticalMass, mSol, cLine, fLine, nLines, &
+            "Critical mass for creating subsources (msol): ","(a,f6.1,a)", 600.d0, ok, .false.)
+
+       call getDouble("sfe", starFormationEfficiency, 1.d0, cLine, fLine, nLines, &
+            "Clustersink star formation efficiency: ","(a,f6.1,a)", 1.d0, ok, .true.)
+
+       call getLogical("readimf", readimf, cLine, fLine, nLines, &
+            "Read IMF from file: ", "(a,1l,1x,a)", .false., ok, .false.)
+
+       if (readIMF) then
+          call getString("imffile", imfFilename, cLine, fLine, nLines, &
+               "Filename of IMF to read in: ","(a,a,1x,a)","imf.dat", ok, .true.)
+       else
+          call getDouble("popmass", populationMass, mSol, cLine, fLine, nLines, &
+               "Total mass to generate in IMF list (msol): ","(a,e12.3,a)", 1.d5, ok, .false.)
+       endif
+
+       call getString("imf", imfType, cLine, fLine, nLines, &
+            "Initial mass function: ","(a,a,1x,a)","chabrier", ok, .false.)
+
+       call getDouble("imfmin", imfMin, 1.d0, cLine, fLine, nLines, &
+            "IMF minimum mass (msol): ","(a,f6.1,a)", 0.8d0, ok, .false.)
+
+       call getDouble("imfmax", imfMax, 1.d0, cLine, fLine, nLines, &
+            "IMF maximum mass (msol): ","(a,f6.1,a)", 120.d0, ok, .false.)
+    endif
 
 
     if (nBodyPhysics) then
@@ -387,38 +417,6 @@ contains
 
        call getLogical("movesinks", moveSources, cLine, fLine, nLines, &
             "Allow sources to move: ", "(a,1l,1x,a)", .true., ok, .false.)
-
-       if (clusterSinks) then
-          call getString("population", populationMethod, cLine, fLine, nLines, &
-               "Cluster population method: ","(a,a,1x,a)","threshold", ok, .true.)
-
-          call getDouble("criticalmass", criticalMass, mSol, cLine, fLine, nLines, &
-               "Critical mass for creating subsources (msol): ","(a,f6.1,a)", 600.d0, ok, .false.)
-
-          call getDouble("sfe", starFormationEfficiency, 1.d0, cLine, fLine, nLines, &
-               "Clustersink star formation efficiency: ","(a,f6.1,a)", 1.d0, ok, .false.)
-
-          call getLogical("readimf", readimf, cLine, fLine, nLines, &
-               "Read IMF from file: ", "(a,1l,1x,a)", .false., ok, .false.)
-
-          if (readIMF) then
-             call getString("imffile", imfFilename, cLine, fLine, nLines, &
-                  "Filename of IMF to read in: ","(a,a,1x,a)","imf.dat", ok, .true.)
-          else
-             call getDouble("popmass", populationMass, mSol, cLine, fLine, nLines, &
-                  "Total mass to generate in IMF list (msol): ","(a,e12.3,a)", 1.d5, ok, .false.)
-          endif
-
-          call getString("imf", imfType, cLine, fLine, nLines, &
-               "Initial mass function: ","(a,a,1x,a)","chabrier", ok, .false.)
-
-          call getDouble("imfmin", imfMin, 1.d0, cLine, fLine, nLines, &
-               "IMF minimum mass (msol): ","(a,f6.1,a)", 0.8d0, ok, .false.)
-
-          call getDouble("imfmax", imfMax, 1.d0, cLine, fLine, nLines, &
-               "IMF maximum mass (msol): ","(a,f6.1,a)", 120.d0, ok, .false.)
-       endif
-
     endif
 
     call getLogical("evolvesources", evolveSources, cLine, fLine, nLines, &
@@ -480,7 +478,8 @@ contains
     call getLogical("photoioneq", photoionEquilibrium, cLine, fLine, nLines, &
          "Perform a photoionization calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
-
+    call getLogical("timedep", timeDependentRT, cLine, fLine, nLines, &
+         "Time-dependent RT: ", "(a,1l,1x,a)", .false., ok, .false.)
 
     call getLogical("xray", xraycalc, cLine, fLine, nLines, &
          "Include x-ray treatment: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -655,6 +654,7 @@ contains
     if (radiativeEquilibrium) call readRadiativeEquilibriumParameters(cLine, fLine, nLines)
     if (photoionEquilibrium) call readPhotoionEquilibriumParameters(cLine, fLine, nLines)
     if (hydrodynamics) call readHydrodynamicsParameters(cLine, fLine, nLines)
+    if (timeDependentRT) call readTimeDependentRTParameters(cLine, fLine, nLines)
 
 ! now do we dump the output grid
 
@@ -727,12 +727,22 @@ contains
             "Find number of undersampled cells: ","(a,1l,1x,a)", .false., ok, .false.)
       call getLogical("calchabing", findHabing, cLine, fLine, nLines, &
             "Write Habing flux to file: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("calchabingcluster", findHabingCluster, cLine, fLine, nLines, &
+            "Write Habing flux to file for clustersinks: ","(a,1l,1x,a)", .false., ok, .false.)
       call getLogical("taufuv", calculateTauFUV, cLine, fLine, nLines, &
             "Calculate tau(FUV) between points: ","(a,1l,1x,a)", .false., ok, .false.)
       call getInteger("nionloops", nClusterIonLoops, cLine, fLine, nLines, &
             "Number of photoionization loops: ","(a,i8,a)", 0, ok, .false.)
       call getInteger("primary", primarySource, cLine, fLine, nLines, &
             "Primary source for G0/tau rays: ","(a,i8,a)", 1, ok, .false.)
+      call getLogical("globalavgpres", calculateAvgPressure, cLine, fLine, nLines, &
+            "Calculate volume average pressure: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("clusterprofile", clusterRadial, cLine, fLine, nLines, &
+            "Dump radial profile for cluster: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("radiustotals", radiusTotals, cLine, fLine, nLines, &
+            "Calculate total inside radii: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("hiiradius", findHIIRadius, cLine, fLine, nLines, &
+            "Calculate total inside radii: ","(a,1l,1x,a)", .false., ok, .false.)
     endif
 
     call getLogical("spectrum", calcSpectrum, cLine, fLine, nLines, &
@@ -750,6 +760,17 @@ contains
     if (dowriteRadialFile) then
        call getString("radialfilename", radialFilename, cLine, fLine, nLines, &
             "Radial filename: ","(a,a,1x,a)",  " ", ok, .true.)
+    endif
+
+    call getLogical("writescatsurface", scatteringSurface, cLine, fLine, nLines, &
+         "Write out a scattering surface file: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    if (scatteringSurface) then
+       call getReal("lambdatau", lambdatau, 1.0, cLine, fLine, nLines, &
+         "Lambda for tau (angstroms): ","(a,1PE10.3,1x,a)", 5500.0, ok, .true.)
+
+       call getString("scatteringfilename", scatteringSurfaceFilename, cLine, fLine, nLines, &
+            "Scattering surface filename: ","(a,a,1x,a)",  " ", ok, .true.)
     endif
 
     if (sourceHistory) then
@@ -1613,6 +1634,14 @@ contains
           call getLogical("sphonepercell", SphOnePerCell, cLine, fLine, nLines, &
             "Split to one particle per cell:", "(a,1l,1x,a)", .false., ok, .false.)
 
+          call getVector("sphveloffset", sphVelOffset, 1.d0, cLine, fLine, nLines, &
+               "SPH offset velocity (km/s): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .false.)
+
+          call getVector("sphposoffset", sphPosOffset, 1.d0, cLine, fLine, nLines, &
+               "SPH position offset (au): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .false.)
+
+
+          
           call getString("inputFileFormat", inputFileFormat, cLine, fLine, nLines, &
                "Input file format: ","(a,a,1x,a)","ascii", ok, .false.)
 
@@ -1792,6 +1821,25 @@ contains
     call getDouble("rhofloor", rhoFloor, 1.d0, cLine, fLine, nLines, &
          "Minimum density in advection:  ","(a,e12.3,1x,a)", 1.d-30, ok, .false.)
 
+    case("katie")
+
+       call getReal("rinner", rInner, real(sourceRadius(1)), cLine, fLine, nLines, &
+            "Inner Radius (stellar radii): ","(a,f7.3,a)", 12., ok, .true.)
+
+       call getReal("router", rOuter, real(autocm/1.d10), cLine, fLine, nLines, &
+            "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
+
+       call getReal("height", height, real(autocm/1.d10), cLine, fLine, nLines, &
+            "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+
+       call getReal("alphadisc", alphaDisc, 1., cLine, fLine, nLines, &
+            "Disc alpha parameter: ","(a,f5.3,a)", 2.25, ok, .true.)
+
+       call getReal("betadisc", betaDisc, 1., cLine, fLine, nLines, &
+            "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
+
+       call getReal("heightsplitfac", heightSplitFac, 1., cLine, fLine, nLines, &
+            "Splitting factor for scale height (local scale heights): ","(a,f5.2,a)", 0.2, ok, .false.)
 
     case("shakara")
 
@@ -1910,11 +1958,11 @@ contains
             "Envelope inner radius (AU): ","(a,f10.2,a)", 100.d0, ok, .false.)
 
        call getDouble("erouter", erOuter, autocm, cLine, fLine, nLines, &
-            "Envelope inner radius (AU): ","(a,f10.2,a)", 1.d5, ok, .false.)
+            "Envelope outer radius (AU): ","(a,f10.2,a)", 1.d5, ok, .false.)
 
 
        call getDouble("mdotenv", mDotEnv, msol * secstoyears, cLine, fLine, nLines, &
-            "Envelope accretion rate (AU): ","(a,f5.2,a)", 1.d-30, ok, .false.)
+            "Envelope accretion rate (msol/yr): ","(a,f5.2,a)", 1.d-30, ok, .false.)
 
 
        call getDouble("cavangle", cavAngle, degToRad, cLine, fLine, nLines, &
@@ -1923,19 +1971,15 @@ contains
        call getDouble("cavdens", cavDens, 1.d0, cLine, fLine, nLines, &
             "Cavity density (g/cc): ","(a,e12.2,a)", 1d-30, ok, .false.)
 
+       call getDouble("ambientdens", ambientDens, 1.d0, cLine, fLine, nLines, &
+            "Ambient density (g/cc): ","(a,e12.2,a)", 1d-30, ok, .false.)
+
+       call getDouble("rcavity", rCavity, autocm, cLine, fLine, nLines, &
+               "Cavity radius (AU): ","(a,1pe8.1,1x,a)", erOuter/autocm, ok, .false.)
 
        call getLogical("discwind", discWind, cLine, fLine, nLines, &
                "Include disc wind: : ","(a,1l,1x,a)", .false., ok, .false.)
 
-
-       call getDouble("erinner", erinner, autocm, cLine, fLine, nLines, &
-            "Inner radius of envelope (AU): ","(a,f5.1,a)", 1.d30, ok, .false.)
-
-       call getDouble("erouter", erouter, pctocm, cLine, fLine, nLines, &
-            "Outer radius of envelope (pc): ","(a,f5.1,a)", 180.d0, ok, .false.)
-
-       call getDouble("mdotenv", mdotenv, msol/(365.25d0*24.d0*3600.d0), cLine, fLine, nLines, &
-            "Accretion of envelope (solar/year): ","(a,f5.1,a)", 180.d0, ok, .false.)
 
 
        if (discwind) then
@@ -2012,9 +2056,230 @@ contains
 !       mCore = mCore * mSol
 !       mDisc = mDisc * mSol
 
-       rho0  = real(mDisc *(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * (height*1.e10)/real(100.d0*autocm)**betaDisc  &
-            * (rInner*1.e10)**alphaDisc * &
-            (((rOuter*1.e10)**(betaDisc-alphaDisc+2.)-(rInner*1.e10)**(betaDisc-alphaDisc+2.))) ))
+       rho0  = real(dble(mDisc)*(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * (dble(height)*1.d10)/dble(100.d0*autocm)**betaDisc  &
+            * (dble(rInner)*1.d10)**alphaDisc * &
+            (((dble(rOuter)*1.d10)**(betaDisc-alphaDisc+2.)-(dble(rInner)*1.d10)**(betaDisc-alphaDisc+2.))) ))
+       if (Writeoutput) write(*,*) "rho0: ",rho0
+
+    CASE("spiraldisc")
+
+       oneKappa = .true.
+       call getLogical("gasopacity", includeGasOpacity, cLine, fLine, nLines, &
+            "Include gas opacity: ","(a,1l,a)", .false., ok, .false.)
+
+       call getReal("mdot", mdot,  real(msol * secstoyears), cLine, fLine, nLines, &
+            "Mass accretion  rate (msol/yr): ","(a,1p,e12.5,a)", 0.0,  ok, .false.)
+
+       call getLogical("noscat", noScattering, cLine, fLine, nLines, &
+            "No scattering opacity in model: ","(a,1l,1x,a)", .false., ok, .false.)
+
+       call getLogical("smoothinneredge", smoothInnerEdge, cLine, fLine, nLines, &
+            "Smooth density drop at inner edge: ","(a,1l,1x,a)", .false., ok, .false.)
+
+       call getLogical("curvedinneredge", curvedInnerEdge, cLine, fLine, nLines, &
+            "Curved inner edge: ","(a,1l,1x,a)", .false., ok, .false.)
+
+       call getReal("radius1", rCore, real(rsol/1.e10), cLine, fLine, nLines, &
+            "Core radius (solar radii): ","(a,f7.3,a)", 10., ok, .true.)
+
+       call getReal("rinner", rInner, real(autocm/1.d10), cLine, fLine, nLines, &
+            "Inner Radius (AU): ","(a,f7.3,a)", 12., ok, .true.)
+
+       call getReal("rspiral", rSpiral, real(autocm/1.d10), cLine, fLine, nLines, &
+            "Spiral inner radius (AU): ","(a,f7.3,a)", 12., ok, .true.)
+
+       
+       call getReal("teff1", teff, 1., cLine, fLine, nLines, &
+            "Source effective temperature: ","(a,f7.1,a)", 12., ok, .true.)
+
+          call getReal("rsub", rSublimation, rcore, cLine, fLine, nLines, &
+               "Sublimation radius (rstar): ","(a,f5.1,a)", 0., ok, .false.)
+
+       call getLogical("setsubradius", setSubRadius, cLine, fLine, nLines, &
+            "Set sublimation radius empirically (Whitney et al 2004): ","(a,1l,1x,a)", .false., ok, .false.)
+
+       call getDouble("rhofloor", rhoFloor, 1.d0, cLine, fLine, nLines, &
+            "Minimum density:  ","(a,e12.3,1x,a)", 1.d-30, ok, .false.)
+
+       if (.not.setSubRadius) then
+          if (rSublimation == 0.) then
+             rSublimation = rInner
+             write(message, '(a,f7.1,a)') "Dust sublimation radius is ",rSublimation/rcore, " stellar radii"
+             call writeInfo(message,TRIVIAL)
+          endif
+       else
+          rsublimation = rCore * (1600./teff)**(-2.1) ! Robitaille 2006 equation 7
+          write(message, '(a,f7.1,a)') "Dust sublimation radius is ",rSublimation/rcore, " stellar radii"
+          call writeInfo(message,TRIVIAL)
+       endif
+
+
+
+       call getReal("router", rOuter, real(autocm/1.d10), cLine, fLine, nLines, &
+            "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
+
+       call getReal("rgapinner", rGapInner, real(autocm/1.d10), cLine, fLine, nLines, &
+            "Inner gap  radius (AU): ","(a,f5.1,a)", 1.e30, ok, .false.)
+
+       call getReal("rgapouter", rGapOuter, real(autocm/1.d10), cLine, fLine, nLines, &
+            "Outer gap  radius (AU): ","(a,f5.1,a)", 1.e30, ok, .false.)
+
+       call getReal("rhogap", rhoGap, 1., cLine, fLine, nLines, &
+            "Density in gap (g/cc): ","(a,f5.1,a)", 1.e-30, ok, .false.)
+
+       call getReal("deltacav", deltaCav, 1., cLine, fLine, nLines, &
+            "Scaling factor for inner disc: ","(a,1p,e9.3,a)", 1., ok, .false.)
+
+
+       call getDouble("phiref", phiRefine, 1.d0, cLine, fLine, nLines, &
+            "Range of azimuthal refinement (degrees): ","(a,f5.1,a)", 180.d0, ok, .false.)
+
+       call getDouble("dphiref", dphiRefine, 1.d0, cLine, fLine, nLines, &
+            "Level of azimuthal refinement (degrees): ","(a,f5.1,a)", 10.d0, ok, .false.)
+
+       call getDouble("minphi", minPhiResolution, degtorad, cLine, fLine, nLines, &
+            "Level of azimuthal refinement (degrees): ","(a,f5.1,a)", 1.d30, ok, .false.)
+
+
+       call getReal("height", height, real(autocm/1.d10), cLine, fLine, nLines, &
+            "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+
+       call getReal("mass1", mCore, real(msol), cLine, fLine, nLines, &
+            "Core mass (solar masses): ","(a,f8.4,a)", 0.5, ok, .true.)
+
+       call getReal("mdisc", mDisc, real(msol), cLine, fLine, nLines, &
+            "Disc mass (solar masses): ","(a,f8.4,a)", 1.e-4, ok, .true.)
+
+       call getReal("alphadisc", alphaDisc, 1., cLine, fLine, nLines, &
+            "Disc alpha parameter: ","(a,f5.3,a)", 2.25, ok, .true.)
+
+       call getReal("betadisc", betaDisc, 1., cLine, fLine, nLines, &
+            "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
+
+       call getLogical("hydro", solveVerticalHydro, cLine, fLine, nLines, &
+            "Solve vertical hydrostatical equilibrium: ","(a,1l,1x,a)", .false., ok, .false.)
+
+       call getLogical("opaquecore", opaqueCore, cLine, fLine, nLines, &
+            "Opaque Core: ","(a,1l,a)", .true., ok, .false.)
+
+       call getLogical("dospiral", dospiral, cLine, fLine, nLines, &
+               "Add a spiral density wave: : ","(a,1l,1x,a)", .false., ok, .false.)
+
+       call getLogical("planetdisc", planetDisc, cLine, fLine, nLines, &
+               "Add a disc around the planet: : ","(a,1l,1x,a)", .false., ok, .false.)
+
+       if (solveVerticalHydro) then
+          call getInteger("nhydro", nhydro,  cline, fLine, nLines, &
+               "Max number of hydro iterations : ","(a,i4,a)", 5, ok, .true.)
+       endif
+
+
+       call getReal("heightsplitfac", heightSplitFac, 1., cLine, fLine, nLines, &
+            "Splitting factor for scale height (local scale heights): ","(a,f5.2,a)", 0.2, ok, .false.)
+
+
+       call getDouble("erinner", erInner, autocm, cLine, fLine, nLines, &
+            "Envelope inner radius (AU): ","(a,f10.2,a)", 100.d0, ok, .false.)
+
+       call getDouble("erouter", erOuter, autocm, cLine, fLine, nLines, &
+            "Envelope outer radius (AU): ","(a,f10.2,a)", 1.d5, ok, .false.)
+
+
+       call getDouble("mdotenv", mDotEnv, msol * secstoyears, cLine, fLine, nLines, &
+            "Envelope accretion rate (msol/yr): ","(a,f5.2,a)", 1.d-30, ok, .false.)
+
+
+       call getDouble("cavangle", cavAngle, degToRad, cLine, fLine, nLines, &
+            "Cavity angle (deg): ","(a,f5.2,a)", 40.d0, ok, .false.)
+
+       call getDouble("cavdens", cavDens, 1.d0, cLine, fLine, nLines, &
+            "Cavity density (g/cc): ","(a,e12.2,a)", 1d-30, ok, .false.)
+
+
+       call getLogical("discwind", discWind, cLine, fLine, nLines, &
+               "Include disc wind: : ","(a,1l,1x,a)", .false., ok, .false.)
+
+
+
+
+       if (discwind) then
+          ! --- parameters for ttauri wind
+          call getDouble("DW_Rmin", DW_Rmin, autocm/1.d10, cLine, fLine, nLines, &
+               "Disc wind:: Inner radius of the wind [magnetospheric radii]: ", &
+               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.)
+          call getDouble("DW_Rmax", DW_rMax, autocm/1.d10, cLine, fLine, nLines, &
+               "Disc wind:: Outer radius of the disc [magnetospheric radii]: ", &
+               "(a,1p,e9.3,1x,a)", 700.0d0, ok, .true.)
+          call getDouble("DW_d", DW_d, DW_rMin, cLine, fLine, nLines, &
+               "Disc wind:: Wind source displacement [inner wind radii]: ", &
+               "(a,1p,e9.3,1x,a)", 70.0d0, ok, .true.)
+          call getDouble("DW_Tmax", DW_Tmax,  1.d0, cLine, fLine, nLines, &
+               "Disc wind:: Temperature of disc at inner radius [K]: ", &
+               "(a,1p,e9.3,1x,a)", 2000.0d0, ok, .true.)
+          call getDouble("DW_gamma", DW_gamma,  1.d0, cLine, fLine, nLines, &
+               "Disc wind:: Exponent in the disc temperature power law [-]: ", &
+               "(a,f8.3,1x,a)", -0.5d0, ok, .true.)
+          call getDouble("DW_Mdot", DW_Mdot,  1.d0, cLine, fLine, nLines, &
+               "Disc wind:: Total mass-loss rate from disc [Msun/yr]: ", &
+               "(a,1p,e9.3,1x,a)", 1.0d-8, ok, .true.)
+          call getDouble("DW_alpha", DW_alpha,  1.d0, cLine, fLine, nLines, &
+               "Disc wind:: Exponent in the mass-loss rate per unit area [-]: ", &
+               "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.)
+          call getDouble("DW_beta", DW_beta,  1.d0, cLine, fLine, nLines, &
+               "Disc wind:: Exponent in the modefied beta-velocity law [-]: ", &
+               "(a,1p,e9.3,1x,a)", 0.5d0, ok, .true.)
+          call getDouble("DW_Rs", DW_Rs,  DW_rMin, cLine, fLine, nLines, &
+               "Disc wind:: Effective acceleration length [inner wind radii]: ", &
+               "(a,1p,e9.3,1x,a)", 50.0d0, ok, .true.)
+          call getDouble("DW_f", DW_f,  1.d0, cLine, fLine, nLines, &
+               "Disc wind:: Scaling on the terminal velocity [-]: ", &
+               "(a,1p,e9.3,1x,a)", 2.0d0, ok, .true.)
+          call getDouble("DW_Twind", DW_Twind,  1.d0, cLine, fLine, nLines, &
+               "Disc wind:: Isothermal temperature of disc wind [K]: ", &
+               "(a,1p,e9.3,1x,a)", 5000.0d0, ok, .true.)
+       endif
+
+
+
+       call getInteger("ndusttype", nDustType, cLine, fLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)
+
+       call getLogical("dustsettling", dustSettling, cLine, fLine, nLines, &
+               "Dust settling model: : ","(a,1l,1x,a)", .false., ok, .false.)
+
+
+       do i = 1, nDustType
+
+
+          write(heightLabel, '(a,i1.1)') "fracheight",i
+          call getDouble(heightLabel, fracdustHeight(i), 1.d0, cLine, fLine, nLines, &
+               "Dust scale height as fraction of gas scale height: ","(a,f10.5,1x,a)", 1.d0, ok, .false.)
+
+
+          write(heightLabel, '(a,i1.1)') "dustheight",i
+          call getDouble(heightLabel, dustHeight(i), autocm/1.d10, cLine, fLine, nLines, &
+               "Dust scale height at 100 AU (AU): ","(a,f10.5,1x,a)", dble(height)*1.d10/autocm, ok, .false.)
+
+          write(betaLabel, '(a,i1.1)') "dustbeta",i
+          call getDouble(betaLabel, dustBeta(i), 1.d0, cLine, fLine, nLines, &
+               "Dust beta law (AU): ","(a,f10.5,1x,a)", dble(betaDisc), ok, .false.)
+
+       enddo
+
+!       rCore = rCore * rSol / 1.e10
+!       rinner = (rinner * (rCore * 1e10)) / autocm
+!
+!       rho0 = densityfrommass(mdisc, height, rinner, router, 100.0, alphadisc, betadisc)
+!
+!       rInner = rInner * autocm / 1.e10
+!       rOuter = rOuter * autoCm / 1.e10
+!       height = height * autoCm / 1.e10
+!       mCore = mCore * mSol
+!       mDisc = mDisc * mSol
+
+       rho0  = real(dble(mDisc)*(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * (dble(height)*1.d10)/dble(100.d0*autocm)**betaDisc  &
+            * (dble(rInner)*1.d10)**alphaDisc * &
+            (((dble(rOuter)*1.d10)**(betaDisc-alphaDisc+2.)-(dble(rInner)*1.d10)**(betaDisc-alphaDisc+2.))) ))
+       if (Writeoutput) write(*,*) "rho0: ",rho0
 
     case("HD169142")
 
@@ -2459,6 +2724,12 @@ contains
 
 ! -- Define the geometry parameters specific to each disc module:
        do i = 1, nDiscModule
+
+          write(alphaDiscLabel, '(a,i1.1)') "tiltangle",i
+          call getDouble(alphaDiscLabel, tiltAngleMod(i), degtoRad, cLine, fLine, nLines, &
+               "Tilt angle for disc module: ","(a,f8.3,a)", 0.d0, ok, .false.)
+!         tilt angle for each module of the disc
+
           write(alphaDiscLabel, '(a,i1.1)') "alphamod",i
           call getDouble(alphaDiscLabel, alphaMod(i), 1.d0, cLine, fLine, nLines, &
                "Alpha parameter for disc module: ","(a,f8.3,a)", 2.25d0, ok, .true.)
@@ -2677,6 +2948,11 @@ contains
     if (amr1d.and.(.not.checkPresent("amrgridcentrex", cline, nlines))) &
          amrGridCentrex = amrGridSize/2.d0
 
+    if (spherical) then
+       amrGridCentreX = amrgridsize/2.
+    endif
+
+    
     call getDouble("limitscalar", limitScalar, 1.d0, cLine, fLine, nLines, &
          "Scalar limit for subcell division: ","(a,1p,e9.3,1x,a)", 1000._db, ok, .false.)
 
@@ -2750,13 +3026,33 @@ contains
 
 #ifdef USECFITSIO
     subroutine readFitsGridParameters
-      use gridFromFitsFile, only: setGridFromFitsParameters
+      use gridFromFitsFile, only: setGridFromFitsParameters, setGridFromFitsParametersPionAMR
       character(len=80) :: filename
+      character(len=20) :: fileLabel
+      integer :: i
 
-      call getString("fitsgridfile", filename, cLine, fLine, nLines, &
-           "FITS file for making grid: ","(a,a,a)","default",ok, .true.)
+      call getLogical("pionAMR", pionAMR, cLine, fLine, nLines, &
+           "Pion grid is non-uniform?: : ","(a,1l,1x,a)", .false., ok, .false.)
 
-      call setGridFromFitsParameters(filename,amr2d,amr3d)
+      if(pionAMR) then
+         call getInteger("nFitsLevels", nFitsLevels, cLine, fLine, nLines,"Number of fits levels: ","(a,i12,a)",1,ok,.false.)
+
+         do i = 0, nFitsLevels-1
+            write(fileLabel, '(a,i1.1)') "fitsgridfile",i
+
+            call getString(fileLabel, pionFitsAMRfile(i+1), cLine, fLine, nLines, &
+                 "FITS file for making grid: ","(a,a,a)","default",ok, .true.)
+
+         enddo
+         call setGridFromFitsParametersPionAMR(nFitsLevels, pionFitsAMRfile,amr2d,amr3d, pionAMR,maxdepthamr)
+      else
+
+         call getString("fitsgridfile", filename, cLine, fLine, nLines, &
+              "FITS file for making grid: ","(a,a,a)","default",ok, .true.)
+         call setGridFromFitsParameters(filename,amr2d,amr3d, pionAMR)
+      endif
+
+
 
     end subroutine readFitsGridParameters
 #endif
@@ -2773,6 +3069,93 @@ contains
 
 
   end subroutine readGridInitParameters
+
+  subroutine readTimeDependentRTParameters(cLine, fLine, nLines)
+    use sed_mod, only:  setSedParameters,  SEDlamMin, SEDlamMax, SEDnumLam
+    character(len=lencLine) :: cLine(:)
+    logical :: fLine(:)
+    integer :: nLines
+    logical :: ok
+
+    call writeBanner("Time dependendent RT",".",TRIVIAL)
+
+    call getDouble("timestart", timeStart, yearsToSecs, cLine, fLine, nLines, &
+         "Start time of calculation (years):  ","(a,e12.3,1x,a)", 0.d0, ok, .false.)
+
+    call getDouble("timeend", timeEnd, yearsToSecs, cLine, fLine, nLines, &
+         "End time of calculation (years):  ","(a,e12.3,1x,a)", 1500.d0, ok, .false.)
+
+    call getDouble("varystart", varystart, yearsToSecs, cLine, fLine, nLines, &
+         "Start time of source variability (years):  ","(a,e12.3,1x,a)", 1500.d0, ok, .true.)
+
+    call getDouble("varyend", varyend, yearsToSecs, cLine, fLine, nLines, &
+         "End time of source variability (years):  ","(a,e12.3,1x,a)", 1.d30, ok, .false.)
+
+
+    call getDouble("lumfactor", lumFactor, 1.d0, cLine, fLine, nLines, &
+         "Increase in luminosity as a factor of standard luminosity:  ","(a,e12.3,1x,a)", 1500.d0, ok, .true.)
+
+    call getDouble("lumdecaytime", lumDecayTime, yearsToSecs, cLine, fLine, nLines, &
+         "Luminosity decay timescale (e-folding time in years):  ","(a,e12.3,1x,a)", 1500.d0, ok, .true.)
+
+
+    call getBigInteger("nphotons", nPhotons, cLine, fLine, nLines,"Number of photons per timestep: ",&
+         "(a,i12,a)",1_bigint,ok,.false.)
+
+    call getLogical("quicksublimate", quickSublimate, cLine, fLine, nLines, &
+         "Quick and dirty dust sublimation: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getInteger("ntime", nTime, cLine, fLine, nLines,"Number of timesteps: ","(a,i12,a)",1,ok,.false.)
+
+    call getReal("inclination", thisinclination, real(degtorad), cLine, fLine, nLines, &
+         "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
+
+    call getString("inputfile", gridInputFilename, cLine, fLine, nLines, &
+         "Grid input filename: ","(a,a,1x,a)","none", ok, .true.)
+
+    call getReal("distance", gridDistance, real(pctocm), cLine, fLine, nLines, &
+         "Grid distance (pc): ","(a,f6.1,1x,a)", 100., ok, .true.)
+
+    call getReal("sedlammin", SEDlamMin, 1.0e4, cLine, fLine, nLines, &
+         "Minimum wavelength output to SED (microns)","(a,1PE10.3,1x,a)", 0.1, ok, .false.)
+
+    call getReal("sedlammax", SEDlamMax, 1.0e4, cLine, fLine, nLines, &
+         "Maximum wavelength output to SED (microns)","(a,1PE10.3,1x,a)", 2000.0, ok, .false.)
+
+
+    call getInteger("sednumlam", SEDnumLam, cLine, fLine, nLines, &
+         "Number of SED points: ", "(a,i3,1x,a)", 50, ok, .false.)
+
+    call getInteger("nsedradius", nSedRadius, cLine, fLine, nLines, &
+         "Number of SED apertures: ", "(a,i3,1x,a)", 1, ok, .false.)
+
+    call getDoubleArray("sedradius", sedRadius(1:nSedRadius), autocm/1.d10, cLine, fLine, nLines, &
+         "Radius of aperture for SED (au): ", 1.d30, ok, .false.)
+
+    
+    call getInteger("npix", npix, cLine, fLine, nLines, &
+         "Number of npixels across image: ", "(a,i3,1x,a)", 50, ok, .true.)
+
+      call getLogical("timedepimage", timedepImage, cLine, fLine, nLines, &
+           "Calculate time dependent images: ","(a,1l,1x,a)", .false., ok, .false.)
+
+      if (timedepImage) then
+         call getDouble("imagesize", imageSize, autocm/1.d10, cLine, fLine, nLines, &
+              "Image size (au):  ","(a,f5.1,1x,a)", 1500.d0, ok, .true.)
+
+         call getDouble("lamstart", lamStart, 1.d4, cLine, fLine, nLines, &
+              "Start wavelength for image (microns):  ","(a,f5.1,1x,a)", 1500.d0, ok, .true.)
+
+         call getDouble("lamend", lamEnd, 1.d4, cLine, fLine, nLines, &
+              "End wavelength (microns):  ","(a,f5.1,1x,a)", 1500.d0, ok, .true.)
+
+         call getDouble("imagesize", imageSize, autocm/1.d10, cLine, fLine, nLines, &
+              "Image size (au):  ","(a,f5.1,1x,a)", 1500.d0, ok, .true.)
+      endif
+
+  end subroutine readTimeDependentRTParameters
+
+
 
   subroutine readDustPhysicsParameters(cLine, fLine, nLines)
     character(len=lencLine) :: cLine(:)
@@ -3128,8 +3511,10 @@ contains
                 sourceRadius(i) = sqrt(sourceLum(i) / (fourPi * sourceTeff(i)**4 * stefanBoltz))/1.d10
                 if (writeoutput) write(*,'(a,f7.1)') "Source radius (rsol): ",sourceRadius(i)*1.d10/rsol
              else
-                call writeFatal("Source underspecified - need two of radius, teff and lum")
-                call torus_stop
+                if (.not.nbodyPhysics) then
+                   call writeFatal("Source underspecified - need two of radius, teff and lum")
+                   call torus_stop
+                endif
              endif
 
              write(keyword, '(a,i1)') "mass",i
@@ -3238,7 +3623,7 @@ contains
 !            "Add new molecular data to non-molecular grid: ","(a,l,1x,a)",.false., ok, .false.)
        call getString("moleculefile", moleculefile, cLine, fLine, nLines, &
             "Input molecule filename: ","(a,a,1x,a)","none", ok, .true.)
-       call getReal("distance", gridDistance, real(pctocm), cLine, fLine, nLines, &
+       call getReal("distance", gridDistance, 1., cLine, fLine, nLines, &
             "Grid distance (pc): ","(a,f8.1,1x,a)", 1., ok, .true.)
        call getInteger("initnray", initnray, cLine, fLine, nLines, &
                "Number of fixed rays for stage 1: ","(a,i4,a)", 1024, ok, .false.)
@@ -3493,7 +3878,7 @@ contains
     call getReal("tminglobal", TMinGlobal, 1., cLine, fLine, nLines, &
          "Minimum Temperature (K): ","(a,f4.1,1x,a)", 10., ok, .false.)
     call getReal("tmaxglobal", TMaxGlobal, 1., cLine, fLine, nLines, &
-         "Maximum Temperature (K): ","(a,f4.1,1x,a)", 2.e4, ok, .false.)
+         "Maximum Temperature (K): ","(a,f7.1,1x,a)", 2.e4, ok, .false.)
 
     if(splitovermpi) then
        call getLogical("optimizeStack", optimizeStack, cLine, fLine, nLines, &
@@ -3692,6 +4077,10 @@ contains
 
     call getReal("edenstol", eDensTol, 1., cLine, fLine, nLines, &
          "Fractional change in energy density for convergence: ","(a,f7.1,a)",0.001, ok, .false.) ! used for gauss-seidel sweep also
+
+
+    call getLogical("storescattered",storeScattered, cLine, fLine, nLines, &
+         "Store scattered light: ", "(a,1l,1x,a)", .false., ok, .false.)
 
     call getReal("scatteredlightwavelength", scatteredLightWavelength, 1., cLine, fLine, nLines, &
          "Wavelength of scattered light","(a,f7.1,a)",1.e4, ok, .false.)
@@ -3928,7 +4317,6 @@ contains
          "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
     call getReal("distance", gridDistance, real(pcToCm), cLine, fLine, nLines, &
          "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)
-
     call getDouble("limbaB", sourcelimbaB, 1.d0, cLine, fLine, nLines, &
          "Limb darkening a coefficient (B): ","(a,e9.3,a)",0.d0, ok, .false.)
     call getDouble("limbbB", sourcelimbbB, 1.d0, cLine, fLine, nLines, &
@@ -3959,7 +4347,7 @@ contains
          "Output datacube  filename: ","(a,a,1x,a)","none", ok, .true.)
     call getReal("cubeaspectratio", cubeAspectRatio, 1.0, cLine, fLine, nLines, &
          "Data cube spatial aspect ratio: ","(a,f4.1,1x,a)", 1.0, ok, .false.)
-    call getReal("distance", gridDistance, real(pcToCm), cLine, fLine, nLines, &
+    call getReal("distance", gridDistance, 1., cLine, fLine, nLines, &
          "Grid distance (pc): ","(a,f9.1,1x,a)", 100., ok, .false.)
     call getInteger("npixels", npixels, cLine, fLine, nLines, &
          "Number of pixels per row: ","(a,1x,i4,a)", 50, ok, .true.)
@@ -4487,6 +4875,10 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
        call getString("imagefile", imageFilename, cLine, fLine, nLines, &
             "Output image  filename: ","(a,a,1x,a)","none", ok, .true.)
 
+       call getVector("viewvec", viewVec, 1.d0, cLine, fLine, nLines, &
+                  "View vector for image: ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .false.)
+
+       
        if (photoionPhysics) then
           call getString("imagetype", outputimageType, cLine, fLine, nLines, &
                "Type of output image: ","(a,a,1x,a)","none", ok, .true.)
@@ -4505,8 +4897,13 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
           call writeInfo("Type of output image: Stokes image (default for atomic physics)")
        endif
 
-       call setImageParams(1, lambdaImage, outputimageType, imageFilename, npixels, axisUnits, globalfluxUnits, &
-            imageSize, aspectRatio, inclination, positionAngle, offsetx, offsety, gridDistance)
+       if (modulus(viewVec) < 0.5d0) then
+          call setImageParams(1, LambdaImage, outputimageType,imageFilename, npixels, axisUnits, globalfluxUnits, &
+               ImageSize, aspectRatio, inclination,  positionangle, Offsetx, Offsety, gridDistance)
+       else
+          call setImageParams(1, LambdaImage, outputimageType,imageFilename, npixels, axisUnits, globalfluxUnits, &
+               ImageSize, aspectRatio, inclination,  positionangle, Offsetx, Offsety, gridDistance, viewvec=viewvec)
+       endif
     else
        do i = 1, nImage
 

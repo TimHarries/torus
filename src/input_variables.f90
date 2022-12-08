@@ -86,7 +86,8 @@
   ! cluster analysis tools
   logical :: doClusterAnalysis
   logical :: plotAvgTemp, calculateGlobalAvgTemp, writeLums, findNUndersampled, plotAvgTdust, calculateGlobalAvgTdust
-  logical :: calculateEmissionMeasure, calculateLymanFlux, findHabing, calculateTauFUV
+  logical :: calculateEmissionMeasure, calculateLymanFlux, findHabing, calculateTauFUV, calculateAvgPressure, clusterRadial
+  logical :: radiusTotals, findHabingCluster, findHIIradius
   integer :: nClusterIonLoops, primarySource
   real(double) :: edgeRadius
 
@@ -116,7 +117,12 @@
   logical :: dumpBisbas           !Dump the grid for use in the Bisbas+ 3D-PDR code
   logical :: singleMegaPhoto             !Do an extensive photoionization calculation
   character(len=80) :: gridInputFilename, gridOutputFilename ! File names for reading/writing AMR grid
+  !THaworth pion AMR                                                                                                            
+  logical :: pionAMR 
+  integer :: nFitsLevels
+  character(len=80) :: pionFitsAMRfile(10)
 
+  
 !----------------------------------
 ! Physical units of the calculation
 !----------------------------------
@@ -367,6 +373,19 @@
   real(double) :: mStar
   real(double) :: metallicity
 
+
+!-----------------------------
+! time dependent RT          |
+!-----------------------------
+
+  real(double) :: varystart, varyend
+  real(double) :: timeStart, timeEnd
+  integer :: nTime
+  real(double) :: lumFactor
+  real(double) :: lumDecayTime
+  
+
+
 !----------------------------
 ! Lucy radiative equilibrium
 !----------------------------
@@ -411,6 +430,7 @@
   logical :: moveSources
   logical :: evolveSources
   logical :: clusterSinks
+  logical :: splitClusters
   logical :: hotspot
   logical :: pulsatingStar
   integer :: nModes
@@ -519,6 +539,8 @@
   character(len=30), protected :: cutType    !direction of cut (horizontal or vertical)
   integer, protected :: sliceIndex !pixel through which the cut runs (x or y depends on cutType)
 
+  
+
 !--------------------------------
 ! Image and data cube parameters
 !--------------------------------
@@ -569,7 +591,7 @@
   ! whitney stuff
   real(double) :: erInner, erOuter, mDotEnv, cavAngle, cavDens, rhoAmbient
   real(double) :: drInner, drOuter
-  real(double) :: rCavity, nDensity
+  real(double) :: rCavity, nDensity,ambientDens
   real :: rStellar, mEnv
 
   ! variables for clumped wind models
@@ -598,7 +620,7 @@
   real :: mdot1, mdot2
   real :: Mbol
   real :: radius, kfac, xfac
-  real :: rCore, rInner
+  real :: rCore, rInner, rSpiral
   real :: rTorus, rOuter, rSublimation
   real :: rho
   real(double) :: rho0
@@ -905,6 +927,7 @@
   ! "modular" geometry parameters: -------------------------------------------------------
   integer, parameter :: maxDiscMods = 9
   integer :: nDiscModule
+  real(double) :: tiltAngleMod(maxDiscMods)  ! tiltAngle for disc module
   real(double) :: alphaMod(maxDiscMods)  ! alpha for disc module
   real(double) :: betaMod(maxDiscMods)   ! beta for disc module
   real(double) :: rInnerMod(maxDiscMods) ! inner radius for disc module (au)
@@ -1008,7 +1031,7 @@
   real(double), protected :: sphdensitycut
   real(double) :: rCut
   logical :: doDiscSplit
-
+  type(VECTOR) :: sphVelOffset, sphPosOffset
 !------------------
 ! Other parameters
 !------------------
@@ -1025,6 +1048,8 @@
 
   type(VECTOR) :: bondiCentre
 
+  logical :: scatteringSurface
+  character(len=120) :: scatteringSurfaceFilename
 
 ! Parameters which control Torus behaviour
   logical           :: debug
@@ -1044,6 +1069,9 @@
   logical :: radPressureTest ! perform on the spot absorption for radiation pressure tests
   logical :: UV_vector
   logical :: excludeScatteredLight ! don't include dust-scattered light in images
+  integer :: nSedRadius
+  real(double) :: sedRadius(100)
+  logical :: timedepImage
 
 ! Other physical parameters
   real    :: vturb        ! Subsonic turbulent velocity
@@ -1069,6 +1097,9 @@
   real, allocatable :: lamLineArray(:)
   real    :: massEnvelope
   integer(bigInt) :: inputSeed
+
+  integer :: nPix
+  real(double) :: imageSize, lamStart, lamEnd
 
 !Cass change
   integer :: irrchoice ! Choice of irradiation

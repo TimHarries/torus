@@ -47,6 +47,7 @@ contains
   subroutine setUpBibcodesOnParametersFile()
     use inputs_mod
 
+    call addBibcode("2019A&C....27...63H", "TORUS code paper")
     if (molecularPhysics) call addBibcode("2010MNRAS.407..986R", "Molecular line transport")
     if (photoionPhysics) call addBibcode("2012MNRAS.420..562H", "Photoionisation loop")
     if (radiativeEquilibrium) then

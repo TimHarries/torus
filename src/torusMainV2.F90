@@ -19,11 +19,13 @@
 ! RK : 12/02/03 Parallelized major loops in lucyStateEquilibriumAMR, stateqAMR, torusMain.
 ! RK : 07/07/05 Added the observed flux solver in oberver's frame. 
 ! TJH: 10/09/08 pgplot calls removed...
+!
 program torus
   use torus_version_mod
   use inputs_mod         ! variables filled by inputs subroutine
   use citations_mod
   use dimensionality_mod
+!  use intensity_storage_mod
   use constants_mod
   use messages_mod
   use mpi_global_mod
@@ -55,6 +57,7 @@ program torus
   use sph_data_class, only: deallocate_sph
 #ifdef MPI
   use mpi
+  use mpi_fitter_mod
 #endif
 
 
@@ -71,7 +74,7 @@ program torus
   ! For MPI implementations =====================================================
   integer ::   ierr           ! error flag
 #endif
-!#ifdef _OPENMP
+  !#ifdef _OPENMP
 !  call omp_set_dynamic(.false.)
 !#endif
 
@@ -89,6 +92,7 @@ program torus
   outputwarnings = .true.
   outputinfo     = .true.
   myRankIsZero   = .true.
+  loadBalancingThreadGlobal = .false.
 
 !  call createBox(box,64)
 
@@ -111,6 +115,8 @@ program torus
     stop
   endif
 
+
+
   call initBibCode()
   call setVersion("V4.0")
   grid%version = torusVersion
@@ -124,10 +130,19 @@ program torus
   call inputs()
 
   call setUpBibcodesOnParametersFile()
+!  if (storeScattered) call initHealpix(1)
 
 #ifdef MPI
   ! Set up amrCOMMUNICATOR and global mpi groups
   call setupAMRCOMMUNICATOR
+  write(*,*) "nthreadsglobal ",nThreadsGlobal
+!  call setupFitterCommunicators
+!  do i = 0, nThreadsGlobal-1
+!     if (myrankGlobal == i) then
+!        write(*,*) "rank ",myrankGlobal, " fitter ",myFitterSetGlobal
+!     endif
+!  enddo
+     
 #endif
 
 ! Report build options 
@@ -230,7 +245,6 @@ program torus
      call freeGrid(grid)
      call freeGlobalSourceArray()
   enddo
-!  666 continue
 
 #ifdef MPI
   call torus_mpi_barrier

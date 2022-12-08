@@ -33,10 +33,10 @@ contains
     use inputs_mod, only : amrGridSize, doSmoothGrid, ttauriMagnetosphere, discWind
     use inputs_mod, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp, ttauriStellarWind, dipoleOffset
     use inputs_mod, only : limitScalar, limitScalar2, smoothFactor, onekappa
-    use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, mDisc
+    use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, mDisc, nDustType
     use inputs_mod, only : rCore, rInner, rOuter, gridDistance, massEnvelope, readTurb, virialAlpha, restartLucy
     use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, logspacegrid, nmag, dospiral, sphereMass, &
-         sphereRadius, sourceRadius
+         sphereRadius, sourceRadius, pionAMR
     use disc_class, only:  new
 #ifdef ATOMIC
     use cmf_mod, only : checkVelocityInterp
@@ -68,7 +68,7 @@ contains
 #endif
     use gridFromFlash
     use ramses_mod, only: rd_gas
-
+    use dust_mod, only : sumDustMass
     implicit none
 
     ! For romanova geometry case
@@ -92,7 +92,9 @@ contains
     real, pointer :: zVel(:,:,:) => null()
     type(vector), pointer :: posArray(:) => null(), velArray(:) => null()
     real(double), pointer :: rhoArray(:) => null()
-    integer :: npoints,fp
+    integer :: npoints,fp,j
+    real(double),allocatable :: dustMass(:)
+    real(double) :: gasMass
 #ifdef SPH
     type(cluster) :: young_cluster
     real(double)  ::  removedMass
@@ -219,6 +221,26 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
           call writeVtkFile(grid, "tissue.vtk",  valueTypeString=(/"tissue"/))
 
+       case("katie")
+          call writeInfo("Filling katie geometry",TRIVIAL)
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
+          !          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
+          gridconverged = .false.
+          j = 0
+          do while(.not.gridconverged)
+             call fillgridKatie(grid, gridconverged, dosplit=.true.)
+             j = j + 1
+             if (mod(j,10) == 0) then
+                call fillgridKatie(grid, gridconverged, dosplit=.false.)
+                call writeVtkFile(grid, "rho.vtk",  valueTypeString=(/"rho     ","velocity"/))
+             endif
+             write(*,*) j,gridConverged
+
+          enddo
+          call fillgridKatie(grid, gridconverged, dosplit=.false.)
+          call fillVelocityCornersFromCentresCylindrical(grid, grid%octreeRoot)
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+
        case("mgascii")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
@@ -278,9 +300,28 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
 
 #ifdef USECFITSIO
        case("fitsfile")
-          call read_fits_file_for_grid()
+          if(pionAMR) then
+             call read_fits_file_for_grid_pionAMR()
+          else
+             call read_fits_file_for_grid()
+          endif
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
-          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
+
+          nTimes = maxDepthAMR - minDepthAMR + 2
+          do counter = 1, nTimes
+             call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .true.)
+             if (doSmoothGrid) then
+                call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
+                do
+                   gridConverged = .true.
+                   call myScaleSmooth(smoothfactor, grid, &
+                        gridConverged,  inheritProps = .false., &
+                        interpProps = .false.)
+                   if (gridConverged) exit
+                end do
+                call writeInfo("...grid smoothing complete", TRIVIAL)
+             endif
+          enddo
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 #endif
 
@@ -589,7 +630,18 @@ doGridshuffle: if(gridShuffle) then
              if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
              call scaleDensityAMR(grid%octreeRoot, dble(scaleFac))
 #endif
-
+          case("spiraldisc")
+             totalMass = 0.d0
+             call findTotalMass(grid%octreeRoot, totalMass)
+             write(*,*) "total mass ",totalmass
+             scaleFac = real(mdisc / totalMass)
+             if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
+             call scaleDensityAMR(grid%octreeRoot, dble(scaleFac))
+             allocate(dustmass(1:nDustType))
+             dustMass = 0.; gasMass = 0.
+             call sumDustMass(grid%octreeRoot, gasMass, dustMass)
+             write(*,*) "Dust mass is ",dustmass/mearth, " earth masses"
+             
           case("HD169142")
              totalMass = 0.d0
              call findTotalMass(grid%octreeRoot, totalMass)
@@ -1652,6 +1704,9 @@ end subroutine assignMgAsciiValues
     case ("HD169142")
        call testAMRmass(grid, dble(mdisc))
 
+    case ("modular")
+       call testAMRmass(grid, dble(mdisc))
+
 
 #ifdef SPH
     case("molcluster", "theGalaxy", "cluster","sphfile", "dale")
@@ -1712,6 +1767,7 @@ end subroutine assignMgAsciiValues
 #endif
     case DEFAULT
     end select
+    call checkAMRgrid(grid,checkNoctals=.true.)
   end subroutine postSetupChecks
 
 
@@ -3303,6 +3359,163 @@ recursive subroutine fillVelocityCornersFromCentresCylindrical(grid, thisOctal)
     enddo
 end subroutine fillVelocityCornersFromCentresCylindrical
 
+  subroutine fillGridKatie(grid, converged, doSplit)
+    use inputs_mod, only : rInner, rOuter, alphaDisc, betaDisc, height, maxDepthAMR, &
+         heightsplitfac
+    use inputs_mod, only : sourceMass
+    use utils_mod, only : stripSimilarValues
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    type(VECTOR) :: rVec, lVec, zAxis, rVecRot, vdir, lArray(1000)
+    integer :: i,j,k
+    real(double) :: r, phi, z, h, rho, r0, r1, r2, a, ang, vel, mass, r_au
+    integer :: nr, nphi, nz, m, nrArray
+    real(double) :: thisFac
+    logical :: converged, doSplit
+    real(double) :: rArray(1000), facArray(1000)
+    
+    nrArray = 1000
+    
+    open(20,file="radial.dat",form="formatted",status="old")
+    do i = 1, nrArray
+       read(20,*) rArray(i),facArray(i), lArray(i)%x, lArray(i)%y, lArray(i)%z
+    enddo
+    close(20)
 
+    call zeroadotLocal(grid%octreeRoot)
+    call zeroDensity(grid%octreeRoot)
+
+    converged = .true.
+
+    mass = sourceMass(1)
+    zAxis = VECTOR(0.d0, 0.d0, 1.d0)
+
+    r0 = 75.*autocm/1.d10
+    r1 = 45.*autocm/1.d10
+    r2 = 105.*autocm/1.d10
+    a = sin(30.*degtorad)
+
+    nr = 4000
+    nz = 100
+    nphi = 360
+
+
+
+
+!$OMP PARALLEL DEFAULT(NONE) &
+!$OMP PRIVATE(i,h,j,phi,k,z,rho,rvec,lvec,r,ang,rVecRot,thisOctal,subcell,vel) &
+!$OMP PRIVATE(vDir,m, thisFac) &
+!$OMP SHARED(rInner, rOuter, nr, nphi,nz,height,r1,r2,r0,alphaDisc,betaDisc,a) &
+!$OMP SHARED(zAxis,grid, mass, heightSplitFac, maxDepthAMR, converged) &
+!$OMP SHARED(nrArray, rArray, lArray, facArray,r_au)
+    
+    
+!$OMP DO SCHEDULE(DYNAMIC)
+    do i = 1, nr
+       thisOctal => grid%octreeRoot
+       r = log10(rInner) + (log10(rOuter) - log10(rInner)) * dble(i-1)/dble(nr-1)
+       r = 10.d0**r
+       h = height*(r/(100.d0*autocm/1.d10))**betaDisc
+       do j = 1, nphi
+          phi = twoPi*dble(j-1)/dble(nphi)+1.e-3
+          do k = 1, nz
+             z = h*(-5.d0+10.d0*dble(k-1)/(dble(nz-1)))
+             rho = 1.e-10*(r/rInner)**(-alphaDisc) * exp(-0.5d0*(z/h)**2)
+             rVec = VECTOR(r*cos(phi),r*sin(phi),z)
+
+             r_au = r*1.d10/autocm
+             call locate(rArray,nrArray,r_au,m)
+             thisFac = facArray(m)
+             lVec%x = lArray(m)%x
+             lVec%y = lArray(m)%y
+             lVec%z = lArray(m)%z
+
+             ang = acos(lVec.dot.zAxis)
+
+             rVecRot = rotateY(rVec,ang)
+             if (inOctal(grid%octreeRoot, rVecRot)) then
+                call findSubcellLocal(rVecRot, thisOctal,subcell)
+                vel = sqrt(bigG*mass/(r*1.d10))/cSpeed
+                vDir = (VECTOR(cos(phi),sin(phi),0.d0)).cross.zAxis
+                call normalize(vDir)
+                thisOctal%velocity(subcell) = rotateY(vel*vDir,ang)
+                thisOctal%rho(subcell) = rho * thisFac
+                
+                
+                if (thisOctal%subcellsize > heightSplitFac*h) then
+                   IF (thisOctal%nDepth < maxDepthAMR) then
+                      thisOctal%adot(subcell) = -1.d0
+                      converged = .false.
+                   endif                   
+                endif
+
+                if (thisOctal%subcellsize > 0.05d0*(modulus(rVec))) then
+                   IF (thisOctal%nDepth < maxDepthAMR) then
+                      thisOctal%adot(subcell) = -1.d0
+                      converged = .false.
+                   endif                   
+                endif
+
+             endif
+             
+          enddo
+       enddo
+    enddo
+!$OMP END PARALLEL
+    if (doSplit) call splitTaggedRho(grid%octreeRoot, grid)
+  end subroutine fillGridKatie
+
+
+  recursive subroutine splitTaggedRho(thisOctal, grid, inheritProps, interpProps)
+    use inputs_mod, only : minPhiResolution, maxDepthAMR
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    logical :: splitInAzimuth, split
+    integer :: subcell, i
+    logical, optional :: inheritProps, interpProps
+    type(VECTOR) :: rVec
+    real(double) :: dphi,r,r1
+
+    r1 = 45.*autocm/1.d10
+    
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call splitTaggedRho(child, grid, inheritProps, interpProps)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%adot(subcell) < 0.d0) then
+             splitInAzimuth = .false.
+             if (thisOctal%nDepth<maxDepthAMR) then
+                thisOctal%rho(subcell) = 0.d0
+                rVec = subcellCentre(thisOctal, subcell)
+                r = sqrt(rVec%x**2 + rVec%y**2)
+                if (thisOctal%cylindrical) then
+                   splitInAzimuth = .false.
+                   dphi = returndPhi(thisOctal)
+                   if (dphi > minPhiResolution) then
+                      split = .true.
+                      splitinAzimuth = .true.
+                   endif
+                endif
+
+                call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                     inherit=inheritProps, interp=interpProps,splitazimuthally=splitinazimuth)
+                return
+             else
+                write(*,*) "negative density but not split ",maxdepthAMR
+             endif
+          endif
+       endif
+    enddo
+  end subroutine splitTaggedRho
 
 end module setupamr_mod

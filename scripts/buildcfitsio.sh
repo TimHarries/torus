@@ -3,7 +3,7 @@
 # Purpose: Download and build the cfitsio library
 # Author: D. Acreman, August 2018
 
-cfitsio_location="ftp://heasarc.gsfc.nasa.gov/software/fitsio/c"
+cfitsio_location="https://heasarc.gsfc.nasa.gov/FTP/software/fitsio/c"
 cfitsio_file="cfitsio_latest.tar.gz"
 
 # Download source code using ftp or curl
@@ -30,23 +30,36 @@ fi
 echo "Unpacking ${cfitsio_file}"
 tar zxf ${cfitsio_file}
 rm ${cfitsio_file}
-cd cfitsio
+if [[ -d cfitsio ]]; then
+    echo "Unpacked to cfitsio"
+else
+    echo "Linking to cfitsio"
+    ln -s cfitsio* cfitsio
+    cd cfitsio
+fi
 
-echo "Configuring ..."
-./configure
-
+if [[ -e ./configure ]]; then
+    echo "Configuring ..."
+    ./configure
+else
+    echo "Error: configure not found"
+    exit 1
+fi
+  
 # Check return code and run make if the configure command was successful
 if [[ $? -eq 0 ]]; then
     echo "Making ..."
     make
 else
     echo "Error in configure step."
+    exit1
 fi
 
 if [[ $? -eq 0 ]]; then
     echo "Make succeeded."
 else
     echo "Error in make step."
+    exit 1
 fi
 
 # End of file ##########################################################################

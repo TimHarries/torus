@@ -1,5 +1,5 @@
 #-------------------------------------------------------------------------
-# Usage :: 
+# Usage ::
 #    1. make             : Make torus with optimization flag(s)
 #    2. make clean       : Clean up directory
 #    3. make cfitsio=no  : Use cfitsio stubs rather than library
@@ -7,8 +7,8 @@
 #    5. make profile=yes : Make torus with profiler option
 #    6. make static=yes  : Make torus with static linking
 #    7. make trace=yes   : Make torus with ITAC profiling
-#    8. make openmp=yes  : Make torus with OpenMP 
-#    9. make coverage=yes: Generate coverage statistics with gnu compilers 
+#    8. make openmp=yes  : Make torus with OpenMP
+#    9. make coverage=yes: Generate coverage statistics with gnu compilers
 #   10. make codecov=yes : Generate coverage statistics with ifort
 #   11. make zlib=yes:   : Use z-lib compression libary to produce vtu files
 #   12. make sundials=yes: Use sundials chemistry ODE tool
@@ -28,7 +28,7 @@ debug   = no
 profile = no
 static  = no
 trace   = no
-openmp  = no 
+openmp  = no
 v2      = yes
 coverage = no
 codecov  = no
@@ -48,10 +48,10 @@ datacube = no
 # Run script to get subversion version number
 getgitver = yes
 # Newer versions of cfitsio require -lcurl at link time
-curlflag = no 
+curlflag = no
 
 KNOWN_SYSTEM = no
-MPIFLAG = 
+MPIFLAG =
 
 # Assume the default compiler is a recent Intel compiler. OpenMP flags for other compilers
 # need to be set in the relevant SYSTEM section of this file
@@ -74,8 +74,8 @@ ifeq ($(SYSTEM), nagfor)
     F95FLAG  = -colour -kind=byte -fpp -dcfuns -f2008 -DUSEIEEEISNAN -DUSEUNIXENV
     DEBUGFLAG= -C=all -g -gline -info -nocheck_modtime
     FASTFLAG = -O4
-    CFITSIOLIBS = -L/Users/${USER}/cfitsio_nagfor/lib -lcfitsio 
-    ZLIBLIBS = -lz	
+    CFITSIOLIBS = -L/Users/${USER}/cfitsio_nagfor/lib -lcfitsio
+    ZLIBLIBS = -lz
     EXE = torus.nagfor
     KNOWN_SYSTEM = yes
     memcheck = no
@@ -90,9 +90,9 @@ ifeq ($(SYSTEM), g95)
     DEBUGFLAG= -g3 -fbounds-check -ftrace=full -fimplicit-none -freal=nan -Wall -Wunused-internal-procs -Wunused-parameter -Wno=140,141,112 -Werror
 #    FASTFLAG = -O3 -mcpu=G5
     FASTFLAG = -O3
-#    FASTFLAG = -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math	
+#    FASTFLAG = -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
     CFITSIOLIBS = -lcfitsio
-    ZLIBLIBS = -lz	
+    ZLIBLIBS = -lz
     EXE = torus.g95
     KNOWN_SYSTEM = yes
 endif
@@ -137,12 +137,15 @@ ifeq ($(SYSTEM), gfortran)
 #    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-surprising -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
 #    DEBUGFLAG= -ggdb -fbacktrace -Wunderflow -Wall -Werror -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
     FASTFLAG = -O3
-    OPENMPFLAG = -fopenmp 
+    OPENMPFLAG = -fopenmp
+# -Wl,-stack_size,0x40000000,-stack_addr,0xf0000000
 # -static-libgcc fixes linking problems under Mac OS
-    STARLIBS += -static-libgcc -static-libgfortran
+#    STARLIBS += -static-libgcc -static-libgfortran
+    INCLUDEFLAG = -I/usr/local/include -L/usr/local/lib
+#    HEALPIXLIB = -lhealpix
     EXE = torus.gfortran
     KNOWN_SYSTEM = yes
-    CFITSIOLIBS = -L${HOME}/cfitsio/lib -lcfitsio
+    CFITSIOLIBS =-L/opt/homebrew/lib -lcfitsio
     KROMELIBS = -L${HOME}/krome/build -lkrome
     ifeq ($(chemistry), yes)
        F95COMP+=-I${HOME}/krome/build
@@ -171,9 +174,9 @@ ifeq ($(SYSTEM), thaw)
     CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
 endif
 
-# MPI build with the gfortran compiler. 
+# MPI build with the gfortran compiler.
 ifeq ($(SYSTEM), ompiosx)
-    F95COMP  = mpif90 
+    F95COMP  = mpif90
     DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-surprising -Wno-error=maybe-uninitialized -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
     FASTFLAG = -O3
     OPENMPFLAG = -fopenmp
@@ -181,7 +184,7 @@ ifeq ($(SYSTEM), ompiosx)
     STARLIBS += -static-libgcc
     CFITSIOLIBS = -L${HOME}/cfitsio/lib -lcfitsio
     EXE = torus.ompiosx
-    ZLIBLIBS = -lz	
+    ZLIBLIBS = -lz
     MPIFLAG = -DMPI
     KROMELIBS = -L${HOME}/krome/build -lkrome
     ifeq ($(chemistry), yes)
@@ -196,14 +199,14 @@ ifeq ($(SYSTEM), testsuite)
         F95COMP = mpif90
         MPIFLAG = -DMPI
     else
-        F95COMP = gfortran 
+        F95COMP = gfortran
     endif
     DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-conversion -Wno-surprising -Wno-error=maybe-uninitialized -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow
     FASTFLAG = -O3
     OPENMPFLAG = -fopenmp
     CFITSIOLIBS = -L/home/torustest/cfitsio/lib -lcfitsio
     EXE = torus.testsuite
-    ZLIBLIBS = -lz	
+    ZLIBLIBS = -lz
     KNOWN_SYSTEM = yes
 endif
 
@@ -216,7 +219,7 @@ ifeq ($(SYSTEM), ifort)
         F95COMP = mpiifort
         MPIFLAG = -DMPI
     else
-        F95COMP  = ifort 
+        F95COMP  = ifort
     endif
     DEBUGFLAG= -g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
     CFITSIOLIBS = -L${HOME}/cfitsio/lib -lcfitsio
@@ -242,7 +245,7 @@ ifeq ($(SYSTEM), complexity)
        MPIFLAG= -DMPI
     endif
     OPENMPFLAG = -fopenmp
-    FASTFLAG= -O3 
+    FASTFLAG= -O3
 # For debugging with optimisations enabled use
 #    DEBUGFLAG= -O3 -g -debug extended
     DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
@@ -266,8 +269,8 @@ ifeq ($(SYSTEM), complexity)
     ZLIBLIBS = -lz
     KNOWN_SYSTEM=yes
 endif
-# 
-# The Dirac 2.5 system at Leicester AKA DIaL (Data Intensive at Leicester) 
+#
+# The Dirac 2.5 system at Leicester AKA DIaL (Data Intensive at Leicester)
 # Default is an MPI build, use mpi=no for openmp/serial
 ifeq ($(SYSTEM), dial)
     ifeq ($(mpi), no)
@@ -278,7 +281,7 @@ ifeq ($(SYSTEM), dial)
        MPIFLAG= -DMPI
     endif
     OPENMPFLAG = -fopenmp
-    FASTFLAG= -O3 
+    FASTFLAG= -O3
 # For debugging with optimisations enabled use
 #    DEBUGFLAG= -O3 -g -debug extended
     DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
@@ -303,7 +306,7 @@ ifeq ($(SYSTEM), dial)
     KNOWN_SYSTEM=yes
 endif
 #
-# The Dirac cosma6 system at Durham 
+# The Dirac cosma6 system at Durham
 # Default is an MPI build, use mpi=no for openmp/serial
 # Use 'module load cfitsio' to make FITS library available
 ifeq ($(SYSTEM), cosma)
@@ -314,7 +317,7 @@ ifeq ($(SYSTEM), cosma)
        F95COMP= mpif90
        MPIFLAG= -DMPI
     endif
-    FASTFLAG= -O3 
+    FASTFLAG= -O3
 # For debugging with optimisations enabled use
 #    DEBUGFLAG= -O3 -g -debug extended
     DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
@@ -333,8 +336,8 @@ ifeq ($(SYSTEM), cosma)
 endif
 
 # Isca configuration: to pick up the FITS libraries load the CFITSIO module
-# there's no need to add the path to the FITS libraries in this Makefile. 
-# The default build uses MPI, for a serial build specify mpi=no. 
+# there's no need to add the path to the FITS libraries in this Makefile.
+# The default build uses MPI, for a serial build specify mpi=no.
 ifeq ($(SYSTEM), isca)
     ifeq ($(mpi), no)
        F95COMP= ifort
@@ -365,7 +368,7 @@ ifeq ($(SYSTEM), davesmac)
 #    F95COMP  = g95
 #    DEBUGFLAG= -g -fbounds-check -ftrace=full -fimplicit-none -Wall -Wno=140,141,112
     F95COMP  = ifort
-#   DEBUGFLAG = -warn -g -no-ipo  # 
+#   DEBUGFLAG = -warn -g -no-ipo  #
     DEBUGFLAG=-O0 -warn -traceback -debug full -check pointer -CB -ftz -save-temps -shared-intel #-assume nounderscore
 #    DEBUGFLAG=-g -save-temps -assume nounderscore
 #    FASTFLAG = -fast -fp-model fast=2 -no-prec-div -no-prec-sqrt -mdynamic-no-pic -ftz -auto
@@ -374,9 +377,9 @@ ifeq ($(SYSTEM), davesmac)
     FASTFLAG = -mtune=core2 -xT -O3 -mdynamic-no-pic -no-prec-div -fp-model fast=2 -no-prec-sqrt -shared-intel -ip -pad#-g -save-temps -traceback -mmacosx-version-min=10.4 -intel-static#-ipo #-g-ip
 #    CFITSIOLIBS = -L/Applications/scisoft/i386/Packages/cfitsio/lib/ -lcfitsio
     CFITSIOLIBS = -L/Users/drundle/bin/cfitsio/lib/ -lcfitsio
-    ZLIBLIBS = -lz	
-    MKLIBS = -I/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Headers -L/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Libraries -lmkl_lapack95 -lmkl_intel -lmkl_sequential -lmkl_core -lguide -lpthread #pthread for macs 
-#    MKLIBS = -I/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Headers -L/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Libraries -lmkl_lapack -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lguide -lpthread #pthread for macs 
+    ZLIBLIBS = -lz
+    MKLIBS = -I/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Headers -L/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Libraries -lmkl_lapack95 -lmkl_intel -lmkl_sequential -lmkl_core -lguide -lpthread #pthread for macs
+#    MKLIBS = -I/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Headers -L/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Libraries -lmkl_lapack -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lguide -lpthread #pthread for macs
     EXE = torus.intelmac
     KNOWN_SYSTEM = yes
 endif
@@ -407,7 +410,7 @@ endif
 ifeq ($(SYSTEM), ceres)
     F95COMP  = mpif90
     FASTFLAG  = -O3 -xhost
-    DEBUGFLAG=-g -O0 -traceback -fpe0 
+    DEBUGFLAG=-g -O0 -traceback -fpe0
     CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
     ZLIBLIBS = -lz
     MPIFLAG = -DMPI
@@ -450,18 +453,18 @@ ifeq ($(sundials), yes)
 #    SUNDIALSINC = -I/media/GEN/sundials/v2/include #-sundials
 #    SUNDIALSLIBRARIES = -L/media/GEN/sundials/v2/lib #-sundials
 #    SUNDIALSINC = -I/media/GEN/sundials/v2/include #-sundials
-#    SUNDIALSLIBRARIES = -L/sw/sundials-2.5.0/lib #-sundials                                                                                                                                         
+#    SUNDIALSLIBRARIES = -L/sw/sundials-2.5.0/lib #-sundials
 #   SUNDIALSINC = -I/sw/sundials-2.5.0/include #-sundials
-    SUNDIALSLIBRARIES = -L/home/th457/sundials/lib #-sundials                                                                                                                                         
+    SUNDIALSLIBRARIES = -L/home/th457/sundials/lib #-sundials
     SUNDIALSINC = -I/home/th457/sundials/include #-sundials
     SLIBS = -lsundials_cvode -lsundials_nvecserial -lm
     ETCFLAG += -DUSESUNDIALS
 else
-#    CSOURCE = 
+#    CSOURCE =
 #    CSOURCELIB =
-    SUNDIALSLIBRARIES = 
-    SUNDIALSLINC = 
-    SLIBS = 
+    SUNDIALSLIBRARIES =
+    SUNDIALSLINC =
+    SLIBS =
 endif
 
 ifeq ($(hdf), yes)
@@ -482,7 +485,7 @@ endif
 ifeq ($(USEMKL), yes)
    ETCFLAG += -DUSEMKL
 else
-   MKLIBS = 
+   MKLIBS =
 endif
 
 ifeq ($(debug), yes)
@@ -502,13 +505,13 @@ endif
 # Coverage flags for gfortran
 ifeq ($(coverage), yes)
    ETCFLAG +=  -fprofile-arcs -ftest-coverage
-   FASTFLAG = 
+   FASTFLAG =
 endif
 
 # Coverage flags for ifort
 ifeq ($(codecov), yes)
    ETCFLAG += -prof-gen=srcpos
-   FASTFLAG = 
+   FASTFLAG =
 endif
 
 # Intel Trace Analyser and Collector
@@ -516,7 +519,7 @@ ifeq ($(trace), yes)
    TRACEFLAG = -trace
    ETCFLAG  += -tcollect
 else
-   TRACEFLAG = 
+   TRACEFLAG =
 endif
 
 ifeq ($(static), yes)
@@ -593,7 +596,7 @@ endif
 ifeq ($(v2), yes)
    TORUSMAINSOURCE= torusMainV2.F90
    INPUTSMODSOURCE= inputs_modV2.F90
-else	
+else
    TORUSMAINSOURCE= torusMain.F90
    INPUTSMODSOURCE= inputs_mod.F90
 endif
@@ -602,11 +605,11 @@ endif
 # Source files
 #
 
-VERSIONSOURCE = torus_version_mod.f90 
+VERSIONSOURCE = torus_version_mod.f90
 
 F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90 image_utils_mod.f90 \
             sed_mod.f90 utils_mod.f90  phfit2.f90  bhmie_mod.f90 mieDistCrossSection_mod.f90 \
-            gaussian_mod.f90 math_mod.f90 dimensionality_mod.f90 \
+            gaussian_mod.f90 math_mod.f90 dimensionality_mod.f90 user_mod.f90 \
             phasematrix_mod.f90 photon_mod.f90 blob_mod.f90 \
             distortion_mod.f90   analytical_velocity_mod.f90 \
             disc_hydro_mod.f90 \
@@ -626,11 +629,11 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90 image_uti
             qShep3D_mod.f90 qShep2D_mod.f90 turbulence_mod.f90 eos_mod.f90 citations_mod.f90 \
             detector_mod.f90 interface_hierarchy_mod.f90 triangle_mesh_mod.f90 object_media_mod.f90 obj_io_mod.f90 ramses_mod.f90 \
             $(VERSIONSOURCE)
-            
+
 
 
 CAPF90SOURCE =	 amr_mod.F90  octal_mod.F90 mpi_global_mod.F90 random_mod.F90 unix_mod.F90 photoion_utils_mod.F90 photoionAMR_mod.F90 photoion_mod.F90 \
-	         mpi_amr_mod.F90 hydrodynamics_mod.F90 cmf_mod.F90  nbody_mod.F90 ion_mod.F90 gridtype_mod.F90 gridFromFitsFile.F90 sph_data_class.F90 \
+	         mpi_amr_mod.F90 mpi_fitter_mod.F90 hydrodynamics_mod.F90 cmf_mod.F90  nbody_mod.F90 ion_mod.F90 gridtype_mod.F90 gridFromFitsFile.F90 sph_data_class.F90 \
 	         gridFromFlash.F90 fits_utils_mod.F90 diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 molecular_mod.F90  gas_opacity_mod.F90  \
 	         parallel_mod.F90 stateq_mod.F90 image_mod.F90 datacube_mod.F90 vtk_mod.F90 grid_mod.F90 TTauri_mod.F90 angularImage_utils.F90 \
                  phaseloop_mod.F90 gridio_mod.F90 angularImage_mod.F90  timedep_mod.F90 zlib_mod.F90 dust_mod.F90 mieDistPhaseMatrix.F90  \
@@ -648,7 +651,7 @@ CAPF90SOURCELIB = mpi_global_mod.F90 random_mod.F90 unix_mod.F90  memory_mod.F90
         pdr_mod.F90 pdr_utils_mod.F90 setuppdr_mod.F90 octal_mod.F90 amr_mod.F90 grid_mod.F90 dust_mod.F90 \
         photoion_utils_mod.F90 ion_mod.F90 angularImage_utils.F90 loadbalance_mod.F90 nbody_mod.F90 viscosity_mod.F90 \
         mieDistPhaseMatrix.F90 gas_opacity_mod.F90 TTauri_mod.F90 gridFromFlash.F90 fits_utils_mod.F90 sph_data_class.F90 \
-	biophysics_mod.F90 chemistry_mod.F90 gridanalysis_mod.F90 fixing_mod.F90 pah_mod.F90 
+	biophysics_mod.F90 chemistry_mod.F90 gridanalysis_mod.F90 fixing_mod.F90 pah_mod.F90
 
 
 ifeq ($(pdr),yes)
@@ -676,7 +679,7 @@ LIBOBJ = $(CAPF90OBJLIB) $(F90OBJ)  $(INPUTSMODOBJ) $(CLIB)
 # Compilers and compiler flags
 #
 
-F90 = $(F95COMP) $(F95FLAG) $(FASTFLAG) $(ETCFLAG) $(MATHTRAP) $(MPI_INC) $(MPIFLAG) $(XMLINCLUDE) $(NCDF_INC)
+F90 = $(F95COMP) $(F95FLAG) $(FASTFLAG) $(ETCFLAG) $(MATHTRAP) $(MPI_INC) $(MPIFLAG) $(XMLINCLUDE) $(NCDF_INC) $(INCLUDEFLAG)
 GCC = gcc -fopenmp -O0 -Wall $(SUNDIALSINC)
 #
 #
@@ -687,11 +690,11 @@ all: depends $(ALLOBJ)
 	    @echo ""
 	    @echo "Linking object files and libraries..."
 #	    ifeq($(sundials), yes)
-#	    $(GCC) -o  $(COBJ) 
+#	    $(GCC) -o  $(COBJ)
 #	    endif
 	    $(F90) $(TRACEFLAG) $(SUNDIALSLIBRARIES) -o $(EXE) \
 	    $(INPUTSMODOBJ) $(F90OBJ) $(CAPF90OBJ) \
-	    $(CFITSIOLIBS)  $(STARLIBS) $(STATICLIBS) $(MKLIBS) $(XMLLIBS) $(ZLIBLIBS) $(COBJ) \
+	    $(CFITSIOLIBS)  $(HEALPIXLIB) $(STARLIBS) $(STATICLIBS) $(MKLIBS) $(XMLLIBS) $(ZLIBLIBS) $(COBJ) \
 	    $(SLIBS) $(NCDF_LIB) $(KROMELIBS)
 
     else
@@ -704,7 +707,7 @@ lib: depends $(LIBOBJ)
     ifeq ($(KNOWN_SYSTEM), yes)
 	    @echo ""
 	    @echo "Linking object files making a library..."
-	    $(AR) $(ARFLAGS) libtorus.a $(F90OBJ) $(CAPF90OBJLIB) $(INPUTSMODOBJ) 
+	    $(AR) $(ARFLAGS) libtorus.a $(F90OBJ) $(CAPF90OBJLIB) $(INPUTSMODOBJ)
 	    @echo "...done"
     else
 	    @echo ""
@@ -743,7 +746,7 @@ ctags:
 gitver:
     ifeq ($(getgitver), yes)
 	    @echo "calling creategitversion"
-	    @./creategitversion 
+	    @./creategitversion
 	    @echo "...done"
     endif
 

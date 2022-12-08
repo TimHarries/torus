@@ -3,6 +3,7 @@ module mpi_global_mod
   implicit none
 
   integer :: amrCOMMUNICATOR
+  integer :: myFitterSetGlobal
   integer :: localWorldCommunicator
   integer :: myRankGlobal
   integer :: myRankWorldGlobal
@@ -21,7 +22,7 @@ module mpi_global_mod
   integer :: copyOfThread
 
 ! Set logical variables to say how Torus is parallelised
-! For hybrid MPI/OpenMP configurations all three are set to true
+! For hybrid MPI/OpenMP configurations TorusMpi, TorusOpenmp and TorusHybrid are all true
 #ifdef MPI
   logical, parameter :: TorusMpi=.true.
 #else

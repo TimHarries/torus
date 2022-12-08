@@ -1000,6 +1000,28 @@ end subroutine gaussSeidelSweep
 
   end subroutine resetDiffusionTemp
 
+  recursive subroutine resetDiffusionApprox(thisOctal)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer :: subcell
+    integer :: i
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call resetDiffusionApprox(child)
+                exit
+             end if
+          end do
+       else
+          thisOctal%diffusionApprox(subcell) = .false.
+       end if
+    end do
+
+  end subroutine resetDiffusionApprox
+
   recursive subroutine copyEdens(thisOctal)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child

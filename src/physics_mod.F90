@@ -383,8 +383,10 @@ contains
     use inputs_mod, only : useDust, realDust, variableDustSublimation, massEnvelope, dustSettling
     use inputs_mod, only : mCore, solveVerticalHydro, sigma0!, scatteredLightWavelength,  storeScattered
     use inputs_mod, only : tEnd, tDump, usepah
+    use inputs_mod, only : timeDependentRT
     use gas_opacity_mod
     use pah_mod
+    use timedep_mod
 #ifdef CMFATOM
     use modelatom_mod, only : globalAtomArray
     use cmf_mod, only : atomloop
@@ -575,6 +577,14 @@ contains
        call doChem(grid, timeChemistry)
     endif
 #endif
+
+
+    if (timeDependentRT) then
+       call setupXarray(grid, xarray, nLambda,dustRadeq=.true.)
+       call setupDust(grid, xArray, nLambda, miePhase, nMumie)
+       call runTimeDependentRT(grid, globalsourceArray, globalnSource, nLambda, xArray)
+    endif
+
 
 
 #ifdef MOLECULAR

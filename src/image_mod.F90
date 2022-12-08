@@ -722,11 +722,11 @@ module image_mod
 !             print *, "image%pixel%i", image%pixel%i
           case("stokesq")
              where (image%pixel%i /= 0.d0) 
-                array = real(image%pixel%q/image%pixel%i)
+                array = real(image%pixel%q)
              end where
           case("stokesu")
              where (image%pixel%i /= 0.d0) 
-                array = real(image%pixel%u/image%pixel%i)
+                array = real(image%pixel%u)
              end where
           case("pol")
              array = real(sqrt(image%pixel%q**2 + image%pixel%u**2))
@@ -820,9 +820,11 @@ module image_mod
 
        ! Add keywords for bitpix=16 and bitpix=8 
        call addScalingKeywords(maxval(array), minval(array), unit, bitpix)
+       write(*,*) "Scaling keywords added"
 
+       write(*,*) "calling ftppre ",nelements
        call ftppre(unit,group,fpixel,nelements,array,status)
-
+       write(*,*) "ftppre complete"
        !
        !  Write another optional keyword to the header.
        !

@@ -14,7 +14,7 @@ module timedep_mod
   use math_mod
   use gridio_mod
   use timing, only: tune
-
+  use lucy_mod, only : quickSublimateLucy
   implicit none
 
 
@@ -36,7 +36,12 @@ module timedep_mod
 contains
 
   subroutine runTimeDependentRT(grid, source, nSource, nLambda, xArray)
-    use inputs_mod, only : teff, rCore, rInner, mCore
+    use inputs_mod, only : teff, rInner, mCore
+    use inputs_mod, only : timeStart, timeEnd, varyStart, varyEnd
+    use inputs_mod, only : nphotons, ntime, gridInputFilename
+    use sed_mod, only:  SEDlamMin, SEDlamMax, SEDnumLam
+    use inputs_mod, only : lumFactor, lumDecayTime, gridDistance, thisinclination
+    use inputs_mod, only : imageSize, nPix, timedepImage, nSedRadius
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
     integer :: nSource
@@ -57,61 +62,82 @@ contains
     character(len=80) :: oldStackFilename, currentStackFilename
     real(double) :: luminosityPeriod
     logical :: varyingSource
-    real(double) :: mdot
     real(double) :: photonsPerStep
-    real(double) :: gridCrossingTime
-    integer, parameter :: nSedWavelength = 100, nTime = 501
-    real(double) :: sedTime(nTime),fac
-    integer :: i
-    real(double) :: sedWavelength(nSedWavelength)
-    real(double) :: outputFlux(nSedWavelength, nTime)
-    real(double) :: outputFluxScat(nSedWavelength, nTime)
-    real(double) :: sedFlux(nSedWavelength, nTime)
-    real(double) :: sedFluxScat(nSedWavelength, nTime)
-    real(double) :: sedFluxStep(nSedWavelength, nTime)
-    real(double) :: sedFluxScatStep(nSedWavelength, nTime)
-    real(double) :: w1, w2
-    real(double) :: sourceLuminosity, accretionLuminosity, tAcc, frac, accretionArea
-    real(double) :: inc, endTime
+    real(double) :: gridCrossingTime, finalTime
+    integer :: i, j, nBookend
+    real(double), allocatable :: sedTime(:)
+    real(double), allocatable :: sedWavelength(:)
+    real(double), allocatable :: outputFlux(:,:,:)
+    real(double), allocatable :: outputFluxScat(:,:,:)
+    real(double), allocatable :: sedFlux(:,:,:)
+    real(double), allocatable :: sedFluxScat(:,:,:)
+    real(double), allocatable :: sedFluxStep(:,:,:)
+    real(double), allocatable :: sedFluxScatStep(:,:,:)
+    real(double), allocatable :: image(:,:,:)
+    real(double) :: w1, w2, thisTeff, thisRadius
+    real(double) :: sourceLuminosity
+    real(double) :: inc, fac, initialRadius
+    real(double), allocatable :: outputImage(:,:)
     type(VECTOR) :: observerDirection, observerposition
     logical :: lastTime, ok
     logical :: seedRun
+    
+    allocate(sedTime(1:nTime))
+    allocate(sedWavelength(sedNumLam))
+    allocate(outputFlux(nSedRadius, sedNumLam, nTime))
+    allocate(outputFluxScat(nSedRadius,sedNumLam, nTime))
+    allocate(sedFlux(nSedRadius,sedNumLam, nTime))
+    allocate(sedFluxScat(nSedRadius,sedNumLam, nTime))
+    allocate(sedFluxStep(nSedRadius,sedNumLam, nTime))
+    allocate(sedFluxScatStep(nSedRadius,sedNumLam, nTime))
+
+    if (timeDepImage) then
+       allocate(outputImage(nPix, nPix))
+       allocate(image(nPix, nPix, nTime))
+       image = 0.d0
+    endif
 
     seedRun = .false.
-    inc = 60.d0 * degToRad
-    observerDistance = 140.d0 * pcToCm
+    inc = thisinclination
+    observerDistance = gridDistance
     observerDirection = VECTOR(sin(inc), 0.d0, cos(inc))
     observerPosition = observerDistance * observerDirection
-
+    if (writeoutput) write(*,*) "Inclination ",inc*radtodeg
+    initialRadius = source(1)%radius
 
     oldStackFilename = "stack1.dat"
     currentStackFilename  = "stack2.dat"
 #ifdef MPI
-    write(oldStackFilename, '(a,i3.3,a)') "stack1_",myrankGlobal,".dat"
-    write(currentStackFilename, '(a,i3.3,a)') "stack2_",myrankGlobal,".dat"
+    write(oldStackFilename, '(a,i3.3,a)') "stack1_",myrankWorldGlobal,".dat"
+    write(currentStackFilename, '(a,i3.3,a)') "stack2_",myrankWorldGlobal,".dat"
     call randomNumberGenerator(randomSeed=.true.)
 #endif
 
 
+
+    
     dumpFromNow = 0.d0
     sedFlux = 0.d0
     sedFluxScat = 0.d0
-    w1 = 1200.d0
-    w2 = 2.d7
-    do i = 1, nSedWavelength
-       sedWavelength(i) = log10(w1) + (log10(w2)-log10(w1))*dble(i-1)/dble(nSedWavelength-1)
+    w1 = sedlamMin
+    w2 = sedlamMaX
+    do i = 1, sednumLam
+       sedWavelength(i) = log10(w1) + (log10(w2)-log10(w1))*dble(i-1)/dble(sedNumLam-1)
     enddo
     sedWavelength = 10.d0**sedWavelength
 
+    if (writeoutput) then
+       write(*,*) "Sed ",SEDNumLam, sedWavelength(1),sedWavelength(sedNumLam)
+       write(*,*) "xArray ",nLambda,xarray(1), xArray(nLambda)
+    endif
 
     nStack = 0
     tDump = 1.d9
     deltaTmin = 1.d3
     Deltatmax = 1.d9
-    gridCrossingTime = grid%octreeRoot%subcellSize*1.d10/cSpeed
-    nMonte = 10000
+    gridCrossingTime = 2.d0*grid%octreeRoot%subcellSize*1.d10/cSpeed
 
-    photonsPerStep = 100000 ! dble(nMonte) / (gridCrossingTime / deltaTmin)
+    photonsPerStep = nPhotons
 
     photonsPerSecond = photonsPerStep / deltaTmin
 
@@ -122,8 +148,7 @@ contains
     call zeroTemperature(grid%octreeRoot)
 
     varyingSource = .true.
-    varyUntilTime = 1.d30
-    endTime = 1.d30
+    varyUntilTime = varyend
     startVaryTime = 0.d0
     !    call clearDust(grid%octreeRoot)
 
@@ -137,40 +162,43 @@ contains
     !    call allocateMemoryForTimeDep(grid%octreeRoot)
     if (varyingSource) then
        call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
-       call readAMRgrid("output.safe", .false., grid)
+       call readAMRgrid(gridinputfilename, .false., grid)
        call allocateMemoryForTimeDep(grid%octreeRoot)
        call calculateUdensFromTemperature(grid%octreeRoot)
        i = findIlambda(1.e5, xArray, nLambda, ok)
        call setBiasOnTau(grid, i)
        luminosityPeriod = 3600.d0
-       startVaryTime = 0.d0
-       varyUntilTime = 5.d0 * luminosityPeriod  + startVaryTime
-       seedRun = .true.
+       startVaryTime = varyStart
+       varyUntilTime = varyEnd
+!       seedRun = .true.
 
-       deltaTMax = (varyUntilTime)/dble(nTime-1)
+       deltaTMax = (timeEnd-timeStart)/dble(nTime-1)
        deltaTMin = deltaTmax
        tDump = deltaTmax
        dumpFromNow =  observerDistance/cSpeed
-       endTime  = varyUntilTime
-       nextDumpTime = dumpFromNow
        deltaT = deltaTmax
+       nextDumpTime = deltaT
        do i = 1, nTime
-          sedTime(i) = dumpFromNow + varyUntilTime * dble(i-1)/dble(nTime-1)
+          sedTime(i) = dumpFromNow + (timeend-timestart) * dble(i-1)/dble(nTime-1)
        enddo
 
     endif
 
+    nBookend = nint(gridCrossingTime/deltaT)
 
-    !    if (myrankGlobal==0)call calculateLag(grid, nsource, source, xArray, nLambda)
+    if (writeoutput) write(*,*) "Number of steps before and after run required: ",nBookend
+
+    !    if (myrankWorldGlobal==0)call calculateLag(grid, nsource, source, xArray, nLambda)
     !    call torus_mpi_barrier
     !    stop
 
-
+    currentTime = currentTime - nBookend*deltaT
+    finalTime = timeEnd + nBookend*deltaT
+    
     lastTime = .false.
-
-    do while (currentTime < varyUntilTime)
+    do while (currentTime < finalTime)
        iter = iter + 1
-       if (myrankGlobal == 0) then
+       if (myrankWorldGlobal == 0) then
           !          write(vtkFilename, '(a,i4.4,a)') "iter",iter,".vtk"
           !          call writeVtkFile(grid, vtkfilename, &
           !               valueTypeString=(/"rho        ", "temperature", "edens_g    ","edens_s    ", "bias     "/))
@@ -186,48 +214,65 @@ contains
 
        if (varyingSource) then 
 
-          sourceLuminosity = fourPi * stefanBoltz * (source(1)%radius * 1.d10)**2 * teff**4
+          thisTeff = source(1)%teff
+          thisRadius = initialRadius
+
+          
           if ((currentTime >= startVaryTime).and.(currentTime<=varyUntilTime)) then
-             fac = sin(twoPi*currentTime/luminosityPeriod)
-             mdot = 5.d-8 + 2.5d-8 *  fac
-             mdot = mdot * msol * secstoyears
-             accretionLuminosity = bigG * mcore * mDot * ((1.d0/(rCore*1.d10)) - (1.d0/(rInner*1.d10)))
-          else
-             mdot = 5.d-8
-             mdot = mdot * msol * secstoyears
-             accretionLuminosity = bigG * mcore * mDot * ((1.d0/(rCore*1.d10)) - (1.d0/(rInner*1.d10)))
-          endif
 
-          if (seedRun) then
-             mdot = 5.d-8
-             mdot = mdot * msol * secstoyears
-             accretionLuminosity = bigG * mcore * mDot * ((1.d0/(rCore*1.d10)) - (1.d0/(rInner*1.d10)))
+             fac = 1.d0 + (lumFactor-1.d0)*exp((startVaryTime-currentTime)/lumDecayTime)
+             thisTeff = teff 
+             if (writeoutput) write(*,*) "Luminosity of source increased by factor ",fac
+             thisRadius = thisRadius * sqrt(fac)
           endif
+             
 
-          accretionArea = 5.d-2 * fourPi * (source(1)%radius * 1.d10)**2
-          tAcc  = (accretionLuminosity / (stefanBoltz * accretionArea))**0.25d0
-          frac = 5.d-2
-          if (writeoutput) write(*,*) "radii ",rCore*1.d10/rsol, rinner*1.d10/rsol
-          if (writeoutput) write(*,*) "mdot ",mdot/msol / secstoyears
+          sourceLuminosity = fourPi * stefanBoltz * (thisRadius * 1.d10)**2 * thisteff**4
+
+
+!          if ((currentTime >= startVaryTime).and.(currentTime<=varyUntilTime)) then
+!             fac = sin(twoPi*currentTime/luminosityPeriod)
+!             mdot = 5.d-18 !+ 2.5d-8 *  fac
+!             mdot = mdot * msol * secstoyears
+!             accretionLuminosity = bigG * mcore * mDot * ((1.d0/(rCore*1.d10)) - (1.d0/(rInner*1.d10)))
+!          else
+!             mdot = 5.d-18
+!             mdot = mdot * msol * secstoyears
+!             accretionLuminosity = bigG * mcore * mDot * ((1.d0/(rCore*1.d10)) - (1.d0/(rInner*1.d10)))
+!          endif
+!
+!          if (seedRun) then
+!             mdot = 5.d-18
+!             mdot = mdot * msol * secstoyears
+!             accretionLuminosity = bigG * mcore * mDot * ((1.d0/(rCore*1.d10)) - (1.d0/(rInner*1.d10)))
+!          endif!
+
+!          accretionArea = 5.d-2 * fourPi * (source(1)%radius * 1.d10)**2
+!          tAcc  = (accretionLuminosity / (stefanBoltz * accretionArea))**0.25d0
+!          frac = 5.d-2
+
+          if (writeoutput) write(*,*) "radii ",thisradius*1.d10/rsol, rinner*1.d10/rsol
           if (writeoutput) write(*,*) "mcore ",mcore/msol
-          if (writeoutput) write(*,*) "accretion luminosity ", accretionLuminosity/lSol
-          if (writeoutput) write(*,*) "accretion temp ", tacc
-          call fillSpectrumBB(source(1)%spectrum, dble(teff), 1200.d0, 2.d7, 200)
-          call addToSpectrumBB(source(1)%spectrum, tAcc, frac)
+          if (writeoutput) write(*,*) "teff ",thisteff
+!          if (writeoutput) write(*,*) "accretion luminosity ", accretionLuminosity/lSol
+!          if (writeoutput) write(*,*) "accretion temp ", tacc
+          call fillSpectrumBB(source(1)%spectrum, dble(thisteff), 1200.d0, 2.d7, 200)
+!          call addToSpectrumBB(source(1)%spectrum, tAcc, frac)
           call normalizedSpectrum(source(1)%spectrum)
-          source(1)%luminosity = sourceLuminosity + accretionLuminosity
-          photonsPerStep = 1000000 ! dble(nMonte) / (gridCrossingTime / deltaTmin)
+          source(1)%luminosity = sourceLuminosity !+ accretionLuminosity
+          source(1)%radius = thisRadius
+          photonsPerStep = nPhotons ! dble(nMonte) / (gridCrossingTime / deltaTmin)
        else
-          photonsPerStep = 10000000 ! max(10000000, nint(5000000.d0 * min(1.d0, deltaT/gridCrossingTime)))
+          photonsPerStep = nPhotons ! max(10000000, nint(5000000.d0 * min(1.d0, deltaT/gridCrossingTime)))
           Deltatmax = 1.d12
           deltaTmin = 1.d3
        endif
 
-       dumpNow = .true.
+       dumpNow = .false.
 
        if (varyingSource.and.seedRun) then
-          photonsPerStep = 10000000
-          deltaT = 1.e10
+          photonsPerStep = nPhotons
+          deltaT = 1.d10
        endif
 
 
@@ -235,14 +280,15 @@ contains
 
        sedFluxStep  = 0.d0
        sedFluxScatStep = 0.d0
-       if (myrankGlobal == 0) write(*,*) iter," Calling RT with timestep of ", deltaT, currentTime,nMonte
+       if (writeoutput) write(*,*) iter," Calling RT with timestep of ", deltaT, currentTime,nMonte
        if (doTuning) call tune(6, "Time dependent RT step")  ! start a stopwatch
 
        call  timeDependentRTStep(grid, oldStack, nStack, oldStackFilename, currentStackFilename, &
             nsource, source, deltaT, newDeltaT, deltaTmax, deltaTmin, &
             nMonte, xArray, nLambda, varyingSource, currentTime, &
-            nSedWavelength, nTime, sedWavelength, sedTime, sedFluxStep, sedFluxScatStep, dumpFromNow, &
-            observerPosition, observerDirection, seedRun)
+            sednumlam, nTime, sedWavelength, sedTime, nSedRadius, sedFluxStep, &
+            sedFluxScatStep, image, npix,dumpFromNow, &
+            observerPosition, observerDirection, seedRun, imageSize)
        if (doTuning) call tune(6, "Time dependent RT step") 
 
        sedFlux  = sedFlux + sedFluxStep
@@ -256,9 +302,9 @@ contains
 
 
           do iTime = 1, nTime-1
-             sedFlux(1:nSedWavelength, itime) = (sedFlux(1:nSedWavelength, itime) / deltaT) &
+             sedFlux(1:nSedRadius, 1:sedNumLam, itime) = (sedFlux(1:nSedRadius,1:sedNumLam, itime) / deltaT) &
                   * (sedTime(itime+1)-sedTime(itime))
-             sedFluxScat(1:nSedWavelength, itime) = (sedFluxScat(1:nSedWavelength, itime) / deltaT) &
+             sedFluxScat(1:nSedRadius,1:sedNumLam, itime) = (sedFluxScat(1:nSedRadius,1:sedNumLam, itime) / deltaT) &
                   * (sedTime(itime+1)-sedTime(itime))
           enddo
 
@@ -267,15 +313,29 @@ contains
 
        deltaT = newDeltaT
 
+       if (abs(currentTime-nextDumpTime)<1.d-3) dumpNow = .true.
+       if (writeoutput) then
+          write(*,*) "Current Time: ",currentTime
+          write(*,*) "Next dump time ",nextDumpTime
+          write(*,*) "Dump Now? ",dumpNow
+       endif
+
+       call writeVtkFile(grid, "thisstep.vtk", &
+            valueTypeString=(/"rho        ", "temperature", "edens_g    ", "edens_s    ", &
+            "crossings  ", &
+            "dust1      "/))
+
        if (dumpNow) then
           nextDumpTime = nextDumpTime + tDump
+          if (nextDumpTime > timeEnd) nextDumpTime = 1.d30
           iDump = idump + 1
-          if (myrankGlobal == 0) then
+          if (writeoutput) then
              write(vtkFilename, '(a,i4.4,a)') "output",idump,".vtk"
+             write(*,*) "vtkfilename ",trim(vtkfilename)
              call writeVtkFile(grid, vtkfilename, &
                   valueTypeString=(/"rho        ", "temperature", "edens_g    ", "edens_s    ", &
-                  "crossings  "/))
-
+                  "crossings  ", &
+                  "dust1      "/))
              write(vtkFilename, '(a,i4.4,a)') "radial",idump,".dat"
              call writeValues(vtkFilename, grid, currentTime)
 
@@ -283,103 +343,133 @@ contains
              !             call writeAMRgrid(vtkFilename, .false., grid)
 
           endif
-       endif
 
-       if (varyingSource.and.(mod(idump,100) == 0)) then
-
-          if (myrankGlobal == 0) then
-             do i = 1, nSedWavelength-1
-                outputFlux(i,1:nTime) = sedFlux(i,1:nTime) / &
+          if (writeoutput) then
+             do i = 1, sedNumLam-1
+                outputFlux(1:nSedRadius,i,1:nTime) = sedFlux(1:nSedRadius,i,1:nTime) / &
                      (sedWavelength(i+1)-sedWavelength(i))
              enddo
+             outputFlux(1:nSedRadius,sedNumLam,1:nTime) = sedFlux(1:nSedRadius,sedNumLam,1:nTime) / &
+                  (2.*(sedWavelength(sedNumLam)-sedWavelength(sedNumLam-1)))
 
-             do i = 1, nSedWavelength-1
-                outputFluxScat(i,1:nTime) = sedFluxScat(i,1:nTime) / &
+             do i = 1, sedNumLam-1
+                outputFluxScat(1:nSedRadius,i,1:nTime) = sedFluxScat(1:nSedRadius,i,1:nTime) / &
                      (sedWavelength(i+1)-sedWavelength(i))
              enddo
+             outputFluxScat(1:nSedRadius,sedNumLam,1:nTime) = sedFluxScat(1:nSedRadius,sedNumLam,1:nTime) / &
+                  (2.*(sedWavelength(sedNumLam)-sedWavelength(sedNumLam-1)))
 
-             do itime = 1, nTime-1
-                write(vtkFilename, '(a,i5.5,a)') "sed",itime,".dat"
-                open(32, file=vtkFilename, status="unknown", form="formatted")
-                write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT, " seconds"
-                do i = 1, nSedWavelength-1
-                   write(32,'(1p,2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
-                        outputFlux(i, itime)/(sedTime(itime+1)-sedTime(itime))/observerDistance**2
+             do j = 1, nSedRadius
+                do itime = 1, nTime
+                   write(vtkFilename, '(a,i2.2,a,i5.5,a)') "sed_",j,"_",itime,".dat"
+                   open(32, file=vtkFilename, status="unknown", form="formatted")
+                   write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT*secsToYears, " years"
+                   do i = 1, sedNumLam
+                      write(32,'(1p,2e10.3)') sedWavelength(i), &
+                           real(outputFlux(j,i, itime)/deltaT/observerDistance**2)
+                   enddo
+                   close(32)
+                   
+                   write(vtkFilename, '(a,i2.2,a,i5.5,a)') "scat_",j,"_",itime,".dat"
+                   open(32, file=vtkFilename, status="unknown", form="formatted")
+                   write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT*secsToYears, " years"
+                   
+                   do i = 1, sedNumLam-1
+                      write(32,'(1p,2e10.3)') sedWavelength(i), &
+                           real(outputFluxScat(j,i, itime)/deltaT/observerDistance**2)
+                   enddo
+                   close(32)
                 enddo
-                close(32)
-
-                write(vtkFilename, '(a,i5.5,a)') "scat",itime,".dat"
-                open(32, file=vtkFilename, status="unknown", form="formatted")
-                write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT, " seconds"
-
-                do i = 1, nSedWavelength-1
-                   write(32,'(1p,2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
-                        outputFluxScat(i, itime)/(sedTime(itime+1)-sedTime(itime))/observerDistance**2
-                enddo
-                close(32)
              enddo
+             if (timedepImage) then
+                do i = 1, nTime
+                   write(vtkFilename, '(a,i5.5,a)') "image",i,".fits"
+                   outputImage = (image(:,:,i) / deltaT / observerDistance**2)
+                   call writeTempDepFitsImage(outputImage, nPix, vtkFilename)
+                enddo
+             endif
           endif
+          dumpNow = .false.
        endif
 
     enddo
 
     if (varyingSource) then
 
-       if (myrankGlobal == 0) then
-          do i = 1, nSedWavelength-1
-             outputFlux(i,1:nTime) = sedFlux(i,1:nTime) / &
-                  (sedWavelength(i+1)-sedWavelength(i))
-          enddo
+       if (writeoutput) then
 
-          do i = 1, nSedWavelength-1
-             outputFluxScat(i,1:nTime) = sedFluxScat(i,1:nTime) / &
-                  (sedWavelength(i+1)-sedWavelength(i))
-          enddo
-
-          do itime = 1, nTime-1
-             write(vtkFilename, '(a,i5.5,a)') "sed",itime,".dat"
-             open(32, file=vtkFilename, status="unknown", form="formatted")
-             write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT, " seconds"
-             do i = 1, nSedWavelength-1
-                write(32,'(1p,2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
-                     outputFlux(i, itime)/(sedTime(itime+1)-sedTime(itime))/observerDistance**2
+             do i = 1, sedNumLam-1
+                outputFlux(1:nSedRadius,i,1:nTime) = sedFlux(1:nSedRadius,i,1:nTime) / &
+                     (sedWavelength(i+1)-sedWavelength(i))
              enddo
-             close(32)
+             outputFlux(1:nSedRadius,sedNumLam,1:nTime) = sedFlux(1:nSedRadius,sedNumLam,1:nTime) / &
+                  (2.*(sedWavelength(sedNumLam)-sedWavelength(sedNumLam-1)))
 
-             write(vtkFilename, '(a,i5.5,a)') "scat",itime,".dat"
-             open(32, file=vtkFilename, status="unknown", form="formatted")
-             write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT, " seconds"
-
-             do i = 1, nSedWavelength-1
-                write(32,'(1p,2e14.5)') 0.5d0*(sedWavelength(i)+sedWavelength(i+1)), &
-                     outputFluxScat(i, itime)/(sedTime(itime+1)-sedTime(itime))/observerDistance**2
+             do i = 1, sedNumLam-1
+                outputFluxScat(1:nSedRadius,i,1:nTime) = sedFluxScat(1:nSedRadius,i,1:nTime) / &
+                     (sedWavelength(i+1)-sedWavelength(i))
              enddo
-             close(32)
-          enddo
+             outputFluxScat(1:nSedRadius,sedNumLam,1:nTime) = sedFluxScat(1:nSedRadius,sedNumLam,1:nTime) / &
+                  (2.*(sedWavelength(sedNumLam)-sedWavelength(sedNumLam-1)))
+             do j = 1, nSedRadius
+                do itime = 1, nTime
+                   write(vtkFilename, '(a,i2.2,a,i5.5,a)') "sed_",j,"_",itime,".dat"
+                   open(32, file=vtkFilename, status="unknown", form="formatted")
+                   write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT*secsToYears, " years"
+                   do i = 1, sedNumLam
+                      write(32,'(1p,2e10.3)') sedWavelength(i), &
+                           real(outputFlux(j,i, itime)/deltaT/observerDistance**2)
+                   enddo
+                   close(32)
+
+                   write(vtkFilename, '(a,i2.2,a,i5.5,a)') "scat_",j,"_",itime,".dat"
+                   open(32, file=vtkFilename, status="unknown", form="formatted")
+                   write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT*secsToYears, " years"
+                   
+                   do i = 1, sedNumLam-1
+                      write(32,'(1p,2e10.3)') sedWavelength(i), &
+                           real(outputFluxScat(j,i, itime)/DeltaT/observerDistance**2)
+                   enddo
+                   close(32)
+                enddo
+             enddo
+             if (timedepImage) then
+                do i = 1, nTime
+                   write(vtkFilename, '(a,i5.5,a)') "image",i,".fits"
+                   outputImage = (image(:,:,i) / deltaT / observerDistance**2)
+                   call writeTempDepFitsImage(outputImage, nPix, vtkFilename)
+                enddo
+             endif
+          endif
        endif
-    endif
-
+       
 
 
   end subroutine runTimeDependentRT
 
   subroutine timeDependentRTStep(grid, oldStack, oldStacknStack, oldStackFilename, currentStackFilename, &
        nsource, source, deltaT, newDeltaT, deltaTmax, deltaTmin, nMonte, lamArray, nLambda, varyingSource, currentTime, &
-       nSedWavelength, nTime, sedWavelength, sedTime, sedFlux, sedFluxScat, dumpFromNow, observerPosition, observerDirection, &
-       seedRun)
+       nSedWavelength, nTime, sedWavelength, sedTime, nSedRadius, sedFlux, sedFluxScat, &
+       image, nPix, dumpFromNow, observerPosition, observerDirection, &
+       seedRun, imageSize)
 #ifdef MPI
     use mpi
 #endif
+    use inputs_mod, only : quickSublimate, timedepImage
     type(GRIDTYPE) :: grid
     integer :: nSource
+    integer :: nSedRadius
+    real(double) :: imageSize
     logical :: varyingSource
     integer :: nLambda
+    integer :: nPix
+    real(double) :: image(:,:,:)
     integer :: nFreq
     integer :: nSedWavelength, nTime
     real(double) :: sedWavelength(:)
     real(double) :: sedTime(:)
-    real(double) :: sedFlux(nSedWavelength,  nTime)
-    real(double) :: sedFluxScat(nSedWavelength,  nTime)
+    real(double) :: sedFlux(nSedRadius,nSedWavelength,  nTime)
+    real(double) :: sedFluxScat(nSedRadius,nSedWavelength,  nTime)
     real(double) :: currentTime, dumpFromNow
     integer :: oldStacknStack
     integer :: currentStacknStack
@@ -394,7 +484,8 @@ contains
     integer :: nMonte, iMonte, nFromGas, nFromSource
     integer :: i
     real(double) :: freqArray(2000), dnu(2000), kAbsArray(2000), kAbsArray2(2000)
-    real(double) :: prob(2000), luminosity, sourceLuminosity
+    real(double) :: prob(2000), prob2(2000),luminosity, sourceLuminosity, biasArray(2000)
+    real(double) :: probLongWavelength, lambda
     integer :: nFromMatter, nPhotons
     real(double) :: fracSource, chanceSource, chanceGas, weightSource, weightGas
     real(double) :: weightSource2
@@ -409,7 +500,7 @@ contains
     real :: treal
     type(SOURCETYPE) :: thisSource
     type(OCTAL), pointer :: thisOctal
-    integer :: subcell, iSource, iLam
+    integer :: subcell, iSource
     integer :: oldStackUnit, currentStackUnit
     logical :: absorbed, scattered, outOfTime, finished, ok
     real(double) :: kappaAbs, kappaSca, albedo
@@ -426,17 +517,28 @@ contains
     logical :: radiativeEquPhoton, seedRun
     integer :: nEscaped
     integer :: nFromMatterThisThread
-    real(double) :: photonPacketWeight ! Thaw added to satisfy getWavelength, dummy. 
+    real(double) :: photonPacketWeight ! Thaw added to satisfy getWavelength, dummy.
+    type(VECTOR) :: xAxis, yAxis
+
+    integer :: iFreq
+    real(double) :: specWeight
+    
 #ifdef MPI
-    integer :: ierr
+    integer :: ierr, j
     real(double) :: tempDouble
-    real(double), allocatable :: tempDoubleArray(:)
+    real(double), allocatable :: tempDoubleArray(:), tempDoubleArray2(:), tempImage(:,:)
 #endif
     treal= real(dumpfromnow)
     firstObserverTime = sedTime(1)
     lastObserverTime = sedTime(nTime)
     
+    xAxis = VECTOR(1.d0,0.d0,0.d0)
+    yAxis = observerDirection.cross.xAxis
+    call normalize(yAxis)
 
+    
+
+    
 
     useFileForStack = .true.
 
@@ -468,7 +570,7 @@ contains
     call zeroDistanceGrids(grid%octreeRoot)
     kabsArray = 0.d0
     call calculateEtaContLocal(grid, grid%octreeRoot)
-!    call calculateEtaContBias(grid, grid%octreeRoot)
+    call calculateEtaContBias(grid, grid%octreeRoot)
     call computeProbDist(grid, totalLineEmission, totalContEmission, lambda0, .false.)
     luminosity = 0.d0
     call calculateGasEmissivity(Grid%octreeRoot, luminosity)
@@ -502,7 +604,7 @@ contains
     nFromSource = int(fracSource * nFromMatter)
     nFromGas = nFromMatter - nFromSource
 
-    if (myrankGlobal == 0) then
+    if (writeoutput) then
        write(*,*) "doing loop with ",nphotons, " photons"
        write(*,*) "source lum ",sourceLuminosity
        write(*,*) "matter lum ",luminosity
@@ -516,6 +618,7 @@ contains
 
     if (doTuning) call tune(6, "Photon loop") 
     do iMonte = 1, nPhotons
+!       write(*,*) iMonte,nphotons
        if (oldStacknStack > 0)  then
           call getPhotonFromStack(useFileForStack, oldStack, oldStackUnit, &
                oldStacknStack, rVec, uHat, eps, freq, &
@@ -551,8 +654,12 @@ contains
                 call tauAlongPath(ilambda, grid, rVec, observerDirection, tau)
                 timeToObserver = distanceToObserver(rVec, observerPosition, observerDirection)/cspeed
                 photonTagTime = currentTime + photonTime + timeToObserver
-                call timeBinPhoton(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
-                  sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered)
+                call timeBinPhotonSED(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
+                     sedTime, sedWavelength, nSedRadius,sedFlux, sedFluxScat, beenScattered, deltaT, rVec, xAxis, yAxis)
+
+                if (timedepImage) call timeBinPhotonImage(photonTagTime, wavelength, eps, tau, nPix, nTime, &
+                     sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
+
              endif
 
 
@@ -570,22 +677,76 @@ contains
              call amrGridValues(grid%octreeRoot, rVec, startOctal=thisOctal, &
                   actualSubcell=subcell, temperature=treal,grid=grid, kappaAbsArray=kAbsArray)
              tdble = dble(tReal)
-             do i = 1, nLambda
-                iLam = nfreq - i + 1
-                kAbsArray2(i) = kabsArray(ilam)
+             do i = 1, nFreq
+                kAbsArray2(i) = kabsArray(nFreq-i+1)
              enddo
              prob(1) = 0.d0
              do i = 2, nFreq
                 prob(i) = prob(i-1) + kAbsArray2(i)*bnu(freqArray(i), tdble)*dnu(i)
              enddo
-             prob = prob / prob(nFreq)
+             prob(1:nFreq) = prob(1:nFreq) / prob(nFreq)
+
+             
+
+             
              call randomNumberGenerator(getDouble=r)
              call locate(prob, nFreq, r, i)
              freq = freqArray(i)
              wavelength = (cSpeed/freq)*1.d8
              eps = (1.d0/thisOctal%biasCont3D(subcell)) * weightGas * totalluminosity * deltaT / dble(nFromMatter)
+
+             ! TJH changed 21/6/2021 to give better S/N across complete dust emission spectrum
+
+             
+             lambda = 1d2*micronTocm
+             call locate(freqArray, nFreq, cspeed/lambda, iFreq)
+             do i = 1, nFreq
+                prob(i) = kAbsArray2(i)*bnu(freqArray(i), tdble)*dnu(i)
+             enddo
+        
+
+             probLongWavelength = SUM(prob(1:iFreq))/SUM(prob(1:nFreq))
+
+             if (probLongWavelength > 0.01d0) then
+                biasArray(1:iFreq) = 1.d0
+                biasArray(iFreq+1:nFreq) = 0.1d0
+                biasArray = biasArray / SUM(biasArray(1:nFreq))
+
+                do i = 1, nFreq
+                   prob(i) = kAbsArray2(i)*bnu(freqArray(i), tdble)*dnu(i)
+                enddo
+                prob(1:nFreq) = prob(1:nFreq)/SUM(prob(1:nFreq))
+                
+
+                
+                prob2(1) = 0.d0
+                do i = 2, nFreq
+                   prob2(i) = prob2(i-1) +  biasArray(i)
+                  
+                enddo
+                prob2(1:nFreq) = prob2(1:nFreq) / prob2(nFreq)
+
+
+             
+                call randomNumberGenerator(getDouble=r)
+                call locate(prob2, nFreq, r, iFreq)
+
+
+                freq = freqArray(iFreq)
+                wavelength = (cSpeed/freq)*1.d8
+
+
+                
+                specWeight = prob(ifreq) * 1.d0/biasArray(min(nFreq,iFreq+1))
+!                write(*,*) "spec weight ",1.d0/biasArray(iFreq)
+                eps = (1.d0/thisOctal%biasCont3D(subcell)) * weightGas * specWeight * &
+                     totalluminosity * deltaT / dble(nFromMatter)
+!                write(*,*) freq,wavelength,eps
+             endif
+
 !             write(*,*) "gas eps ",eps, luminosity, weightgas, thisOctal%biasCont3d(subcell)
-!             write(*,*) "Wavelength ", wavelength/1.e4
+!             write(*,*) "Wavelength, temp ", wavelength/1.e4,thisOctal%temperature(subcell), &
+!                  modulus(subcellCentre(thisOctal,subcell))*1.d10/autocm
              photonFromGas = .true.
              photonFromSource = .false.
              photonTime = 0.d0
@@ -606,20 +767,27 @@ contains
                 if (seedRun) then
                    if (photonTagTime > lastObserverTime) then
                       do i = 1, nTime
-                         call timeBinPhoton(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
-                              sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered)
+                         call timeBinPhotonSED(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
+                              sedTime, sedWavelength, nSedRadius, sedFlux, sedFluxScat, beenScattered, deltaT, rVec, xAxis, yAxis)
+                         if (timedepImage) call timeBinPhotonImage(photonTagTime, wavelength, eps, tau, nPix, nTime, &
+                     sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
+
                       enddo
                    endif
                    if (photonTagTime < firstObserverTime) then
                       do i = 1, nTime
-                         call timeBinPhoton(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
-                              sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered)
+                         call timeBinPhotonSED(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
+                              sedTime, sedWavelength, nSedRadius, sedFlux, sedFluxScat, beenScattered, deltaT, rVec, xAxis, yAxis)
+                         if (timedepImage) call timeBinPhotonImage(sedTime(i), wavelength, eps, tau, nPix, nTime, &
+                     sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
                       enddo
                    endif
                 endif
                 if (.not.seedRun) then
-                   call timeBinPhoton(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
-                        sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered)
+                   call timeBinPhotonSED(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
+                        sedTime, sedWavelength, nSedRadius, sedFlux, sedFluxScat, beenScattered, deltaT, rVec, xAxis, yAxis)
+                         if (timeDepImage) call timeBinPhotonImage(photonTagTime, wavelength, eps, tau, nPix, nTime, &
+                     sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
                 endif
              endif
                 
@@ -674,20 +842,31 @@ contains
                    if (seedRun) then
                       if (photonTagTime < firstObserverTime) then
                          do i = 1, nTime
-                            call timeBinPhoton(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
-                                 sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered)
+                            call timeBinPhotonSED(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
+                                 sedTime, sedWavelength, nSedRadius, sedFlux, sedFluxScat, beenScattered, deltaT, &
+                                 rVec, xAxis, yAxis)
+                            if (timedepImage) call timeBinPhotonImage(sedTime(i), wavelength, eps, tau, nPix, nTime, &
+                                 sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
+
                          enddo
                       endif
                       if (photonTagTime > lastObserverTime) then
                          do i = 1, nTime
-                            call timeBinPhoton(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
-                                 sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered)
+                            call timeBinPhotonSED(sedTime(i), wavelength, eps, tau, nSedWavelength, nTime, &
+                                 sedTime, sedWavelength, nSedRadius, sedFlux, sedFluxScat, beenScattered, deltaT, &
+                                 rVec, xAxis, yAxis)
+                            if (timedepImage) call timeBinPhotonImage(sedTime(i), wavelength, eps, tau, nPix, nTime, &
+                                 sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
+
                          enddo
                       endif
                    endif
                    if (.not.seedRun) then
-                      call timeBinPhoton(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
-                           sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered)
+                      call timeBinPhotonSED(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
+                           sedTime, sedWavelength, nSedRadius, sedFlux, sedFluxScat, beenScattered, deltaT, &
+                           rVec, xAxis, yAxis)
+                      if (timedepImage) call timeBinPhotonImage(photonTagTime, wavelength, eps, tau, nPix, nTime, &
+                           sedTime, deltaT, rVec, image, imageSize, xAxis, yAxis)
                    endif
 
                 endif
@@ -733,12 +912,12 @@ contains
        end do
 
  ! remove photons that are going to free stream to the edge of the boundary
-       if (outOfTime.and.varyingSource.and.(.not.seedRun)) then
-          call tauAlongPath(ilambda, grid, rVec, uHat, tau)
-          if (tau < 1.d-3) then
-             outOfTime = .false.
-          endif
-       endif
+!       if (outOfTime.and.varyingSource.and.(.not.seedRun)) then
+!          call tauAlongPath(ilambda, grid, rVec, uHat, tau)
+!          if (tau < 1.d-6) then
+!             outOfTime = .false.
+!          endif
+!       endif
 
        if (outOfTime) then
           call addPhotonToStack(useFileForStack, currentStack, currentStackUnit, &
@@ -764,21 +943,42 @@ contains
 
      allocate(tempDoubleArray(1:nSedWavelength))
 
-     do i = 1, nTime
-        tempDoubleArray = 0.d0
-        call MPI_ALLREDUCE(sedFlux(1:nSedWavelength, i),tempDoubleArray,&
-             nSedWavelength,MPI_DOUBLE_PRECISION,MPI_SUM, MPI_COMM_WORLD,ierr)
-        sedFlux(1:nSedWavelength,i) = tempDoubleArray
+     do j = 1, nSedRadius
+        do i = 1, nTime
+           tempDoubleArray = 0.d0
+           call MPI_ALLREDUCE(sedFlux(j,1:nSedWavelength, i),tempDoubleArray,&
+                nSedWavelength,MPI_DOUBLE_PRECISION,MPI_SUM, MPI_COMM_WORLD,ierr)
+           sedFlux(j,1:nSedWavelength,i) = tempDoubleArray
+        enddo
      enddo
 
-     do i = 1, nTime
-        tempDoubleArray = 0.d0
-        call MPI_ALLREDUCE(sedFluxScat(1:nSedWavelength, i),tempDoubleArray,&
-             nSedWavelength,MPI_DOUBLE_PRECISION,MPI_SUM, MPI_COMM_WORLD,ierr)
-        sedFluxScat(1:nSedWavelength,i) = tempDoubleArray
+     do j = 1, nSedRadius
+        do i = 1, nTime
+           tempDoubleArray = 0.d0
+           call MPI_ALLREDUCE(sedFluxScat(j,1:nSedWavelength, i),tempDoubleArray,&
+                nSedWavelength,MPI_DOUBLE_PRECISION,MPI_SUM, MPI_COMM_WORLD,ierr)
+           sedFluxScat(j,1:nSedWavelength,i) = tempDoubleArray
+        enddo
      enddo
-
      deallocate(tempDoubleArray)
+
+
+     if (timeDepImage) then
+        allocate(tempDoubleArray(nPix*nPix))
+        allocate(tempDoubleArray2(nPix*nPix))
+        allocate(tempImage(nPix,nPix))
+        
+     
+        do i = 1, nTime
+           tempImage = image(:,:,i)
+           tempDoubleArray = reshape(tempImage,(/SIZE(tempDoubleArray)/))
+           call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
+                MPI_SUM,0,MPI_COMM_WORLD,ierr)
+           tempImage = reshape(tempDoubleArray,SHAPE(tempImage))
+           image(:,:,i) = tempImage
+        enddo
+        deallocate(tempDoubleArray,tempDoubleArray2, tempImage)
+     endif
 
 
     if (doTuning) call tune(6, "MPI communication") 
@@ -786,8 +986,7 @@ contains
 #endif
 
 
-
-     if (myrankGlobal == 0) then
+     if (writeoutput) then
         write(*,*) "Sanity check for luminosity ", checkLum/deltaT, luminosity+sourceLuminosity
         write(*,*) "Sanity check for source luminosity ", checkLumSource/deltaT, sourceLuminosity
      endif
@@ -799,17 +998,26 @@ contains
      call calculateEnergyDensity(grid%octreeRoot, deltaT, photonSpeed)
 
 
+     call updateUDens(grid%octreeRoot, deltaT, grid, currentTime)
 
-    if (.not.seedRun) then
-
-       if (varyingSource) then
-          call updateUDens(grid%octreeRoot, deltaT, grid, currentTime)
-       else
-          call updateUDens(grid%octreeRoot, deltaT, grid, 1.d30)
-       endif
-    endif
+!    if (.not.seedRun) then
+!
+!       if (varyingSource) then
+!          if (doUdensUpdate) call updateUDens(grid%octreeRoot, deltaT, grid, currentTime)
+!       else
+!          call updateUDens(grid%octreeRoot, deltaT, grid, 1.d30)
+!       endif
+!    endif
 
     call calculateTemperatureFromUdens(grid%octreeRoot)
+
+    if (quickSublimate) call quickSublimateLucy(grid%octreeRoot, minLevel=1.d-6)
+!    if (instantSublimate) then
+!    rsublimation = rCore * (1600./teff)**(-2.1) ! Robitaille 2006 equation 7
+!    endif
+    
+
+
     call calculateEtaContLocal(grid, grid%octreeRoot)
 
     if (doTuning) call tune(6, "Calculate new energy densities") 
@@ -822,7 +1030,7 @@ contains
     diffusionTime = 1.d30
     call calculateDiffusionTime(grid, grid%octreeRoot, diffusionTime)
     if (Writeoutput) write(*,*) "Diffusion Time ", diffusionTime
-    if (myrankGlobal == 0) then
+    if (writeoutput) then
        write(*,*) "Temperature for time controlling cell is ",t1
        write(*,*) "Udens for time controlling cell is ",t2
        write(*,*) "adot for time controlling cell is ",t3
@@ -913,8 +1121,8 @@ contains
     real(double) :: time_equilibrium, temp_equilibrium, newUDens
     real(double) :: kappaP
     integer :: subcell, i
-
-    type(VECTOR) :: rVec
+    logical :: debug
+    type(VECTOR) :: rVec, testVec
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -928,24 +1136,35 @@ contains
           end do
        else
 
-
+          testVec = VECTOR(5*autocm/1.d10,0.d0,0.d0)
+!          testVec = VECTOR(1000.d0, 0.d0, 17500.)
+          debug = .false.
+          if (inSubcell(thisOctal,subcell,testVec)) debug = .true.
           rVec = subcellCentre(thisOctal, subcell)
-          if (modulus(rVec) < cSpeed * (currentTime+deltaT) /1.d10) then ! can source photons have reached this cell?
-             if ((thisOctal%photonEnergyDensity(subcell) > 0.d0).and.(thisOctal%adot(subcell) > 0.d0).and.&
-                  (thisOctal%nCrossings(subcell)>10)) then
-
+!          if (modulus(rVec) < cSpeed * (currentTime+deltaT) /1.d10) then ! can source photons have reached this cell?
+!             if ((thisOctal%photonEnergyDensity(subcell) > 0.d0).and.(thisOctal%adot(subcell) > 0.d0).and.&
+!                  (thisOctal%nCrossings(subcell)>10)) then
+             if (thisOctal%nCrossings(subcell)>10) then
                 call returnKappa(grid, thisOctal, subcell, kappap=kappap)
                 Temp_equilibrium  = &
                      max(0.d0,(thisOctal%aDot(subcell) / (4.d0 * stefanBoltz * kappaP))**0.25d0) ! in radiative equilibrium
                 newUdens =  uDensFunc(temp_equilibrium, thisOctal%rho(subcell),  7.d0/5.d0, 2.33d0)
                 deltaUdens = abs(newUdens - thisOctal%uDens(subcell))
                 time_equilibrium = deltaUdens/abs(thisOctal%aDot(subcell)-thisOctal%etaCont(subcell))
-
+                
 !                call quarticSub(udens_n_plus_1,  &
 !                     thisOctal%udens(subcell), &
 !                     thisOctal%photonEnergyDensity(subcell), &
 !                     dble(kappap), thisOctal%rho(subcell), thisOctal%Adot(subcell), 2.33d0, 7.d0/5.d0, deltaT,ok)
 !                if (ok) thisOctal%udens(subcell) = udens_n_plus_1 
+!                if (debug) then
+!                   write(*,*) "debug temp equilibrium ",temp_equilibrium
+!                   write(*,*) "udens ",thisOctal%udens(subcell)
+!                   write(*,*) "newusdens ",newudens,thisOctal%adot(subcell),thisOctal%etaCont(subcell)
+!                   write(*,*) "delta udens",deltaudens
+!                   write(*,*) "time eq",time_equilibrium
+!                   write(*,*) "deltaT ",deltaT
+!                endif
                 if (deltaT > time_equilibrium) then
                    thisOctal%uDens(subcell) = newUdens
                 else
@@ -956,7 +1175,7 @@ contains
 
 
              endif
-          endif
+!          endif
              
        endif
     enddo
@@ -990,7 +1209,8 @@ contains
   recursive subroutine calculateEtaContBias(grid, thisOctal)
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child 
+    type(octal), pointer  :: child
+    real(Double) :: dv
     integer :: subcell, i
 
     do subcell = 1, thisOctal%maxChildren
@@ -1005,7 +1225,8 @@ contains
           end do
        else
           if ((thisOctal%rho(subcell) > 1.d-30).and.(thisOctal%etaCont(subcell) > 0.d0)) then
-             thisOctal%biasCont3D(subcell) = 1.d0/sqrt(thisOctal%etaCont(subcell))
+             dv = cellVolume(thisOctal,Subcell)
+             thisOctal%biasCont3D(subcell) = 1.d0/(thisOctal%etaCont(subcell)*dv)
           else
              thisOctal%biasCont3D(subcell) = 1.d0
           endif
@@ -1114,6 +1335,7 @@ contains
                 eta = thisOctal%etaCont(subcell)
                 rho = thisOctal%rho(subcell)
                 chiline = 0.d0
+                t = Udens/abs(thisOctal%etaCont(subcell)-thisOctal%aDot(subcell))
              endif
           endif
 
@@ -2256,39 +2478,93 @@ contains
     v%z = 0.d0
   end function randomUnitVector2
 
-  subroutine timeBinPhoton(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
-               sedTime, sedWavelength, sedFlux, sedFluxScat, beenScattered)
+  subroutine timeBinPhotonSED(photonTagTime, wavelength, eps, tau, nSedWavelength, nTime, &
+       sedTime, sedWavelength, nSedRadius,sedFlux, sedFluxScat, beenScattered,deltaT, rVec, xAxis, yAxis)
+    use inputs_mod, only :  sedRadius
     real(double) :: photonTagTime
     real(double) :: wavelength
-    real(double) :: eps
+    real(double) :: eps, deltaT
     real(double) :: tau
-    integer :: nSedWavelength, nTime
+    integer :: nSedWavelength, nTime, nSedRadius
     real(double) :: sedTime(:), sedWavelength(:)
-    real(double) :: sedFlux(nSedWavelength, nTime)
-    real(double) :: sedFluxScat(nSedWavelength, nTime)
-    logical :: beenScattered
-    integer :: iwavelength, iTime
+    real(double) :: sedFlux(nSedRadius,nSedWavelength, nTime)
+    real(double) :: sedFluxScat(nSedRadius, nSedWavelength, nTime)
+    real(double) :: thisRadius
+    type(VECTOR) :: rVec, xAxis, yAxis
+    logical :: beenScattered, ok
+    integer :: iwavelength, iTime, j
 
-    if ((photonTagTime >= sedTime(1)).and.(photonTagTime <= sedTime(nTime))) then
-       if ((wavelength >= sedWavelength(1)).and.(wavelength <= sedWavelength(nSedWavelength))) then
-          call locate(sedWavelength, nSedWavelength, wavelength, iWavelength)
-          call locate(sedTime, nTime, photonTagTime, iTime)
-          sedFlux(iWavelength, iTime) = sedFlux(iWavelength, iTime) + eps * exp(-tau)/fourPi
-          if (beenScattered) then
-             sedFluxScat(iWavelength, iTime) = sedFluxScat(iWavelength, iTime) + eps * exp(-tau)/fourPi
-             if (tau < 0.d0) write(*,*) "tau warning ",tau
+    thisRadius = sqrt((rVec.dot.xAxis)**2 + (rVec.dot.yAxis)**2)
+    do j = 1, nSedRadius
+       if (thisRadius < SEDradius(j)) then
+          
+          if ((photonTagTime >= sedTime(1)).and.(photonTagTime <= (sedTime(nTime)+deltaT))) then
+             if ((wavelength >= sedWavelength(1)).and.(wavelength <= sedWavelength(nSedWavelength))) then
+                !          call locate(sedWavelength, nSedWavelength, wavelength, iWavelength)
+                iWavelength = findIlambdaDouble(wavelength, sedWavelength, nSedWavelength, ok)
+                if (photonTagTime < sedTime(nTime)) then
+                   call locate(sedTime, nTime, photonTagTime, iTime)
+                else
+                   iTime = nTime
+                endif
+                sedFlux(j,iWavelength, iTime) = sedFlux(j,iWavelength, iTime) + eps * exp(-tau)/fourPi
+                if (beenScattered) then
+                   sedFluxScat(j,iWavelength, iTime) = sedFluxScat(j,iWavelength, iTime) + eps * exp(-tau)/fourPi
+                   if (tau < 0.d0) write(*,*) "tau warning ",tau
+                endif
+             endif
+          endif
+       endif
+    enddo
+  end subroutine timeBinPhotonSED
+
+  subroutine timeBinPhotonImage(photonTagTime, wavelength, eps, tau, nPix, nTime, &
+       sedTime, deltaT, photonPos, image, imageSize, xAxis, yAxis)
+    use inputs_mod, only : lamstart,lamend
+    real(double) :: photonTagTime
+    real(double) :: wavelength
+    real(double) :: eps, deltaT
+    real(double) :: tau
+    integer :: nTime
+    real(double) :: sedTime(:), xVal, yVal
+    integer :: nPix, iPix, jPix, iTime
+    real(double) :: image(nPix, nPIx, nTime)
+    real(double) :: imageSize, dx
+    type(VECTOR) :: xAxis, yAxis, photonPos
+
+
+    lamStart = 1.d5
+    lamEnd = 2.d5
+    xVal = photonPos.dot.xAxis
+    yVal = photonPos.dot.yAxis
+    
+    dx = imageSize/dble(npix)
+    iPix = (xVal / dx) + nPix/2
+    jPix = (yVal / dx) + nPix/2
+
+
+    if ((photonTagTime >= sedTime(1)).and.(photonTagTime <= (sedTime(nTime)+deltaT))) then
+       if ((iPix >= 1).and.(iPix <= nPix).and.(jPix>=1).and.(jPix<=nPix)) then
+          if ((wavelength > lamStart).and. (wavelength < lamEnd)) then
+             if (photonTagTime < sedTime(nTime)) then
+                call locate(sedTime, nTime, photonTagTime, iTime)
+             else
+                iTime = nTime
+             endif
+             image(iPix,jPix,iTime) = image(iPix, jPix, iTime) + eps * exp(-tau)/fourPi
           endif
        endif
     endif
-  end subroutine timeBinPhoton
+  end subroutine timeBinPhotonImage
 
   recursive subroutine packvalues(thisOctal,nIndex,&
-       distanceGridAdot, distanceGridPhotonFromSource, distanceGridPhotonFromGas)
+       distanceGridAdot, distanceGridPhotonFromSource, distanceGridPhotonFromGas, nCrossingsArray)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: distanceGridAdot(:)
   real(double) :: distanceGridPhotonFromSource(:)
   real(double) :: distanceGridPhotonFromGas(:)
+  real(double) :: nCrossingsArray(:)
   integer :: nIndex
   integer :: subcell, i
   
@@ -2299,7 +2575,7 @@ contains
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
                 call packvalues(child,nIndex, distanceGridAdot, distanceGridPhotonFromSource, &
-                     distanceGridPhotonFromGas)
+                     distanceGridPhotonFromGas, nCrossingsArray)
                 exit
              end if
           end do
@@ -2308,18 +2584,20 @@ contains
           distanceGridAdot(nIndex) = thisOctal%distanceGridAdot(subcell)
           distanceGridPhotonFromSource(nIndex) = thisOctal%distanceGridPhotonFromSource(subcell)
           distanceGridPhotonFromGas(nIndex) = thisOctal%distanceGridPhotonFromGas(subcell)
+          nCrossingsArray(nIndex) = dble(thisOctal%nCrossings(subcell))
 
        endif
     enddo
   end subroutine packvalues
 
   recursive subroutine unpackvalues(thisOctal,nIndex,distanceGridAdot, distanceGridPhotonFromSource, &
-       distanceGridPhotonFromGas)
+       distanceGridPhotonFromGas, nCrossingsArray)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: distanceGridAdot(:)
   real(double) :: distanceGridPhotonFromSource(:)
   real(double) :: distanceGridPhotonFromGas(:)
+  real(double) :: nCrossingsArray(:)
   integer :: nIndex
   integer :: subcell, i
   
@@ -2330,7 +2608,7 @@ contains
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
                 call unpackvalues(child,nIndex,distanceGridAdot, &
-                     distanceGridPhotonFromSource, distanceGridPhotonFromGas)
+                     distanceGridPhotonFromSource, distanceGridPhotonFromGas, nCrossingsArray)
                 exit
              end if
           end do
@@ -2339,6 +2617,7 @@ contains
           thisOctal%distanceGridAdot(subcell) = distanceGridAdot(nIndex) 
           thisOctal%distanceGridPhotonFromSource(subcell) = distanceGridPhotonFromSource(nIndex)
           thisOctal%distanceGridPhotonFromGas(subcell) = distanceGridPhotonFromGas(nIndex) 
+          thisOctal%nCrossings(subcell) = nint(nCrossingsArray(nIndex))
        endif
     enddo
   end subroutine unpackvalues
@@ -2351,6 +2630,7 @@ contains
 
     type(gridtype) :: grid
     integer :: nOctals, nVoxels
+    real(double), allocatable :: nCrossingsArray(:)
     real(double), allocatable :: distanceGridAdot(:)
     real(double), allocatable :: distanceGridPhotonFromSource(:)
     real(double), allocatable :: distanceGridPhotonFromGas(:)
@@ -2364,11 +2644,12 @@ contains
     allocate(distanceGridAdot(1:nVoxels))
     allocate(distanceGridPhotonFromSource(1:nVoxels))
     allocate(distanceGridPhotonFromGas(1:nVoxels))
+    allocate(nCrossingsArray(1:nVoxels))
 
 
     nIndex = 0
     call packValues(grid%octreeRoot,nIndex, &
-         distanceGridAdot, distanceGridPhotonFromSource, distanceGridPhotonFromGas)
+         distanceGridAdot, distanceGridPhotonFromSource, distanceGridPhotonFromGas,ncrossingsArray)
 
     allocate(tempDoubleArray(nVoxels))
 
@@ -2388,15 +2669,20 @@ contains
          MPI_SUM,MPI_COMM_WORLD,ierr)
     distanceGridPhotonFromGas = tempDoubleArray 
 
+    tempDoubleArray = 0.d0
+    call MPI_ALLREDUCE(nCrossingsArray,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+         MPI_SUM,MPI_COMM_WORLD,ierr)
+    nCrossingsArray = tempDoubleArray
+    
     deallocate(tempDoubleArray)
      
     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
     
     nIndex = 0
     call unpackValues(grid%octreeRoot,nIndex, &
-         distanceGridAdot, distanceGridPhotonFromSource, distanceGridPhotonFromGas)
+         distanceGridAdot, distanceGridPhotonFromSource, distanceGridPhotonFromGas, nCrossingsArray)
 
-    deallocate(distanceGridAdot, distanceGridPhotonFromSource,DistanceGridPhotonFromGas)
+    deallocate(distanceGridAdot, distanceGridPhotonFromSource,DistanceGridPhotonFromGas, nCrossingsArray)
 
   end subroutine updateGridMPI
 #endif
@@ -2496,7 +2782,7 @@ contains
 !!$            xm = 0.d0
 !!$            x1 = 0.d0
 !!$            x2 = 0.d0
-!!$            if (myrankGlobal==0) then
+!!$            if (myrankWorldGlobal==0) then
 !!$               write(*,*) "bisection failed!", y1,y2,ym
 !!$               write(*,*) "rho ",rho
 !!$               write(*,*) "adot ",adot
@@ -2558,7 +2844,7 @@ contains
 !!$            xm = 0.d0
 !!$            x1 = 0.d0
 !!$            x2 = 0.d0
-!!$            if (myrankGlobal==0) then
+!!$            if (myrankWorldGlobal==0) then
 !!$               write(*,*) "bisection failed!", y1,y2,ym
 !!$               write(*,*) "rho ",rho
 !!$               write(*,*) "adot ",adot
@@ -2668,5 +2954,70 @@ contains
       enddo
     end subroutine calculateTranportTerms
       
+    subroutine writeTempDepFitsImage(thisImage, nPix, filename)
+      use image_mod, only : deleteFile
+      use fits_utils_mod
+      real(double) :: thisImage(:,:)
+      integer :: nPix
+      character(len=*) :: filename
+      integer :: unit, status
+      logical :: simple, extend
+      integer :: nAxis, nAxes(2)
+      integer :: bitpix, blocksize, fpixel,group, nElements
+      logical :: oldFilepresent
+      real, allocatable :: realImage(:,:)
 
+
+      allocate(realImage(1:nPix,1:nPix))
+      realImage = real(thisImage)
+       status=0
+       !
+       !  Delete the file if it already exists, so we can then recreate it.
+       !
+       inquire(file=filename, exist=oldFilePresent)
+       if (oldFilePresent) then 
+          call deleteFile(filename, status)
+       end if
+
+       !
+       !  Get an unused Logical Unit Number to use to open the FITS file.
+       !
+       call ftgiou ( unit, status )
+       !
+       !  Create the new empty FITS file.
+       !
+       blocksize=1
+       call ftinit(unit,filename,blocksize,status)
+       !
+       !  Initialize parameters about the FITS image (300 x 200 16-bit integers).
+       !
+       simple=.true.
+       bitpix=-32
+       naxis=2
+       naxes(1)=nPIx
+       naxes(2)=nPix
+       extend=.true.
+       !
+       !  Write the required header keywords.
+       !
+       call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+       !
+       !  Write the array to the FITS file.
+       !
+       group=1
+       fpixel=1
+       nelements=naxes(1)*naxes(2)
+
+       call addScalingKeywords(maxval(realImage), minval(realImage), unit, bitpix)
+
+       call ftppre(unit,group,fpixel,nelements,realimage,status)
+
+              !
+       !  Close the file and free the unit number.
+       !
+       call ftclos(unit, status)
+       call ftfiou(unit, status)
+       deallocate(realImage)
+     end subroutine writeTempDepFitsImage
+    
 end module timeDep_mod

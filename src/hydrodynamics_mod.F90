@@ -21795,8 +21795,10 @@ end subroutine broadcastSinks
 !          write(*,*)  "position ",sourceArray(isource)%position
 !          write(*,'(a,3f8.3)') "After acc velocity (km/s): ",sourceArray(isource)%velocity/1.d5
 !          write(*,*) "mass (solar) ",sourceArray(isource)%mass/msol
-          write(*,'(a, i4, f10.4, es12.5, es12.5)') "mass, accrate of source ", isource, sourcearray(isource)%mass/msol, &
-            (accretedmass(isource)/timestep)/msol * (365.25d0*24.d0*3600.d0), grid%currenttime+timestep
+          if (sourceArray(iSource)%accretionRadius > 0.d0) then
+             write(*,'(a, i4, f10.4, es12.5, es12.5)') "mass, accrate of source ", isource, sourcearray(isource)%mass/msol, &
+               (accretedmass(isource)/timestep)/msol * (365.25d0*24.d0*3600.d0), grid%currenttime+timestep
+          endif
        endif
     enddo
     deallocate(accretedMass, accretedLinMomentum, accretedAngMomentum)
@@ -23075,6 +23077,7 @@ recursive subroutine checkSetsAreTheSame(thisOctal)
      deallocate(temp, fluxes)
      
   end subroutine updateSourceHabingFlux 
+
 
 #endif
 

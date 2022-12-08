@@ -29,13 +29,14 @@ contains
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, iHydro, finalPass)
     use inputs_mod, only : variableDustSublimation, iterlucy, rCore, solveVerticalHydro, dustSettling, restartLucy
     use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau
-    use inputs_mod, only : object, convergeOnUndersampled
+    use inputs_mod, only : object, convergeOnUndersampled, storeScattered, scatteredLightWavelength
     use inputs_mod, only : writelucyTmpfile, discWind, mincrossings, maxiterLucy, solveDiffusionZone, quickSublimate, usePAH
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
     use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled, randomwalk, &
          unsetDiffusion
     use amr_mod, only: myScaleSmooth, myTauSmooth, findtotalmass, scaledensityamr
+!    use intensity_storage_mod
     use dust_mod, only: filldustuniform, stripdustaway, sublimatedust, sublimatedustwr104, fillDustShakara, &
          normalizeDustFractions, findDustMass, setupOrigDustFraction, reportMasses, fillDustSettled
     use random_mod
@@ -178,7 +179,6 @@ contains
     if (PRESENT(finalPass)) thisIsFinalPass = finalPass
 
 
-
     do i = 1, 1000
        lognu1 = log10(1200.d0) + real(i-1)*(log10(1e7)-log10(1200.))/999.
        lognu1 = 10.d0**lognu1
@@ -258,7 +258,7 @@ contains
        endif
 
 
-
+       
        if (object == "ab_aur") then
           call writeInfo("Filling dust with large dust in midplane", FORINFO)
           call fillDustUniform(grid, grid%octreeRoot)
@@ -278,7 +278,7 @@ contains
           call stripDustAway(grid%octreeRoot, 1.d-2, 1.d30)
        endif
 
-       if (variableDustSublimation) then
+       if (variableDustSublimation.or.quicksublimate) then
           call setupOrigDustFraction(grid%octreeRoot)
           tauMax = 1.e-20
           call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
@@ -786,10 +786,10 @@ contains
              call calculateAdotPAH(grid%octreeRoot, epsOverDeltaT)
 
 
-!          if (storeScattered) then
-!             call locate(freq, nFreq, cSpeed/(scatteredLightWavelength*angstromtocm),i)
-!             call calculateMeanIntensityOverdNu(grid%octreeRoot, epsOverDeltaT,dnu(i))
-!          endif
+          if (storeScattered) then
+             call locate(freq, nFreq, cSpeed/(scatteredLightWavelength*angstromtocm),i)
+             call calculateMeanIntensityOverdNu(grid%octreeRoot, epsOverDeltaT,dnu(i))
+          endif
 
           
 
@@ -918,7 +918,7 @@ contains
           call fillDustUniform(grid, grid%octreeRoot)
        endif
 
-       if (quickSublimate) call quickSublimateLucy(grid%octreeRoot)
+       if (quickSublimate) call quickSublimateLucy(grid%octreeRoot, minLevel=1.d-6)
 
 
 
@@ -928,12 +928,14 @@ contains
           nFrac = 0
 
              if (iIter_grand == 4) then
-                tauMax = 1.0
+                tauMax = 10.0
                 call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
              endif
 
              if (iIter_grand == 5) then
                 tauMax = 1.e30
+!                if (dustSettling) call fillDustSettled(grid)
+!                call setupOrigDustFraction(grid%octreeRoot)
                 call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
              endif
 
@@ -943,23 +945,35 @@ contains
                 call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
                 do j = iSmoothLam, iSmoothLam
                    write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
+                   call putTau(grid, grid%lamArray(j))
+!                      call writeVtkFile(grid, "puttau.vtk", &
+!                           valueTypeString=(/"rho        ", "temperature", "dust       ", &
+!                                    "etaline    "/))
                    call writeInfo(message, TRIVIAL)
                    do
                       gridConverged = .true.
-!                      call writeInfo("putting tau")
-                      call putTau(grid, grid%lamArray(j))
-!                      call writeInfo("done")
+
                       if (solveVerticalHydro) then
                          call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                              inheritProps = .false., interpProps = .true., photosphereSplit = .true.)
+                              inheritProps = .false., interpProps = .true.)!, photosphereSplit = .true.)
                       else
+                         call getSublimationRadius(grid, subRadius)
                          call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                              inheritProps = .false., interpProps = .true., photosphereSplit = .true.)
+                              inheritProps = .false., interpProps = .true., photosphereSplit = .true., splitToRadius=2.d0*subRadius)
                       endif
 
                       if (gridConverged) exit
                    end do
+
+!                   do
+!                      gridConverged = .true.
+!                      call unrefineThinCells(grid%octreeRoot, grid, j, nUnrefine, gridconverged)
+!                      if (gridConverged) exit
+!                   end do
+                   
                 enddo
+
+                
                 call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
                 call writeInfo("...grid smoothing complete", TRIVIAL)
 
@@ -972,6 +986,8 @@ contains
                 end do
                 call writeInfo("...grid smoothing complete", TRIVIAL)
 
+                taumax = 1.d30
+                call fixDust(grid,grid%octreeRoot)                
 !
              if (writeoutput) write(*,*) "Global Memory has ",humanReadableMemory(globalMemoryFootprint)
              call findTotalMemory(grid, totMem)
@@ -980,10 +996,12 @@ contains
 !
 
 
-             if (dustSettling) call fillDustSettled(grid)
-             call setupOrigDustFraction(grid%octreeRoot)
-             tauMax = 1e30
-             call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+
+             call writeVtkFile(grid, "afterphotorefine.vtk", &
+                  valueTypeString=(/"rho        ", "temperature", "dust       ", &
+                                    "etaline    "/))
+
+
           endif
 
           if (iIter_grand >= 5) then
@@ -1020,7 +1038,7 @@ contains
        endif
 !       if (variableDustSublimation.and.(iIter_grand == 7)) converged = .true.
 
-       if (variableDustSublimation.and.(iIter_grand > 6).and. &
+       if (variableDustSublimation.and.(iIter_grand > 7).and. &
             (percent_undersampled < percent_undersampled_min)) converged = .true.
 
 
@@ -1127,11 +1145,11 @@ contains
        call writeInfo(message,TRIVIAL)
     endif
 
-    !    if (storescattered) then 
-    !       call locate(freq, nFreq, cSpeed/(1.e4*angstromtocm),i)
-    !       call calcIntensityFromGrid(grid%octreeRoot, epsOverDeltaT, dnu(i))
-    !       if (writeoutput) call writeVTKfile(grid, "scattered.vtk", valueTypeString = (/"scattered"/))
-    !    endif
+        if (storescattered) then 
+           call locate(freq, nFreq, cSpeed/(scatteredlightwavelength*angstromtocm),i)
+           call calcIntensityFromGrid(grid%octreeRoot, epsOverDeltaT, dnu(i))
+           if (writeoutput) call writeVTKfile(grid, "scattered.vtk", valueTypeString = (/"scattered"/))
+        endif
 
   end subroutine lucyRadiativeEquilibriumAMR
 
@@ -1707,6 +1725,50 @@ contains
     enddo
   end subroutine zeroDistanceGrid
 
+  recursive subroutine fixDust(grid,thisOctal)
+    use inputs_mod, only : nDusttype, grainfrac
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    real(double) :: thisTau, tauMax, frac, kappaAbs, kappaSca
+    integer :: subcell, i, j
+    integer, save :: ilambda
+    logical, save :: firstTime = .true.
+    !$OMP THREADPRIVATE (ilambda, FirstTime)
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call fixDust(grid,child)
+                exit
+             end if
+          end do
+       else
+
+          if (firstTime) then
+             call locate(grid%lamArray, grid%nLambda, 5500., iLambda)
+             firstTime = .false.
+          endif
+          do j = 1,nDustType
+             if  (thisOctal%dustTypeFraction(subcell, j) < 0.999d0*grainFrac(j))  then
+                call returnKappa(grid, thisOctal, subcell, ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+                thisTau = (kappaAbs+kappaSca)*thisOctal%subcellSize
+                tauMax = 1.d0
+                if (thisTau > tauMax) then
+                   write(*,*) "fixing ",thisOctal%dustTypeFraction(subcell,j),thisTau
+                   frac = tauMax / thisTau 
+                   thisOctal%dustTypeFraction(subcell,j) = thisOctal%dustTypeFraction(subcell,j) * frac
+                endif
+             endif
+          enddo
+
+       endif
+    enddo
+  end subroutine fixDust
+
   recursive subroutine zeroAdot(thisOctal)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
@@ -1891,7 +1953,7 @@ contains
     integer :: nUndersampled
     integer, save  :: nwarning = 0
     integer, parameter :: nmaxwarning = 20
-    real, parameter :: underCorrect = 1.
+    real, parameter :: underCorrect = 0.8
 
     if(this_is_root) then !initialize some values
        dT_sum = 0.0
@@ -2277,8 +2339,8 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
 ! These lines were previously in an openmp critical section. If they are reinstated with OpenMP
 ! in use then access to shared memory may need to be protected from simutaneous updates. 
-!          if (scatteredPhoton.and.storeScattered.and.(iLam==iLamScat)) &
-!               call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, tVal)
+          if (storeScattered.and.(iLam==iLamScat)) &
+               call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, tVal)
 
     call addMeanIntensity(thisOctal, subcell, tVal*1.d10)
 
@@ -2418,8 +2480,8 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
 ! These lines were previously in an openmp critical section. If they are reinstated with OpenMP
 ! in use then access to shared memory may need to be protected from simutaneous updates. 
-!          if (scatteredPhoton.and.storeScattered.and.(iLam==iLamScat)) &
-!               call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, dble(tVal)*dble(tau)/thisTau)
+          if (storeScattered.and.(iLam==iLamScat)) &
+               call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, dble(tVal)*dble(tau)/thisTau)
 
                call addMeanIntensity(thisOctal, subcell, 1.d10*dble(tVal)*dble(tau)/thisTau)
 
@@ -3720,16 +3782,13 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
 
   subroutine addToScatteredIntensity(position, thisOctal, subcell, uHat, tVal)
 
+!    use intensity_storage_mod
+
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     type(VECTOR) :: uHat, thisVec, position
-    real(double) :: tVal, thisTheta, thisPhi, ang
-    integer :: nTheta, nPhi
-    integer :: iTheta, iPhi
-
-    nTheta = SIZE(thisOctal%scatteredIntensity,2)
-    nPhi = SIZE(thisOctal%scatteredIntensity,3)
-
+    real(double) :: tval, ang
+    integer :: ipix
 
     ang = atan2(position%y, position%x)
 
@@ -3739,15 +3798,8 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
        thisVec = rotateZ(uHat, -ang)
     endif
 
-    thisTheta = acos(thisvec%z)
-    thisPhi = atan2(thisVec%y,thisVec%x)
-
-    if (thisPhi < 0.d0) thisPhi = thisPhi + twoPi 
-    iTheta = nint((thisTheta / pi) * dble(nTheta-1))+1
-    iphi = nint((thisPhi / twoPi) * dble(nPhi-1))+1
-
-    thisOctal%scatteredIntensity(subcell,iTheta,iPhi) = thisOctal%scatteredIntensity(subcell,iTheta, iPhi) + tval*1.d10
-!    write(*,*) thisOctal%scatteredIntensity(subcell,itheta,iphi)
+    ipix = 1!returnIpix(thisVec)
+    thisOctal%scatteredIntensity(subcell,1,ipix) = thisOctal%scatteredIntensity(subcell,1, ipix) + tval*1.d10
   end subroutine addToScatteredIntensity
 
   subroutine addMeanIntensity(thisOctal, subcell, tVal)
@@ -3762,23 +3814,20 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
 
 
   recursive subroutine calcIntensityFromGrid(thisOctal, epsOverDt, dnu)
-
+!    use intensity_storage_mod
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     real(double) :: epsOverDt, dnu
     real(double) :: v
-    integer :: subcell, i, j, k
-    integer :: nTheta, nphi
-    real(double), allocatable :: iNuDomega(:,:)
-    real(double) :: dTheta, dphi, theta, dOmega
+    integer :: subcell, i
+    real(double), allocatable :: iNuDOmega(:,:)
+!    integer :: npix
+
+!    npix = returnHealpixPixelNumber()
+!    allocate(iNuDOmega(1:1,1:nPix))
 
 
 
-
-    nTheta = SIZE(thisOctal%scatteredIntensity,2)
-    nPhi = SIZE(thisOctal%scatteredIntensity,3)
-
-    allocate(iNudOmega(nTheta, nPhi))
 
     Do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -3793,16 +3842,12 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
        else
 
           V = cellVolume(thisOctal, subcell)*1.d30
-          InuDomega(:,:) = (epsOverDt / V) * thisOctal%scatteredIntensity(subcell, :,:) / dnu
-          dTheta = pi / dble(nTheta-1)
-          dPhi = twoPi / dble(nPhi)
-          do j = 1, nTheta
-             theta = pi * dble(j-1)/dble(nTheta-1)
-             do k = 1, nPhi
-                dOmega = dTheta * dphi * sin(theta)
-                thisOctal%scatteredIntensity(subcell, j, k) = inuDomega(j,k) / max(dOmega,1.d-10)
-             enddo
-          enddo
+!          InuDomega(:,:) = (epsOverDt / V) * thisOctal%scatteredIntensity(subcell, :,:) / dnu
+
+!          thisOctal%scatteredIntensity(subcell, :, :) = inuDomega(:,:) / (fourPi/dble(nPix))
+
+          write(*,*) "scat ",thisOctal%scatteredIntensity(subcell,1,:)
+
        endif
        
     enddo
@@ -3964,12 +4009,12 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
 
 
   subroutine putTau(grid, wavelength)
-    use amr_mod, only: getxValues
+    use amr_mod, only: getxValues, getzValues
     use utils_mod, only: stripSimilarValues
     type(GRIDTYPE) :: grid
     real :: wavelength
-    integer :: nx
-    real(double), allocatable :: xAxis(:)
+    integer :: nx, nz
+    real(double), allocatable :: xAxis(:),zAxis(:)
     integer :: iLambda, i
     integer :: nOctals,nVoxels
     call countVoxels(grid%octreeRoot, nOctals, nVoxels)
@@ -3984,6 +4029,16 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
        call integrateUpWards(grid, xAxis(i), iLambda)
     end do
     deallocate(xAxis)
+
+    allocate(zAxis(1:nVoxels))
+    nz = 0
+    call getzValues(grid%octreeRoot,nz,zAxis)
+    call stripSimilarValues(zAxis,nz,1.d-5*grid%halfSmallestSubcell)
+    zAxis(1:nz) = zAxis(1:nz) + 1.d-5*grid%halfSmallestSubcell
+    do i = 1, nz
+       call integrateRightwards(grid, zAxis(i), iLambda)
+    end do
+    deallocate(zAxis)
 
   end subroutine putTau
 
@@ -4029,6 +4084,49 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
        thisOctal%etaLine(subcell) =  max(tau,1.d-30)
     end do
   end subroutine integrateDownwards
+
+  subroutine integrateRightwards(grid, z, ilambda)
+    type(GRIDTYPE) :: grid
+    real(double) :: z, tau
+    integer :: iLambda
+    real(double) ::  i0, snu, dtau, jnu
+    type(VECTOR) :: position, viewVec
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    real(double) :: currentDistance, tVal
+    real(double) :: kappaAbs, kappaSca
+    real(double) :: kappaAbsDust, kappaScaDust
+    viewVec = VECTOR(1.d0, 0.d0, 0.d0)
+
+    position = VECTOR(0.01d0*grid%halfSmallestSubcell, 0.d0, z)
+    thisOctal => grid%octreeRoot
+    subcell = 1
+    i0 = 0.d0
+    tau = 0.d0
+    currentDistance  = 0.d0
+    do while(inOctal(grid%octreeRoot, position).and.(position%x > 0.))
+       call findSubcelllocal(position, thisOctal, subcell)
+       call distanceToCellBoundary(grid, position, viewVec, tVal, sOctal=thisOctal)
+       call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, kappaAbs = kappaAbs, kappaSca = kappaSca, &
+            kappaAbsDust = kappaAbsDust, kappaScaDust=kappaScaDust)
+       dTau = (kappaAbsDust + kappaScaDust) * tVal
+       
+       jnu = kappaAbs * bnu(cspeed/(grid%lamArray(ilambda)*angstromTocm), dble(thisOctal%temperature(subcell)))
+       
+       if (kappaAbs .ne. 0.d0) then
+          snu = jnu/kappaAbs
+          i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
+       else
+          snu = tiny(snu)
+          i0 = i0 + tiny(i0)
+       endif
+       
+       tau = tau + dtau
+       position = position + (tval+1.d-3*grid%halfSmallestSubcell) * viewVec
+       thisOctal%etaLine(subcell) =  max(tau,thisOctal%etaLine(subcell))
+    end do
+  end subroutine integrateRightwards
+
 
   subroutine integrateUpwards(grid, x, ilambda)
     type(GRIDTYPE) :: grid
@@ -4149,9 +4247,11 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
   end subroutine refineDiscGrid
 
 
-recursive subroutine quickSublimateLucy(thisOctal)
+recursive subroutine quickSublimateLucy(thisOctal, minLevel)
   use inputs_mod, only : grainFrac, nDustType, tsub
   type(octal), pointer   :: thisOctal
+  real(double), optional :: minLevel
+  real(double) :: thisMinLevel
   type(octal), pointer  :: child 
   ! Where dust is present set dustTypeFraction to this value. 
   integer :: subcell, i, idust
@@ -4162,16 +4262,20 @@ recursive subroutine quickSublimateLucy(thisOctal)
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call quickSublimateLucy(child)
+                call quickSublimateLucy(child, minLevel)
                 exit
              end if
           end do
        else
 
-
+          if (present(minLevel)) then
+             thisMinLevel = minLevel
+          else
+             thisMinLevel = 1.d-20
+          endif
           do idust = 1, nDustType
              if (thisOctal%temperature(subcell) > tsub(idust)) then
-                thisOctal%dustTypeFraction(subcell,idust) = 1.d-20
+                thisOctal%dustTypeFraction(subcell,idust) = thisMinLevel
              else
                 thisOctal%dustTypeFraction(subcell,iDust) = grainFrac(iDust)
              endif
