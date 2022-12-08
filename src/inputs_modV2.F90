@@ -1854,6 +1854,25 @@ contains
     call getDouble("rhofloor", rhoFloor, 1.d0, cLine, fLine, nLines, &
          "Minimum density in advection:  ","(a,e12.3,1x,a)", 1.d-30, ok, .false.)
 
+    case("katie")
+
+       call getReal("rinner", rInner, real(sourceRadius(1)), cLine, fLine, nLines, &
+            "Inner Radius (stellar radii): ","(a,f7.3,a)", 12., ok, .true.)
+
+       call getReal("router", rOuter, real(autocm/1.d10), cLine, fLine, nLines, &
+            "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
+
+       call getReal("height", height, real(autocm/1.d10), cLine, fLine, nLines, &
+            "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+
+       call getReal("alphadisc", alphaDisc, 1., cLine, fLine, nLines, &
+            "Disc alpha parameter: ","(a,f5.3,a)", 2.25, ok, .true.)
+
+       call getReal("betadisc", betaDisc, 1., cLine, fLine, nLines, &
+            "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
+
+       call getReal("heightsplitfac", heightSplitFac, 1., cLine, fLine, nLines, &
+            "Splitting factor for scale height (local scale heights): ","(a,f5.2,a)", 0.2, ok, .false.)
 
     case("shakara")
 
@@ -4885,6 +4904,10 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
        call getString("imagefile", imageFilename, cLine, fLine, nLines, &
             "Output image  filename: ","(a,a,1x,a)","none", ok, .true.)
 
+       call getVector("viewvec", viewVec, 1.d0, cLine, fLine, nLines, &
+                  "View vector for image: ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .false.)
+
+       
        if (photoionPhysics) then
           call getString("imagetype", outputimageType, cLine, fLine, nLines, &
                "Type of output image: ","(a,a,1x,a)","none", ok, .true.)
@@ -4903,8 +4926,13 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
           call writeInfo("Type of output image: Stokes image (default for atomic physics)")
        endif
 
-       call setImageParams(1, lambdaImage, outputimageType, imageFilename, npixels, axisUnits, globalfluxUnits, &
-            imageSize, aspectRatio, inclination, positionAngle, offsetx, offsety, gridDistance)
+       if (modulus(viewVec) < 0.5d0) then
+          call setImageParams(1, LambdaImage, outputimageType,imageFilename, npixels, axisUnits, globalfluxUnits, &
+               ImageSize, aspectRatio, inclination,  positionangle, Offsetx, Offsety, gridDistance)
+       else
+          call setImageParams(1, LambdaImage, outputimageType,imageFilename, npixels, axisUnits, globalfluxUnits, &
+               ImageSize, aspectRatio, inclination,  positionangle, Offsetx, Offsety, gridDistance, viewvec=viewvec)
+       endif
     else
        do i = 1, nImage
 

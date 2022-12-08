@@ -3210,6 +3210,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
       rayposition = pixelcorner + r(iray,1) * pixelbasis(1) + r(iray,2) * pixelbasis(2) ! random position in pixel
 
+      
       if(maxrhocalc) then
          call intensityalongray(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0, &
                                 tau = opticaldepth, rhomax = rhomax)
@@ -3221,7 +3222,9 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 !            if(present(sink)) then
             if (.not.grid%splitOverMPI) then
                if(isinlte) then
-                  call lteintensityalongray2(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0, &
+!                  call lteintensityalongray2(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0, &
+!                                             tau = opticaldepth, ncol = ncol)
+                  call intensityalongraynew(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0, &
                                              tau = opticaldepth, ncol = ncol)
                else
                   call intensityalongray2(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0, &
@@ -5871,6 +5874,93 @@ endif
 
  end subroutine createFluxSpectra
 
+ subroutine returnValuesAlongPath(deltaV, grid, obsPoint, direction, nPoints, distArray, &
+      rhoArray, velArray ,&
+      alphaDust, jnuDust, alphaLine, jnuLine)
+   type(GRIDTYPE) :: grid
+   integer :: npoints
+   type(VECTOR) :: position, direction, obsPoint
+   real(double) :: deps, distToGrid, tval, deltaV,dv, nmol, phiProfVal
+   real(double) :: distArray(:), rhoArray(:), velArray(:), alphaDust(:), jnuDust(:)
+   real(double) :: alphaLine(:), jnuLine(:)
+   type(OCTAL), pointer :: thisOctal
+   integer :: subcell
+   character(len=80) :: message
+
+
+   if(inOctal(grid%octreeRoot, obsPoint)) then
+        disttogrid = 0.
+        call writeinfo("inside",TRIVIAL)
+        write(*,*) obsPoint
+     else
+        distToGrid = distanceToGridFromOutside(grid, obsPoint, direction) 
+     endif
+
+     if (distToGrid > 1.e29) then
+        call writeFatal("ray does not intersect grid")
+        write(message, *) obsPoint
+        call writeinfo(message, FORINFO)
+        stop
+     endif
+        
+     deps = grid%halfSmallestSubcell ! small value to add on to distance from grid to ensure we get onto grid
+     position = obsPoint + (distToGrid + deps) * direction
+     nPoints = 1
+     thisOctal => grid%octreeRoot
+     if (.not.inOctal(grid%OctreeRoot, position)) then
+        write(*,*) "error ",position
+        goto 666
+     endif
+     
+     call findSubcellLocal(position, thisOctal, subcell)
+
+     deps = 1.d-2*grid%halfSmallestSubcell 
+
+     distArray(1) = 0.
+     rhoArray(1) = tiny(rhoArray(1))
+     velArray(1) = thisOctal%velocity(subcell).dot.direction
+     alphaDust(1) = tiny(alphaDust(1))
+     jnuDust(1) = tiny(jnuDust(1))
+
+     alphaLine(1) = 1.d-30
+     jnuLine(1) = 1.d-30
+     do while(inOctal(grid%octreeRoot, position))
+        call findSubcellLocal(position, thisOctal, subcell)
+        call distanceToCellBoundary(grid, position, direction, tVal, sOctal=thisOctal)
+        nPoints = nPoints + 1
+        distArray(nPoints) = distArray(nPoints-1) + tVal / 2.
+        rhoArray(nPoints) = thisOctal%rho(subcell)
+        velArray(nPoints) = thisOctal%velocity(subcell).dot.direction
+
+
+        dv = velArray(nPoints) - deltaV
+         
+        phiProfval = phiProf(dv, thisOctal%molmicroturb(subcell))
+
+        nmol = thisoctal%molcellparam(1,subcell)
+
+        alphaLine(nPoints) = nmol * thisOctal%molcellparam(6,subcell) * phiprofval                 
+
+        jnuLine(nPoints) = nmol * thisOctal%molcellparam(5,subcell) * phiProfVal
+
+        
+        alphaDust(nPoints) = thisOctal%molcellparam(7,subcell)
+        jnuDust(nPoints) = thisOctal%molcellparam(8,subcell)
+
+        position = position + (tval + deps) * direction
+     enddo
+     nPoints = nPoints + 1
+     distArray(nPoints) = distArray(nPoints-1) + tval/2.
+     rhoArray(npoints) = tiny(rhoArray(1))
+     velArray(npoints) = 0.
+     alphaDust(npoints) = tiny(alphaDust(1))
+     jnuDust(npoints) = tiny(jnuDust(1))
+     alphaLine(npoints) = tiny(alphaLine(1))
+     jnuLine(npoints) = tiny(jnuLine(1))
+     666 continue
+   end subroutine returnValuesAlongPath
+     
+ 
  subroutine cubeIntensityToFlux(cube,thisMolecule,itrans,doreverse)
 
    use inputs_mod, only : gridDistance, nv
@@ -6611,6 +6701,75 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
     enddo
   end subroutine getRadialMolecular
 
+subroutine intensityAlongRayNew(position, direction, grid, thisMolecule, iTrans, deltaV,i0, &
+     tau,tautest,rhomax, i0max, nCol, observerVelocity)
+!     use inputs_mod, only : useDust, densitysubsample, lowmemory
+     type(VECTOR) :: position, direction
+     type(GRIDTYPE) :: grid
+     type(MOLECULETYPE) :: thisMolecule
+     integer :: itrans
+!     real(double) :: nMol
+     real(double), intent(out) :: i0
+!     real(double), optional, intent(out) :: nCol,ncol2
+     real(double), optional, intent(out) :: nCol
+!     integer, optional, intent(in) :: tunable
+     type(VECTOR), optional, intent(in) ::  observerVelocity
+     real(double) :: snu
+     real(double)  :: deltaV
+     integer :: i
+!     integer :: nTau
+     real(double) ::  x, ds
+     logical, optional :: tautest
+
+     real(double) :: dTau
+     real(double), intent(out), optional :: tau
+!     real(double), save :: BnuBckGrnd
+
+
+     real(double) :: dI, dIovercell,  opticaldepth
+     real(double), optional, intent(out) :: rhomax
+     real(double), optional, intent(in) :: i0max
+
+!     integer :: iupper, ilower
+!     real(double) :: nlower, nupper
+     real(double) :: distArray(10000), rhoArray(10000), velArray(10000), alphaDust(10000), jnuDust(10000)
+     real(double) :: alphaLine(10000), jnuLine(10000)
+     real(double) :: alphanu, jnu
+     integer :: nPoints
+
+     i = itrans
+     i = thisMolecule%ntrans
+     if (present(i0max)) x = i0max
+     if (present(rhomax)) x = rhoMax
+     if (present(tautest)) i =0
+     if (present(observerVelocity)) i = 0
+     ncol = 0.d0
+     call returnValuesAlongPath(deltaV, grid, position, direction, nPoints, distArray, &
+          rhoArray, velArray, alphaDust, jnuDust, alphaLine, jnuLine)
+     i0 = tiny(i0)
+     if (npoints == 1) goto 666
+
+     velArray(1:npoints) = velArray(1:npoints) - deltaV
+
+     do i = 2, nPoints
+        ds = distArray(i) - distArray(i-1)
+        alphanu = alphaDust(i) + alphaLine(i)
+        jnu = jnuDust(i) + jnuLine(i)
+        dTau = alphanu * ds * 1.d10
+        
+        snu = jnu/alphanu
+
+        opticaldepth = exp(-tau)
+        dI = (1.d0-exp(-dtau))*snu
+        dIovercell = dIovercell + dI
+        tau = tau + dtau
+        
+        dI = opticaldepth * dI
+        i0 = i0 + dI
+     enddo
+666 continue     
+end subroutine intensityAlongRayNew
+
 
 
 #ifdef MPI
@@ -6719,6 +6878,10 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
 666 continue
  end subroutine intensityAlongRaySplitOverMPI
 
+
+
+
+ 
  subroutine intensityAlongRayServer(grid, thisMolecule)
    use mpi
    type(GRIDTYPE) :: grid

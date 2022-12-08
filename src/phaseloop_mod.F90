@@ -343,6 +343,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      if (thisImageType(1:6) == "stokes") then 
         stokesImage=.true.
      endif
+     write(*,*) "debug ",stokesimage,thisimagetype(1:6)
      ! Images call phaseloop once per image and looping is done by doOutputs
      nInclination = 1 
      positionAngle = GetImagePA(imNum)
@@ -1115,7 +1116,9 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
         call normalize(xAxisImage)
         yAxisImage =  viewVec .cross. xAxisimage
         call normalize(yAxisImage)
-        
+        write(*,*) "xAxis image ",xAxisImage
+        write(*,*) "yAxis image ",yAxisImage
+        write(*,*) "Viewvec ", viewvec
 
         imagePA = real(thisimagePA)
 
@@ -1650,7 +1653,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      endif
   endif
 
-!     write(*,*) "stokesimage ",stokesimage, " present ",present(returnimage)
+     write(*,*) "stokesimage ",stokesimage, " present ",present(returnimage)
 
      if (stokesimage.and.myrankIsZero) then
         do i1 = 1, nImageLocal

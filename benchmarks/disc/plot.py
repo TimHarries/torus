@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 ################################
 #sed10_125=np.loadtxt("sed10_125.dat")
 #sed10_775=np.loadtxt("sed10_775.dat")
-sed100_125=np.loadtxt("sed10_125.dat")
-sed100_775=np.loadtxt("sed10_775.dat")
+sed100_125=np.loadtxt("sed100_125.dat")
+sed100_775=np.loadtxt("sed100_775.dat")
 plt.subplot(221)
 #plt.plot(sed10_125[:,0],sed10_125[:,1],'r',label='12.5 deg10')
 #plt.plot(sed10_775[:,0],sed10_775[:,1],'g',label='77.5 deg10')

@@ -1233,6 +1233,11 @@ CONTAINS
       thisOctal%rho = 1d-30
       thisOctal%temperature = 10.
 
+   CASE("katie")
+      thisOctal%rho = 1d-30
+      thisOctal%temperature = 10.
+      thisOctal%velocity= VECTOR(0.d0, 0.d0, 0.d0)
+
     CASE ("magstream")
 
 !      thisOctal%rho(subcell) = 1.d-30
@@ -3701,7 +3706,7 @@ CONTAINS
     INTEGER      :: nparticle, limit
     real(double) :: dummyDouble
     type(VECTOR) :: minV, maxV
-    real(double) :: T, vturb
+    real(double) :: T, vturb,h
 #endif
     real(double) :: chi, zeta0dash, psi, eta, zeta
     real(double) :: dx, cornerDist(8), d, muval(8), r1, r2, v, enhancedheight, cfac
@@ -5359,12 +5364,32 @@ CONTAINS
           r = sqrt(rvec%x**2 + rVec%y**2)
           z = real(r*tan(20.d0*degtorad))
           if (atan2(abs(rVec%z),r)*radtodeg < 30.d0) then
-             if (z/thisOctal%subcellSize < 10.d0) split = .true.
+             if (abs(z/thisOctal%subcellSize) < 10.d0) split = .true.
           endif
           if (modulus(rVec) < thisOctal%subcellSize) split = .true.
           if (thisOctal%cylindrical) then
              dphi = returndPhi(thisOctal)
              if (dphi > minPhiResolution) then
+                split = .true.
+                splitinAzimuth = .true.
+             endif
+          endif
+          
+       case("katie")
+
+          splitInAzimuth = .false.
+          rVec = subcellCentre(thisOCtal,subcell)
+          r = sqrt(rvec%x**2 + rVec%y**2)
+          z = rVec%z
+          if ((r>rInner).and.(r<rOuter)) then
+             h = height*(r/rOuter)**betaDisc
+             if ((abs(z/h)) < 10.) then
+                if (thisOctal%subcellSize/h > 1.) split = .true.
+             endif
+          endif
+          if (thisOctal%cylindrical) then
+             dphi = returndPhi(thisOctal)
+             if ((dphi > minPhiResolution).and.(r < rOuter)) then
                 split = .true.
                 splitinAzimuth = .true.
              endif
@@ -12847,6 +12872,9 @@ end function readparameterfrom2dmap
   end subroutine calcBenchI
 
 
+       
+       
+
   subroutine shakaraDisk(thisOctal,subcell,grid)
     use analytical_velocity_mod, only : ulrichVelocity
     use utils_mod, only : ccubsolv
@@ -16544,6 +16572,7 @@ end function readparameterfrom2dmap
     enddo
   end subroutine zeroadotlocal
 
+
   recursive subroutine zeroDensity(thisOctal)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child
@@ -16561,7 +16590,7 @@ end function readparameterfrom2dmap
           end do
        else
 
-          thisOctal%rho(subcell) = 1.e-25
+          thisOctal%rho(subcell) = 1.e-30
           thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
 
        endif
@@ -17780,6 +17809,34 @@ END SUBROUTINE assignDensitiesStellarWind
 
   end subroutine getzValues
 
+    recursive subroutine getrValues(thisOctal, nr, rAxis)
+
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    type(VECTOR) :: rVec
+    integer :: nr, subcell, i
+    real(double) :: rAxis(:)
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call getrValues(child, nr, rAxis)
+                exit
+             end if
+          end do
+       else
+
+          rVec = subcellCentre(thisOctal, subcell)
+          nr = nr + 1
+          rAxis(nr) = sqrt(rVec%x**2 + rVec%y**2)
+       end if
+    end do
+
+  end subroutine getrValues
+
   !
   ! hydroWarp stuff
   !
@@ -17843,6 +17900,8 @@ END SUBROUTINE assignDensitiesStellarWind
     rhoOut = 10**rhoOut
   end function hydroWarpDensity
 
+
+  
   function getHydroWarpScaleHeight(r, grid) result (scaleheight)
     type(gridtype), intent(in) :: grid
     real(double), intent(in) :: r
@@ -20091,6 +20150,7 @@ END SUBROUTINE assignDensitiesStellarWind
 
     if(linear) then
 
+!       write(*,*) "assuming cartsian!"
        inc = 0.5 * resultOctal%subcellSize
        centre = subcellCentre(resultOctal,subcell)
        fac = 1. / resultOctal%subcellsize

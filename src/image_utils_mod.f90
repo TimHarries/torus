@@ -310,12 +310,16 @@ contains
   function setImageViewVec(i)
     use vector_mod, only: vector, rotateZ
     integer, intent(in) :: i
-    TYPE(vector) :: setImageViewVec, tempVec
+    TYPE(vector) :: setImageViewVec, tempVec, origVec
 
+    !TJH changed 8/12/22 to make consistent with molecular mod definitions
 
-    tempVec%x = cos(myImages(i)%positionAngle) * sin(myImages(i)%inclination)
-    tempVec%y = sin(myImages(i)%positionAngle) * sin(myImages(i)%inclination)
-    tempVec%z = cos(myImages(i)%inclination)
+!    tempVec%x = cos(myImages(i)%positionAngle) * sin(myImages(i)%inclination)
+!    tempVec%y = sin(myImages(i)%positionAngle) * sin(myImages(i)%inclination)
+!    tempVec%z = cos(myImages(i)%inclination)
+
+    origVec = VECTOR(0.d0, 0.d0, 1.d0)
+    tempVec = rotateX(origVec, dble(myImages(i)%inclination))
 
     setImageViewVec =  tempVec
 
