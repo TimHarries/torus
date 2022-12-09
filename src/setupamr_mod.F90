@@ -3368,7 +3368,7 @@ end subroutine fillVelocityCornersFromCentresCylindrical
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
-    type(VECTOR) :: rVec, lVec, zAxis, rVecRot, vdir, lArray(1000)
+    type(VECTOR) :: rVec, lVec, zAxis, rVecRot, vdir, lArray(1000), aboutVec
     integer :: i,j,k
     real(double) :: r, phi, z, h, rho, r0, r1, r2, a, ang, vel, mass, r_au
     integer :: nr, nphi, nz, m, nrArray
@@ -3406,7 +3406,7 @@ end subroutine fillVelocityCornersFromCentresCylindrical
 
 !$OMP PARALLEL DEFAULT(NONE) &
 !$OMP PRIVATE(i,h,j,phi,k,z,rho,rvec,lvec,r,ang,rVecRot,thisOctal,subcell,vel) &
-!$OMP PRIVATE(vDir,m, thisFac) &
+!$OMP PRIVATE(vDir,m, thisFac,aboutVec) &
 !$OMP SHARED(rInner, rOuter, nr, nphi,nz,height,r1,r2,r0,alphaDisc,betaDisc,a) &
 !$OMP SHARED(zAxis,grid, mass, heightSplitFac, maxDepthAMR, converged) &
 !$OMP SHARED(nrArray, rArray, lArray, facArray,r_au)
@@ -3432,15 +3432,22 @@ end subroutine fillVelocityCornersFromCentresCylindrical
              lVec%y = lArray(m)%y
              lVec%z = lArray(m)%z
 
-             ang = acos(lVec.dot.zAxis)
 
-             rVecRot = rotateY(rVec,ang)
+             ang = acos(lVec.dot.zAxis)
+             if (ang /= 0.d0) then
+                aboutVec = lvec .cross. zaxis
+                call normalize(aboutVec)
+             else
+                aboutVec = zAxis
+             endif
+             
+             rVecRot = arbitraryRotate(rVec,ang,aboutVec)
              if (inOctal(grid%octreeRoot, rVecRot)) then
                 call findSubcellLocal(rVecRot, thisOctal,subcell)
                 vel = sqrt(bigG*mass/(r*1.d10))/cSpeed
                 vDir = (VECTOR(cos(phi),sin(phi),0.d0)).cross.zAxis
                 call normalize(vDir)
-                thisOctal%velocity(subcell) = rotateY(vel*vDir,ang)
+                thisOctal%velocity(subcell) = arbitraryrotate(vel*vDir,ang, aboutVec)
                 thisOctal%rho(subcell) = rho * thisFac
                 
                 
