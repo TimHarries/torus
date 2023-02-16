@@ -155,8 +155,9 @@ contains
        write(curlstring,'(a,a,a,a)') 'curl -sH "Authorization: Bearer CICjAcmSaIcj7jMssIBx41Eq63UuZtCqQOMtWPf0" -H', &
             ' "Content-Type: text/plain" -X POST -d ''{"bibcode":["',trim(bibcode), &
             '"]}'' https://api.adsabs.harvard.edu/v1/export/bibtex > adsreturn'
-!       call execute_command_line(curlString, wait=.true., exitstat=i)
-       i = 99
+       call execute_command_line(curlString, wait=.true., exitstat=i)
+       write(*,*) i,trim(curlstring)
+       !       i = 99
        if (i /= 0) then
           call writeWarning("Cannot execute ADS search")
           ok = .false.
@@ -165,7 +166,7 @@ contains
        open(34, file="adsreturn", form="formatted",status="old")
        read(34,'(a1000)') returnedString
        close(34)
-!       call execute_command_line("rm adsreturn", wait=.true.)
+       call execute_command_line("rm adsreturn", wait=.true.)
        call parseStringToBibtex(returnedString, tempString)
        returnedString = tempString
        nBibcodeDatabase = nBibcodeDatabase + 1

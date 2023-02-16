@@ -93,7 +93,7 @@ torus_version_mod.o: constants_mod.o
 triangle_mesh_mod.o: kind_mod.o messages_mod.o obj_io_mod.o vector_mod.o
 turbulence_mod.o: constants_mod.o kind_mod.o messages_mod.o random_mod.o \
 	unix_mod.o utils_mod.o vector_mod.o
-units_mod.o: constants_mod.o
+units_mod.o: constants_mod.o messages_mod.o
 user_mod.o: constants_mod.o octal_mod.o vector_mod.o
 utils_mod.o: constants_mod.o kind_mod.o messages_mod.o octal_mod.o \
 	vector_mod.o
@@ -179,7 +179,7 @@ inputs_modV2.o: angularImage_utils.o atom_mod.o constants_mod.o \
 	datacube_mod.o fits_utils_mod.o gridFromFitsFile.o gridFromFlash.o \
 	h21cm_mod.o image_utils_mod.o ion_mod.o kind_mod.o messages_mod.o \
 	octal_mod.o parallel_mod.o ramses_mod.o sed_mod.o units_mod.o \
-	unix_mod.o vector_mod.o vh1_mod.o zlib_mod.o
+	unix_mod.o utils_mod.o vector_mod.o vh1_mod.o zlib_mod.o
 ion_mod.o: constants_mod.o kind_mod.o messages_mod.o phfit2.o utils_mod.o
 loadbalance_mod.o: gridio_mod.o gridtype_mod.o mpi_global_mod.o octal_mod.o \
 	source_mod.o timing.o

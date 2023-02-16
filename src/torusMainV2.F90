@@ -66,10 +66,9 @@ program torus
 
   character(len=80) :: message, dataDirectory
 !  character(len=10) :: stringArray(10)
-!  integer :: i
 !  type(PAHtabletype) :: PAHtable
   type(GRIDTYPE) :: grid
-!  type(VECTOR) :: box(64,64,64)
+  !  type(VECTOR) :: box(64,64,64)
 #ifdef MPI
   ! For MPI implementations =====================================================
   integer ::   ierr           ! error flag
@@ -87,6 +86,7 @@ program torus
   !===============================================================================
 #endif
 
+  
   writeoutput    = .true.
   doTuning       = .true.
   outputwarnings = .true.
@@ -370,9 +370,6 @@ contains
 !
 ! 
 !end subroutine calculategrid
-
-
-
 
 
 
