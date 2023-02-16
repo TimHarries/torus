@@ -64,7 +64,15 @@ module utils_mod
 
   INTERFACE arth
      MODULE PROCEDURE arth_r, arth_d, arth_i
-  END INTERFACE
+  END INTERFACE arth
+
+  INTERFACE sigfigs
+     MODULE PROCEDURE sigfigs_d, sigfigs_r
+  END INTERFACE sigfigs
+
+  INTERFACE prettyNumber
+     MODULE PROCEDURE prettyNumber_d, prettyNumber_r
+  END INTERFACE prettyNumber
 
   INTEGER, PARAMETER :: I4B = SELECTED_INT_KIND(9)
   INTEGER, PARAMETER :: SP = KIND(1.0)
@@ -74,6 +82,204 @@ module utils_mod
 
 contains
 
+    subroutine sigfigs_d(r,p,n)
+    real(double) :: r,s,rabs,x
+    integer :: i,j,n,p
+    j=0
+    n=0
+    rabs  = abs(r)
+    i = -30
+    s = 10.d0**dble(i)
+    do while(rabs/s >= 1.d0)
+       i = i + 1
+       s = 10.d0**i
+    end do
+    p = i-1
+
+    x = rabs/(10.d0**p)
+    do i = 1, 10
+       s = x * 10.d0**i
+!       write(*,*) i, s, mod(s,10.d0)
+       if (mod(s,10.d0) < 1.d-10) exit
+       if (abs(mod(s,10.d0)-10.d0) <1.d-2) exit
+    enddo
+    n = i 
+       
+
+
+  end subroutine sigfigs_d
+
+  subroutine sigfigs_r(r,p,n)
+    real :: r,s,rabs,x
+    integer :: i,j,n,p
+    j=0
+    n=0
+    rabs  = abs(r)
+    i = -30
+    s = 10.**dble(i)
+    do while(rabs/s >= 1.0)
+       i = i + 1
+       s = 10.**i
+    end do
+    p = i-1
+
+    x = rabs/(10.**p)
+    do i = 1, 10
+       s = x * 10.**i
+!       write(*,*) i, s, mod(s,10.d0)
+       if (mod(s,10.) < 1.d-10) exit
+       if (abs(mod(s,10.)-10) <1.e-2) exit
+    enddo
+    n = i 
+       
+
+
+  end subroutine sigfigs_r
+
+  subroutine prettyNumber_d(r,cval)
+    real(double) :: r
+    integer :: n, p
+    character(len=*) :: cval
+    character(len=20) :: cformat
+    character(len=20) :: val
+    call sigfigs_d(r,p,n)
+    cformat="*"
+
+    if ( (p>= 0).and.(p < 4).and.(r >= 0.d0)) then
+       if ((p+1)>=n) then
+          write(cformat,'(a,i1,a)') "(i",p+1,")"
+          write(cval,cformat) int(r)
+       else
+          write(cformat,'(a,i1,a,i1,a)') "(f",max(n,p)+1,".",max(n-p-1,0),")"
+          write(cval,cformat) r
+       endif
+    endif
+
+    if ( (p>= 0).and.(p < 4).and.(r < 0.d0)) then
+       if ((p+1)>=n) then
+          write(cformat,'(a,i1,a)') "(i",p+2,")"
+          write(cval,cformat) int(r)
+       else
+          write(cformat,'(a,i1,a,i1,a)') "(f",max(n,p)+2,".",max(n-p-1,0),")"
+          write(cval,cformat) r
+       endif
+    endif
+
+    if ((p > -4).and.(p < 0).and.(r > 0.d0)) then
+       write(cformat,'(a,i1,a,i1,a)') "(f",abs(p)-1+n+2,".",n+abs(p)-1,")"
+       write(cval,cformat) r
+    endif
+
+    if ((p > -4).and.(p < 0).and.(r < 0.d0)) then
+       write(cformat,'(a,i1,a,i1,a)') "(f",abs(p)-1+n+3,".",n+abs(p)-1,")"
+       write(cval,cformat) r
+    endif
+
+
+    if (p >= 4) then
+       if (r > 0.d0) then
+          write(cformat,'(a,i2,a,i2,a)') "(f",n+1,".",n-1,")"
+       else
+          write(cformat,'(a,i2,a,i2,a)') "(f",n+2,".",n-1,")"
+       endif
+       write(val,cformat) r/(10d0**p-1)
+       if (p < 10) then
+          write(cval,'(a,i1)') trim(val)//" x 10^",p
+       else
+          write(cval,'(a,i2)') trim(val)//" x 10^",p
+       endif
+    endif
+
+    if (p < -3) then
+       if (r > 0.d0) then
+          write(cformat,'(a,i2,a,i2,a)') "(f",n+1,".",n-1,")"
+       else
+          write(cformat,'(a,i2,a,i2,a)') "(f",n+2,".",n-1,")"
+       endif
+       write(val,cformat) r/(10d0**p)
+       if (abs(p) < 10) then
+          write(cval,'(a,i2)') trim(val)//" x 10^",p
+       else
+          write(cval,'(a,i3)') trim(val)//" x 10^",p
+       endif
+    endif
+
+  end subroutine prettyNumber_d
+
+  subroutine prettyNumber_r(r,cval)
+    real :: r
+    integer :: n, p
+    character(len=*) :: cval
+    character(len=20) :: cformat
+    character(len=20) :: val
+    call sigfigs_r(r,p,n)
+    cformat="*"
+
+    if ( (p>= 0).and.(p < 4).and.(r >= 0.d0)) then
+       if ((p+1)>=n) then
+          write(cformat,'(a,i1,a)') "(i",p+1,")"
+          write(cval,cformat) int(r)
+       else
+          write(cformat,'(a,i1,a,i1,a)') "(f",max(n,p)+1,".",max(n-p-1,0),")"
+          write(cval,cformat) r
+       endif
+    endif
+
+    if ( (p>= 0).and.(p < 4).and.(r < 0.d0)) then
+       if ((p+1)>=n) then
+          write(cformat,'(a,i1,a)') "(i",p+2,")"
+          write(cval,cformat) int(r)
+       else
+          write(cformat,'(a,i1,a,i1,a)') "(f",max(n,p)+2,".",max(n-p-1,0),")"
+          write(cval,cformat) r
+       endif
+    endif
+
+    if ((p > -4).and.(p < 0).and.(r > 0.d0)) then
+       write(cformat,'(a,i1,a,i1,a)') "(f",abs(p)-1+n+2,".",n+abs(p)-1,")"
+       write(cval,cformat) r
+    endif
+
+    if ((p > -4).and.(p < 0).and.(r < 0.d0)) then
+       write(cformat,'(a,i1,a,i1,a)') "(f",abs(p)-1+n+3,".",n+abs(p)-1,")"
+       write(cval,cformat) r
+    endif
+
+
+    if (p >= 4) then
+       if (r > 0.d0) then
+          write(cformat,'(a,i2,a,i2,a)') "(f",n+1,".",n-1,")"
+       else
+          write(cformat,'(a,i2,a,i2,a)') "(f",n+2,".",n-1,")"
+       endif
+       write(val,cformat) r/(10d0**p-1)
+       if (p < 10) then
+          write(cval,'(a,i1)') trim(val)//" x 10^",p
+       else
+          write(cval,'(a,i2)') trim(val)//" x 10^",p
+       endif
+    endif
+
+    if (p < -3) then
+       if (r > 0.d0) then
+          write(cformat,'(a,i2,a,i2,a)') "(f",n+1,".",n-1,")"
+       else
+          write(cformat,'(a,i2,a,i2,a)') "(f",n+2,".",n-1,")"
+       endif
+       write(val,cformat) r/(10d0**p)
+       if (abs(p) < 10) then
+          write(cval,'(a,i2)') trim(val)//" x 10^",p
+       else
+          write(cval,'(a,i3)') trim(val)//" x 10^",p
+       endif
+    endif
+
+  end subroutine prettyNumber_r
+
+
+
+
+  
   function ilog2(val ) result( res )
     integer, intent(in) :: val
     integer             :: res
@@ -90,6 +296,7 @@ contains
     enddo
   end function ilog2
 
+  
   integer function median(iArray)
     integer :: n, iArray(:)
     integer, allocatable :: iT(:)

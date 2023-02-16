@@ -1,11 +1,97 @@
 module units_mod
-
+use messages_mod
 use constants_mod
-
 implicit none
+
+type UNITTYPE
+   character(len=20) :: unitName
+   character(len=10) :: unitDimension
+   character(len=80) :: longUnitName
+   real(double) :: unitInCGS
+end type UNITTYPE
+
+integer :: nUnits
+type(UNITTYPE) :: unitList(100)
+
 
 contains
 
+  subroutine addUnit(newUnit)
+    type(UNITTYPE) :: newUnit
+    nUnits = nUnits + 1
+    unitList(nUnits) = newUnit
+  end subroutine addUnit
+
+
+  subroutine setupUnits()
+    nUnits = 0
+
+    call addUnit(UNITTYPE("codeunits","L","10^10 centimetre",1.d10))
+
+
+! lengths
+
+    call addUnit(UNITTYPE("cm","L","centimetre",1.d0))
+    call addUnit(UNITTYPE("m","L","metre",100.d0))
+    call addUnit(UNITTYPE("km","L","kilometre",1e5))
+    call addUnit(UNITTYPE("mm","L","millimetre",0.1d0))
+    call addUnit(UNITTYPE("micron","L","micrometre",1.d-4))
+    call addUnit(UNITTYPE("angstrom","L","angstrom",1.d-8))
+    call addUnit(UNITTYPE("rsol","L","solar radii",rsol))
+    call addUnit(UNITTYPE("au","L","AU",autocm))
+    call addUnit(UNITTYPE("pc","L","parsec",pctocm))
+
+! masses
+
+    call addUnit(UNITTYPE("gram","M","gram",1.d0))
+    call addUnit(UNITTYPE("msol","M","solar masses",mSol))
+    call addUnit(UNITTYPE("mmoon","M","lunar masses",mMoon))
+    call addUnit(UNITTYPE("mhydrogen","M","Hydrogen atom mass",mHydrogen))
+    call addUnit(UNITTYPE("mearth","M","earth masses",mEarth))
+
+! Times
+
+    call addUnit(UNITTYPE("year","T","year",yearsTosecs))
+
+! Speeds
+
+    call addUnit(UNITTYPE("c","L/T","Speed of light",cSpeed))
+    call addUnit(UNITTYPE("km/s","L/T","km/s",1.d5))
+
+! Temperatures
+    call addUnit(UNITTYPE("K","L/T","kelvin",1.d0))
+    
+  end subroutine setupUnits
+
+  logical function correctDimensions(thisUnit, testDimensions)
+    type(UNITTYPE) :: thisUnit
+    character(len=*) :: testDimensions
+
+    correctDimensions = .true.
+    if (thisUnit%unitDimension .ne. testDimensions) then
+       correctDimensions = .false.
+    endif
+  end function correctDimensions
+ 
+  
+  integer function unitNumber(unitString)
+    character(len=*) unitString
+    logical :: found
+    integer :: i
+    found = .false.
+    unitNumber = 0
+    do i = 1, nUnits
+       if (unitString == unitList(i)%unitName) then
+          found = .true.
+          unitNumber = i
+          cycle
+       endif
+    enddo
+    if (.not.found) then
+       call writeFatal("Unit "//trim(unitString)//" not recognised")
+    endif
+  end function unitNumber
+  
   subroutine convertToTorusUnits(unitString, unitType, inputValue)
 
     implicit none

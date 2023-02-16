@@ -6,6 +6,7 @@ module inputs_mod
   use kind_mod
   use constants_mod
   use units_mod
+  use utils_mod
   use parallel_mod
 #ifdef USEZLIB
   use zlib_mod, only : uncompressedDumpFiles, buffer, nbuffer
@@ -48,7 +49,7 @@ contains
 
     character(len=100) :: paramFile, arg1
 
-    integer :: error
+    integer :: error, i
     logical :: parameterCheckMode
     
     datadirectory = " "
@@ -74,6 +75,8 @@ contains
     inputnMonte = 0
     inflowTemp = 10.d0
 
+    call setupUnits()
+    
     call unixGetEnv("TORUS_JOB_DIR",absolutePath)
 !   call get_environment_variable("TORUS_JOB_DIR",absolutePath)
 
@@ -123,8 +126,25 @@ contains
           call torus_abort
        endif
        thisLine = trim(adjustl(cLine(nLines)))
-       if ( thisLine(1:1) == "%" .or. thisLine(1:1) == "!" ) nLines = nLines - 1   ! % or ! is a comment
-       if (thisLine(1:1) == " ") nLines = nLines - 1
+       if ( thisLine(1:1) == "%" .or. thisLine(1:1) == "!" ) then
+          nLines = nLines - 1   ! % or ! is a comment
+          cycle
+       endif
+       if (thisLine(1:1) == " ") then
+          nLines = nLines - 1
+          cycle
+       endif
+       if (index(thisLine,"%") /= 0) then
+          i = index(thisLine,"%")
+          thisLine = thisLine(:(i-1))
+          cLine(nLines) = thisLine
+       endif
+       if (index(thisLine,"!") /= 0) then
+          i = index(thisLine,"!")
+          thisLine = thisLine(:(i-1))
+          cLine(nLines) = thisLine
+       endif
+       
     end do
 10  continue
     nLines = nLines - 1
@@ -1856,14 +1876,14 @@ contains
 
     case("katie")
 
-       call getReal("rinner", rInner, real(sourceRadius(1)), cLine, fLine, nLines, &
-            "Inner Radius (stellar radii): ","(a,f7.3,a)", 12., ok, .true.)
+       call getRealWithUnits("rinner", rInner, "au", "codeunits", cLine, fLine, nLines, &
+            "Inner Radius (stellar radii): ", 12., ok, .true.)
 
-       call getReal("router", rOuter, real(autocm/1.d10), cLine, fLine, nLines, &
-            "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
+       call getRealWithUnits("router", rOuter, "au", "codeunits", cLine, fLine, nLines, &
+            "Outer Radius (AU): ", 20., ok, .true.)
 
-       call getReal("height", height, real(autocm/1.d10), cLine, fLine, nLines, &
-            "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+       call getRealWithUnits("height", height, "au", "codeunits", cLine, fLine, nLines, &
+            "Scale height (AU): ",1.e0,ok,.true.)
 
        call getReal("alphadisc", alphaDisc, 1., cLine, fLine, nLines, &
             "Disc alpha parameter: ","(a,f5.3,a)", 2.25, ok, .true.)
@@ -2938,7 +2958,7 @@ contains
          "Refine grid using ionization gradient?: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getLogical("captureshocks", captureShocks, cLine, fLine, nLines, &
-         "Captue shocks?: ","(a,1l,1x,a)", .false., ok, .false.)
+         "Capture shocks?: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getDouble("amrtolerance", amrtolerance, 1.d0 , cLine, fLine, nLines, &
          "Maximum gradient allowed before AMR grid refines: ","(a,1p,e9.3,1x,a)", 5.d-2, ok, .false.)
@@ -2967,14 +2987,17 @@ contains
     end if
 
 
-    call getReal("amrgridsize", amrGridSize, 1.0, cLine, fLine, nLines, &
-         "Size of adaptive mesh grid: ","(a,1pe8.1,1x,a)", 1000.0, ok, .false.)
-    call getUnitDouble("amrgridcentrex", amrGridCentreX, "distance" , cLine, fLine, nLines, &
-         "Grid centre X-coordinate: ","(a,1p,e10.3,1x,a)", 0.0d0, ok, .false.)
-    call getUnitDouble("amrgridcentrey", amrGridCentreY, "distance" , cLine, fLine, nLines, &
-         "Grid centre Y-coordinate: ","(a,1p,e10.3,1x,a)", 0.0d0, ok, .false.)
-    call getUnitDouble("amrgridcentrez", amrGridCentreZ, "distance", cLine, fLine, nLines, &
-         "Grid centre Z-coordinate: ","(a,1p,e10.3,1x,a)", 0.0d0, ok, .false.)
+!    call getReal("amrgridsize", amrGridSize, 1.0, cLine, fLine, nLines, &
+!         "Size of adaptive mesh grid: ","(a,1pe8.1,1x,a)", 1000.0, ok, .false.)
+
+    call getRealwithUnits("amrgridsize", amrGridSize, "codeunits", "codeunits", cLine, fLine, nLines, &
+         "Size of adaptive mesh grid: ", 1000.0, ok, .false.)
+    call getDoubleWithUnits("amrgridcentrex", amrGridCentreX, "codeunits" , "codeunits", cLine, fLine, nLines, &
+         "Grid centre X-coordinate: ",0.0d0, ok, .false.)
+    call getDoubleWithUnits("amrgridcentrey", amrGridCentreY, "codeunits" , "codeunits", cLine, fLine, nLines, &
+         "Grid centre Y-coordinate: ", 0.0d0, ok, .false.)
+    call getDoubleWithUnits("amrgridcentrez", amrGridCentreZ, "codeunits", "codeunits",  cLine, fLine, nLines, &
+         "Grid centre Z-coordinate: ", 0.0d0, ok, .false.)
 
     if (amr2d.and.(.not.checkPresent("amrgridcentrex", cline, nlines))) &
          amrGridCentrex = dble(amrGridSize)/2.d0
@@ -3491,8 +3514,8 @@ contains
           call getVector(keyword, sourceVel(i), 1.d0, cLine, fLine, nLines, &
                "Source velocity: ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .false.)
           write(keyword, '(a,i1)') "mass",i
-          call getDouble(keyword, sourceMass(i), 1.d0, cLine, fLine, nLines, &
-               "Source mass (solar masses) : ","(a,f7.2,a)",1.d0, ok, .true.)
+          call getDoubleWithUnits(keyword, sourceMass(i), "msol", "msol", cLine, fLine, nLines, &
+               "Source mass: ",1.d0, ok, .true.)
 
 
        else
@@ -3512,19 +3535,19 @@ contains
 
              if (radiusPresent.and.teffPresent) then
                 write(keyword, '(a,i1)') "radius",i
-                call getDouble(keyword, sourceRadius(i), rsol/1.d10, cLine, fLine, nLines, &
-                     "Source radius (solar radii) : ","(a,f7.2,a)",1.d0, ok, .true.)
+                call getDoubleWithUnits(keyword, sourceRadius(i), "rsol","codeunits", cLine, fLine, nLines, &
+                     "Source radius: ",1.d0, ok, .true.)
 
                 write(keyword, '(a,i1)') "teff",i
-                call getUnitDouble(keyword, sourceTeff(i), "temperature", cLine, fLine, nLines, &
-                     "Source temperature (K) : ","(a,f8.0,a)",1.d0, ok, .true.)
+                call getDoubleWithUnits(keyword, sourceTeff(i), "K", "K",cLine, fLine, nLines, &
+                     "Source temperature: ",1.d0, ok, .true.)
 
                 sourceLum(i) = fourPi * sourceRadius(i)**2 *1.d20 * stefanBoltz * sourceTeff(i)**4
              else if (radiusPresent.and.lumPresent) then
 
                 write(keyword, '(a,i1)') "radius",i
-                call getDouble(keyword, sourceRadius(i), rsol/1.d10, cLine, fLine, nLines, &
-                     "Source radius (solar radii) : ","(a,f7.2,a)",1.d0, ok, .true.)
+                call getDoubleWithUnits(keyword, sourceRadius(i), "rsol", "codeunits", cLine, fLine, nLines, &
+                     "Source radius: ",1.d0, ok, .true.)
 
                 write(keyword, '(a,i1)') "lum",i
                 call getDouble(keyword, sourceLum(i), lSol, cLine, fLine, nLines, &
@@ -3551,8 +3574,8 @@ contains
              endif
 
              write(keyword, '(a,i1)') "mass",i
-             call getDouble(keyword, sourceMass(i), mSol, cLine, fLine, nLines, &
-                  "Source mass (solar masses) : ","(a,f7.2,a)",1.d0, ok, .true.)
+             call getDoubleWithUnits(keyword, sourceMass(i), "msol", "msol", cLine, fLine, nLines, &
+                  "Source mass: ",1.d0, ok, .true.)
 
              write(keyword, '(a,i1)') "mdot",i
              call getDouble(keyword, sourceMdot(i), msol/(365.25d0 * 24.d0 * 3600.d0), cLine, fLine, nLines, &
@@ -5481,11 +5504,13 @@ incStyle: if (checkPresent("inclinations", cline, nlines)) then
 !-----------------------------------------------------------------------------------------
 
 
-subroutine findReal(name, value, cLine, fLine, nLines, ok)
+subroutine findReal(name, value, unitString, cLine, fLine, nLines, ok)
  implicit none
  character(len=*) :: name
  real :: value
  character(len=lencLine) :: cLine(:)
+ character(len=80) :: restOfLine
+ character(len=*) :: unitString
  logical :: fLine(:)
  integer :: nLines
  logical :: ok
@@ -5499,6 +5524,10 @@ subroutine findReal(name, value, cLine, fLine, nLines, ok)
      if (.not.ok) then
         ok = .true.
         read(cLine(i)(j+1:lencline),*) value
+        restOfLine = adjustl(cLine(i)(j+1:))
+        k = index(restOfLine," ")
+        restOfLine = trim(restOfLine(k+1:))
+        read(restOfLine,'(a)') unitString
         fLine(i) = .true.
      else
         call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
@@ -5508,11 +5537,13 @@ subroutine findReal(name, value, cLine, fLine, nLines, ok)
  end do
  end subroutine findReal
 
- subroutine findDouble(name, value, cLine, fLine, nLines, ok)
+ subroutine findDouble(name, value, unitString, cLine, fLine, nLines, ok)
  implicit none
  character(len=*) :: name
  real(double) :: value
  character(len=lencLine) :: cLine(:)
+ character(len=80) :: restOfLine
+ character(len=*) :: unitString
  logical :: fLine(:)
  integer :: nLines
  logical :: ok
@@ -5520,19 +5551,23 @@ subroutine findReal(name, value, cLine, fLine, nLines, ok)
 
  ok = .false.
  do i = 1, nLines
-  j = len_trim(name)
   k = index(cline(i)," ")-1
-  if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
+  j = len_trim(name)
+  if ((trim(cLine(i)(1:k)) .eq. name(1:j)).and.(j==k)) then
      if (.not.ok) then
         ok = .true.
         read(cLine(i)(j+1:lencline),*) value
+        restOfLine = adjustl(cLine(i)(j+1:))
+        k = index(restOfLine," ")
+        restOfLine = trim(restOfLine(k+1:))
+        read(restOfLine,'(a)') unitString
         fLine(i) = .true.
      else
-     call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
-     call torus_stop
+        call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
+        call torus_stop
+     endif
   endif
-endif
-end do
+ end do
  end subroutine findDouble
 
  subroutine findUnitDouble(name, value, unit, cLine, fLine, nLines, ok)
@@ -5886,23 +5921,26 @@ end subroutine findDoubleArray
   endif
 end subroutine getBigInteger
 
- subroutine getReal(name, rval, unitConversion, cLine, fLine, nLines, message, format, rdef, ok, &
+ subroutine getRealWithUnits(name, rval, defaultUnits, requiredUnits, cLine, fLine, nLines, message, rdef, ok, &
                     musthave)
-  character(len=*) :: name
+  character(len=*) :: name, requiredUnits, defaultUnits
   real :: rval
-  real :: unitConversion
+  real :: thisUnitConversion
   logical :: musthave
   character(len=lencLine) :: cLine(:)
   logical :: fLine(:)
   character(len=100) :: output
+  character(len=20) :: unitString, cval
   integer :: nLines
-  character(len=*) :: message, format
+  character(len=*) :: message
   character(len=10) :: default
   real :: rdef
   logical :: ok
+  integer :: i, j
   ok = .true.
+  thisUnitConversion = 1.
   default = " "
-  call findReal(name, rval, cLine, fLine, nLines, ok)
+  call findReal(name, rval, unitString, cLine, fLine, nLines, ok)
   if (.not. ok) then
     if (musthave) then
        if (writeoutput) write(*,'(a,a)') name, " must be defined"
@@ -5910,13 +5948,70 @@ end subroutine getBigInteger
     endif
     rval = rdef
     default = " (default)"
- endif
+ else
+    if (len(trim(unitString)) .ne. 0) then
+       i = unitNumber(unitString)
+       j = unitNumber(requiredUnits)
+       thisUnitConversion = unitList(i)%unitInCGS/unitList(j)%unitInCGS
+    else
+       i = unitNumber(defaultUnits)
+       j = unitNumber(requiredUnits)
+       thisUnitConversion = unitList(i)%unitInCGS/unitList(j)%unitInCGS
+    endif
+ endif 
  if (ok) then
-   write(output,format) trim(message)//" ",rval,default
+    call prettyNumber(rval, cval)
+    write(output,'(a)') trim(message)//" "//trim(cval)//" "//trim(unitList(i)%longUnitName) // trim(default)
     call writeInfo(output, TRIVIAL)
  endif
- rval = rval * unitConversion
- end subroutine getReal
+ rval = rval * thisunitConversion
+end subroutine getRealWithUnits
+
+ subroutine getDoubleWithUnits(name, rval, defaultUnits, requiredUnits, cLine, fLine, nLines, message, rdef, ok, &
+                    musthave)
+  character(len=*) :: name, requiredUnits, defaultUnits
+  real(double) :: rval
+  real(double) :: thisUnitConversion
+  logical :: musthave
+  character(len=lencLine) :: cLine(:)
+  logical :: fLine(:)
+  character(len=100) :: output
+  character(len=20) :: unitString, cval
+  integer :: nLines
+  character(len=*) :: message
+  character(len=10) :: default
+  real(double) :: rdef
+  logical :: ok
+  integer :: i, j
+  ok = .true.
+  thisUnitConversion = 1.
+  default = " "
+  call findDouble(name, rval, unitString, cLine, fLine, nLines, ok)
+  if (.not. ok) then
+    if (musthave) then
+       if (writeoutput) write(*,'(a,a)') name, " must be defined"
+       call torus_stop
+    endif
+    rval = rdef
+    default = " (default)"
+ else
+    if (len(trim(unitString)) .ne. 0) then
+       i = unitNumber(unitString)
+       j = unitNumber(requiredUnits)
+       thisUnitConversion = unitList(i)%unitInCGS/unitList(j)%unitInCGS
+    else
+       i = unitNumber(defaultUnits)
+       j = unitNumber(requiredUnits)
+       thisUnitConversion = unitList(i)%unitInCGS/unitList(j)%unitInCGS
+    endif
+ endif
+ if (ok) then
+    call prettyNumber(rval, cval)
+    write(output,'(a)') trim(message)//" "//trim(cval)//" "//trim(unitList(i)%longUnitName) // trim(default)
+    call writeInfo(output, TRIVIAL)
+ endif
+ rval = rval * thisunitConversion
+end subroutine getDoubleWithUnits
 
  logical function checkPresent(keyword, cline, nlines)
    character(len=*) :: keyword
@@ -5944,12 +6039,12 @@ end subroutine getBigInteger
   character(len=100) :: output
   integer :: nLines
   character(len=*) :: message, format
-  character(len=10) :: default
+  character(len=10) :: default, units
   real(double) :: ddef
   logical :: ok
   ok = .true.
   default = " "
-  call findDouble(name, dval, cLine, fLine, nLines, ok)
+  call findDouble(name, dval, units, cLine, fLine, nLines, ok)
   if (.not. ok) then
     if (musthave) then
        if (writeoutput) write(*,'(a,a)') name, " must be defined"
@@ -5964,6 +6059,38 @@ end subroutine getBigInteger
  endif
  dval = dval  * unitConversion
  end subroutine getDouble
+
+
+  subroutine getReal(name, val, unitConversion, cLine, fLine, nLines, message, &
+   format, def, ok, musthave)
+  character(len=*) :: name
+  real :: val, unitConversion
+  logical :: musthave
+  character(len=lencLine) :: cLine(:)
+  logical :: fLine(:)
+  character(len=100) :: output
+  integer :: nLines
+  character(len=*) :: message, format
+  character(len=10) :: default, units
+  real :: def
+  logical :: ok
+  ok = .true.
+  default = " "
+  call findReal(name, val, units, cLine, fLine, nLines, ok)
+  if (.not. ok) then
+    if (musthave) then
+       if (writeoutput) write(*,'(a,a)') name, " must be defined"
+       call torus_stop
+    endif
+    val = def
+    default = " (default)"
+ endif
+ if (ok) then
+    write(output,format) trim(message)//" ",val,default
+    call writeInfo(output, TRIVIAL)
+ endif
+ val = val  * unitConversion
+ end subroutine getReal
 
 
  subroutine getUnitDouble(name, dval, unitType, cLine, fLine, nLines, message, &
@@ -6298,4 +6425,8 @@ end subroutine getIntegerArray
 
   end subroutine parameterDefinesRange
 
+
+
+
+  
 end module inputs_mod
