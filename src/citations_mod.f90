@@ -156,7 +156,6 @@ contains
             ' "Content-Type: text/plain" -X POST -d ''{"bibcode":["',trim(bibcode), &
             '"]}'' https://api.adsabs.harvard.edu/v1/export/bibtex > adsreturn'
        call execute_command_line(curlString, wait=.true., exitstat=i)
-       write(*,*) i,trim(curlstring)
        !       i = 99
        if (i /= 0) then
           call writeWarning("Cannot execute ADS search")
