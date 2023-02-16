@@ -897,9 +897,15 @@ module molecular_mod
                  thisoctal%departcoeff(1:5,subcell) = real(1.d0 / thisoctal%departcoeff(1:5,subcell))
               endif
 ! Fill cells with molecular level populations - LTE or small
+
+              if (associated(thisOctal%molecularLevel)) deallocate(thisOctal%molecularLevel)
+              
               if (.not. associated(thisOctal%molecularLevel)) &
                    allocate(thisOctal%molecularLevel(1:maxlevel,1:thisOctal%maxChildren))
 
+
+
+              
                  if((grid%geometry .eq. "h2obench1") .or. (grid%geometry .eq. "h2obench2")) then
                     thisOctal%molecularLevel(1,subcell) = 1.d0-1d-10
                     thisOctal%molecularLevel(2,subcell) = 1d-10
@@ -908,6 +914,7 @@ module molecular_mod
                        call LTEpops(thisMolecule, dble(thisOctal%temperature(subcell)), &
                             levelpops(1:maxlevel))
                        thisOctal%molecularLevel(1:maxlevel,subcell) = levelpops(1:maxlevel)
+!                       write(*,*) "t ",thisOctal%temperature(subcell)," level ",levelpops(1:maxlevel)
                     elseif(maxlevel .gt. 3) then
                        thisOctal%molecularLevel(1:2,subcell) = 0.5d0               
                        thisOctal%molecularLevel(3:maxlevel,subcell) = 1.d-10
@@ -924,13 +931,18 @@ module molecular_mod
                  thisOctal%molecularLevel(1:maxlevel,subcell) = levelpops(1:maxlevel)
 
 !!!!!
-              if (.not.associated(thisOctal%bnu)) &
+              if (associated(thisOctal%bnu)) deallocate(thisOctal%bnu)
+
+
+                 if (.not.associated(thisOctal%bnu)) &
                  allocate(thisOctal%bnu(1:maxtrans, thisOctal%maxChildren))
               do i = 1, maxtrans
                  thisOctal%bnu(i,subcell) = bnu(thisMolecule%transFreq(i), dble(thisOctal%temperature(subcell)))
               enddo
 
 ! Get jnu from this cell
+              if (associated(thisOctal%jnu)) deallocate(thisOctal%jnu)
+
               if (.not.associated(thisOctal%jnu)) &
                  allocate(thisOctal%jnu(1:maxtrans,1:thisOctal%maxChildren))
               
@@ -1084,7 +1096,7 @@ module molecular_mod
 
    recursive subroutine  deallocateUnused(grid, thisOctal, upperlev, everything)
 
-     use inputs_mod, only : densitysubsample, debug, lowmemory
+     use inputs_mod, only : debug, lowmemory
  
      type(GRIDTYPE) :: grid
      type(octal), pointer   :: thisOctal
@@ -1123,13 +1135,13 @@ module molecular_mod
            if (grid%splitOverMPI.and.(.not.octalOnThread(thisOctal, subcell, myrankGlobal))) cycle
 
            if(deallocateeverything) then
-              if(.not. (densitysubsample .and. associated(thisoctal%cornerrho))) deallocate(thisoctal%cornerrho)
-              if(associated(thisoctal%microturb)) deallocate(thisoctal%microturb)
-              if(.not. debug) deallocate(thisoctal%newmolecularlevel)
+              if(associated(thisoctal%cornerrho)) deallocate(thisoctal%cornerrho)
+              if(associated(thisoctal%molmicroturb)) deallocate(thisoctal%molmicroturb)
+              if (associated(thisOctal%newMolecularLevel)) deallocate(thisoctal%newmolecularlevel)
 
-              if(.not. lowmemory) then
-                 deallocate(thisoctal%molecularlevel)
-              endif
+!              if(.not. lowmemory) then
+!                 if (associated(thisOctal%molecularLevel))deallocate(thisoctal%molecularlevel)
+!              endif
            else
               if(lowmemory) then
                  temparray(1:upperlevel,1:thisoctal%maxchildren) = &
@@ -4209,6 +4221,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
                          (thisMolecule%molecularWeight * amu))) / (cspeed * 1d-5))
                     endif
 
+!                    write(*,*) lowmemory,associated(thisOctal%molmicroturb),subcell,thisOctal%rho(subcell),thisOctal%maxChildren
                     thisOctal%molmicroturb(subcell) = 1.d0 / thisOctal%microturb(subcell)
                     
                     if(doCOchemistry) then
@@ -4222,6 +4235,8 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
                     
                     iUpper = thisMolecule%iTransUpper(iTrans)
                     iLower = thisMolecule%iTransLower(iTrans)
+
+!                    write(*,*) associated(thisOctal%molcellparam),associated(thisOctal%molecularlevel)
                     
                     thisOctal%molcellparam(2,subcell) = thisOctal%molecularLevel(iLower,subcell)! * nMol
                     thisOctal%molcellparam(3,subcell) = thisOctal%molecularLevel(iUpper,subcell)! * nMol

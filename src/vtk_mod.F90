@@ -3033,6 +3033,7 @@ end subroutine writeXMLVtkFileAMR
                   rArray(1, n) = real(returnMu(thisOctal, subcell, grid%ion, grid%nion))
 #endif
                case("J=0")
+!                  write(*,*)thisOctal%molecularlevel(1,subcell),thisOctal%temperature(subcell), thisOctal%rho(subcell)
                   rArray(1, n) = real(thisOctal%molecularlevel(1,subcell))
 
                case("J=1")

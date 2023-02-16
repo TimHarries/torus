@@ -1871,6 +1871,10 @@ contains
        call getReal("betadisc", betaDisc, 1., cLine, fLine, nLines, &
             "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
 
+       call getReal("mdisc", mDisc, real(msol), cLine, fLine, nLines, &
+            "Disc mass (solar masses): ","(a,f6.4,a)", 1.e-4, ok, .true.)
+
+
        call getReal("heightsplitfac", heightSplitFac, 1., cLine, fLine, nLines, &
             "Splitting factor for scale height (local scale heights): ","(a,f5.2,a)", 0.2, ok, .false.)
 

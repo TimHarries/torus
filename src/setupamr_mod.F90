@@ -239,6 +239,18 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           enddo
           call fillgridKatie(grid, gridconverged, dosplit=.false.)
           call fillVelocityCornersFromCentresCylindrical(grid, grid%octreeRoot)
+
+          totalMass = 0.d0
+          call findTotalMass(grid%octreeRoot, totalMass)
+          write(*,*) "Total mass ",totalmass
+          scaleFac = real(mDisc / totalMass)
+          if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
+          call scaleDensityAMR(grid%octreeRoot, dble(scaleFac))
+          totalMass = 0.d0
+          call findTotalMass(grid%octreeRoot, totalMass)
+          write(*,*) "Total mass ",totalmass/mSol
+
+          
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case("mgascii")
