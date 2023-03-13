@@ -126,8 +126,8 @@ contains
           call torus_abort
        endif
        thisLine = trim(adjustl(cLine(nLines)))
-       if ( thisLine(1:1) == "%" .or. thisLine(1:1) == "!" ) then
-          nLines = nLines - 1   ! % or ! is a comment
+       if ( thisLine(1:1) == "%" .or. thisLine(1:1) == "!" .or. thisLine(1:1) == "#" ) then
+          nLines = nLines - 1   ! % # or ! is a comment
           cycle
        endif
        if (thisLine(1:1) == " ") then
@@ -139,11 +139,19 @@ contains
           thisLine = thisLine(:(i-1))
           cLine(nLines) = thisLine
        endif
+       
        if (index(thisLine,"!") /= 0) then
           i = index(thisLine,"!")
           thisLine = thisLine(:(i-1))
           cLine(nLines) = thisLine
        endif
+       
+       if (index(thisLine,"#") /= 0) then
+          i = index(thisLine,"#")
+          thisLine = thisLine(:(i-1))
+          cLine(nLines) = thisLine
+       endif
+
        
     end do
 10  continue
@@ -3514,7 +3522,7 @@ contains
           call getVector(keyword, sourceVel(i), 1.d0, cLine, fLine, nLines, &
                "Source velocity: ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .false.)
           write(keyword, '(a,i1)') "mass",i
-          call getDoubleWithUnits(keyword, sourceMass(i), "msol", "msol", cLine, fLine, nLines, &
+          call getDoubleWithUnits(keyword, sourceMass(i), "msol", "gram", cLine, fLine, nLines, &
                "Source mass: ",1.d0, ok, .true.)
 
 
@@ -3574,7 +3582,7 @@ contains
              endif
 
              write(keyword, '(a,i1)') "mass",i
-             call getDoubleWithUnits(keyword, sourceMass(i), "msol", "msol", cLine, fLine, nLines, &
+             call getDoubleWithUnits(keyword, sourceMass(i), "msol", "gram", cLine, fLine, nLines, &
                   "Source mass: ",1.d0, ok, .true.)
 
              write(keyword, '(a,i1)') "mdot",i
