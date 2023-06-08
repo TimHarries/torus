@@ -239,18 +239,6 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           enddo
           call fillgridKatie(grid, gridconverged, dosplit=.false.)
           call fillVelocityCornersFromCentresCylindrical(grid, grid%octreeRoot)
-
-          totalMass = 0.d0
-          call findTotalMass(grid%octreeRoot, totalMass)
-          write(*,*) "Total mass ",totalmass
-          scaleFac = real(mDisc / totalMass)
-          if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
-          call scaleDensityAMR(grid%octreeRoot, dble(scaleFac))
-          totalMass = 0.d0
-          call findTotalMass(grid%octreeRoot, totalMass)
-          write(*,*) "Total mass ",totalmass/mSol
-
-          
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case("mgascii")
@@ -3499,7 +3487,7 @@ end subroutine fillVelocityCornersFromCentresCylindrical
     real(double) :: dphi,r,r1
 
     r1 = 45.*autocm/1.d10
-    
+    r_out = 25.*autocm/1.d10
     
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -3522,8 +3510,9 @@ end subroutine fillVelocityCornersFromCentresCylindrical
                    splitInAzimuth = .false.
                    dphi = returndPhi(thisOctal)
                    if (dphi > minPhiResolution) then
-                      split = .true.
-                      splitinAzimuth = .true.
+                     if (r < r_out) then
+                        split = .true.
+                        splitInAzimuth = .true.
                    endif
                 endif
 
