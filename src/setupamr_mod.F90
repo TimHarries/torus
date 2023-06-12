@@ -3484,7 +3484,7 @@ end subroutine fillVelocityCornersFromCentresCylindrical
     integer :: subcell, i
     logical, optional :: inheritProps, interpProps
     type(VECTOR) :: rVec
-    real(double) :: dphi,r,r1
+    real(double) :: dphi,r,r1,r_out
 
     r1 = 45.*autocm/1.d10
     r_out = 25.*autocm/1.d10
@@ -3513,6 +3513,7 @@ end subroutine fillVelocityCornersFromCentresCylindrical
                      if (r < r_out) then
                         split = .true.
                         splitInAzimuth = .true.
+                     endif
                    endif
                 endif
 
