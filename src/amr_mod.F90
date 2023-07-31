@@ -13723,7 +13723,7 @@ end function readparameterfrom2dmap
              end if
           end do
        else
-          thisOctal%rho(subcell) = max(1.d-30,thisOctal%rho(subcell) * scaleFac)
+          if (thisOctal%rho(subcell)>1.e-30) thisOctal%rho(subcell) = max(1.d-30,thisOctal%rho(subcell) * scaleFac)
        endif
     enddo
   end subroutine scaleDensityAMR

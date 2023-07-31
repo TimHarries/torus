@@ -77,8 +77,8 @@ contains
     integer :: ihydro, iIter_grand, iMultiplier
     character(len=80) :: tfilename
     type(GRIDTYPE) :: grid
-    logical :: gridConverged
-    real(double) :: astar, mass_accretion_old, totalMass
+    logical :: gridConverged, smoothConverged
+    Real(double) :: astar, mass_accretion_old, totalMass
     real(double) :: minRCubedRhoSquared
     character(len=80) :: message
     integer :: nVoxels, nOctals
@@ -229,16 +229,36 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           j = 0
           do while(.not.gridconverged)
              call fillgridKatie(grid, gridconverged, dosplit=.true.)
+
              j = j + 1
              if (mod(j,10) == 0) then
+             call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
+             do
+                smoothConverged = .true.
+                ! The following is Tim's replacement for soomthAMRgrid.
+                call myScaleSmooth(smoothFactor, grid, &
+                     smoothConverged,  inheritProps = .false., interpProps = .false.)
+                if (smoothConverged) exit
+             end do
+             call writeInfo("...grid smoothing complete", TRIVIAL)
                 call fillgridKatie(grid, gridconverged, dosplit=.false.)
+
                 call writeVtkFile(grid, "rho.vtk",  valueTypeString=(/"rho     ","velocity"/))
              endif
              write(*,*) j,gridConverged
 
           enddo
+             call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
+             do
+                smoothConverged = .true.
+                ! The following is Tim's replacement for soomthAMRgrid.
+                call myScaleSmooth(smoothFactor, grid, &
+                     smoothConverged,  inheritProps = .false., interpProps = .false.)
+                if (smoothConverged) exit
+             end do
+             call writeInfo("...grid smoothing complete", TRIVIAL)
           call fillgridKatie(grid, gridconverged, dosplit=.false.)
-          call fillVelocityCornersFromCentresCylindrical(grid, grid%octreeRoot)
+!          call fillVelocityCornersFromCentresCylindrical(grid, grid%octreeRoot)
 
           totalMass = 0.d0
           call findTotalMass(grid%octreeRoot, totalMass)
@@ -3372,119 +3392,127 @@ recursive subroutine fillVelocityCornersFromCentresCylindrical(grid, thisOctal)
     enddo
 end subroutine fillVelocityCornersFromCentresCylindrical
 
-  subroutine fillGridKatie(grid, converged, doSplit)
-    use inputs_mod, only : rInner, rOuter, alphaDisc, betaDisc, height, maxDepthAMR, &
-         heightsplitfac
-    use inputs_mod, only : sourceMass
-    use utils_mod, only : stripSimilarValues
-    type(GRIDTYPE) :: grid
-    type(OCTAL), pointer :: thisOctal
-    integer :: subcell
-    type(VECTOR) :: rVec, lVec, zAxis, rVecRot, vdir, lArray(1000), aboutVec
-    integer :: i,j,k
-    real(double) :: r, phi, z, h, rho, r0, r1, r2, a, ang, vel, mass, r_au
-    integer :: nr, nphi, nz, m, nrArray
-    real(double) :: thisFac
-    logical :: converged, doSplit
-    real(double) :: rArray(1000), facArray(1000)
-    
-    nrArray = 1000
-    
-    open(20,file="radial.dat",form="formatted",status="old")
-    do i = 1, nrArray
-       read(20,*) rArray(i),facArray(i), lArray(i)%x, lArray(i)%y, lArray(i)%z
-    enddo
-    close(20)
 
-    call zeroadotLocal(grid%octreeRoot)
-    call zeroDensity(grid%octreeRoot)
+recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, facArray, converged)
+  use inputs_mod, only : heightSplitFac, rOuter, minDepthAMR, rInner
+  integer :: nr
+  logical :: converged, aziSplit
+  real(double) :: rArray(:), facArray(:)
+  type(VECTOR) :: lArray(:), testVec
+  type(GRIDTYPE) :: grid
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child
+  type(VECTOR) :: rVec
+  integer :: subcell, i, j
+  real(double) :: thisZ, rho, h, thisH, thisRho, z, thisR, r, fac
 
-    converged = .true.
+  do subcell = 1, thisOctal%maxChildren
+     if (thisOctal%hasChild(subcell)) then
+        ! find the child
+        do i = 1, thisOctal%nChildren, 1
+           if (thisOctal%indexChild(i) == subcell) then
+              child => thisOctal%child(i)
+              call fillGridRecurKatie(child, grid, nr, rArray, lArray, facArray, converged)
+              exit
+           end if
+        end do
+     else
+        testVec = vector(1500.d0,0.d0,1500.d0)
 
-    mass = sourceMass(1)
-    zAxis = VECTOR(0.d0, 0.d0, 1.d0)
+        rVec = subcellCentre(thisOctal,subcell)
 
-    r0 = 75.*autocm/1.d10
-    r1 = 45.*autocm/1.d10
-    r2 = 105.*autocm/1.d10
-    a = sin(30.*degtorad)
-
-    nr = 4000
-    nz = 100
-    nphi = 360
-
-
-
-
-!$OMP PARALLEL DEFAULT(NONE) &
-!$OMP PRIVATE(i,h,j,phi,k,z,rho,rvec,lvec,r,ang,rVecRot,thisOctal,subcell,vel) &
-!$OMP PRIVATE(vDir,m, thisFac,aboutVec) &
-!$OMP SHARED(rInner, rOuter, nr, nphi,nz,height,r1,r2,r0,alphaDisc,betaDisc,a) &
-!$OMP SHARED(zAxis,grid, mass, heightSplitFac, maxDepthAMR, converged) &
-!$OMP SHARED(nrArray, rArray, lArray, facArray,r_au)
-    
-    
-!$OMP DO SCHEDULE(DYNAMIC)
-    do i = 1, nr
-       thisOctal => grid%octreeRoot
-       r = log10(rInner) + (log10(rOuter) - log10(rInner)) * dble(i-1)/dble(nr-1)
-       r = 10.d0**r
-       h = height*(r/(100.d0*autocm/1.d10))**betaDisc
-       do j = 1, nphi
-          phi = twoPi*dble(j-1)/dble(nphi)+1.e-3
-          do k = 1, nz
-             z = h*(-5.d0+10.d0*dble(k-1)/(dble(nz-1)))
-             rho = 1.e-10*(r/rInner)**(-alphaDisc) * exp(-0.5d0*(z/h)**2)
-             rVec = VECTOR(r*cos(phi),r*sin(phi),z)
-
-             r_au = r*1.d10/autocm
-             call locate(rArray,nrArray,r_au,m)
-             thisFac = facArray(m)
-             lVec%x = lArray(m)%x
-             lVec%y = lArray(m)%y
-             lVec%z = lArray(m)%z
+        
+        thisRho = 0.d0
+        thisH = 1.d30
+        thisZ  = 0.
+        thisR = 0.
+        aziSplit = .false.
+        do j = 1, nr
+           if (j < nr) then
+              call katieRho(rVec, lArray(j),rArray(j),rArray(j+1), rho, h, z, r)
+           else
+              call katieRho(rVec, lArray(j),rArray(j),dble(rOuter), rho, h, z, r)
+           endif
+           if (rho > thisRho) then
+              thisRho = rho
+              thisH = h
+              thisZ = z
+              thisR = r
+              fac = facArray(j)
+              if (lArray(j)%z < 1.d0) aziSplit = .true.
+           endif
+        enddo
+        if (thisOctal%nDepth < minDepthAMR) then
+           thisOctal%adot(subcell) = -1.d0
+           converged = .false.
+        endif
+        thisOctal%rho(subcell) = max(thisRho*fac,1.d-30)
+        if ((abs(thisZ/thisH)< 7.).and.(thisOctal%subcellSize/thisH)>heightSplitFac) then
+           thisOctal%adot(subcell) = -1.
+           converged = .false.
+        endif
 
 
-             ang = acos(lVec.dot.zAxis)
-             if (ang /= 0.d0) then
-                aboutVec = lvec .cross. zaxis
-                call normalize(aboutVec)
-             else
-                aboutVec = zAxis
-             endif
-             
-             rVecRot = arbitraryRotate(rVec,ang,aboutVec)
-             if (inOctal(grid%octreeRoot, rVecRot)) then
-                call findSubcellLocal(rVecRot, thisOctal,subcell)
-                vel = sqrt(bigG*mass/(r*1.d10))/cSpeed
-                vDir = (VECTOR(cos(phi),sin(phi),0.d0)).cross.zAxis
-                call normalize(vDir)
-                thisOctal%velocity(subcell) = arbitraryrotate(vel*vDir,ang, aboutVec)
-                thisOctal%rho(subcell) = rho * thisFac
-                
-                
-                if (thisOctal%subcellsize > heightSplitFac*h) then
-                   IF (thisOctal%nDepth < maxDepthAMR) then
-                      thisOctal%adot(subcell) = -1.d0
-                      converged = .false.
-                   endif                   
-                endif
+        if ( ((modulus(rVec)/thisOctal%subcellSize) < 1.).and.(thisOctal%subcellSize/rInner > 0.1)) then
+           thisOctal%adot(subcell) = -1.
+           converged = .false.
+        endif
 
-                if (thisOctal%subcellsize > 0.05d0*(modulus(rVec))) then
-                   IF (thisOctal%nDepth < maxDepthAMR) then
-                      thisOctal%adot(subcell) = -1.d0
-                      converged = .false.
-                   endif                   
-                endif
+        
+        if (abs(thisZ/thisOctal%subcellSize)<1.) then
+           if (abs(thisZ)/thisH > 0.5) then
+              thisOctal%adot(subcell) = -1.
+              converged = .false.
+           endif
+        endif
+              
+        if (aziSplit) thisOctal%adot(subcell) = thisOctal%adot(subcell) * 2.
 
-             endif
-             
-          enddo
-       enddo
-    enddo
-!$OMP END PARALLEL
-    if (doSplit) call splitTaggedRho(grid%octreeRoot, grid)
-  end subroutine fillGridKatie
+     endif
+  enddo
+end subroutine fillGridRecurKatie
+
+
+subroutine katieRho(rVec, lHat, rIn, rOut, rho, h, z, r)
+  use inputs_mod, only : alphaDisc, betaDisc, height, rInner
+  type(VECTOR) :: lHat, rVec, pVec
+  real(double) :: h, z, r, rho, rIn, rOut
+  z = lHat.dot.rVec
+  pVec = rVec - z * lHat
+  r = modulus(pVec)
+  h = 1.d30
+  rho = 0.d0
+  if ((r > rIn).and.(r < rOut)) then
+     h = height*(r/(100.d0*autocm/1.d10))**betaDisc
+     rho = 1.e-10*(r/rInner)**(-alphaDisc) * exp(-0.5d0*(z/h)**2)
+  endif
+end subroutine katieRho
+
+
+subroutine fillGridKatie(grid, converged, doSplit)
+  type(GRIDTYPE) :: grid
+  integer :: i
+  integer :: nrArray
+  logical :: converged, doSplit
+  real(double),allocatable :: rArray(:), facArray(:)
+  type(VECTOR), allocatable :: lArray(:)
+
+
+  open(20,file="radial.dat",form="formatted",status="old")
+  read(20,*) nrarray
+  allocate(rArray(1:nrArray), facArray(1:nrArray), lArray(1:nrArray))
+  do i = 1, nrArray
+     read(20,*) rArray(i),facArray(i), lArray(i)%x, lArray(i)%y, lArray(i)%z
+  enddo
+  close(20)
+  rArray = rArray * autocm/1.d10
+  
+  call zeroadotLocal(grid%octreeRoot)
+  call zeroDensity(grid%octreeRoot)
+  converged = .true.
+  call fillGridRecurKatie(grid%octreeRoot, grid, nrArray, rArray, lArray, facArray, converged)
+  if (doSplit.and.(.not.converged)) call splitTaggedRho(grid%octreeRoot, grid)
+end subroutine fillGridKatie
 
 
   recursive subroutine splitTaggedRho(thisOctal, grid, inheritProps, interpProps)
@@ -3492,14 +3520,11 @@ end subroutine fillVelocityCornersFromCentresCylindrical
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
-    logical :: splitInAzimuth, split
+    logical :: splitInAzimuth
     integer :: subcell, i
     logical, optional :: inheritProps, interpProps
-    type(VECTOR) :: rVec
-    real(double) :: dphi,r,r1
+    real(double) :: dphi
 
-    r1 = 45.*autocm/1.d10
-    
     
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -3512,21 +3537,15 @@ end subroutine fillVelocityCornersFromCentresCylindrical
              end if
           end do
        else
+          splitInAzimuth = .false.
           if (thisOctal%adot(subcell) < 0.d0) then
-             splitInAzimuth = .false.
+             if (thisOctal%adot(subcell) < -1.5d0) splitInAzimuth = .true.
              if (thisOctal%nDepth<maxDepthAMR) then
                 thisOctal%rho(subcell) = 0.d0
-                rVec = subcellCentre(thisOctal, subcell)
-                r = sqrt(rVec%x**2 + rVec%y**2)
-                if (thisOctal%cylindrical) then
-                   splitInAzimuth = .false.
-                   dphi = returndPhi(thisOctal)
-                   if (dphi > minPhiResolution) then
-                      split = .true.
-                      splitinAzimuth = .true.
-                   endif
+                dphi = returndPhi(thisOctal)
+                if ((dphi < minPhiResolution)) then
+                   splitinAzimuth = .false.
                 endif
-
                 call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                      inherit=inheritProps, interp=interpProps,splitazimuthally=splitinazimuth)
                 return

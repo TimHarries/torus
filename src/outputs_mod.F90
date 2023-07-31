@@ -477,6 +477,7 @@ if (.false.) then
 !             call setDustInsideRadiusTozero(grid%octreeRoot, dble(rgapinner1))
 !             write(*,*) "setting inner dust to zero"
 
+                call writeVtkFile(grid, "tau.vtk",  valueTypeString=(/"tau"/))
 
                 call do_phaseloop(grid, .false., 50000, &
                      miePhase, globalnsource, globalsourcearray, nmumie, imNum=i)
@@ -547,7 +548,7 @@ if (.false.) then
                 lambdaImage = getImageWavelength(i)
                 call setupXarray(grid, xarray, nlambda, lamMin=lambdaImage, lamMax=lambdaImage, &
                      wavLin=.true., numLam=1, dustRadEq=.true.)
-                
+
                 call do_phaseloop(grid, .false., 50000, &
                      miePhase, globalnsource, globalsourcearray, nmumie, imNum=i)
              enddo
