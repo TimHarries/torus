@@ -116,8 +116,8 @@ contains
     n=0
     rabs  = abs(r)
     i = -30
-    s = 10.**dble(i)
-    do while(rabs/s >= 1.0)
+    s = 10.**real(i)
+    do while(log10(rabs)-log10(s) >= 0.0)
        i = i + 1
        s = 10.**i
     end do
@@ -126,8 +126,8 @@ contains
     x = rabs/(10.**p)
     do i = 1, 10
        s = x * 10.**i
-!       write(*,*) i, s, mod(s,10.d0)
-       if (mod(s,10.) < 1.d-10) exit
+!       write(*,*) i, s, mod(s,10.0)
+       if (mod(s,10.) < 1.-10) exit
        if (abs(mod(s,10.)-10) <1.e-2) exit
     enddo
     n = i 
