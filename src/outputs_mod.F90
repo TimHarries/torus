@@ -477,7 +477,7 @@ if (.false.) then
 !             call setDustInsideRadiusTozero(grid%octreeRoot, dble(rgapinner1))
 !             write(*,*) "setting inner dust to zero"
 
-                call writeVtkFile(grid, "tau.vtk",  valueTypeString=(/"tau"/))
+!                call writeVtkFile(grid, "tau.vtk",  valueTypeString=(/"tau"/))
 
                 call do_phaseloop(grid, .false., 50000, &
                      miePhase, globalnsource, globalsourcearray, nmumie, imNum=i)
