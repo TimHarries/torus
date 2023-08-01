@@ -127,8 +127,8 @@ contains
     do i = 1, 10
        s = x * 10.**i
 !       write(*,*) i, s, mod(s,10.0)
-       if (mod(s,10.) < 1.e-10) exit
-       if (abs(mod(s,10.)-10) <1.e-2) exit
+       if (mod(s,10.) < 1.e-4) exit
+       if (abs(mod(s,10.)-10.) <1.e-2) exit
     enddo
     n = i 
        
@@ -237,6 +237,7 @@ contains
     endif
 
     if ((p > -4).and.(p < 0).and.(r > 0.d0)) then
+!       write(*,*) r,n,p
        write(cformat,'(a,i1,a,i1,a)') "(f",abs(p)-1+n+2,".",n+abs(p)-1,")"
        write(cval,cformat) r
     endif
