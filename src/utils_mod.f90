@@ -127,7 +127,7 @@ contains
     do i = 1, 10
        s = x * 10.**i
 !       write(*,*) i, s, mod(s,10.0)
-       if (mod(s,10.) < 1.-10) exit
+       if (mod(s,10.) < 1.e-10) exit
        if (abs(mod(s,10.)-10) <1.e-2) exit
     enddo
     n = i 
@@ -220,6 +220,7 @@ contains
           write(cformat,'(a,i1,a)') "(i",p+1,")"
           write(cval,cformat) int(r)
        else
+          write(*,*) r,n,p
           write(cformat,'(a,i1,a,i1,a)') "(f",max(n,p)+1,".",max(n-p-1,0),")"
           write(cval,cformat) r
        endif
