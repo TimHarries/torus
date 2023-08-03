@@ -535,10 +535,11 @@ contains
     read(LUIN,*)
     read(LUIN,'(a)') nameString
     nameString = nameString(2:)
+
     call splitIntoWords(unitnameString, unitname, nunit)
     call splitintoWords(unitString, unit, nunit)
     call splitIntoWords(nameString, word, nWord)
-    write(*,*) "Words: "
+    write(*,*) nword," Words: "
     do i = 1, nWord
        write(*,*) trim(word(i)),": ",trim(unit(i)), " ",trim(unitname(i))
     enddo
@@ -573,7 +574,7 @@ contains
     iz = indexWord("z",word,nWord)
 
     read(unit(ix),*) uDist
-    uDist =  toTorusUnits(unitName(ix))
+    uDist =  toTorusUnits(unitName(ix)) * uDist
     
 ! Check how the velocity columns are labelled, there are two possibilities so handle both
     if ( wordIsPresent("v\dx",word,nWord) ) then
@@ -600,7 +601,7 @@ contains
     imass = indexWord("particle mass",word,nWord)
 
     read(unit(imass),*) umass
-    umass = toTorusUnits(unitName(imass))
+    umass = toTorusUnits(unitName(imass)) * umass
 
     if(dragon) then
        iu = indexWord("temperature",word,nWord)
@@ -3466,7 +3467,7 @@ contains
     udist = get_udist()
     utime = get_utime()
     umass = get_umass()
-    codeLengthtoTORUS =  udist*1d-10
+    codeLengthtoTORUS =  udist
     codeVelocitytoTORUS = sphdata%codeVelocitytoTORUS
     codeDensitytoTORUS = 1.d0 !umass / ((udist) ** 3)
     write(*,*) "code length to torus ",codeLengthToTorus
@@ -3958,6 +3959,7 @@ contains
       thisLen = wordLen
    else
       thisLen = 24
+      thisLen = 16
    end if
 
 ! Decide whether to left adjust the string we have been given. Default is to left adjust.
@@ -4149,6 +4151,10 @@ contains
           case("[km/s]")
              toTorusUnits = 1.d5
           case("[erg/g]")
+             toTorusUnits = 1.d0
+          case("[g]")
+             toTorusUnits = 1.d0
+          case("[cm/s]")
              toTorusUnits = 1.d0
           case DEFAULT
              write(*,*) "Unit not recognised ",trim(unitName)

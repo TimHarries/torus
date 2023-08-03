@@ -974,8 +974,9 @@ contains
               endif
               do i = 1, globalnSource
                  globalSourceArray(i)%stellar = .true.
+                 write(*,*) get_pt_mass(i),get_umass()
                  globalSourceArray(i)%mass = get_pt_mass(i) * get_umass()
-
+                 write(*,*) i,sourcemass(i),globalSourceArray(i)%mass
                  if (abs((sourceMass(i) - globalSourceArray(i)%mass)/sourceMass(i)) > 0.01d0) then
                     call writeFatal("Source mass differs by more than 1% from that in sph file")
                     call torus_abort
