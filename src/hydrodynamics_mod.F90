@@ -19819,9 +19819,14 @@ end subroutine minMaxDepth
            call getEdgePointsRecurLevel(grid%octreeRoot, nPoints, points, level)
         endif
         call mpi_send(nPoints, 1, MPI_INTEGER, 1, tag, localWorldCommunicator, ierr)
-        call mpi_send(points(1:nPoints)%x, nPoints, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, ierr)
-        call mpi_send(points(1:nPoints)%y, nPoints, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, ierr)
-        call mpi_send(points(1:nPoints)%z, nPoints, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, ierr)
+        allocate(temp(1:nPoints))
+        temp(1:npoints) = points(1:nPoints)%x
+        call mpi_send(temp, nPoints, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, ierr)
+        temp(1:npoints) = points(1:nPoints)%y
+        call mpi_send(temp, nPoints, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, ierr)
+        temp(1:npoints) = points(1:nPoints)%z
+        call mpi_send(temp, nPoints, MPI_DOUBLE_PRECISION, 1, tag, localWorldCommunicator, ierr)
+        deallocate(temp)
      endif
      call mpi_barrier(amrCommunicator,ierr)
      call MPI_BCAST(npoints, 1, MPI_INTEGER, 0, amrCommunicator, ierr)

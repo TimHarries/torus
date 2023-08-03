@@ -1487,10 +1487,12 @@ contains
 
 !               call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, localWorldCommunicator, status, ierr)
 !                write(*,*) myrank, " received temp storage"
-                if (associated(thisOctal%mpiBoundaryStorage).and.(size(thisOctal%mpiBoundaryStorage,3)/=nStorage)) then
-                   deallocate(thisOctal%mpiBoundaryStorage)
-                   allocate(thisOctal%mpiBoundaryStorage(1:thisOctal%maxChildren, 6, nStorage))
-                   thisOctal%mpiBoundaryStorage = 0.d0
+                if (associated(thisOctal%mpiBoundaryStorage)) then
+                   if ((size(thisOctal%mpiBoundaryStorage,3)/=nStorage)) then
+                      deallocate(thisOctal%mpiBoundaryStorage)
+                      allocate(thisOctal%mpiBoundaryStorage(1:thisOctal%maxChildren, 6, nStorage))
+                      thisOctal%mpiBoundaryStorage = 0.d0
+                   endif
                 endif
 
                 if (.not.associated(thisOctal%mpiBoundaryStorage)) then

@@ -579,13 +579,14 @@ contains
 !         thisOctal%localInterfaces(subcell) = refineLocalInterfaceHierarchy(parentRoot, boxMin, boxMax, debug=debug)
 !      else
 
-      if (associated(thisOctal%parent) .and. associated(thisOctal%parent%localInterfaces) ) then
-         parentRoot = thisOctal%parent%localInterfaces(thisOctal%parentSubcell)
-         thisOctal%localInterfaces(subcell) = refineLocalInterfaceHierarchy(parentRoot, boxMin, boxMax)
-      else
-          thisOctal%localInterfaces(subcell) = makeLocalInterfaceHierarchy(objectMeshList, boxMin, boxMax)
-      end if
-
+      if (associated(thisOctal%parent)) then
+         if (associated(thisOctal%parent%localInterfaces) ) then
+            parentRoot = thisOctal%parent%localInterfaces(thisOctal%parentSubcell)
+            thisOctal%localInterfaces(subcell) = refineLocalInterfaceHierarchy(parentRoot, boxMin, boxMax)
+         else
+            thisOctal%localInterfaces(subcell) = makeLocalInterfaceHierarchy(objectMeshList, boxMin, boxMax)
+         end if
+endif
       if (.not.associated(thisOctal%localInterfacesCONTROL)) allocate(thisOctal%localInterfacesCONTROL(1:thisOctal%maxChildren))
       thisOctal%localInterfacesCONTROL(subcell) = makeLocalInterfaceHierarchy(objectMeshList, boxMin, boxMax, &
                                                                     thisOctal%localInterfaces(subcell)%reference)

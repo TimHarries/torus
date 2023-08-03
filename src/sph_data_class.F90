@@ -4140,6 +4140,8 @@ contains
        select case (unitName)
           case("[au]")
              toTorusUnits = autocm
+          case("[cm]")
+             toTorusUnits = 1.d-10
           case("[M_{Sun}]")
              toTorusUnits = mSol
           case("[g/cm^3]")

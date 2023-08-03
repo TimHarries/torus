@@ -3020,7 +3020,7 @@ contains
        amrGridCentreX = amrgridsize/2.
     endif
 
-    
+    write(*,*) "amrgridsize ",amrgridsize,amrgridcentrex,amrgridcentrey,amrgridcentrez
     call getDouble("limitscalar", limitScalar, 1.d0, cLine, fLine, nLines, &
          "Scalar limit for subcell division: ","(a,1p,e9.3,1x,a)", 1000._db, ok, .false.)
 

@@ -6506,10 +6506,11 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
 !           endif
            enddo
 
-           if(present(i0max) .and. i0 .gt. 0.99d0 * i0max) then 
-              exit
+           if(present(i0max)) then
+              if(i0 .gt. 0.99d0 * i0max) then 
+                 exit
+              endif
            endif
-
            if(present(i0max)) then
 
               attenuateddIovercell = attenuateddIovercell + dI
