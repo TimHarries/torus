@@ -219,7 +219,7 @@ contains
     n = get_nstar(this)
 
     ! using a function sph_data_class
-    length_units = get_udist()/1.0d10 ! [10^10 cm]
+    length_units = get_udist() ! [10^10 cm]
     
     age = get_time()*get_utime() ! in [sec]
     ! converting to years
@@ -413,7 +413,7 @@ contains
        np = SIZE(thisOctal%gas_particle_list)
        
        ! Units of length
-       udist = get_udist() / 1.0d10  ! [10^10cm]
+       udist = get_udist()   ! [10^10cm]
        
        k=0
 !       !$OMP PARALLEL DEFAULT(NONE) &
@@ -427,10 +427,12 @@ contains
           ! copy this value if this particle is in this child.
           ! Using a routine in sph_data_class. 
           call get_position_gas_particle(j, x, y, z)
-          
           ! convert units
           x = x*udist; y = y*udist;  z = z*udist  ! [10^10cm]
-          
+
+
+!          write(*,*) "position here ",j,x,y,z
+
           ! For 2D octals x is cylindrical polar r
           if (thisOctal%twoD) x = sqrt(x**2 + y**2)
 
@@ -491,10 +493,10 @@ contains
        ! units of sphData
        umass = get_umass()  ! [g]
        udist = get_udist()  ! [cm]
-       udent = 1.d0 !umass/udist**3
+       udent = umass/(udist*1.d10)**3
 
        ! convert units
-       udist = udist/1.0d10  ! [10^10cm]
+!       udist = udist/1.0d10  ! [10^10cm]
 
        first_time = .false.
     end if
@@ -530,6 +532,7 @@ contains
           ! quick check to see if this gas particle is
           ! belongs to this cell.
 
+!          write(*,*) "part here ",j,x,y,z
 
           ! For 2D octals x is cylindrical polar r
           if (node%twoD) x = sqrt(x**2 + y**2)
