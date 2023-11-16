@@ -1333,7 +1333,7 @@ function returnMu(thisOctal, subcell, ionArray, nion) result (mu)
      tot = tot + ionArray(i)%abundance * thisOctal%nh(subcell) * &
           thisOctal%ionFrac(subcell, i)
 
-     !sum ion masses
+     !sum ion masses (units of mhydrogen)
      mA = mA + ionArray(i)%abundance * thisOctal%nh(subcell) * &
           dble(ionArray(i)%nucleons)*thisOctal%ionFrac(subcell, i)
   enddo

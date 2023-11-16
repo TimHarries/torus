@@ -47,6 +47,7 @@ program torus
   use loadbalance_mod
   use biophysics_mod
   use photoionAMR_mod
+  use starburst_mod, only : testmassnly
 
 #ifdef CHEMISTRY
   use chemistry_mod
@@ -154,6 +155,10 @@ program torus
 
   smallestCellSize = amrGridSize / dble(2**maxDepthAMR)
 
+
+!  call testmassnly
+!  stop
+
   do iModel = nModelStart, nModelEnd, modelStep
      if (multimodels) then
         write(message,'(a,i6.6)') "Performing calculation for model number ", iModel
@@ -190,7 +195,7 @@ program torus
 !        write(*,*) "OMP THREAD NUMBER ",omp_get_thread_num()
 
        if (.not.readGrid) then
-          call writeVtkFile(grid, "rho.vtk")
+!          call writeVtkFile(grid, "rho.vtk")
 !          call writeVtkFile(grid, "rho2.vtk",valuetypestring=(/"velcall"/))
        endif
 
@@ -200,7 +205,7 @@ program torus
 !                write(stringArray(i),'(a,i1.1)') "dust",i
 !             enddo
 !             call writeVTKfile(grid,"dust.vtk",valueTypeString=stringArray(1:nDustType))
-             call writeVTKfile(grid, "dust.vtk",valueTypestring=(/"dust"/))
+!             call writeVTKfile(grid, "dust.vtk",valueTypestring=(/"dust"/))
           endif
        endif
 

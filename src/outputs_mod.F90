@@ -58,6 +58,7 @@ contains
     use inputs_mod, only : fastIntegrate, geometry, intextfilename, outtextfilename, sourceHistoryFilename, lambdatau, itrans
     use inputs_mod, only : lambdaFilename, polarWavelength, polarFilename, nPhotSpec, nPhotImage, nPhotons
     use inputs_mod, only : nDataCubeInclinations, datacubeInclinations, nLamLine, lamLineArray !, rgapinner1
+    use inputs_mod, only : photoionEquilibrium
     use formal_solutions, only :compute_obs_line_flux
 #ifdef PHOTOION
     use photoion_utils_mod, only: quickSublimate
@@ -112,7 +113,20 @@ contains
     call writeBanner("Creating outputs","-",TRIVIAL)
 
     if (writegrid.and.(.not.loadBalancingThreadGlobal)) then
-          call writeAMRgrid(gridOutputFilename,.false.,grid)
+       if (photoionEquilibrium) then
+          call writeVtkFile(grid, "output.vtk", &
+            valueTypeString=(/"rho          ","temperature  ",&
+                              "radmom       ",&
+                              "habing       ",&
+                              "HI           ",&
+                              "ncrossings   ",&
+                              "tdust        " /))
+       else
+          call writeVtkFile(grid, "output.vtk", &
+            valueTypeString=(/"rho          ","temperature  ", "tdust        " /))
+       endif
+
+       call writeAMRgrid(gridOutputFilename,.false.,grid)
 
        if (geometry == "kengo") then
           call writegridkengo(grid)
@@ -715,8 +729,9 @@ if (.false.) then
   end subroutine writeEduard
 
   subroutine writeValuesNoDomain(outputFilename, grid)
+    use ion_mod, only : nGlobalIon, globalIonArray, returnMu
     type(GRIDTYPE) :: grid
-    real(double) ::  tVal
+    real(double) ::  tVal,nhii, nheii, mu, nhei,nheiii, nhi,nh
     character(len=*) :: outputFilename
     type(VECTOR) :: rVec, uHat, cVec
     type(OCTAL), pointer :: thisOctal
@@ -726,10 +741,23 @@ if (.false.) then
     uHat = VECTOR(1.d0, 0.d0, 0.d0)
     thisOctal => grid%octreeRoot
     call findSubcellLocal(rVec, thisOctal, subcell)
+    write(21,'(12a13)') "# r[cm]", "Tgas[K]", "Tdust[K]", "rho[g/cm3]","ne[cm-3]", "nh","nHi","nHii", "nHei", "nHeii", "nHeiii", "mu"
     do while(inOctal(grid%octreeRoot, rVec))
        call findSubcellLocal(rVec, thisOctal, subcell)
        cVec = subcellCentre(thisOctal, subcell)
-       write(21, *) modulus(cVec)*1.d10/autocm, thisOctal%temperature(subcell)
+
+       nh = thisOctal%nh(subcell)
+       nHi = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,1) * grid%ion(1)%abundance
+       nHii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * grid%ion(2)%abundance
+       nHei = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,3) * grid%ion(3)%abundance
+       nHeii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,4) * grid%ion(4)%abundance
+       nHeiii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,5) * grid%ion(5)%abundance
+
+       mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
+
+       write(21, '(12es13.5)') modulus(cVec)*1.d10, thisOctal%temperature(subcell), thisOctal%tdust(subcell), & 
+          thisOctal%rho(subcell), thisOctal%ne(subcell), nh, nHi, nHii, nHei, nHeii, nHeiii, mu
+
        call distanceToCellBoundary(grid, rVec, uHat, tVal, sOctal=thisOctal)
        rVec = rVec + (tVal + 1.d-3*grid%halfSmallestSubcell) * uHat
     enddo

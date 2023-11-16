@@ -2102,12 +2102,9 @@ end subroutine radiationHydro
           if(grid%geometry == "SB_WNHII") then
              nuStart = (18.60001*evtoerg/hcgs)
              nuEnd =  (18.60001*evtoerg/hcgs)
-          elseif(uv_vector) then
+          else
              nustart = inputEV*evtoerg/hcgs
              nuend = (inputEV+1.d-10)*evtoerg/hcgs
-          else
-             nuStart = (13.60001*evtoerg/hcgs)
-             nuEnd =  (13.60001*evtoerg/hcgs)
           end if
           do i = 1, nFreq
              freq(i) = log10(nuStart) + dble(i-1)/dble(nFreq-1) * (log10(nuEnd)-log10(nuStart))
@@ -3231,7 +3228,7 @@ end subroutine radiationHydro
                             endif
                          endif
 
-!                         if (noDiffuseField) escaped = .true.
+                         if (noDiffuseField .and. monochromatic) escaped = .true.
                          
                          UhatBefore = uHat
 
@@ -3444,7 +3441,7 @@ end subroutine radiationHydro
                             endif
                          if (nScat > 1000000) then
                             write(*,*) "Nscat exceeded 1000000, forcing escape"
-                            write(*,*) 1.e8*cspeed/thisFreq
+                            write(*,*) 1.e8*cspeed/thisFreq, hcgs*thisFreq/evtoerg
                             write(*,*) albedo, kappaScaDb, kappaAbsdb,escat
                             
                             thisLam = real(cSpeed / thisFreq) * 1.e8
@@ -3725,6 +3722,7 @@ end subroutine radiationHydro
     if (myrankWorldGlobal == 1) call tune(6, "Update MPI grid")  ! start a stopwatch
 
 
+    call writeInfo("Collating over MPI threads...", TRIVIAL)
     if (loadBalancing) then
        do iThread = 1, nHydroThreadsGlobal
           if (nLoadBalanceList(iThread) > 1) then
@@ -3743,6 +3741,7 @@ end subroutine radiationHydro
           enddo
        endif
     endif
+    call writeInfo("... done", TRIVIAL)
 
 
 
@@ -3777,18 +3776,25 @@ end subroutine radiationHydro
 !         "crossings    "/))!
 
 
-    if (loadbalancing) call  setLoadBalancingThreadsByCells(grid)
+    if (loadbalancing) then
+        call setLoadBalancingThreadsByCells(grid)
+!        call setLoadBalancingThreadsBySources(grid)
+    endif
 
     maxBalanceIter = 20
     nNotConverged = 0
     if (myRankGlobal /= 0) then
 
        if (allocated(octalArray)) deallocate(octalArray)
+       if (grid%nOctals <= 0) then
+          write(*,*) "no octals on thread ", myrankglobal, grid%nOctals
+          stop
+       endif
        allocate(octalArray(grid%nOctals))
        nOctal = 0
        call getOctalArray(grid%octreeRoot,octalArray, nOctal)
        if (nOctal /= grid%nOctals) then
-          write(*,*) "Screw up in get octal array", nOctal,grid%nOctals
+          write(*,*) "Screw up in get octal array", nOctal,grid%nOctals,myrankglobal
           stop
        endif
 
@@ -4118,15 +4124,16 @@ end subroutine radiationHydro
     firstTime = .false.
     if (myrankWorldGlobal == 1) call tune(6, "Temperature/ion corrections")
 
-!    if (maxiter > 1) then
-!       if (niter == 1 .or. niter == maxiter) then
-!          write(mpiFilename, '(a,i4.4,a,i4.4,a)') "afterbalance_",grid%idump,"_",niter,".vtk"
-!          call writeVtkFile(grid, mpiFilename, &
-!                 valueTypeString=(/"rho        ","HI         " ,"temperature", &
-!                                   "ncrossings ","ioncross   " ,"tdust      ", &
-!                                   "tempconv   ","scatters   "/))!"etacont", "jnu", "bias"/))
-!       endif
-!    endif
+! FIXME can remove this
+    if (maxiter > 1) then
+       if (niter == 1) then!.or. niter == maxiter) then
+          write(mpiFilename, '(a,i4.4,a,i4.4,a)') "afterbalance_",grid%idump,"_",niter,".vtk"
+          call writeVtkFile(grid, mpiFilename, &
+                 valueTypeString=(/"rho        ","HI         " ,"temperature", &
+                                   "ncrossings ","ioncross   " ,"tdust      ", &
+                                   "tempconv   "/))!"etacont", "jnu", "bias"/))
+       endif
+    endif
 
 
     if(grid%geometry == "lexington" .or. grid%geometry == "lexpdr") then

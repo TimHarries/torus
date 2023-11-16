@@ -6239,16 +6239,20 @@ end subroutine writeRadialFile
     integer :: UN
     real(double) :: fac
     integer :: nOctals,nVoxels
-    integer :: tempInt
+    integer :: tempInt, i
     real(double) :: tempDouble
     real(double) :: halfSmallestSubcell
     integer :: maxDepth
-    integer :: ierr
+    integer :: ierr, nthreads
+    integer, allocatable :: nVoxelsArray(:)
     integer :: myrankAMR
     
     nOctals=0; nVoxels=0; tempint = 0
     if (myRankGlobal /= 0) then
        call MPI_COMM_RANK(amrCOMMUNICATOR, myrankAMR, ierr)
+       call MPI_COMM_SIZE(amrCOMMUNICATOR, nThreads, ierr)
+       allocate(nVoxelsArray(1:nThreads))
+       nVoxelsArray(:) = 0
        if (myrankAMR == 0) then
           if (filename(1:1) == '*') then
              UN = 6   ! prints on screen
@@ -6258,7 +6262,7 @@ end subroutine writeRadialFile
           end if
        endif
 
-       call countSubcellsMPI(thisgrid, nVoxels)
+       call countSubcellsMPI(thisgrid, nVoxels, nVoxelsArray)
        call MPI_REDUCE(thisgrid%maxDepth, tempInt, 1, MPI_INTEGER, MPI_MAX, 0, amrCommunicator, ierr)
        maxDepth = tempInt
        call MPI_REDUCE(thisgrid%halfSmallestSubcell, tempDouble,1,MPI_DOUBLE_PRECISION, MPI_MIN, 0, amrCommunicator, ierr)
@@ -6275,6 +6279,10 @@ end subroutine writeRadialFile
           write(UN,*)     'smoothingFactor      = ', thisGrid%smoothingFactor
           write(UN,*)     'grid center          =', thisGrid%octreeRoot%centre
           write(UN,*)     'Size of largest cell =', thisGrid%octreeRoot%subcellSize*2.0, ' [10^10 cm]'
+          write(UN,*)     'nVoxels per thread   = '
+          do i = 1, nthreads
+             write(UN,*)     nVoxelsArray(i)
+          enddo
           write(UN,'(a)') '#######################################################'
           write(UN,'(a)') ' '
           write(Un,'(a)') ' '
@@ -9231,21 +9239,52 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
   subroutine broadcastBranch(grid, fromThread, communicator)
     use timing
     use mpi
+    use inputs_mod, only : amr3d
     integer :: fromThread, nOctals
     type(GRIDTYPE) :: grid
     integer :: communicator
     integer :: ierr, i
-    integer :: packednBuffer
+    integer :: packednBuffer, buffac
+    character(len=80) :: message
+    logical, save :: firsttime = .true.
+    logical, save :: firsttime2 = .true.
+    logical, save :: firsttime3 = .true.
+
+    ! AA: reducing factor in 3D to avoid too much memory allocation
+    ! ideally maxbuffer should be the number of variables being copied from hydro thread to LB thread
+    if (amr3d) then
+       buffac = 200
+    else
+       buffac = 1000
+    endif
 
     if (allocated(buffer)) deallocate(buffer)
     maxBuffer = 0
     nBuffer = 1
     if (myrankGlobal == fromThread) then
        call countVoxels(grid%octreeRoot, nOctals, maxBuffer)
-       maxBuffer = maxBuffer * 1000
+       ! test if maxbuffer would overflow after multiplying by buffac
+       if (maxBuffer > huge(maxbuffer)/buffac) then
+          write(*,*) myrankglobal, " maxbuffer will overflow, nvoxels = ", maxBuffer
+          maxBuffer = huge(maxBuffer) / buffac
+          write(*,*) myrankglobal, " setting nvoxels to ", maxbuffer
+       endif
+       ! increase maxbuffer so it's >~ no of variables per voxel being communicated
+       maxBuffer = maxBuffer * buffac
+       ! did it overflow?
+       if (maxBuffer < 0) then
+          write(*,*) myrankglobal, " maxBuffer still overflowed ", maxBuffer
+          maxBuffer = huge(maxBuffer)
+          write(*,*) myrankglobal, " setting maxBuffer to ", maxbuffer
+       endif
+       write(*,*) myrankglobal, " allocating maxbuffer ", maxbuffer
        allocate(buffer(1:maxBuffer))
 !       CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
        call packBranch(grid%octreeRoot) ! populate buffer, increment nBuffer
+!       if (firstTime3) then
+          write(*,*) myrankglobal, " packed nbuffer ", nbuffer
+!          firstTime3 = .false.
+!       endif
     else
        call deleteOctreeBranch(thisOctal=grid%octreeroot,                      &
                onlyChildren=.FALSE.,                                           &
@@ -9264,6 +9303,7 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
        nBuffer = 1
 
        call unpackbranch(grid%octreeRoot, null()) ! populate octal properties, increment nBuffer
+       write(*,*) myrankglobal, " unpacked nbuffer ", nbuffer
        if (nBuffer /= packedNbuffer) write(*,*) "Warning: unpacked nBuffer doesn't match packed nBuffer!"
        deallocate(buffer)
 
@@ -9277,6 +9317,7 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
        deallocate(buffer)
     endif
     call MPI_BARRIER(communicator,ierr)
+    if (allocated(buffer)) deallocate(buffer)
 
   end subroutine broadcastBranch
 

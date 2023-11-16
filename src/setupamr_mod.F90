@@ -103,6 +103,12 @@ contains
 #ifdef MPI
     integer :: i !, ierr
 #endif
+#ifdef USEHDF
+    integer :: nblocks
+    logical, allocatable :: isLeaf(:)
+    integer, allocatable :: lrefine(:)
+    real(double), allocatable :: boundBox(:,:,:)
+#endif
 
 
 
@@ -427,6 +433,29 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
              call writeInfo("...grid smoothing complete", TRIVIAL)
           endif
 
+       case("silcc")
+
+#ifdef USEHDF
+          if (flashFileRequired()) call read_flash_hdf(readtdust=.true.)
+#else
+           call writeFatal("Using silcc geometry without HDF compiled")
+#endif
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d,  romData=romData)
+          call writeInfo("First octal initialized.", TRIVIAL)
+          ! matches subcell == Flash block
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+
+          ! force 3 more splits (subcell == Flash cell)
+          do counter = 1, 3
+             call zeroadotLocal(grid%octreeRoot)
+             call tagadotlocal(grid%octreeRoot, -1.d0)
+!             call fillgridsilcc2(grid, gridconverged, .true.)
+             call splitTaggedCell(grid%octreeRoot, grid)
+             call writeInfo("...extra split complete", TRIVIAL)
+          enddo
+
+
        case("magstream")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, romData=romData)
           call writeInfo("First octal initialized.", TRIVIAL)
@@ -596,6 +625,17 @@ doGridshuffle: if(gridShuffle) then
              if (doSpiral) call addSpiralWake(grid)
              call countVoxels(grid%octreeRoot,nOctals,nVoxels)
              grid%nOctals = nOctals
+
+
+          case("silcc")
+             call writeInfo("...assigning grid variables",FORINFO)
+             call fillSilcc(grid%octreeRoot, grid)
+             call writeInfo("...assigned grid variables",FORINFO)
+             totalMass = 0.d0
+             call findTotalMass(grid%octreeRoot, totalMass)
+             write(*,*) "Total mass ",totalmass
+             call writeVtkFile(grid, "silcc.vtk", &
+               valueTypeString=(/"rho          ","temperature  ", "tdust        " /))
 
           case("ttauri")
 !             if (ttauriMagnetosphere) then
@@ -773,6 +813,7 @@ doGridshuffle: if(gridShuffle) then
 #ifdef MPI
         if (grid%splitOverMPI) then
            call grid_info_mpi(grid, "info_grid.dat")
+           call grid_info_mpi(grid, "*")
            !Check an appropriate no. of MPI threads is being used
            call checkThreadNumber(grid)
 
@@ -3392,6 +3433,66 @@ recursive subroutine fillVelocityCornersFromCentresCylindrical(grid, thisOctal)
     enddo
 end subroutine fillVelocityCornersFromCentresCylindrical
 
+  subroutine fillGridSilcc(grid, converged, maxblocks, boundBox, isLeaf, lrefine, doSplit)
+    use inputs_mod, only : maxDepthAMR, limitscalar,limitscalar2
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell, i
+    TYPE(VECTOR) :: blockCentre
+    real(double) :: xdist, ydist, zdist
+    real(double) :: dx, dy, dz, dxTorus, dxSilcc
+    integer, intent(in) :: maxblocks, lrefine(:)
+    real(double), intent(in) :: boundBox(:,:,:)
+    logical, intent(in) :: isLeaf(:)
+    logical :: converged, doSplit
+
+    call zeroadotLocal(grid%octreeRoot)
+    call zeroDensity(grid%octreeRoot)
+
+    converged = .true.
+
+    ! for ileafblock centre
+    !    find torus octal
+    !    if octal size > block size, split octal's subcells
+
+    if (thisOctal%oneD .or. thisOctal%twoD) then
+       call writeFatal("Octal is not 3D")
+    endif
+
+    thisOctal => grid%octreeRoot
+    do i=1, maxblocks
+       if (isLeaf(i)) then
+          ! FIXME
+          if ((boundBox(2,1,i) < 0.d0) .or. (boundBox(1,1,i)/3.1e8 > 7.d0) .or. &
+              (boundBox(2,2,i) < 0.d0) .or. (boundBox(1,2,i)/3.1e8 > 9.d0)) then
+             cycle
+          endif
+          dx    = (boundBox(2,1,i) - boundBox(1,1,i))
+          dy    = (boundBox(2,2,i) - boundBox(1,2,i))
+          dz    = (boundBox(2,3,i) - boundBox(1,3,i))
+          blockCentre = VECTOR(dx/2.d0,dy/2.d0,dz/2.d0)
+          ! match torus octal -> flash block
+          call findSubcellTD(blockCentre, grid%octreeRoot, thisOctal, subcell)
+          do while (thisOctal%ndepth < lrefine(i))
+             call splitGrid(thisOctal,limitScalar,limitScalar2,grid, .false.)
+             call findSubcellLocal(blockCentre, thisOctal, subcell)
+          enddo
+
+          thisOctal%rho(1:thisOctal%nchildren) = thisOctal%ndepth
+          IF (thisOctal%nDepth < maxDepthAMR) then
+             dxTorus = thisOctal%xmax - thisOctal%xmin
+             dxSilcc = min(dx,dy,dz)
+             if (dxTorus > dxSilcc) then
+                thisOctal%adot(1:thisOctal%nChildren) = -1.d0
+                converged = .false.
+             endif
+          endif
+       end if
+    end do
+    ! TODO MAKE ABOVE LOOP OPENMP
+    if (doSplit) call splitTaggedRho(grid%octreeRoot, grid)
+  end subroutine fillGridSilcc
+
 
 recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, facArray, converged)
   use inputs_mod, only : heightSplitFac, rOuter, minDepthAMR, rInner
@@ -3556,5 +3657,155 @@ end subroutine fillGridKatie
        endif
     enddo
   end subroutine splitTaggedRho
+
+!  recursive subroutine splitSilcc(thisOctal, grid, converged, inheritProps, interpProps)
+!    use inputs_mod, only : minPhiResolution, maxDepthAMR
+!    use gridFromFlash, only : splitFlash
+!    type(GRIDTYPE) :: grid
+!    type(octal), pointer   :: thisOctal
+!    type(octal), pointer  :: child
+!    logical :: splitInAzimuth, split, converged
+!    integer :: subcell, i 
+!    logical, optional :: inheritProps, interpProps
+!    type(VECTOR) :: rVec
+!    real(double) :: dphi,r,r1
+!
+!    do subcell = 1, thisOctal%maxChildren
+!       if (thisOctal%hasChild(subcell)) then
+!          ! find the child
+!          do i = 1, thisOctal%nChildren, 1
+!             if (thisOctal%indexChild(i) == subcell) then
+!                child => thisOctal%child(i)
+!                call splitSilcc(child, grid, converged, inheritProps, interpProps)
+!                exit
+!             end if
+!          end do
+!       else
+!          if (thisOctal%nDepth<maxDepthAMR) then
+!             if (splitFlash(thisOctal,subcell)) then
+!                converged = .false.
+!                thisOctal%adot(subcell) = -1.d0
+!!                call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+!!                     inherit=inheritProps, interp=interpProps,splitazimuthally=splitinazimuth)
+!             endif
+!          endif
+!       endif
+!    enddo
+!  end subroutine splitSilcc
+!  subroutine fillGridSilcc2(grid, converged, force)
+!    use inputs_mod, only : maxDepthAMR
+!    use gridFromFlash, only : splitFlash
+!    type(GRIDTYPE) :: grid
+!    logical :: converged, doSplit, force
+!
+!    call zeroadotLocal(grid%octreeRoot)
+!    if (force) then
+!       ! force split every where
+!       converged = .false.
+!       call tagadotlocal(grid%octreeRoot, -1.d0)
+!    else
+!       ! determine condition for splitting
+!       converged = .true.
+!       call splitSilcc(grid%octreeRoot,grid,converged,.true.,.false.)
+!    endif
+!    !call zeroDensity(grid%octreeRoot)
+!
+!    if (.not. converged) then
+!       call splitTaggedRho(grid%octreeRoot, grid)
+!    endif
+!  end subroutine fillGridSilcc2
+!
+!  subroutine splitGridSilcc(thisOctal, grid)
+!    use inputs_mod, only : minDepthAMR, maxDepthAMR
+!    use gridFromFlash, only : splitFlash, next_flash_block
+!    type(GRIDTYPE) :: grid
+!    type(OCTAL),pointer :: thisOctal
+!    type(OCTAL), pointer :: childPointer
+!!    type(OCTAL) :: thisOctal
+!    integer :: iIndex
+!    logical :: split, finish, converged
+!    integer :: subcell, i,j,k
+!    integer :: iblock, lrefine
+!    type(VECTOR) :: blockCentre
+!    real(double) :: thisR, thisZ,s
+!
+!    finish = .false.
+!    do while (.not. finish)
+!       call next_flash_block(iblock, blockCentre, lrefine, finish)
+!       converged = .false.
+!       do while (.not. converged) 
+!          converged = .true.
+!          call findSubcellTD(blockCentre, grid%octreeRoot, thisOctal,subcell)
+!!          write(*,*) "------"
+!!          write(*,*) blockCentre
+!!          write(*,*) subcellCentre(thisOctal, subcell)
+!
+!          if (thisOctal%ndepth < (lrefine-1) .and. thisOctal%ndepth<maxdepthamr) then
+!             converged = .false.
+!             CALL addNewChild(thisOctal, subcell, grid, adjustGridInfo=.TRUE., &
+!                  inherit = .false., splitAzimuthally=.false.)
+!          endif
+!       enddo
+!       if (iblock > 50000) then
+!          write(*,*) "WARNING: iblock too high"
+!          finish = .true.
+!       endif
+!    enddo
+!  end subroutine splitGridSilcc
+! FIXME DELETE ABOVE
+
+  ! works!
+  recursive subroutine splitTaggedCell(thisOctal, grid, inheritProps, interpProps)
+    use inputs_mod, only : maxDepthAMR
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer :: subcell, i
+    logical, optional :: inheritProps, interpProps
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call splitTaggedCell(child, grid, inheritProps, interpProps)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%adot(subcell) < 0.d0) then
+             if (thisOctal%nDepth<maxDepthAMR) then
+                call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                     inherit=inheritProps, interp=interpProps)
+             endif
+          endif
+       endif
+    enddo
+  end subroutine splitTaggedCell
+
+  recursive subroutine fillSilcc(thisOctal, grid)
+    use gridFromFlash, only: assign_from_flash_silcc
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer :: subcell, i
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call fillSilcc(child, grid)
+                exit
+             end if
+          end do
+       else
+          call assign_from_flash_silcc(thisOctal, subcell)
+       endif
+    enddo
+  end subroutine fillSilcc
+  
 
 end module setupamr_mod

@@ -318,6 +318,10 @@ contains
     call getLogical("photoionphysics", photoionPhysics, cLine, fLine, nLines, &
          "Include photoionization physics in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
+!    if (photoionPhysics .and. loadBalancing .and. (mindepthamr /= maxdepthamr)) then
+!       call writeFatal("Load balancing currently requires minDepthAMR == maxDepthAMR for T/ion balance")
+!    endif
+
     call getLogical("gasopacityphysics", gasOpacityPhysics, cLine, fLine, nLines, &
          "Include gas opacity (TiO, VO etc) in calculation: ","(a,1l,1x,a)", .false., ok, .false.)
     includeGasOpacity = gasopacityphysics
@@ -420,6 +424,10 @@ contains
             "IMF maximum mass (msol): ","(a,f6.1,a)", 120.d0, ok, .false.)
     endif
 
+    if (nBodyPhysics .or. starburst .or. clusterSinks) then
+       call getString("spectrumtype", sourceSpectrumType, cLine, fLine, nLines, &
+            "Type of stellar spectrum: ","(a,a,1x,a)","tlusty", ok, .false.)
+    endif
 
     if (nBodyPhysics) then
        call getUnitDouble("tend", tEnd, "time", cLine, fLine, nLines, &
@@ -3897,7 +3905,10 @@ contains
             "Use a monochromatic source:", "(a,1l,1x,a)", .false., ok, .false.)
        if(monochromatic) then
           call getDouble("inputEV", inputEV, 1.d0, cLine, fLine, nLines, &
-               "Energy of monochromatic photons (eV):  ","(a,e12.3,1x,a)", 5.d0, ok, .false.)
+               "Energy of monochromatic photons (eV):  ","(a,e12.3,1x,a)", 13.60001d0, ok, .true.)
+          if (inputEV < 13.6) then
+             call writeFatal("inputEV must be ionizing")
+          endif
        endif
     end if
 
@@ -5968,8 +5979,9 @@ end subroutine getBigInteger
     endif
  endif 
  if (ok) then
-    call prettyNumber(rval, cval)
-    write(output,'(a)') trim(message)//" "//trim(cval)//" "//trim(unitList(i)%longUnitName) // trim(default)
+    !call prettyNumber(rval, cval)
+!    write(output,'(a)') trim(message)//" "//trim(cval)//" "//trim(unitList(i)%longUnitName) // trim(default)
+    write(output,*) trim(message)//" ",rval,trim(default)
     call writeInfo(output, TRIVIAL)
  endif
  rval = rval * thisunitConversion
@@ -6014,8 +6026,9 @@ end subroutine getRealWithUnits
     endif
  endif
  if (ok) then
-    call prettyNumber(rval, cval)
-    write(output,'(a)') trim(message)//" "//trim(cval)//" "//trim(unitList(i)%longUnitName) // trim(default)
+!    call prettyNumber(rval, cval)
+!    write(output,'(a)') trim(message)//" "//trim(cval)//" "//trim(unitList(i)%longUnitName) // trim(default)
+    write(output,*) trim(message)//" ",rval,trim(default)
     call writeInfo(output, TRIVIAL)
  endif
  rval = rval * thisunitConversion

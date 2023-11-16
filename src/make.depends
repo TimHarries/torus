@@ -217,7 +217,7 @@ outputs_mod.o: angularImage_mod.o angularImage_utils.o blob_mod.o cmf_mod.o \
 	datacube_mod.o disc_class.o dust_mod.o formal_solutions.o \
 	gas_opacity_mod.o gridanalysis_mod.o gridio_mod.o h21cm_mod.o \
 	hydrodynamics_mod.o image_mod.o image_utils_mod.o inputs_modV2.o \
-	lucy_mod.o modelatom_mod.o molecular_mod.o mpi_global_mod.o \
+	ion_mod.o lucy_mod.o modelatom_mod.o molecular_mod.o mpi_global_mod.o \
 	phaseloop_mod.o phasematrix_mod.o photoionAMR_mod.o photoion_mod.o \
 	photoion_utils_mod.o physics_mod.o sed_mod.o setupamr_mod.o \
 	source_mod.o surface_mod.o vtk_mod.o
@@ -297,8 +297,8 @@ torusMainV2.o: biophysics_mod.o chemistry_mod.o citations_mod.o \
 	inputs_modV2.o loadbalance_mod.o memory_mod.o messages_mod.o \
 	mpi_fitter_mod.o mpi_global_mod.o outputs_mod.o photoionAMR_mod.o \
 	physics_mod.o random_mod.o setupamr_mod.o source_mod.o \
-	sph_data_class.o timing.o torus_version_mod.o turbulence_mod.o \
-	utils_mod.o zlib_mod.o
+	sph_data_class.o starburst_mod.o timing.o torus_version_mod.o \
+	turbulence_mod.o utils_mod.o zlib_mod.o
 torusMod.o: amr_mod.o constants_mod.o dimensionality_mod.o grid_mod.o \
 	gridio_mod.o gridtype_mod.o inputs_modV2.o kind_mod.o memory_mod.o \
 	messages_mod.o mpi_global_mod.o outputs_mod.o physics_mod.o \

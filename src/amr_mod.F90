@@ -1222,6 +1222,10 @@ CONTAINS
    CASE ("runaway")
       call calcRunaway
 
+   CASE ("silcc")
+      thisOctal%rho(subcell) = 1.d-30
+      thisOctal%temperature(subcell) = 1.d-10
+
    CASE("NLR")
       call calcNarrowLineRegion(thisOctal, subcell)
 
@@ -1342,6 +1346,7 @@ CONTAINS
         endif
 
       end subroutine calcRunaway
+
 
 #ifdef USECFITSIO
 !      subroutine calcPion(thisOctal, subcell)
@@ -3634,6 +3639,7 @@ CONTAINS
     use angularImage_utils, only: galaxyInclination, galaxyPositionAngle, intPosX, intPosY, refineQ2Only
     use magnetic_mod, only : safierfits
     use biophysics_mod, only : splitSkin
+    use gridFromFlash, only : splitFlash
 ! Currently commented out. Reinstate if required.
     use inputs_mod, only : smoothInnerEdge, variableDustSublimation, rCut, doDiscSplit
 !    use inputs_mod, only: ttauriwind, smoothinneredge, amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
@@ -3861,6 +3867,12 @@ CONTAINS
 
        case("skin")
           split = splitSkin(thisOctal, subcell)
+
+       case("silcc")
+          split = splitFlash(thisOctal, subcell) 
+!          if (thisOctal%ndepth < maxdepthamr) then
+!             split = .true.
+!          endif
 
        case("melvin")
 
@@ -4550,11 +4562,25 @@ CONTAINS
 
        case("bonnor", "empty", "unimed", "SB_WNHII", "SB_instblt", "SB_CD_1Da" &
             ,"SB_CD_2Da" , "SB_CD_2Db", "SB_offCentre", "SB_isoshck", &
-            "SB_coolshk", "SB_gasmix", "bubble", "SB_Dtype", "uniformden", &
+            "SB_coolshk", "SB_gasmix", "bubble", "SB_Dtype", &
             "arthur06", "3dgaussian", "krumholz")
 
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
+       ! FIXME
+       case("uniformden")
+          if (thisOctal%nDepth < minDepthAMR) split = .true.
+          rVec = subcellCentre(thisOctal, subcell)
+          dx = grid%octreeroot%subcellSize
+          if (thisOctal%ndepth < maxDepthAMR .and. modulus(rVec) < dx/4.d0) then
+             split = .true.
+          endif
+          if (thisOctal%ndepth < (maxDepthAMR-1) .and. modulus(rVec) < dx/2.d0) then
+             split = .true.
+          endif
+          if (thisOctal%ndepth < (maxDepthAMR-2)) then
+             split = .true.
+          endif
 
        case("mgascii")
           if (thisOctal%nDepth < minDepthAMR) split = .true.
@@ -16572,6 +16598,53 @@ end function readparameterfrom2dmap
     enddo
   end subroutine zeroadotlocal
 
+!  recursive subroutine tagadotLocal(thisOctal, num)
+!  type(octal), pointer   :: thisOctal
+!  type(octal), pointer  :: child
+!  integer :: subcell, i
+!  real(double) :: num
+!
+!  do subcell = 1, thisOctal%maxChildren
+!       if (thisOctal%hasChild(subcell)) then
+!          ! find the child
+!          do i = 1, thisOctal%nChildren, 1
+!             if (thisOctal%indexChild(i) == subcell) then
+!                child => thisOctal%child(i)
+!                call tagadotLocal(child, num)
+!                exit
+!             end if
+!          end do
+!       else
+!
+!          call allocateAttribute(thisOctal%adot,thisOctal%maxChildren)
+!          thisOctal%adot(subcell) = num
+!
+!       endif
+!    enddo
+!  end subroutine tagadotlocal
+
+  recursive subroutine tagadotlocal(thisOctal,num)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer :: subcell, i
+    real(double) :: num
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call tagadotlocal(child, num)
+                exit
+             end if
+          end do
+       else
+          thisOctal%adot(subcell) = num
+       endif
+    end do
+
+  end subroutine tagadotlocal
+
 
   recursive subroutine zeroDensity(thisOctal)
   type(octal), pointer   :: thisOctal
@@ -17054,6 +17127,10 @@ END SUBROUTINE assignDensitiesStellarWind
           endif
           if ((thisOctal%adot(subcell) > 0.d0).and.(.not.outOfMemory)) then
              thisOctal%adot(subcell) = 0.d0
+!            debug = VECTOR(50.d6, 0.d0+thisOctal%subcellsize/2.d0*0.01, 125.d6)
+!             if (inSubcell(thisOctal, subcell, debug)) then
+                write(*,*) "splitTagged calling addNewChild" 
+!             endif
              call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                   inherit=inheritProps, interp=interpProps)
              return

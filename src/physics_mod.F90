@@ -428,6 +428,7 @@ contains
 #ifdef PHOTOION
     use photoionAMR_mod, only: photoionizationLoopAMR, ionizegrid
     use photoion_utils_mod, only: setupphotogrid
+    use inputs_mod, only: maxPhotoionIter
 !    use inputs_mod, only : optimizeStack
 
 #ifdef HYDRO
@@ -649,7 +650,7 @@ contains
            call ionizeGrid(grid%octreeRoot)
            call setupPhotoGrid(grid%octreeRoot)
  !          endif
-           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, 20, 1.d40, &
+           call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, maxPhotoionIter, 1.d40, &
                 1.d40, .false.,iterTime,.true., evenuparray, optID, iterStack, miePhase, nMuMie, sublimate=.false.)
 
 #else
@@ -1133,6 +1134,10 @@ contains
        globalsourcearray(1)%luminosity = globalsourcearray(1)%luminosity + lAccretion
        globalNSource = 1
     endif
+
+!    if (grid%geometry == 'silcc') then
+!       call readSilccSinks
+!    endif
 
 
     if (hotSpot) then

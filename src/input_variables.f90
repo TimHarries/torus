@@ -464,6 +464,7 @@
   type(VECTOR) :: sourcePos(10), sourceVel(10)
   character(len=80) :: inputContFluxFile(10)
   character(len=80) :: contFluxFile
+  character(len=80) :: sourceSpectrumType  ! name of spectrum to use for sink particles
   real :: stellarMetallicity
 
   ! variables for a second source of radiation
