@@ -120,7 +120,7 @@ contains
        else
 
           thisOctal%etaCont(subcell) = 0.
-          thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+          thisOctal%nh(subcell) = hMassFrac * thisOctal%rho(subcell) / mHydrogen
           thisOctal%ne(subcell) = thisOctal%nh(subcell)
           if (.not.associated(thisOctal%nhi)) allocate(thisOctal%nhi(1:thisOctal%maxChildren))
           thisOctal%nhi(subcell) = 1.e-8
@@ -155,7 +155,7 @@ contains
           thisOctal%ionFrac(subcell,:) = 1.e-10
           thisOctal%ionFrac(subcell,1) = 1.
           thisOctal%ne(subcell) = 1.d-10
-          thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+          thisOctal%nh(subcell) = hMassFrac * thisOctal%rho(subcell) / mHydrogen
           thisOctal%temperature(subcell) = max(tminglobal, thisOctal%temperature(subcell))
           thisOctal%tdust(subcell) = max(dble(tminglobal), thisOctal%tdust(subcell))
           if (SIZE(thisOctal%ionFrac,2)>2) then
@@ -182,7 +182,7 @@ contains
              end if
           end do
        else
-          thisOctal%nh(subcell) = thisOctal%rho(subcell)/ mHydrogen
+          thisOctal%nh(subcell) = hMassFrac * thisOctal%rho(subcell)/ mHydrogen
        endif
     enddo
   end subroutine resetNh

@@ -642,8 +642,8 @@ contains
                   "Source filename: ","(a,a,1x,a)","none", ok, .true.)
     endif
 
-    call getReal("metallicity", stellarMetallicity, 1.0, cLine, fLine, nLines, &
-         "Metallicity of sources in terms of solar: ","(a,f6.1,1x,a)", 1.0, ok, .false.)
+    call getReal("metallicity", stellarMetallicity, 1., cLine, fLine, nLines, &
+         "Metallicity of sources relative to Zsolar: ","(a,f6.1,1x,a)", 1., ok, .false.)
 
     if (statisticalEquilibrium.and.(.not.(molecularPhysics.or.atomicPhysics))) then
        call writeFatal("Must include either molecularPhysics or atomicPhysics for statistical equilibrium calculation")
@@ -3854,6 +3854,9 @@ contains
 
     call getLogical("usemetals", usemetals, cLine, fLine, nLines, &
          "Use metals in photoionization calculation: ","(a,1l,a)", .true., ok, .false.)
+
+    call getDouble("gasmetallicity", gasMetallicity, 1.d0, cLine, fLine, nLines, &
+         "Metallicity of gas relative to Zsolar: ","(a,f6.1,1x,a)", 1.d0, ok, .false.)
 
     call getLogical("xraymetals", usexraymetals, cLine, fLine, nLines, &
          "Use x-ray metals in photoionization calculation: ","(a,1l,a)", .false., ok, .false.)

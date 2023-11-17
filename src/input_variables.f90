@@ -150,6 +150,7 @@
   real(double) :: inputEV     !energy of monochromatic photons
   real(double) :: UV_low         ! density spectrum normalization factor
   real(double) :: UV_high         ! density spectrum normalization factor
+  real(double) :: gasMetallicity  ! gas metallicity relative to Zsolar
   logical :: isoThermal        ! isothermal model
   logical :: quickThermal      !Use a simplified thermal balance calculation
   logical :: mergeBoundSinks   ! merge gravitationally bound sinks
