@@ -420,6 +420,10 @@ contains
             "IMF maximum mass (msol): ","(a,f6.1,a)", 120.d0, ok, .false.)
     endif
 
+    if (nBodyPhysics .or. starburst .or. clusterSinks) then
+       call getString("spectrumtype", sourceSpectrumType, cLine, fLine, nLines, &
+            "Type of stellar spectrum: ","(a,a,1x,a)","tlusty", ok, .false.)
+    endif
 
     if (nBodyPhysics) then
        call getUnitDouble("tend", tEnd, "time", cLine, fLine, nLines, &
