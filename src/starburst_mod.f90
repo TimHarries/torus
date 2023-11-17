@@ -2049,62 +2049,62 @@ contains
      endif
   end subroutine testClusterSPlit
 
-  subroutine testMassNly
-     use inputs_mod, only : sourceSpectrumType
-     real(double) :: thissourceflux, mstart, mend, dm, thismass
-     character(len=30) :: fn
-     integer :: i,k
-
-     if (associated(globalSourceArray)) deallocate(globalSourceArray)
-
-     globalnsource = 100
-     mstart = 8.d0
-!     mend = 120.d0
-!     dm = (mend - mstart)/dble(globalnSource)
-     dm = 1.0
-     allocate(globalsourcearray(1:globalnsource))
-     do i = 1, globalnSource
-        globalSourceArray(i)%mass = (mstart + dble(i-1)*dm)*msol ! g
-        globalSourceArray(i)%initialMass = globalSourceArray(i)%mass/msol ! msol
-        globalSourceArray(i)%position = VECTOR(0.d0, 0.d0, 0.d0)
-        globalSourceArray(i)%age = 0.d0
-     enddo
-     globalSourceArray(1:globalnSource)%stellar = .true.
-     globalSourceArray(1:globalnSource)%viscosity = .false.
-     globalSourceArray(1:globalnSource)%diffuse = .false.
-     globalSourceArray(1:globalnSource)%outsideGrid = .false.
-     globalSourceArray(1:globalnSource)%prob = 0.d0 ! 1.d0/dble(nsource)
-
-     do i = 1, globalnSource
-        call updateSourceProperties(globalsourcearray(i))
-     enddo
-     call setSourceSpectra(globalSourceArray, globalnSource) 
-
-     if (writeoutput) then
-        open(101,file='mass_nly.dat',status="replace",form="formatted")
-        write(101,'(a9,a13,a9)') "# mass","nly", "teff"
-        do i = 1, globalnsource
-           thisSourceFlux = ionizingFlux(globalsourcearray(i))
-           write(101,'(f9.2,es13.5,f9.2)') globalSourceArray(i)%mass/msol, thisSourceFlux, globalSourceArray(i)%teff
-
-           thismass = globalSourceArray(i)%mass/msol
-           if (thismass < 43.5 .and. thismass > 42.5) then
-              write(fn, '(a,i2,a,a,a)') "spectrum_m",nint(thismass),"_", trim(sourceSpectrumType), ".dat"
-              open(102,file=trim(fn),status="replace",form="formatted")
-              write(102,*) "#", thismass, thisSourceFlux, globalSourceArray(i)%luminosity/lsol, globalSourceArray(i)%teff
-              write(102,*) "# lambda, flux"
-              do k = 1, globalSourceArray(i)%spectrum%nlambda
-                 write(102,*) (globalSourceArray(i)%spectrum%lambda(k)),&
-                  globalSourceArray(i)%spectrum%flux(k)
-              enddo
-              close(102)
-           endif
-        enddo
-        close(101)
-     endif
-
-
-  end subroutine testMassNly
+!  subroutine testMassNly
+!     use inputs_mod, only : sourceSpectrumType
+!     real(double) :: thissourceflux, mstart, mend, dm, thismass
+!     character(len=30) :: fn
+!     integer :: i,k
+!
+!     if (associated(globalSourceArray)) deallocate(globalSourceArray)
+!
+!     globalnsource = 100
+!     mstart = 8.d0
+!!     mend = 120.d0
+!!     dm = (mend - mstart)/dble(globalnSource)
+!     dm = 1.0
+!     allocate(globalsourcearray(1:globalnsource))
+!     do i = 1, globalnSource
+!        globalSourceArray(i)%mass = (mstart + dble(i-1)*dm)*msol ! g
+!        globalSourceArray(i)%initialMass = globalSourceArray(i)%mass/msol ! msol
+!        globalSourceArray(i)%position = VECTOR(0.d0, 0.d0, 0.d0)
+!        globalSourceArray(i)%age = 0.d0
+!     enddo
+!     globalSourceArray(1:globalnSource)%stellar = .true.
+!     globalSourceArray(1:globalnSource)%viscosity = .false.
+!     globalSourceArray(1:globalnSource)%diffuse = .false.
+!     globalSourceArray(1:globalnSource)%outsideGrid = .false.
+!     globalSourceArray(1:globalnSource)%prob = 0.d0 ! 1.d0/dble(nsource)
+!
+!     do i = 1, globalnSource
+!        call updateSourceProperties(globalsourcearray(i))
+!     enddo
+!     call setSourceSpectra(globalSourceArray, globalnSource) 
+!
+!     if (writeoutput) then
+!        open(101,file='mass_nly.dat',status="replace",form="formatted")
+!        write(101,'(a9,a13,a9)') "# mass","nly", "teff"
+!        do i = 1, globalnsource
+!           thisSourceFlux = ionizingFlux(globalsourcearray(i))
+!           write(101,'(f9.2,es13.5,f9.2)') globalSourceArray(i)%mass/msol, thisSourceFlux, globalSourceArray(i)%teff
+!
+!           thismass = globalSourceArray(i)%mass/msol
+!           if (thismass < 43.5 .and. thismass > 42.5) then
+!              write(fn, '(a,i2,a,a,a)') "spectrum_m",nint(thismass),"_", trim(sourceSpectrumType), ".dat"
+!              open(102,file=trim(fn),status="replace",form="formatted")
+!              write(102,*) "#", thismass, thisSourceFlux, globalSourceArray(i)%luminosity/lsol, globalSourceArray(i)%teff
+!              write(102,*) "# lambda, flux"
+!              do k = 1, globalSourceArray(i)%spectrum%nlambda
+!                 write(102,*) (globalSourceArray(i)%spectrum%lambda(k)),&
+!                  globalSourceArray(i)%spectrum%flux(k)
+!              enddo
+!              close(102)
+!           endif
+!        enddo
+!        close(101)
+!     endif
+!
+!
+!  end subroutine testMassNly
 
 
 
