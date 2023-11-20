@@ -84,8 +84,9 @@ contains
     ! Y (He) and Z (metals) are not needed elsewhere
 
     if (useMetals) then
-       ! Asplund et al. 2009. Zfac is input gas metallicity relative to Zsolar (i.e. 1==solar)
-       Z = 0.0134d0 * Zfac
+       ! Z_protosolar in Asplund+2009. See also Choi+2016, Ekstrom+2012
+       ! Zfac is input gas metallicity relative to Zsolar (i.e. 1==solar)
+       Z = 0.0142d0 * Zfac
     else
        Z = 0.d0
     endif
