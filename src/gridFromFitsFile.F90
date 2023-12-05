@@ -935,20 +935,19 @@ npd_loop:            do n=1,npd
         inPionDomain = .false.
         do i = numFitsFiles, 1, -1
 
-   !        print *, "i = ", i, yAxis_A(1,i)*1.d10/pctocm, yAxis_A(axis_size_A(2,i),i)*1.d10/pctocm, & 
-  !              xAxis_A(1,i)*1.d10/pctocm, xAxis_A(axis_size_A(1,i),i)*1.d10/pctocm
- !          print *, "rvec ", rvec*1.d10/pctocm
            if (amr2d) then
-              inPionDomain = (rVec%x >= yAxis_A(1,i)).and.(rVec%x <= yAxis_A(axis_size_A(2,i),i)).and. &
-                   (rVec%z >= xAxis_A(1,i)).and.(rVec%z <= xAxis_A(axis_size_A(1,i),i))
+              inPionDomain = (rVec%x >= yAxis_A(1,i)-0.5*dy_A(i)).and. &
+                    (rVec%x <= yAxis_A(axis_size_A(2,i),i)+0.5*dy_A(i)).and. &
+                    (rVec%z >= xAxis_A(1,i)-0.5*dx_A(i)).and. &
+                    (rVec%z <= xAxis_A(axis_size_A(1,i),i)+0.5*dx_A(i))
            else if (amr3d) then
-!              inPionDomain = (rVec%x >= xAxis_A(1,i)).and.(rVec%x <= xAxis_A(axis_size_A(1,i),i)).and. &
- !                  (rVec%y >= xAxis_A(2,i)).and.(rVec%y <= yAxis_A(axis_size_A(2,i),i)).and. &
-  !                 (rVec%z >= xAxis_A(3,i)).and.(rVec%z <= zAxis_A(axis_size_A(3,i),i))
 
-              inPionDomain = (rVec%x >= xAxis_A(1,i)).and.(rVec%x <= xAxis_A(axis_size_A(1,i),i)).and. &
-                   (rVec%y >= yAxis_A(2,i)).and.(rVec%y <= yAxis_A(axis_size_A(2,i),i)).and. &
-                   (rVec%z >= zAxis_A(3,i)).and.(rVec%z <= zAxis_A(axis_size_A(3,i),i))
+              inPionDomain = (rVec%x >= xAxis_A(1,i)-0.5*dx_A(i)).and. &
+                    (rVec%x <= xAxis_A(axis_size_A(1,i),i)+0.5*dx_A(i)).and. &
+                    (rVec%y >= yAxis_A(1,i)-0.5*dy_A(i)).and. &
+                    (rVec%y <= yAxis_A(axis_size_A(2,i),i)+0.5*dy_A(i)).and. &
+                    (rVec%z >= zAxis_A(1,i)-0.5*dz_A(i)).and. &
+                    (rVec%z <= zAxis_A(axis_size_A(3,i),i)+0.5*dz_A(i))
            endif
 
            checkFitsSplit = .false.
@@ -957,9 +956,8 @@ npd_loop:            do n=1,npd
               levelmodifier= numFitsFiles - i
               if(thisOctal%ndepth < maxdepthamr-levelmodifier ) then
                  checkfitssplit = .true.
-!                 print *, "depths, i ", thisOctal%ndepth, maxdepthamr-levelmodifier, maxdepthamr, levelmodifier, i
+                exit
               endif
-              exit
            endif
         enddo
            
@@ -1036,10 +1034,11 @@ npd_loop:            do n=1,npd
       logical :: ok
 !      real(double) :: grainfrac
       logical :: inPionDomain
+      real :: dx
 
 
       rVec = subcellcentre(thisOctal, subcell)
-      thisOctal%rho(subcell) = 1.d-30
+      thisOctal%rho(subcell) = 1.d-23
 
       inPionDomain = .false.
 
@@ -1067,10 +1066,9 @@ npd_loop:            do n=1,npd
  !                (rVec%y >= xAxis_A(2,i)).and.(rVec%y <= yAxis_A(axis_size_A(2,i),i)).and. &
   !               (rVec%z >= xAxis_A(3,i)).and.(rVec%z <= zAxis_A(axis_size_A(3,i),i))
             inPionDomain = (rVec%x >= xAxis_A(1,i)).and.(rVec%x <= xAxis_A(axis_size_A(1,i),i)).and. &
-                 (rVec%y >= yAxis_A(2,i)).and.(rVec%y <= yAxis_A(axis_size_A(2,i),i)).and. &
-                 (rVec%z >= zAxis_A(3,i)).and.(rVec%z <= zAxis_A(axis_size_A(3,i),i))
+                 (rVec%y >= yAxis_A(1,i)).and.(rVec%y <= yAxis_A(axis_size_A(2,i),i)).and. &
+                 (rVec%z >= zAxis_A(1,i)).and.(rVec%z <= zAxis_A(axis_size_A(3,i),i))
          endif
-
 
 
 !         print *, "in Pion domain? ", inPionDomain
@@ -1238,8 +1236,8 @@ npd_loop:            do n=1,npd
               (rVec%x >= yAxis(1)).and.(rVec%x <= yAxis(axis_size(2)))
       else if (amr3d) then
          inPionDomain = (rVec%x >= xAxis(1)).and.(rVec%x <= xAxis(axis_size(1))).and. &
-              (rVec%y >= xAxis(2)).and.(rVec%y <= yAxis(axis_size(2))).and. &
-              (rVec%z >= xAxis(3)).and.(rVec%z <= zAxis(axis_size(3)))
+              (rVec%y >= yAxis(1)).and.(rVec%y <= yAxis(axis_size(2))).and. &
+              (rVec%z >= zAxis(1)).and.(rVec%z <= zAxis(axis_size(3)))
       endif
 
 
