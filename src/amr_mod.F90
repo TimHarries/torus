@@ -4387,6 +4387,9 @@ CONTAINS
 #ifdef USECFITSIO
        case("fitsfile")
           split = checkFitsSplit(thisOctal,subcell)
+          if (thisOctal%nDepth < mindepthamr) then
+             split = .true.
+          endif
 #endif
        case("runaway")
 
