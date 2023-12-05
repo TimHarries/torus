@@ -136,7 +136,7 @@ ifeq ($(SYSTEM), gfortran)
     DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-error=maybe-uninitialized -Wno-surprising -Wno-conversion -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
 #    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-surprising -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
 #    DEBUGFLAG= -ggdb -fbacktrace -Wunderflow -Wall -Werror -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow #,underflow,denormal
-    FASTFLAG = -O3
+    FASTFLAG = -O3 -m64
     OPENMPFLAG = -fopenmp 
 # -Wl,-stack_size,0x40000000,-stack_addr,0xf0000000
 # -static-libgcc fixes linking problems under Mac OS
