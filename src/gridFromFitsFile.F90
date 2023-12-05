@@ -1034,8 +1034,6 @@ npd_loop:            do n=1,npd
       logical :: ok
 !      real(double) :: grainfrac
       logical :: inPionDomain
-      real :: dx
-
 
       rVec = subcellcentre(thisOctal, subcell)
       thisOctal%rho(subcell) = 1.d-23
