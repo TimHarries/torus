@@ -112,6 +112,11 @@ if [[ $thisHost == login*.cluster.local ]]; then
     export SYSTEM=isca
     torusFortranCompiler=ifort
     
+elif [[ $thisHost == mimir.ap.dias.ie ]]; then
+    echo "compiling on mimir@DIAS"
+    export SYSTEM=mimir
+    torusFortranCompiler=gfortran
+
 else
 
 # Look for compiler for OpenMP/serial builds

@@ -419,6 +419,28 @@ ifeq ($(SYSTEM), ceres)
     KNOWN_SYSTEM = yes
 endif
 
+# Mimir is DIAS machine with 160 cores, 3TB RAM, gfortran-based
+ifeq ($(SYSTEM), mimir)
+    ifeq ($(mpi), yes)
+        F95COMP = /mnt/local/software/openmpi/dist/bin/mpif90
+        MPIFLAG = -DMPI
+    else
+        F95COMP = gfortran-7
+    endif
+    ZLIBLIBS = -lz
+    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-error=maybe-uninitialized -Wno-surprising -Wno-conversion -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow 
+    FASTFLAG = -O3 -m64
+    OPENMPFLAG = -fopenmp 
+    INCLUDEFLAG = -I/usr/local/include -L/usr/local/lib -L/mnt/local/software/openmpi/dist/lib
+    EXE = torus.mimir
+    KNOWN_SYSTEM = yes
+    CFITSIOLIBS = -lcfitsio
+    KROMELIBS = -L${HOME}/krome/build -lkrome
+    ifeq ($(chemistry), yes)
+       F95COMP+=-I${HOME}/krome/build
+    endif
+endif
+
 
 #CFITSIOLIBS = -L/home/thaworth/local/cfitsio/lib -lcfitsio
 
