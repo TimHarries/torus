@@ -378,7 +378,7 @@ module gridFromFitsFile
          
 
 
-         call FTMNHD(unit, 0, "TR0", 0, status)
+         call FTMNHD(unit, 0, "TR6", 0, status)
          call ftgkys(unit,"EXTNAME",record,comment,status)
          if (status==0) then
             write(message,*) "Reading wind mass fraction from field with EXTNAME= ", trim(record)
@@ -1157,8 +1157,8 @@ npd_loop:            do n=1,npd
                
                if (thisoctal%temperature(subcell) < 0.d0) ok = .false.
 
-               thisOctal%dustTypeFraction(subcell,1) =   0.01d0*(1.d0-(tr0_double_A(thisI  ,  thisJ  ,thisK,i) * & 
-                    (1.d0-u)*(1.d0-v)*(1.d0-w) &
+               thisOctal%dustTypeFraction(subcell,1) =   MAX(0.0, (                           &
+                       tr0_double_A(thisI  ,  thisJ  ,thisK,i  ) * (1.d0-u)*(1.d0-v)*(1.d0-w) &
                     +  tr0_double_A(thisI+1,  thisJ  ,thisK,i  ) * (     u)*(1.d0-v)*(1.d0-w) &
                     +  tr0_double_A(thisI  ,  thisJ+1,thisK,i  ) * (1.d0-u)*(     v)*(1.d0-w) &
                     +  tr0_double_A(thisI+1,  thisJ+1,thisK,i  ) * (     u)*(     v)*(1.d0-w) &
@@ -1191,7 +1191,8 @@ npd_loop:            do n=1,npd
                if (.not.associated(thisOctal%dustTypeFraction)) then
                   allocate(thisOctal%dustTypeFraction(1:thisOctal%maxChildren,1))
                endif
-               thisOctal%dustTypeFraction(subcell,1) =  0.01d0 * (1.d0-(   tr0_double_A(thisI,thisJ,1,i) * (1.d0-u)*(1.d0-v) &
+               thisOctal%dustTypeFraction(subcell,1) =  MAX(0.0, (   &
+                       tr0_double_A(thisI,thisJ,1,i) * (1.d0-u)*(1.d0-v) &
                     +  tr0_double_A(thisI+1,thisJ,1,i) * (     u)*(1.d0-v) &
                     +  tr0_double_A(thisI, thisJ+1,1,i) * (1.d0-u)*(     v) &
                     +  tr0_double_A(thisI+1,thisJ+1,1,i)* (     u)*(     v) ))

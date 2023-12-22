@@ -4370,7 +4370,7 @@ end subroutine radiationHydro
         write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
         call writeVtkFile(grid, mpiFilename, &
              valueTypeString=(/"rho          ", "HI           " , "temperature  ", "uvvec        ", &
-             "crossings    "/))
+             "dust1        ","tdust        ","crossings    "/))
      end if
 
 !, &
