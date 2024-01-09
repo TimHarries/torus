@@ -212,232 +212,210 @@ module gridFromFitsFile
       dz_A=0.d0
 
       do i=1, numFitsFiles
-!         lengthscaling = 
-         write(message,*) "Initialising grid from a FITS file", i, "/ ", numFitsFiles
-         call writeInfo(message,TRIVIAL)
-         inquire (file=filenames(i), exist=found_file)
-         if (.not. found_file) then
-            call writeFatal("The file called "//trim(filenames(i))//" does not exist")
-            stop
-         endif
-          call writeInfo ("Reading FITS file "//filenames(i), FORINFO)
+        write(message,*) "Initialising grid from a FITS file", i, "/ ", numFitsFiles
+        call writeInfo(message,TRIVIAL)
+        inquire (file=filenames(i), exist=found_file)
+        if (.not. found_file) then
+          call writeFatal("The file called "//trim(filenames(i))//" does not exist")
+          stop
+        endif
+        call writeInfo ("Reading FITS file "//filenames(i), FORINFO)
 
-         status = 0
+        status = 0
 
-         !NOW DO THE STUFF THAT WOULD BE CALLED
-!         print *, "checkpoint A"
-         call ftgiou(unit, status)
- !        print *, "checkpoint B"
-         call ftopen(unit, filenames(i),readwrite,blocksize,status)
-  !       print *, "checkpoint C"
-         ! Find out how many axes there are   
-   !      print *, "checkpoint D"
-         call ftgkyj(unit,"GRIDNDIM",naxis,comment,status)
-    !     print *, "checkpoint E"
-         write(message,*) "There are ", naxis, " axes"
-         call writeInfo(message,TRIVIAL)
-     !    print *, "checkpoint F"
-         
-         if(i==1) then
-            axis_size_A(:,:)=1
-            call ftgkyj(unit,"NGRID0",axis_size_A(1,i),comment,status)
-            call ftgkyj(unit,"NGRID1",axis_size_A(2,i),comment,status)
-            call ftgkyj(unit,"NGRID2",axis_size_A(3,i),comment,status)
-            axis_size_A(1,:) = axis_size_A(1,i)
-            axis_size_A(2,:) = axis_size_A(2,i)
-            axis_size_A(3,:) = axis_size_A(3,i)
-            write(message,*) "Axis sizes: ", axis_size_A(:,i)
-            call writeInfo(message,TRIVIAL)
-         endif
-         npix_x = npix_x + axis_size_A(1,i)
-         npix_y = npix_y + axis_size_A(2,i)
-         npix_z = npix_z + axis_size_A(3,i)
-         npixels = axis_size_A(1,i) * axis_size_A(2,i) * axis_size_A(3,i)
-         totalpixels = totalpixels + npixels
-!         print *, "npixels, totalpixels", npixels, totalpixels
+        !NOW DO THE STUFF THAT WOULD BE CALLED
+        call ftgiou(unit, status)
+        call ftopen(unit, filenames(i),readwrite,blocksize,status)
+        ! Find out how many axes there are   
+        call ftgkyj(unit,"GRIDNDIM",naxis,comment,status)
+        write(message,*) "There are ", naxis, " axes"
+        call writeInfo(message,TRIVIAL)
+       
+        if(i==1) then
+          axis_size_A(:,:)=1
+          call ftgkyj(unit,"NGRID0",axis_size_A(1,i),comment,status)
+          call ftgkyj(unit,"NGRID1",axis_size_A(2,i),comment,status)
+          call ftgkyj(unit,"NGRID2",axis_size_A(3,i),comment,status)
+          axis_size_A(1,:) = axis_size_A(1,i)
+          axis_size_A(2,:) = axis_size_A(2,i)
+          axis_size_A(3,:) = axis_size_A(3,i)
+          write(message,*) "Axis sizes: ", axis_size_A(:,i)
+          call writeInfo(message,TRIVIAL)
+        endif
+        npix_x = npix_x + axis_size_A(1,i)
+        npix_y = npix_y + axis_size_A(2,i)
+        npix_z = npix_z + axis_size_A(3,i)
+        npixels = axis_size_A(1,i) * axis_size_A(2,i) * axis_size_A(3,i)
+        totalpixels = totalpixels + npixels
+!        print *, "npixels, totalpixels", npixels, totalpixels
 
-         if ( i == 1) then
-!            print *, "doing allcoations"
- !           print *, "density double"
-            allocate(density_double_A     (axis_size_A(1,i), axis_size_A(2,i), & 
+        if ( i == 1) then
+!          print *, "doing allcoations"
+!          print *, "density double"
+          allocate(density_double_A     (axis_size_A(1,i), axis_size_A(2,i), & 
+                   axis_size_A(3,i), numFitsFiles))
+!          print *, "temperature double"
+          allocate(temperature_double_A (axis_size_A(1,i), axis_size_A(2,i), & 
                  axis_size_A(3,i), numFitsFiles))
-  !          print *, "temperature double"
-            allocate(temperature_double_A (axis_size_A(1,i), axis_size_A(2,i), & 
+!         print *, "ionfrac double"
+          allocate(ionfrac_double_A (axis_size_A(1,i), axis_size_A(2,i), &
                  axis_size_A(3,i), numFitsFiles))
-   !         print *, "ionfrac double"
-            allocate(ionfrac_double_A (axis_size_A(1,i), axis_size_A(2,i), &
+!        print *, "tr1 double"
+          allocate(tr1_double_A (axis_size_A(1,i), axis_size_A(2,i), &
                  axis_size_A(3,i), numFitsFiles))
-    !        print *, "tr1 double"
-            allocate(tr1_double_A (axis_size_A(1,i), axis_size_A(2,i), &
+          allocate(tr0_double_A (axis_size_A(1,i), axis_size_A(2,i), &
                  axis_size_A(3,i), numFitsFiles))
-            allocate(tr0_double_A (axis_size_A(1,i), axis_size_A(2,i), &
-                 axis_size_A(3,i), numFitsFiles))
-     !       print *, "allocations done"
-         endif
+!       print *, "allocations done"
+        endif
 
 
 
-         !THESE ARE GLOBAL PARAMETERS
-         call ftgkye(unit,"XMIN0",xmin0,comment,status)
-!         print *, "xmin0 ", xmin0
-         call ftgkye(unit,"XMIN1",xmin1,comment,status)
- !        print *, "xmin1 ", xmin1
-         call ftgkye(unit,"XMIN2",xmin2,comment,status)
-  !       print *, "xmin2 ", xmin2
-         call ftgkye(unit,"XMAX0",xmax0,comment,status)
-   !      print *, "xmax0 ", xmax0
-         call ftgkye(unit,"XMAX1",xmax1,comment,status)
-    !     print *, "xmax1 ", xmax1
-         call ftgkye(unit,"XMAX2",xmax2,comment,status)
-     !    print *, "xmax2 ", xmax2
-
+        !THESE ARE GLOBAL PARAMETERS
+        call ftgkye(unit,"XMIN0",xmin0,comment,status)
+!       print *, "xmin0 ", xmin0
+        call ftgkye(unit,"XMIN1",xmin1,comment,status)
+!       print *, "xmin1 ", xmin1
+        call ftgkye(unit,"XMIN2",xmin2,comment,status)
+!       print *, "xmin2 ", xmin2
+        call ftgkye(unit,"XMAX0",xmax0,comment,status)
+!       print *, "xmax0 ", xmax0
+        call ftgkye(unit,"XMAX1",xmax1,comment,status)
+!       print *, "xmax1 ", xmax1
+        call ftgkye(unit,"XMAX2",xmax2,comment,status)
+!       print *, "xmax2 ", xmax2
 
 
 !THESE ARE LEVEL SPECIFIC
-         call ftgkye(unit,"LEVEL_XMIN0",level_xmin0(i),comment,status)
-!         print *, "level_xmin0 ", level_xmin0(i)
-         call ftgkye(unit,"LEVEL_XMIN1",level_xmin1(i),comment,status)
- !        print *, "level_xmin1 ", level_xmin1(i)
-         call ftgkye(unit,"LEVEL_XMIN2",level_xmin2(i),comment,status)
-  !       print *, "level_xmin2 ", level_xmin2(i)
+        call ftgkye(unit,"LEVEL_XMIN0",level_xmin0(i),comment,status)
+!       print *, "level_xmin0 ", level_xmin0(i)
+        call ftgkye(unit,"LEVEL_XMIN1",level_xmin1(i),comment,status)
+!       print *, "level_xmin1 ", level_xmin1(i)
+        call ftgkye(unit,"LEVEL_XMIN2",level_xmin2(i),comment,status)
+!       print *, "level_xmin2 ", level_xmin2(i)
 
-         call ftgkye(unit,"LEVEL_XMAX0",level_xmax0(i),comment,status)
-   !      print *, "level_xmax0 ", level_xmax0(i)
-         call ftgkye(unit,"LEVEL_XMAX1",level_xmax1(i),comment,status)
-    !     print *, "level_xmax1 ", level_xmax1(i)
-         call ftgkye(unit,"LEVEL_XMAX2",level_xmax2(i),comment,status)
-     !    print *, "level_xmax2 ", level_xmax2(i)
+        call ftgkye(unit,"LEVEL_XMAX0",level_xmax0(i),comment,status)
+!       print *, "level_xmax0 ", level_xmax0(i)
+        call ftgkye(unit,"LEVEL_XMAX1",level_xmax1(i),comment,status)
+!       print *, "level_xmax1 ", level_xmax1(i)
+        call ftgkye(unit,"LEVEL_XMAX2",level_xmax2(i),comment,status)
+!       print *, "level_xmax2 ", level_xmax2(i)
 
 !If first time do allocations
-         if ( i == 1) then
-!            print *, "allocating axes", numFitsFiles
- !           print *, "x"
-            allocate(xAxis_A(1:axis_size_A(1,i),numFitsFiles))
-  !          print *, "y"
-            allocate(yAxis_A(1:axis_size_A(2,i),numFitsFiles))
-   !         print *, "z"
-            allocate(zAxis_A(1:axis_size_A(3,i),numFitsFiles))
-    !        print *, "done"
-         endif
+        if ( i == 1) then
+!         print *, "allocating axes", numFitsFiles
+!         print *, "x"
+          allocate(xAxis_A(1:axis_size_A(1,i),numFitsFiles))
+!         print *, "y"
+          allocate(yAxis_A(1:axis_size_A(2,i),numFitsFiles))
+!         print *, "z"
+          allocate(zAxis_A(1:axis_size_A(3,i),numFitsFiles))
+!         print *, "done"
+        endif
 
-         !set up the dx,dy,dz of this level
-         dx_A(i) = (level_xMax0(i) - level_xMin0(i))/real(axis_size_A(1,i))
-         dy_A(i) = (level_xMax1(i) - level_xMin1(i))/real(axis_size_A(2,i))
-         dz_A(i) = (level_xMax2(i) - level_xMin2(i))/real(axis_size_A(3,i))
+        !set up the dx,dy,dz of this level
+        dx_A(i) = (level_xMax0(i) - level_xMin0(i))/real(axis_size_A(1,i))
+        dy_A(i) = (level_xMax1(i) - level_xMin1(i))/real(axis_size_A(2,i))
+        dz_A(i) = (level_xMax2(i) - level_xMin2(i))/real(axis_size_A(3,i))
          
-!         print *, "axis sizes ",  axis_size_A(1,i), axis_size_A(2,i), axis_size_A(3,i)
- !        print *, "dx_A ", dx_A
-  !       print *, "dy_A ", dy_A
-   !      print *, "dz_A ", dz_A
-         !populate the axis coordinates of this level
-         do j = 1, axis_size_A(1,i)
-            xAxis_A(j,i) = level_xMin0(i) + dx_A(i) * real(j-0.5)
-         enddo
-         do j = 1, axis_size_A(2,i)
-            yAxis_A(j,i) = level_xMin1(i) + dy_A(i) * real(j-0.5)
-         enddo
-         do j = 1, axis_size_A(3,i)
-            zAxis_A(j,i) = level_xMin2(i) + dz_A(i) * real(j-0.5)
-         enddo
+!       print *, "axis sizes ",  axis_size_A(1,i), axis_size_A(2,i), axis_size_A(3,i)
+!       print *, "dx_A ", dx_A
+!       print *, "dy_A ", dy_A
+!       print *, "dz_A ", dz_A
+        !populate the axis coordinates of this level
+        do j = 1, axis_size_A(1,i)
+          xAxis_A(j,i) = level_xMin0(i) + dx_A(i) * real(j-0.5)
+        enddo
+        do j = 1, axis_size_A(2,i)
+          yAxis_A(j,i) = level_xMin1(i) + dy_A(i) * real(j-0.5)
+        enddo
+        do j = 1, axis_size_A(3,i)
+          zAxis_A(j,i) = level_xMin2(i) + dz_A(i) * real(j-0.5)
+        enddo
 
-         xAxis_A(:,i) = xAxis_A(:,i) / 1.e10
-         yAxis_A(:,i) = yAxis_A(:,i) / 1.e10
-         zAxis_A(:,i) = zAxis_A(:,i) / 1.e10
-         dx_A(i) = dx_A(i) / 1.e10
-         dy_A(i) = dy_A(i) / 1.e10
-         dz_A(i) = dz_A(i) / 1.e10
+        xAxis_A(:,i) = xAxis_A(:,i) / 1.e10
+        yAxis_A(:,i) = yAxis_A(:,i) / 1.e10
+        zAxis_A(:,i) = zAxis_A(:,i) / 1.e10
+        dx_A(i) = dx_A(i) / 1.e10
+        dy_A(i) = dy_A(i) / 1.e10
+        dz_A(i) = dz_A(i) / 1.e10
 
-         if (writeoutput) then
-            write(*,*) "FILE ", i, " / ", numFitsFiles
-            write(*,*) "xAxis runs from ",xAxis_A(1,i), xAxis_A(axis_size_A(1,i),i)
-            write(*,*) "yAxis runs from ",yAxis_A(1,i), yAxis_A(axis_size_A(2,i),i)
-            write(*,*) "zAxis runs from ",zAxis_A(1,i), zAxis_A(axis_size_A(3,i),i)
-         endif
-!         call ftgkye(unit,"CHEM_CODE",CHEM_CODE,comment,status)
- !        print *, "CHEM CODE? ", CHEM_CODE
+        if (writeoutput) then
+          write(*,*) "FILE ", i, " / ", numFitsFiles
+          write(*,*) "xAxis runs from ",xAxis_A(1,i), xAxis_A(axis_size_A(1,i),i)
+          write(*,*) "yAxis runs from ",yAxis_A(1,i), yAxis_A(axis_size_A(2,i),i)
+          write(*,*) "zAxis runs from ",zAxis_A(1,i), zAxis_A(axis_size_A(3,i),i)
+        endif
 
-         ! Move to the next extension
-         call ftmrhd(unit,1,hdutype,status)
-         call FTMNHD(unit, 0, "GasDens", 0, status)
-!         call FTMNHD(unit, 1, "GasDens", 1, status)
-!         call FTMNHD(unit, 1, "GasDens", 0, status)
-         call ftgkys(unit,"EXTNAME",record,comment,status)
+        ! PION: READ GAS DENSITY
+        ! Move to the next extension
+        call ftmrhd(unit,1,hdutype,status)
+        call FTMNHD(unit, 0, "GasDens", 0, status)
+!        call FTMNHD(unit, 1, "GasDens", 1, status)
+!        call FTMNHD(unit, 1, "GasDens", 0, status)
+        call ftgkys(unit,"EXTNAME",record,comment,status)
 
-         if (status==0) then
-            write(message,*) "Reading density from field with EXTNAME= ", trim(record)
-            call writeInfo(message,TRIVIAL)
-         else
-            call writeWarning("Did not find EXTNAME keyword. Will assume this is density")
-!           call writeFatal("Could not find density HDU")
- !           stop
-         endif
-
-
-         ! Read in the data.
-         call ftgpvd(unit,group,1,npixels,nullvall,density_double_A(:,:,:,i),anynull,status)         
+        if (status==0) then
+          write(message,*) "Reading density from field with EXTNAME= ", trim(record)
+          call writeInfo(message,TRIVIAL)
+        else
+          call writeWarning("Did not find EXTNAME keyword. Will assume this is density")
+!         call writeFatal("Could not find density HDU")
+!         stop
+        endif
+        ! Read in the data for gas density
+        call ftgpvd(unit,group,1,npixels,nullvall,density_double_A(:,:,:,i),anynull,status)         
          
+        ! PION: READ DUST TRACER
+        ! For 3D sims this is TR0, for the 2D sims it is TR6 unfortunately not yet standardised
+        if (amr2d) then
+          call FTMNHD(unit, 0, "TR6", 0, status)
+        else if (amr3d) then
+          call FTMNHD(unit, 0, "TR0", 0, status)
+        else 
+          call writeFatal("Bad setting in read DUST variable")
+        endif
 
+        call ftgkys(unit,"EXTNAME",record,comment,status)
+        if (status==0) then
+          write(message,*) "Reading wind mass fraction from field with EXTNAME= ", trim(record)
+          call writeInfo(message,TRIVIAL)
+        else
+          print *, "record was ", trim(record)
+          call writeFatal("Could not find wind mass fraction HDU")
+          stop
+        endif
+        ! Read in the data.
+        call ftgpvd(unit,group,1,npixels,nullvall,tr0_double_A(:,:,:,i),anynull,status)
 
-         call FTMNHD(unit, 0, "TR6", 0, status)
-         call ftgkys(unit,"EXTNAME",record,comment,status)
-         if (status==0) then
-            write(message,*) "Reading wind mass fraction from field with EXTNAME= ", trim(record)
-            call writeInfo(message,TRIVIAL)
-         else
-            print *, "record was ", trim(record)
-            call writeFatal("Could not find wind mass fraction HDU")
-            stop
-         endif
-
-         ! Read in the data.
-         call ftgpvd(unit,group,1,npixels,nullvall,tr0_double_A(:,:,:,i),anynull,status)
-
-!         tr0_double_A(:,:,:,i) = 1.d-2
-!         call FTMNHD(unit, 0, "TR1", 0, status)
- !        call ftgkys(unit,"EXTNAME",record,comment,status)
-  !       if (status==0) then
-   !         write(message,*) "Reading TR1 from field with EXTNAME= ", trim(record)
-    !        call writeInfo(message,TRIVIAL)
-     !    else
-      !      call writeFatal("Could not find TR1 in HDU")
-       !     stop
-        ! endif
-
-         ! Read in the data.
-         !call ftgpvd(unit,group,1,npixels,nullvall,tr1_double_A(:,:,:,i),anynull,status)
-!      endif
-
-      call FTMNHD(unit, 0, "Temp", 0, status)
-      call ftgkys(unit,"EXTNAME",record,comment,status)
-      if (status==0) then
-         write(message,*) "Reading temperature from field with EXTNAME= ", trim(record)
-         call writeInfo(message,TRIVIAL)
-      else
-         call writeFatal("Could not find temperature HDU")
-         stop
-      endif
-
-! Read in the data.
-      call ftgpvd(unit,group,1,npixels,nullvall,temperature_double_A(:,:,:,i),anynull,status)
-
-
-      ! Close the file and free the LUN
-      call ftclos(unit, status)
-      call ftfiou(unit, status)
       
-      ! If there were any errors then print them out
-      call printFitsError(status)
-      
-      
-      
-   enddo
+        ! PION: READ GAS TEMPERATURE
+        call FTMNHD(unit, 0, "Temp", 0, status)
+        call ftgkys(unit,"EXTNAME",record,comment,status)
+        if (status==0) then
+          write(message,*) "Reading temperature from field with EXTNAME= ", trim(record)
+          call writeInfo(message,TRIVIAL)
+        else
+          call writeFatal("Could not find temperature HDU")
+          stop
+        endif
+        ! Read in the data for gas temperature
+        call ftgpvd(unit,group,1,npixels,nullvall,temperature_double_A(:,:,:,i),anynull,status)
 
-   !OK, now have arrays populated, just need to interpolate them onto torus grid. 
-   print *, "FINISHED POPULATING ARRAYS"
-!      print *, "TEMPORARY STOP"
- !     stop
 
-    end subroutine read_fits_file_for_grid_pionAMR
+        ! Close the file and free the LUN
+        call ftclos(unit, status)
+        call ftfiou(unit, status)
+      
+        ! If there were any errors then print them out
+        call printFitsError(status)
+      enddo
+
+      !OK, now have arrays populated, just need to interpolate them onto torus grid. 
+      print *, "FINISHED POPULATING ARRAYS"
+!     print *, "TEMPORARY STOP"
+!     stop
+
+      end subroutine read_fits_file_for_grid_pionAMR
 
 
 
@@ -1157,7 +1135,8 @@ npd_loop:            do n=1,npd
                
                if (thisoctal%temperature(subcell) < 0.d0) ok = .false.
 
-               thisOctal%dustTypeFraction(subcell,1) =   MAX(0.0, (                           &
+              ! hardcoded to dust-to-gas ratio of 0.01, (WIND tracer ==1 in wind, ==0 in ISM)
+               thisOctal%dustTypeFraction(subcell,1) =   MAX(DBLE(0.0), 0.01 * (1.0 - (                           &
                        tr0_double_A(thisI  ,  thisJ  ,thisK,i  ) * (1.d0-u)*(1.d0-v)*(1.d0-w) &
                     +  tr0_double_A(thisI+1,  thisJ  ,thisK,i  ) * (     u)*(1.d0-v)*(1.d0-w) &
                     +  tr0_double_A(thisI  ,  thisJ+1,thisK,i  ) * (1.d0-u)*(     v)*(1.d0-w) &
@@ -1165,7 +1144,7 @@ npd_loop:            do n=1,npd
                     +  tr0_double_A(thisI  ,  thisJ  ,thisK+1,i) * (1.d0-u)*(1.d0-v)*(     w) &
                     +  tr0_double_A(thisI+1,  thisJ  ,thisK+1,i) * (     u)*(1.d0-v)*(     w) &
                     +  tr0_double_A(thisI  ,  thisJ+1,thisK+1,i) * (1.d0-u)*(     v)*(     w) &
-                    +  tr0_double_A(thisI+1,  thisJ+1,thisK+1,i) * (     u)*(     v)*(     w)  ))
+                    +  tr0_double_A(thisI+1,  thisJ+1,thisK+1,i) * (     u)*(     v)*(     w)  )))
 
                if (thisoctal%dustTypeFraction(subcell,1) <= 0.d0) then 
                   thisoctal%dustTypeFraction(subcell,1) = 1.d-30
@@ -1178,20 +1157,24 @@ npd_loop:            do n=1,npd
                
                u = real((rVec%z - xAxis_A(thisI,i))/(xAxis_A(thisI+1,i)-xAxis_A(thisI,i)))
                v = real((rVec%x - yAxis_A(thisJ,i))/(yAxis_A(thisJ+1,i)-yAxis_A(thisJ,i)))
+
                thisOctal%rho(subcell) =     density_double_A(thisI,thisJ,1,i) * (1.d0-u)*(1.d0-v) &
                     +  density_double_A(thisI+1,thisJ,1,i) * (     u)*(1.d0-v) &
                     +  density_double_A(thisI, thisJ+1,1,i) * (1.d0-u)*(     v) &
                     +  density_double_A(thisI+1,thisJ+1,1,i)* (     u)*(     v) 
                if (thisoctal%rho(subcell) < 0.d0) ok = .false.
+
                thisOctal%temperature(subcell) = real( temperature_double_A(thisI,thisJ,1,i) * (1.d0-u)*(1.d0-v) &
                     +  temperature_double_A(thisI+1,thisJ,1,i) * (     u)*(1.d0-v) &
                     +  temperature_double_A(thisI, thisJ+1,1,i) * (1.d0-u)*(     v) &
                     +  temperature_double_A(thisI+1,thisJ+1,1,i)* (     u)*(     v) )
                if (thisoctal%temperature(subcell) < 0.d0) ok = .false.
+
                if (.not.associated(thisOctal%dustTypeFraction)) then
                   allocate(thisOctal%dustTypeFraction(1:thisOctal%maxChildren,1))
                endif
-               thisOctal%dustTypeFraction(subcell,1) =  MAX(0.0, (   &
+               ! For the 2D sims, there is a dust tracer with units of gas-mass fraction
+               thisOctal%dustTypeFraction(subcell,1) =  MAX(DBLE(0.0), (   &
                        tr0_double_A(thisI,thisJ,1,i) * (1.d0-u)*(1.d0-v) &
                     +  tr0_double_A(thisI+1,thisJ,1,i) * (     u)*(1.d0-v) &
                     +  tr0_double_A(thisI, thisJ+1,1,i) * (1.d0-u)*(     v) &
