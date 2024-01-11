@@ -520,10 +520,11 @@ module spectrum_mod
       type(SPECTRUMTYPE) :: spectrum
       logical :: ok
       character(len=*) :: filename
-      real :: fTemp(200000),xTemp(200000), x, f
+      real :: fTemp(200000),xTemp(200000), x, f, xprev
       character(len=80) :: cLine
       integer :: nLambda, i
 
+      xprev = 0.
       ok = .true.
       open(20,file=filename,form="formatted",status="old", err=666)
       nLambda = 1
@@ -538,6 +539,12 @@ module spectrum_mod
       else
          goto 10
       endif
+      ! skip duplicate wavelength entries
+      if (x == xprev) then
+         goto 10
+      endif
+      xprev = x
+
       f = f*x**2/(1.e8*real(cspeed))*real(fourpi)
 !      f = f/(1.e8*real(cspeed))*real(fourpi)
       xtemp(nLambda) = real(cspeed)/x*1.e8
