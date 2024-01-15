@@ -9236,6 +9236,9 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     integer :: communicator
     integer :: ierr, i
     integer :: packednBuffer
+    integer :: myRank, nThreads
+    integer, parameter :: tag = 32
+    integer :: status(MPI_STATUS_SIZE), irank
 
     if (allocated(buffer)) deallocate(buffer)
     maxBuffer = 0
@@ -9257,7 +9260,20 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     if (myrankGlobal /= fromThread) then
        allocate(buffer(1:nBuffer))
     endif
-    call MPI_BCAST(buffer(1:nBuffer), nBuffer, MPI_DOUBLE_PRECISION, 0, communicator, ierr)
+
+! AA - this bcast seems to fail for high nBuffer with ifort/intel mpi v. 18
+!    call MPI_BCAST(buffer(1:nBuffer), nBuffer, MPI_DOUBLE_PRECISION, 0, communicator, ierr)
+    call MPI_COMM_RANK(communicator, myRank, ierr)
+    call MPI_COMM_SIZE(communicator, nThreads, ierr)
+    if (myRank == 0) then
+       ! send
+       do irank = 1, nThreads-1
+          call mpi_send(buffer(1:nBuffer), nBuffer, MPI_DOUBLE_PRECISION, iRank, tag, communicator, ierr)
+       enddo
+    else
+       ! receive
+       call mpi_recv(buffer(1:nBuffer), nBuffer, MPI_DOUBLE_PRECISION, 0, tag, communicator, status, ierr)
+    endif
 
     if (myrankGlobal /= fromThread) then
        packednBuffer = nBuffer ! from fromThread
