@@ -428,7 +428,7 @@ ifeq ($(SYSTEM), mimir)
         F95COMP = gfortran-7
     endif
     ZLIBLIBS = -lz
-    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-error=maybe-uninitialized -Wno-surprising -Wno-conversion -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow 
+    DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-error=maybe-uninitialized -Wno-surprising -Wno-conversion -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow -m64
     FASTFLAG = -O3 -m64
     OPENMPFLAG = -fopenmp 
     INCLUDEFLAG = -I/usr/local/include -L/usr/local/lib -L/mnt/local/software/openmpi/dist/lib

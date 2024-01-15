@@ -1568,7 +1568,7 @@ contains
     else 
        open(unit=20,iostat=error, file=filename, form="unformatted", status=fileStatus, position=positionStatus)
     end if        
-    call writeInfo("Writing AMR grid file to: "//trim(filename),TRIVIAL)
+    call writeInfo("Writing AMR grid file (MPI) to: "//trim(filename),TRIVIAL)
     
     call date_and_time(values=timeValues)
     

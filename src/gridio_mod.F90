@@ -203,8 +203,10 @@ contains
        if (myHydroSetGlobal /= 0) goto 666
 
        call MPI_BARRIER(zeroPlusAMRCommunicator, ierr)
+       call writeInfo("Got past barrier 1",TRIVIAL)
 
        do iThread = 0, nHydroThreadsGlobal
+         call writeInfo("starting loop",TRIVIAL)
 
          if (iThread == myRankGlobal) then
  
@@ -223,13 +225,21 @@ contains
                   call MPI_SEND(buffer, maxBuffer, MPI_BYTE, iThread+1, tag, zeroPlusAMRCommunicator, ierr)
                endif
             endif
+          
+          call writeInfo("wrote amgrid ",TRIVIAL)
 
          endif
-          
-          if (uncompressedDumpFiles) call MPI_BARRIER(zeroPlusAMRCommunicator, ierr)
+
+           
+          if (uncompressedDumpFiles) then
+            call MPI_BARRIER(zeroPlusAMRCommunicator, ierr)
+            call writeInfo("Got past barrier 3 ",TRIVIAL)
+          endif
        enddo
 
+       call writeInfo("finished loop:",TRIVIAL)
        call MPI_BARRIER(zeroPlusAMRCommunicator, ierr)
+       call writeInfo("finished loop: Got past barrier 4 ",TRIVIAL)
 
 #ifdef USEZLIB
        if (.not.uncompressedDumpFiles) call zeroZlibBuffer()
@@ -240,6 +250,7 @@ contains
 
 #ifdef MPI
     call MPI_BARRIER(zeroPlusAMRCommunicator, ierr)
+    call writeInfo("finished loop: Got past barrier 5 ",TRIVIAL)
 #endif
 
 666 continue
