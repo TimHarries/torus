@@ -419,13 +419,15 @@ ifeq ($(SYSTEM), ceres)
     KNOWN_SYSTEM = yes
 endif
 
-# Mimir is DIAS machine with 160 cores, 3TB RAM, gfortran-based
+# Mimir is DIAS.ie machine with 160 cores, 3TB RAM, gfortran-based
 ifeq ($(SYSTEM), mimir)
     ifeq ($(mpi), yes)
-        F95COMP = /mnt/local/software/openmpi/dist/bin/mpif90
+        #F95COMP = /mnt/local/software/openmpi/dist/bin/mpif90
+        F95COMP = mpif90
         MPIFLAG = -DMPI
     else
-        F95COMP = gfortran-7
+        #F95COMP = gfortran-7
+        F95COMP = gfortran
     endif
     ZLIBLIBS = -lz
     DEBUGFLAG= -ggdb -fbacktrace -fcheck=all -Wunderflow -Wall -Werror -Wno-error=maybe-uninitialized -Wno-surprising -Wno-conversion -pedantic-errors -std=f2008 -fall-intrinsics -ffpe-trap=invalid,zero,overflow -m64

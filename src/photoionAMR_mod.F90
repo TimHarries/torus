@@ -4364,7 +4364,7 @@ end subroutine radiationHydro
 !     if (.not.loadBalancingThreadGlobal) deallocate(octalArray)    
      if (allocated(octalArray)) deallocate(octalArray)    
      
-     if(uv_vector .or. singlemegaphoto .or. dumpRegularVTUS) then
+     if ((uv_vector .or. singlemegaphoto .or. dumpRegularVTUS) .and..not.loadBalancingThreadGlobal) then
         write(mpiFilename,'(a, i4.4, a)') "photo_", grid%iDump,".grid"
         call writeAmrGrid(mpiFilename, .false., grid)
         write(mpiFilename,'(a, i4.4, a)') "photo", nIter,".vtk"!
