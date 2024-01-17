@@ -9236,6 +9236,9 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     type(GRIDTYPE) :: grid
     integer :: communicator
     integer :: ierr, i
+    integer :: myRank, nThreads
+    integer, parameter :: tag = 32
+    integer :: status(MPI_STATUS_SIZE), irank
     integer :: packednBuffer, buffac
 
     ! AA: reducing factor in 3D to avoid too much memory allocation
@@ -9258,7 +9261,7 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
           maxBuffer = huge(maxBuffer) / buffac
 !          write(*,*) myrankglobal, " setting nvoxels to ", maxbuffer
        endif
-       ! increase maxbuffer so it's >~ no of variables * no of voxels 
+       ! increase maxbuffer so it's >~ no of variables * no of voxels
        maxBuffer = maxBuffer * buffac
        ! did it overflow?
        if (maxBuffer < 0) then
