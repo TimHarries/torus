@@ -9231,21 +9231,42 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
   subroutine broadcastBranch(grid, fromThread, communicator)
     use timing
     use mpi
+    use inputs_mod, only : amr3d
     integer :: fromThread, nOctals
     type(GRIDTYPE) :: grid
     integer :: communicator
     integer :: ierr, i
-    integer :: packednBuffer
-    integer :: myRank, nThreads
-    integer, parameter :: tag = 32
-    integer :: status(MPI_STATUS_SIZE), irank
+    integer :: packednBuffer, buffac
+
+    ! AA: reducing factor in 3D to avoid too much memory allocation
+    ! ideally maxbuffer should be the number of variables being copied from hydro thread to LB thread
+    if (amr3d) then
+       buffac = 200
+    else
+       buffac = 1000
+    endif
 
     if (allocated(buffer)) deallocate(buffer)
     maxBuffer = 0
     nBuffer = 1
     if (myrankGlobal == fromThread) then
        call countVoxels(grid%octreeRoot, nOctals, maxBuffer)
-       maxBuffer = maxBuffer * 1000
+       ! here maxbuffer is nVoxels
+       ! test if maxbuffer would overflow after multiplying by buffac
+       if (maxBuffer > huge(maxbuffer)/buffac) then
+!          write(*,*) myrankglobal, " maxbuffer will overflow, nvoxels = ", maxBuffer
+          maxBuffer = huge(maxBuffer) / buffac
+!          write(*,*) myrankglobal, " setting nvoxels to ", maxbuffer
+       endif
+       ! increase maxbuffer so it's >~ no of variables * no of voxels 
+       maxBuffer = maxBuffer * buffac
+       ! did it overflow?
+       if (maxBuffer < 0) then
+          write(*,*) myrankglobal, " maxBuffer still overflowed ", maxBuffer
+          maxBuffer = huge(maxBuffer)
+          write(*,*) myrankglobal, " setting maxBuffer to ", maxbuffer
+       endif
+!       write(*,*) myrankglobal, " allocating maxbuffer ", maxbuffer
        allocate(buffer(1:maxBuffer))
 !       CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
        call packBranch(grid%octreeRoot) ! populate buffer, increment nBuffer
