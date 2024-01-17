@@ -1711,7 +1711,7 @@ end subroutine assignMgAsciiValues
 #endif
 #endif
     use ramses_mod, only: finishRamses
-    use inputs_mod, only : mDisc, geometry, sphWithChem
+    use inputs_mod, only : mDisc, geometry, sphWithChem, pionAMR
     use memory_mod, only : findTotalMemory, reportMemory
     type(GRIDTYPE) :: grid
     integer(kind=bigInt) :: i
@@ -1781,8 +1781,12 @@ end subroutine assignMgAsciiValues
        call finishRamses
        
     case("fitsfile")
-       call writeVTKfile(grid, "gridFromFitsFile.vtk",  &
+      ! This causes problems for PION-postprocessing runs because we compile with -m64 and
+      ! this VTK routine saves 4-byte floats and crashes torus.
+      if(.not.pionAMR) then
+         call writeVTKfile(grid, "gridFromFitsFile.vtk",  &
             valueTypeString=(/"rho        ", "temperature", "dust1      ","velocity   "/))
+      endif
 
 #ifdef MPI
 #ifdef USECFITSIO
