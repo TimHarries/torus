@@ -6123,7 +6123,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     real(double), parameter :: eps = 3.d-8
     real :: t1, t2
     real(double) :: Hheating, Heheating, dustHeating, newT, deltaT
-    real(double) :: newTdust, deltaTdust, kappap, gasGrainCool
+    real(double) :: newTdust, deltaTdust, kappap, gasGrainCool, mu
     real :: underCorrection
     integer :: nIter
 !    logical, optional :: debug
@@ -6254,8 +6254,9 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                          ! if decoupling, temperature is just the gas temperature - now need to find the dust temperature
 
                          ! gasGrainCool is positive if dust is heated, negative if cooled
+                         mu = returnMu(thisOctal, subcell, grid%ion, grid%nion)
                          gasGrainCool = gasGrainCoolingRate(thisOctal%rho(subcell), thisOctal%ionFrac(subcell,2), &
-                              dble(thisOctal%temperature(subcell)), thisOctal%tDust(subcell))
+                              dble(thisOctal%temperature(subcell)), thisOctal%tDust(subcell), mu)
                          dustHeating = max(1.d-30,dustHeating + gasGrainCool)
                          call returnKappa(grid, thisOctal, subcell, kappap=kappap, &
                                atThisTemperature=real(thisOctal%tDust(subcell)))
@@ -6413,14 +6414,14 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     use inputs_mod, only : dustOnly, hOnly, decoupleGasDustTemperature
     integer, optional :: iter
     integer :: nRates
-    real(double) :: myRates(6)
+    real(double) :: myRates(10)
     type(OCTAL),pointer :: thisOctal
     integer :: subcell
     type(GRIDTYPE) :: grid
     real(double) :: nHii, nHeii, ne, nh
     real :: temperature
     logical, optional :: debug
-    real(double) :: coolingRate, crate, dustCooling, gasGrainCool
+    real(double) :: coolingRate, crate, dustCooling, gasGrainCool, mu
     real(double) :: gff
     real :: rootTbetaH(31) = (/ 8.287e-11, 7.821e-11, 7.356e-11, 6.982e-11, 6.430e-11, 5.971e-11, 5.515e-11, 5.062e-11, 4.614e-11, &
                                4.170e-11, 3.734e-11, 3.306e-11, 2.888e-11, 2.484e-11, 2.098e-11, 1.736e-11, 1.402e-11, 1.103e-11, &
@@ -6439,6 +6440,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     real :: ch12, ch13, ex12, ex13, th12, th13, coolcoll, te4, teused
     real(double) :: becool
     real(double) :: kappap
+    character(len=30) :: fn
     real, parameter                :: hcRyd = &    ! constant: h*c*Ryd (Ryd at inf used) [erg]
          & 2.1799153e-11
 
@@ -6601,9 +6603,12 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
  
        if (decoupleGasDustTemperature) then
           ! collisional heating/cooling (positive if gas cooled/dust heated)
+          mu = returnMu(thisOctal, subcell, grid%ion, grid%nion)
           gasGrainCool =  gasGrainCoolingRate(thisOctal%rho(subcell), thisOctal%ionFrac(subcell,2), &
-               dble(temperature), thisOctal%tDust(subcell))
+               dble(temperature), thisOctal%tDust(subcell), mu)
           coolingRate = coolingRate + gasGrainCool
+       else
+          gasGrainCool = 1.d-50
        endif
        if (present(iter)) then
           nRates = nRates + 1
@@ -6618,6 +6623,8 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
    !    kappaP = returnKappaP(thisOctal, subcell, dustTemperature)
        dustCooling = fourPi * kappaP * (stefanBoltz/pi) * dble(temperature)**4
        coolingRate = coolingRate + dustCooling
+    else
+       dustCooling = 1.d-50
     endif
     if (present(iter)) then
        nRates = nRates + 1
@@ -6631,9 +6638,11 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
            stop
        endif
        myRates(1:nRates) = myRates(1:nRates)/coolingRate
-!       open(unit=99, file='allcooling.dat', status='unknown', position='append',form="formatted")
+       write(fn,'(a,i2.2,a)') "allcooling_r", myrankGlobal, ".dat"
+       open(unit=99, file=fn, status='unknown', position='append',form="formatted")
 !       write(99,'(i3.3,8(1x,es9.2))') iter, coolingRate, myRates(1:nRates)
-!       close(99)
+       write(99,'(i3.3, es13.5,8(1x,es13.5))') iter, temperature, coolingRate, myRates(1:nRates)
+       close(99)
     endif
 
   end function HHeCooling
