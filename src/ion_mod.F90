@@ -55,6 +55,7 @@ module ion_mod
 
   type(IONTYPE), save :: globalIonArray(50)
   integer :: nGlobalIon
+  real(double), save  :: hMassFrac
 
 contains
 
@@ -70,6 +71,43 @@ contains
     s_abund  = s_in
 
   end subroutine setAbundances
+
+  subroutine setMassFractions(X, hOnly, useMetals, Zfac)
+    real(double), intent(out) :: X 
+    real(double), intent(in) :: Zfac
+    logical, intent(in) :: hOnly, useMetals
+    real(double) :: yOverX, Y, Z
+    character(len=80) :: message
+
+    ! X + Y + Z = 1
+    ! saves X (H mass fraction)
+    ! Y (He) and Z (metals) are not needed elsewhere
+
+    if (useMetals) then
+       ! Z_protosolar in Asplund+2009. See also Choi+2016, Ekstrom+2012
+       ! Zfac is input gas metallicity relative to Zsolar (i.e. 1==solar)
+       Z = 0.0142d0 * Zfac
+    else
+       Z = 0.d0
+    endif
+
+    if (hOnly) then
+       X = 1.d0 - Z 
+       Y = 0.d0 
+    else
+       ! Y/X = n(He) * m(He) / (n(H) * m(H))
+       yOverX = he_abund * 4.d0
+
+       X = (1.d0 - Z) / (1.d0 + yOverX)
+       Y = yOverX * X
+    endif
+
+    if (writeoutput) then
+       write(message,'(a,f9.7,a,f9.7,a,f9.7)') "Mass fractions: X = ", X, " Y = ", Y, " Z = ", Z
+       call writeInfo(message, TRIVIAL)
+    endif
+
+  end subroutine setMassFractions
 
   subroutine createIon(thisIon, z, n, nucleons, ipot)
     type(IONTYPE) :: thisIon
@@ -348,6 +386,7 @@ contains
     endif
 
   end subroutine addIons
+
     
 function returnOuterShell(n) result (ishell)
   integer :: n, ishell

@@ -1188,7 +1188,7 @@ end subroutine photoIonizationloop
     integer :: subcell
     logical :: converged
     real :: t1, t2, tm
-    real(double) :: y1, y2, ym, Hheating, Heheating, dustHeating, gasGrainCool
+    real(double) :: y1, y2, ym, Hheating, Heheating, dustHeating, gasGrainCool, mu
     real :: deltaT
     real(double) :: kappaP
     integer :: nIter
@@ -1261,8 +1261,9 @@ end subroutine photoIonizationloop
                       niter = niter + 1
 
 
+                      mu = returnMu(thisOctal, subcell, grid%ion, grid%nion)
                       gasGrainCool =  gasGrainCoolingRate(thisOctal%rho(subcell), thisOctal%ionFrac(subcell,2), &
-                           dble(tm), thisOctal%tDust(subcell))
+                           dble(tm), thisOctal%tDust(subcell), mu)
 
 
 !                      if (totalHeating == 0.d0) then
@@ -1342,7 +1343,7 @@ end subroutine photoIonizationloop
     real(double) :: fac, thisRootTbetaH, betaH, betaHe, thisRootTbetaHe
     real :: thisLogT
     integer :: n
-    real(double) :: log10te,betarec, coolrec, betaff, coolff, gasGraincool
+    real(double) :: log10te,betarec, coolrec, betaff, coolff, gasGraincool, mu
     real :: ch12, ch13, ex12, ex13, th12, th13, coolcoll, te4, teused
     real(double) :: becool
     real :: kappap
@@ -1358,8 +1359,9 @@ end subroutine photoIonizationloop
     nh = thisOctal%nh(subcell)
     ne = thisOctal%ne(subcell)
                 
+    mu = returnMu(thisOctal, subcell, grid%ion, grid%nion)
     gasGrainCool =  gasGrainCoolingRate(thisOctal%rho(subcell), thisOctal%ionFrac(subcell,2), &
-         dble(temperature), thisOctal%tDust(subcell))
+         dble(temperature), thisOctal%tDust(subcell), mu)
 
     becool = 0.
     coolingRate = 0.d0
