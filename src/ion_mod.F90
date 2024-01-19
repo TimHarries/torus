@@ -54,7 +54,7 @@ module ion_mod
   real, private, save :: h_abund, he_abund, c_abund, n_abund, o_abund, ne_abund, s_abund 
 
   type(IONTYPE), save :: globalIonArray(50)
-  integer :: nGlobalIon
+  integer, save :: nGlobalIon
   real(double), save  :: hMassFrac
 
 contains
