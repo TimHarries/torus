@@ -3779,7 +3779,7 @@ end subroutine radiationHydro
 
     if (loadbalancing) call  setLoadBalancingThreadsByCells(grid)
 
-    maxBalanceIter = 20
+    maxBalanceIter = 10
     nNotConverged = 0
     if (myRankGlobal /= 0) then
 
@@ -6108,7 +6108,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
   subroutine calculateThermalBalanceNew(grid, thisOctal, epsOverDeltaT, grandIter, subcellConverged) 
     use mpi
-    use inputs_mod, only : tMinGlobal, tMaxGlobal, decoupleGasDustTemperature 
+    use inputs_mod, only : ndustType, tMinGlobal, tMaxGlobal, decoupleGasDustTemperature
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     real(double) :: epsOverDeltaT
@@ -6119,11 +6119,11 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     logical :: converged
     real(double) :: a, b, c, d, e, fa, fb, fc, r, s, p, q, tol, tol1, xm
     integer, parameter :: itmax = 100
-    integer :: iter
+    integer :: iter, j
     real(double), parameter :: eps = 3.d-8
     real :: t1, t2
     real(double) :: Hheating, Heheating, dustHeating, newT, deltaT
-    real(double) :: newTdust, deltaTdust, kappap, gasGrainCool, mu
+    real(double) :: newTdust, deltaTdust, kappap, gasGrainCool, mu, alldust
     real :: underCorrection
     integer :: nIter
 !    logical, optional :: debug
@@ -6260,7 +6260,18 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                          dustHeating = max(1.d-30,dustHeating + gasGrainCool)
                          call returnKappa(grid, thisOctal, subcell, kappap=kappap, &
                                atThisTemperature=real(thisOctal%tDust(subcell)))
+                         kappaP = max(kappaP,1.0e-40)     ! **JM**: add lower limit on KappaP
                          newtDust = (dustHeating / (fourPi * kappaP * (stefanBoltz/pi)))**0.25d0
+                         !if ((newtDust .gt. 1000.0) .or. (newtDust .ne. newtDust)) then
+                         !  write(*,*) "big dust t ", gasGrainCool, kappaP, newtDust, thisOctal%tDust(subcell)
+                         !endif
+                         alldust = 0.0
+                         do j = 1, ndustType
+                           alldust = alldust + thisOctal%dustTypeFraction(subcell,j)
+                         enddo
+                         if (alldust .le. 1e-7) then
+                           newtDust = tminglobal
+                         endif
 
                          ! final temperature 
                          deltaTdust = newTdust- thisOctal%tDust(subcell)

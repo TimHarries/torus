@@ -189,12 +189,12 @@ program torus
      !  goto 666
 !        write(*,*) "OMP THREAD NUMBER ",omp_get_thread_num()
 
-       if (.not.readGrid) then
+       if (.not.readGrid .and..not.loadBalancingThreadGlobal) then
           call writeVtkFile(grid, "rho.vtk")
 !          call writeVtkFile(grid, "rho2.vtk",valuetypestring=(/"velcall"/))
        endif
 
-       if (dustPhysics) then
+       if (dustPhysics .and..not.loadBalancingThreadGlobal) then
           if (nDustType >= 1) then
 !             do i = 1, nDustType
 !                write(stringArray(i),'(a,i1.1)') "dust",i
