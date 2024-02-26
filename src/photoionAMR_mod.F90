@@ -6260,7 +6260,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                          dustHeating = max(1.d-30,dustHeating + gasGrainCool)
                          call returnKappa(grid, thisOctal, subcell, kappap=kappap, &
                                atThisTemperature=real(thisOctal%tDust(subcell)))
-                         kappaP = max(kappaP,1.0e-40)     ! **JM**: add lower limit on KappaP
+                         kappaP = max(kappaP,1.0d-40)     ! **JM**: add lower limit on KappaP
                          newtDust = (dustHeating / (fourPi * kappaP * (stefanBoltz/pi)))**0.25d0
                          !if ((newtDust .gt. 1000.0) .or. (newtDust .ne. newtDust)) then
                          !  write(*,*) "big dust t ", gasGrainCool, kappaP, newtDust, thisOctal%tDust(subcell)
