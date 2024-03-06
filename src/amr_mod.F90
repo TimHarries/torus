@@ -5446,7 +5446,7 @@ CONTAINS
 
 !          write(*,*) hr, height, r, betadisc
 
-          if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > thisheightSplitFac)) split = .true.
+          if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > thisheightSplitFac)) split = .true.
 
           if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
@@ -7470,6 +7470,7 @@ endif
   subroutine calcLexington(thisOctal,subcell,grid)
 
     use inputs_mod, only : hydrodynamics
+    use ion_mod, only : hMassFrac
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
@@ -7486,7 +7487,7 @@ endif
     thisOctal%rho(subcell) = 1.d-30
     thisOctal%temperature(subcell) = 10000.
     thisOctal%etaCont(subcell) = 0.
-    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%nh(subcell) = hMassFrac * thisOctal%rho(subcell) / mHydrogen
     thisOctal%ne(subcell) = thisOctal%nh(subcell)
     thisOctal%nhi(subcell) = 1.e-8
     thisOctal%nhii(subcell) = thisOctal%ne(subcell)
@@ -7494,10 +7495,10 @@ endif
 
     if (r > grid%rinner) then
        thisOctal%inFlow(subcell) = .true.
-       thisOctal%rho(subcell) = 100.*mHydrogen
 
+       thisOctal%nh(subcell) = 100.
+       thisOctal%rho(subcell) = thisOctal%nh(subcell) * mHydrogen / hMassFrac
 
-       thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
        thisOctal%ne(subcell) = thisOctal%nh(subcell)
        thisOctal%nhi(subcell) = 1.e-5
        thisOctal%nhii(subcell) = thisOctal%ne(subcell)
@@ -10318,7 +10319,7 @@ logical function insideCone(position, binarySep, momRatio)
 
     rho0 = shellmass  * (3.d0 - shellalpha) / (fourPi * rInner**shellalpha * &
             (rOuter**(3.d0-shellalpha) - rInner**(3.d0-shellalpha)))
-
+    rho0 = rho0 / 1.d30
     if ((r > rInner).and.(r < rOuter)) then
        thisOctal%rho(subcell) = rho0 * (rInner/r)**(shellalpha)
     endif
@@ -17025,7 +17026,7 @@ END SUBROUTINE assignDensitiesStellarWind
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child
   logical, save :: firstTimeMem
-  logical :: outOfMemory
+  logical :: outOfMemory, splitInAz
   integer :: subcell, i
     logical, optional :: inheritProps, interpProps
     character(len=80) :: message
@@ -17055,7 +17056,7 @@ END SUBROUTINE assignDensitiesStellarWind
           if ((thisOctal%adot(subcell) > 0.d0).and.(.not.outOfMemory)) then
              thisOctal%adot(subcell) = 0.d0
              call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
-                  inherit=inheritProps, interp=interpProps)
+                  inherit=inheritProps, interp=interpProps)!,splitAzimuthally=splitInAz)
              return
           endif
        endif
@@ -17142,6 +17143,7 @@ END SUBROUTINE assignDensitiesStellarWind
                    nTagged = nTagged + 1
                 endif
 
+                
              endif
           enddo
        endif

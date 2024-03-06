@@ -927,19 +927,19 @@ contains
           totFrac = 0.
           nFrac = 0
 
-             if (iIter_grand == 4) then
-                tauMax = 10.0
+             if (iIter_grand == 3) then
+                tauMax = 1.e-3
                 call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
              endif
 
-             if (iIter_grand == 5) then
+             if ((iIter_grand >= 4).and.(iIter_grand <= 5)) then
                 tauMax = 1.e30
 !                if (dustSettling) call fillDustSettled(grid)
 !                call setupOrigDustFraction(grid%octreeRoot)
                 call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
              endif
 
-             if ((iiter_grand == 5).and.doSmoothGridTau) then
+             if ((iiter_grand == 7).and.doSmoothGridTau) then
                 call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
                 call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)

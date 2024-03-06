@@ -33,8 +33,8 @@ contains
 #endif
 
 #ifdef PHOTOION
-    use ion_mod, only: addIons, globalIonArray, nGlobalIon
-    use inputs_mod, only : photoionization, photoionPhysics, usemetals, hOnly, usexraymetals, noIonization
+    use ion_mod, only: addIons, globalIonArray, nGlobalIon, setMassFractions, hMassFrac
+    use inputs_mod, only : photoionization, photoionPhysics, usemetals, hOnly, usexraymetals, noIonization, gasMetallicity
 !    use inputs_mod, only : startFromNeutral
 #endif
 
@@ -78,6 +78,7 @@ contains
   if (photoionPhysics) then
      call addIons(grid%ion, grid%nion, usemetals, usexraymetals, hOnly, noIonization)
      call addIons(globalIonArray, nGlobalIon, usemetals, usexraymetals, hOnly, noIonization)
+     call setMassFractions(hMassFrac, hOnly, useMetals, gasMetallicity)
      photoionization = .true.
   endif
 #endif

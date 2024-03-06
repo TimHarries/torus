@@ -161,8 +161,10 @@ MODULE  mieDistCrossSection_mod
            y1 = dble(y(i))
            y2 = dble(y(i+1))
 !
-          pow = log(y2/y1) / log(x2/x1)                           
-          C = y1 / x1**pow                      
+           pow = log(y2/y1) / log(x2/x1)
+!           write(*,*) y2/y1,x2/x1
+           C = y1 / x1**pow
+          
           delint = (x2**(pow+1.0d0)-x1**(pow+1.0d0))*C/(pow+1.d0)
 !         add contribution to the integral                                      
           sum = sum + delint                                          

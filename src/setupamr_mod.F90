@@ -69,6 +69,8 @@ contains
     use gridFromFlash
     use ramses_mod, only: rd_gas
     use dust_mod, only : sumDustMass
+    use inputs_mod, only : imodel
+    use utils_mod, only : findmultifilename 
     implicit none
 
     ! For romanova geometry case
@@ -231,7 +233,7 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
              call fillgridKatie(grid, gridconverged, dosplit=.true.)
 
              j = j + 1
-             if (mod(j,10) == 0) then
+             if (mod(j,20) == 0) then
              call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
              do
                 smoothConverged = .true.
@@ -243,7 +245,7 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
              call writeInfo("...grid smoothing complete", TRIVIAL)
                 call fillgridKatie(grid, gridconverged, dosplit=.false.)
 
-                call writeVtkFile(grid, "rho.vtk",  valueTypeString=(/"rho     ","velocity"/))
+!                call writeVtkFile(grid, "rho.vtk",  valueTypeString=(/"rho     ","velocity"/))
              endif
              write(*,*) j,gridConverged
 
@@ -252,8 +254,8 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
              do
                 smoothConverged = .true.
                 ! The following is Tim's replacement for soomthAMRgrid.
-                call myScaleSmooth(smoothFactor, grid, &
-                     smoothConverged,  inheritProps = .false., interpProps = .false.)
+!                call myScaleSmooth(smoothFactor, grid, &
+!                     smoothConverged,  inheritProps = .false., interpProps = .false.)
                 if (smoothConverged) exit
              end do
              call writeInfo("...grid smoothing complete", TRIVIAL)
@@ -270,6 +272,8 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           call findTotalMass(grid%octreeRoot, totalMass)
           write(*,*) "Total mass ",totalmass/mSol
 
+          call findMultiFilename("rho****.vtk", iModel, tfilename)
+          call writeVtkFile(grid, tfilename,  valueTypeString=(/"rho     ","velocity"/))
           
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
@@ -3396,7 +3400,7 @@ end subroutine fillVelocityCornersFromCentresCylindrical
 recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, facArray, converged)
   use inputs_mod, only : heightSplitFac, rOuter, minDepthAMR, rInner
   integer :: nr
-  logical :: converged, aziSplit
+  logical :: converged, aziSplit, debug
   real(double) :: rArray(:), facArray(:)
   type(VECTOR) :: lArray(:), testVec
   type(GRIDTYPE) :: grid
@@ -3417,7 +3421,10 @@ recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, fac
            end if
         end do
      else
-        testVec = vector(1500.d0,0.d0,1500.d0)
+        testVec = vector(1500.d0,-666d0,193.)
+        debug = .false.
+        if (inSubcell(thisOctal,subcell,testVec)) debug = .true.
+
 
         rVec = subcellCentre(thisOctal,subcell)
 
@@ -3427,6 +3434,11 @@ recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, fac
         thisZ  = 0.
         thisR = 0.
         aziSplit = .false.
+!!        !$OMP PARALLEL DEFAULT(none) &
+!!        !$OMP PRIVATE (j,  rho, h, z, r) &
+!!        !$OMP SHARED (thisZ, thisR, thisH, thisRho, fac, facArray, aziSplit) &
+!!        !$OMP SHARED (lArray, rArray, rOuter, nr, rVec) 
+!!        !$OMP DO SCHEDULE(DYNAMIC)
         do j = 1, nr
            if (j < nr) then
               call katieRho(rVec, lArray(j),rArray(j),rArray(j+1), rho, h, z, r)
@@ -3434,37 +3446,59 @@ recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, fac
               call katieRho(rVec, lArray(j),rArray(j),dble(rOuter), rho, h, z, r)
            endif
            if (rho > thisRho) then
-              thisRho = rho
               thisH = h
               thisZ = z
               thisR = r
+              thisRho = rho
               fac = facArray(j)
               if (lArray(j)%z < 1.d0) aziSplit = .true.
            endif
         enddo
+!!        !$OMP ENDDO
+!!        !$OMP END PARALLEL
+        if (debug) write(*,*) thisZ/thisH
+
         if (thisOctal%nDepth < minDepthAMR) then
            thisOctal%adot(subcell) = -1.d0
+           aziSplit = .true.
            converged = .false.
         endif
+
+
         thisOctal%rho(subcell) = max(thisRho*fac,1.d-30)
-        if ((abs(thisZ/thisH)< 7.).and.(thisOctal%subcellSize/thisH)>heightSplitFac) then
+
+        if ((abs(thisZ/thisH)< 100.).and.abs(thisOctal%subcellSize/thisH)>5.) then
            thisOctal%adot(subcell) = -1.
            converged = .false.
+           aziSplit = .true.
         endif
 
 
-        if ( ((modulus(rVec)/thisOctal%subcellSize) < 1.).and.(thisOctal%subcellSize/rInner > 0.1)) then
+
+        if ((abs(thisZ/thisH)< 10.).and.abs(thisOctal%subcellSize/thisH)>heightSplitFac) then
            thisOctal%adot(subcell) = -1.
            converged = .false.
         endif
+        
+!        if ((abs(thisZ/thisH) < 10.).and.(thisOctal%subcellSize > abs(thisZ/2.))) then
+!           thisOctal%adot(subcell) = -1.
+!           converged = .false.
+!        endif
+           
 
         
-        if (abs(thisZ/thisOctal%subcellSize)<1.) then
-           if (abs(thisZ)/thisH > 0.5) then
-              thisOctal%adot(subcell) = -1.
-              converged = .false.
-           endif
-        endif
+!        if ( ((modulus(rVec)/thisOctal%subcellSize) < 1.).and.(thisOctal%subcellSize/rInner > 0.1)) then
+!           thisOctal%adot(subcell) = -1.
+!           converged = .false.
+!           aziSplit = .true.
+!        endif
+        
+!        if (abs(thisZ/thisOctal%subcellSize)<1.) then
+!           if (abs(thisZ)/thisH > 0.1) then
+!              thisOctal%adot(subcell) = -1.
+!              converged = .false.
+!           endif
+!        endif
               
         if (aziSplit) thisOctal%adot(subcell) = thisOctal%adot(subcell) * 2.
 
@@ -3482,23 +3516,31 @@ subroutine katieRho(rVec, lHat, rIn, rOut, rho, h, z, r)
   r = modulus(pVec)
   h = 1.d30
   rho = 0.d0
-  if ((r > rIn).and.(r < rOut)) then
+  if ((r > rIn*0.9).and.(r < rOut)) then
      h = height*(r/(100.d0*autocm/1.d10))**betaDisc
      rho = 1.e-10*(r/rInner)**(-alphaDisc) * exp(-0.5d0*(z/h)**2)
+     if (r < rIn) rho = 1.d-30
   endif
 end subroutine katieRho
 
 
 subroutine fillGridKatie(grid, converged, doSplit)
+  use inputs_mod, only : iModel
+  use utils_mod, only : findMultiFilename
+
   type(GRIDTYPE) :: grid
   integer :: i
   integer :: nrArray
   logical :: converged, doSplit
   real(double),allocatable :: rArray(:), facArray(:)
   type(VECTOR), allocatable :: lArray(:)
+  character(len=80) :: tfilename
+  
 
 
-  open(20,file="radial.dat",form="formatted",status="old")
+  call findMultiFilename("radial****.dat", iModel, tfilename)
+  open(20,file=tfilename,form="formatted",status="old")
+  write(*,*) "reading radial file from: ",trim(tfilename)
   read(20,*) nrarray
   allocate(rArray(1:nrArray), facArray(1:nrArray), lArray(1:nrArray))
   do i = 1, nrArray
@@ -3523,7 +3565,9 @@ end subroutine fillGridKatie
     logical :: splitInAzimuth
     integer :: subcell, i
     logical, optional :: inheritProps, interpProps
+    logical, save :: firstTime = .true.
     real(double) :: dphi
+!$OMP THREADPRIVATE (firsttime)
 
     
     do subcell = 1, thisOctal%maxChildren
@@ -3550,7 +3594,10 @@ end subroutine fillGridKatie
                      inherit=inheritProps, interp=interpProps,splitazimuthally=splitinazimuth)
                 return
              else
-                write(*,*) "negative density but not split ",maxdepthAMR
+                if (.not.firstTime) then
+                   write(*,*) "negative density but not split ",maxdepthAMR
+                   firstTime  = .false.
+                endif
              endif
           endif
        endif
