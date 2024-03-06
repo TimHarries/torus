@@ -674,7 +674,7 @@ COBJ = $(CSOURCE:.c=.o)
 CLIB = $(CSOURCELIB:.c=.o)
 ALLOBJ = $(CAPF90OBJ) $(F90OBJ)  $(INPUTSMODOBJ) $(COBJ)
 LIBOBJ = $(CAPF90OBJLIB) $(F90OBJ)  $(INPUTSMODOBJ) $(CLIB)
-NCDF_LIB = -L/opt/homebrew/lib -lnetcdff
+#NCDF_LIB = -L/opt/homebrew/lib -lnetcdff
 
 #
 # Compilers and compiler flags
