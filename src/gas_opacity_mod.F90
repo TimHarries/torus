@@ -219,16 +219,12 @@ subroutine createKappaGrid(lookuptable, nLam, lamArray, reset)
         if (Writeoutput) write(*,*) "Correct lookup table not available, creating..."
         
         if (myrankGlobal == 0) then
-#ifdef NETCDF
-           call readAbsCoeffFileAmundsen(lookupTable(i)%source, lookupTable(i), nLam, lamArray)
-#else
-           write(*,*) "Code not linked with NETCDF. Aborting."
-           stop
-#endif
+!           call readAbsCoeffFileAmundsen(lookupTable(i)%source, lookupTable(i), nLam, lamArray)
+           call readNemesisFormatFile(lookupTable(i)%source, lookupTable(i))
            call writeKappaGrid(lookuptable(i))
            call freeTable(lookuptable(i))
            write(*,*) "calling sleep"
-           call mySleep(10.d0)
+           call mySleep(1.d0)
         endif
         call torus_mpi_barrier()
         call waitForFile(lookuptable(i)%filename)
@@ -275,15 +271,13 @@ subroutine readKappaGrid(lookuptable,  wantednlam, wantedlamArray, gridreadfromd
      
   allocate(LookupTable%tempArray(1:nTemps))
   allocate(LookupTable%lamArray(1:nLam))
-  allocate(LookupTable%kapArray(1:nTemps, 1:nLam))   
+  allocate(LookupTable%kapArray(1:nLam, 1:nTemps))   
   read(21) LookupTable%tempArray(1:nTemps)
   read(21) LookupTable%lamArray(1:nLam)
-  read(21) LookupTable%kapArray(1:nTemps, 1:nLam)
+  read(21) LookupTable%kapArray(1:nLam, 1:nTemps)
   close(21)
   gridReadFromDisc = .true.
 
-  lookupTable%kapArray = lookuptable%kapArray * 1000.d0
-  write(*,*)  "gas kappa  times 1000"
 
   if (resizeLookup) call resizeLookuptable(lookupTable, wantednLam, wantedLamArray)
 
@@ -298,13 +292,16 @@ subroutine resizeLookuptable(lookuptable, nLambda, lamArray)
   integer :: i, j, k
   real(double), allocatable :: tempKapArray(:,:)
 
-  allocate(tempKapArray(1:lookuptable%nTemps, 1:nLambda))
-
+  allocate(tempKapArray(1:lookuptable%nLam, 1:lookupTable%nTemps))
+  tempKapArray = 0.d0
   do j = 1, lookupTable%nTemps
      do i = 1, nLambda
-        call locate(lookupTable%lamArray, lookuptable%nLam, lamArray(i), k)
-        fac = (lamArray(i)-lookupTable%lamArray(k))/(lookupTable%lamArray(k+1)-lookupTable%lamArray(k))
-        tempKapArray(j,i) = lookupTable%kapArray(j,k) + fac * (lookupTable%kapArray(j,k+1)-lookupTable%kapArray(j,k))
+        if ((lamArray(i) > lookupTable%lamArray(1)).and.(lamArray(i)<lookupTable%lamArray(lookupTable%nLam))) then
+           call locate(lookupTable%lamArray, lookuptable%nLam, lamArray(i), k)
+           fac = (lamArray(i)-lookupTable%lamArray(k))/(lookupTable%lamArray(k+1)-lookupTable%lamArray(k))
+           tempKapArray(i,j) = lookupTable%kapArray(k,j) + fac * (lookupTable%kapArray(k+1,j)-lookupTable%kapArray(k,j))
+
+        endif
      enddo
   enddo
   deallocate(lookupTable%lamArray, lookupTable%kapArray)
@@ -312,8 +309,8 @@ subroutine resizeLookuptable(lookuptable, nLambda, lamArray)
   lookupTable%nlam = nLambda
   lookupTable%lamArray = lamArray
 
-  allocate(lookupTable%kapArray(1:lookupTable%nTemps,1:nLambda))
-  lookupTable%kapArray = tempKapArray
+  allocate(lookupTable%kapArray(1:nLambda,1:lookupTable%nTemps))
+  lookupTable%kapArray = max(tempKapArray,1.d-30)
   deallocate(tempKapArray)
 end subroutine resizeLookuptable
 
@@ -328,7 +325,7 @@ subroutine writeKappaGrid(lookuptable)
   write(21) LookupTable%nTemps, LookupTable%nLam
   write(21) LookupTable%tempArray(1:LookupTable%nTemps)
   write(21) LookupTable%lamArray(1:LookupTable%nLam)
-  write(21) LookupTable%kapArray(1:LookupTable%nTemps, 1:LookupTable%nLam)
+  write(21) LookupTable%kapArray(1:LookupTable%nLam, 1:LookupTable%nTemps)
   close(21)
 
 end subroutine writeKappaGrid
@@ -347,7 +344,7 @@ subroutine writeOpacityAtTemperature(thisTemp, lookupTable)
   write(thisFile,'(a,a,a,i5.5,a)') "kappa_",trim(lookuptable%molecule),"_",nint(thisTemp),".dat"
   open(20,file=thisFile,status="unknown",form="formatted")
   do i = 1, lookupTable%nLam
-     write(20,*) lookuptable%lamArray(i), lookuptable%kapArray(j,i)
+     write(20,*) lookuptable%lamArray(i), lookuptable%kapArray(i,j)
   enddo
   close(20)
 end subroutine writeOpacityAtTemperature
@@ -374,8 +371,12 @@ subroutine returnKappaArray(temperature, LookupTable, kappaAbs, KappaSca)
 
   fac = (thisTemp-LookupTable%tempArray(i))/(LookupTable%tempArray(i+1)-LookupTable%tempArray(i))
   if (PRESENT(kappaAbs)) then 
-     kappaAbs(1:LookupTable%nLam) = LookupTable%kapArray(i,1:LookupTable%nLam) + &
-          fac*(LookupTable%kapArray(i+1,1:LookupTable%nLam)-LookupTable%kapArray(i,1:LookupTable%nLam))
+     kappaAbs(1:LookupTable%nLam) = LookupTable%kapArray(1:LookupTable%nLam,i) + &
+          fac*(LookupTable%kapArray(1:LookupTable%nLam,i+1)-LookupTable%kapArray(1:LookupTable%nLam,i))
+
+!     do j = 1, lookupTable%nlam
+!        write(*,*) j, kappaAbs(j), fac,lookupTable%kapArray(j,i),lookuptable%kapArray(j,i+1)
+!     enddo
   endif
   if (PRESENT(kappaSca)) then
      kappaSca(1:LookupTable%nLam) = 1.e-30
@@ -779,61 +780,22 @@ subroutine createAllMolecularTables(nLam, lamArray, reset)
   dataDirectory = " "
 
 
-  nLookupTables = 8
+  nLookupTables = 1
 
   LookupTable(1)%molecule = "TiO"
-  LookupTable(1)%source = "/data/dsa206/Abs_coeff/abs_coeff_TiO_Plez.nc"
-  LookupTable(1)%filename = "tiolookuptable.dat"
+  LookupTable(1)%source = "48Ti-16O__Toto.R1000_0.3-50mu.ktable.NEMESIS.kta"
+  LookupTable(1)%filename = "tio_nemesis"
   LookupTable(1)%abundance = 1.e-7
   lookupTable(1)%mu = 64.
 
-  LookupTable(2)%molecule = "CH4"
-  LookupTable(2)%source = "/data/dsa206/Abs_coeff/abs_coeff_CH4_YT10to10.nc"
-  LookupTable(2)%filename = "ch4lookuptable.dat"
-  LookupTable(2)%abundance = 1.e-8
-  lookupTable(2)%mu = 16.
-
-  LookupTable(3)%molecule = "H2-H2"
-  LookupTable(3)%source = "/data/dsa206/Abs_coeff/abs_coeff_H2-H2_HITRAN.nc"
-  LookupTable(3)%filename = "h2h2lookuptable.dat"
-  LookupTable(3)%abundance = 1.
-  lookupTable(3)%mu = 2.
-
-  LookupTable(4)%molecule = "H2-He"
-  LookupTable(4)%source = "/data/dsa206/Abs_coeff/abs_coeff_H2-He_HITRAN.nc"
-  LookupTable(4)%filename = "h2helookuptable.dat"
-  LookupTable(4)%abundance = 1.
-  lookupTable(4)%mu = 2.
-
-  LookupTable(5)%molecule = "H2O"
-  LookupTable(5)%source = "/data/dsa206/Abs_coeff/abs_coeff_H2O_BT2.nc"
-  LookupTable(5)%filename = "h2olookuptable.dat"
-  LookupTable(5)%abundance = 1.e-8
-  lookupTable(5)%mu = 18.
-
-  LookupTable(6)%molecule = "NH3"
-  LookupTable(6)%source = "/data/dsa206/Abs_coeff/abs_coeff_NH3_BYTe.nc"
-  LookupTable(6)%filename = "nh3lookuptable.dat"
-  LookupTable(6)%abundance = 1.e-8
-  lookupTable(6)%mu = 17.
-
-  LookupTable(7)%molecule = "CO"
-  LookupTable(7)%source = "/data/dsa206/Abs_coeff/abs_coeff_CO_HITEMP.nc"
-  LookupTable(7)%filename = "colookuptable.dat"
-  LookupTable(7)%abundance = 1.e-5
-  lookupTable(7)%mu = 28.
-
-  LookupTable(8)%molecule = "VO"
-  LookupTable(8)%source = "/data/dsa206/Abs_coeff/abs_coeff_VO_Plez.nc"
-  LookupTable(8)%filename = "volookuptable.dat"
-  LookupTable(8)%abundance = 1.e-8
-  lookupTable(8)%mu = 67.
 
 
   call createKappaGrid(lookuptable, nLam, lamArray, doReset)
   
   do i = 1, nLookupTables
+     call writeOpacityAtTemperature(1000.d0, lookupTable(i))
      call writeOpacityAtTemperature(2000.d0, lookupTable(i))
+     call writeOpacityAtTemperature(4000.d0, lookupTable(i))
   enddo
 
 end subroutine createAllMolecularTables
@@ -969,6 +931,74 @@ subroutine waitForFile(thisFile)
 
 666 continue
 end subroutine waitForFile
+
+subroutine readNemesisFormatFile(thisFile, thisKappaTable)
+  use ISO_FORTRAN_ENV
+  type(MOLECULARKAPPAGRID) :: thisKappaTable
+  character(len=*) :: thisFile
+  integer(int32) :: iJunk
+  integer :: i, j
+  integer(int32)  nG
+  real(real32) :: fJunk
+  real(real32), allocatable :: kap(:,:,:,:), goordinate(:), gweight(:), floatArray(:)
+  
+  
+  open(20,file=thisFile,status="old", form="unformatted",access='stream') !, convert='little_endian')
+  read(20) iJunk
+  read(20) iJunk
+  thisKappaTable%nLam = iJunk
+  read(20) fJunk
+  read(20) fJunk
+  read(20) fJunk
+  read(20) ijunk
+  thisKappaTable%nPressures = ijunk
+  read(20) ijunk
+  thisKappaTable%nTemps = ijunk
+  read(20) nG
+
+  allocate(thisKappaTable%lamArray(1:thisKappaTable%nLam))
+  allocate(thisKappaTable%pressureArray(1:thisKappaTable%nPressures))
+  allocate(thisKappaTable%tempArray(1:thisKappaTable%nTemps))
+  allocate(kap(1:thisKappaTable%nLam, 1:thisKappaTable%nPressures, 1:thisKappaTable%nTemps, 1:ng))
+  allocate(thisKappaTable%kapArray(1:thisKappaTable%nLam,1:thisKappaTable%nTemps))
+  
+  read(20) iJunk
+  read(20) iJunk
+  allocate(goordinate(1:ng), gweight(1:ng))
+  read(20) goordinate(1:nG)
+  read(20) gweight(1:nG)
+  read(20) iJunk
+  read(20) iJunk
+  allocate(floatArray(1:thisKappaTable%npressures))
+  read(20) floatArray
+  thisKappaTable%pressureArray(1:thisKappaTable%npressures) = floatArray
+  deallocate(floatArray)
+  allocate(floatArray(1:thisKappaTable%nTemps))
+  read(20) floatArray
+  thisKappaTable%tempArray(1:thisKappaTable%nTemps) = floatArray
+  deallocate(floatArray)
+  allocate(floatArray(1:thisKappaTable%nLam))
+  read(20) floatArray
+  thisKappaTable%lamArray(1:thiskappaTable%nLam) = floatArray
+  deallocate(floatArray)
+  read(20) kap(1:thisKappaTable%nLam, 1:thisKappaTable%nPressures, 1:thisKappaTable%nTemps, 1:nG)
+  close(20)
+  
+  do i = 1, thisKappaTable%nLam
+     do j = 1, thisKappaTable%nTemps
+        thisKappaTable%kapArray(i,j) = kap(i,1,j,1)
+     enddo
+  enddo
+
+  thisKappaTable%lamArray = thisKappaTable%lamArray * micronsToAngs
+  
+  thisKappaTable%kapArray = thisKappaTable%kapArray * thisKappaTable%abundance / (2.d0 * mHydrogen)
+  thisKappaTable%kapArray = thisKappaTable%kapArray /1.d20 * 1.d10 ! from 10^20 cm^2 to cm^2/g and then to code
+  write(*,*) "finished reading nemesis file"
+end subroutine readNemesisFormatFile
+  
+  
+  
 
 #ifdef NETCDF
 SUBROUTINE readAbsCoeffFileAmundsen(thisFile, thisKappaTable, nLambda, lamArray)

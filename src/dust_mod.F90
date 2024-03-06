@@ -366,6 +366,50 @@ contains
        tempIm(1:nRef) = y2(1:n,1)
        close(20)
 
+    case("glassy_pyroxene")
+       call unixGetenv("TORUS_DATA", dataDirectory, i)
+       filename = trim(dataDirectory)//"/"//"glassy_pyroxene.dat"
+       if (writeoutput) write(*,'(a,a)') "Reading grain properties from: ",trim(filename)
+       open(20,file=filename,status="old",form="formatted")
+       n = 0
+93     continue
+       read(20,'(a)',end=94) textline
+       if (textLine(1:1) == "#") goto 93
+       n = n + 1
+       read(textline,*) x(n),y1(n,1), y2(n,1)
+       goto 93
+94     continue
+       nRef = n
+       allocate(lamRef(1:nRef))
+       allocate(tempIm(1:nRef))
+       allocate(tempReal(1:nRef))
+       lamRef(1:nRef) = x(1:n)
+       tempReal(1:nRef) = y1(1:n,1)
+       tempIm(1:nRef) = y2(1:n,1)
+       close(20)
+
+    case("olivine_glass")
+       call unixGetenv("TORUS_DATA", dataDirectory, i)
+       filename = trim(dataDirectory)//"/"//"olivine_glass.dat"
+       if (writeoutput) write(*,'(a,a)') "Reading grain properties from: ",trim(filename)
+       open(20,file=filename,status="old",form="formatted")
+       n = 0
+95     continue
+       read(20,'(a)',end=96) textline
+       if (textLine(1:1) == "#") goto 95
+       n = n + 1
+       read(textline,*) x(n),y1(n,1), y2(n,1)
+       goto 95
+96     continue
+       nRef = n
+       allocate(lamRef(1:nRef))
+       allocate(tempIm(1:nRef))
+       allocate(tempReal(1:nRef))
+       lamRef(1:nRef) = x(1:n)
+       tempReal(1:nRef) = y1(1:n,1)
+       tempIm(1:nRef) = y2(1:n,1)
+       close(20)
+
 
     case("pinteISM")
        call unixGetenv("TORUS_DATA", dataDirectory, i)

@@ -735,7 +735,10 @@ module image_mod
                 array = real(image%pixel%u)
              end where
           case("pol")
-             array = real(sqrt(image%pixel%q**2 + image%pixel%u**2))
+             where(image%pixel%i > 0.d0)
+                array = 100.*real(sqrt(image%pixel%q**2 + image%pixel%u**2)/image%pixel%i)
+             end where
+             
 
           case("polr2")
              array = real(sqrt(image%pixel%q**2 + image%pixel%u**2))
@@ -799,39 +802,40 @@ module image_mod
        samplings = 0
 
 ! Convert pixel units if a wavelength has been provided
-
-       if (present(lambdaImage)) then 
-          write(message,"(a,f14.2,a)") "Converting flux units using lambda= ", &
-               lambdaImage, " Angstrom"
-          call writeInfo(message,FORINFO)
-          if(present(pointTest)) then
-             call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, &
-                  samplings, pointTest=.true.)
-          else if(present(cylinderTest)) then
-             samplings = image%nSamples
-             call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, &
+       if ((type.ne."pol").and.(type.ne."pa")) then
+          if (present(lambdaImage)) then 
+             write(message,"(a,f14.2,a)") "Converting flux units using lambda= ", &
+                  lambdaImage, " Angstrom"
+             call writeInfo(message,FORINFO)
+             if(present(pointTest)) then
+                call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, &
+                     samplings, pointTest=.true.)
+             else if(present(cylinderTest)) then
+                samplings = image%nSamples
+                call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, &
                   samplings, cylinderTest=.true.)
+             else
+                select case (trim(fluxUnits))
+                case("Jy/beam")
+                   call ConvertArrayToJanskiesPerBeam(array, lambdaImage, dx, objectDistance, beamArea)
+                case("MJy/str")
+                   call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, samplings)
+                case("mJy/arcsec2")
+                   call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, samplings)
+                   array = array * 2.340443d-5 * 1000.d0
+                case("Jy/pix")
+                   call ConvertArrayToJanskysPerPix(array, lambdaImage, objectDistance)
+                case("mag/arcsec2")
+                   call ConvertArrayToMagPerSqArcsec(array, lambdaImage, dx, objectDistance)
+                case("flux/arcsec2")
+                   call ConvertArrayToFluxPerSqArcsec(array, lambdaImage, dx, objectDistance)
+                case DEFAULT
+                   call writeFatal("Flux unit not recognised: "//trim(fluxUnits))
+                end select
+             end if
           else
-             select case (trim(fluxUnits))
-             case("Jy/beam")
-                call ConvertArrayToJanskiesPerBeam(array, lambdaImage, dx, objectDistance, beamArea)
-             case("MJy/str")
-                call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, samplings)
-             case("mJy/arcsec2")
-                call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, samplings)
-                array = array * 2.340443d-5 * 1000.d0
-             case("Jy/pix")
-                call ConvertArrayToJanskysPerPix(array, lambdaImage, objectDistance)
-             case("mag/arcsec2")
-                call ConvertArrayToMagPerSqArcsec(array, lambdaImage, dx, objectDistance)
-             case("flux/arcsec2")
-                call ConvertArrayToFluxPerSqArcsec(array, lambdaImage, dx, objectDistance)
-             case DEFAULT
-                call writeFatal("Flux unit not recognised: "//trim(fluxUnits))
-             end select
-          end if
-       else
-          call writeInfo("No wavelength provided, not converting axis units")
+             call writeInfo("No wavelength provided, not converting axis units")
+          endif
        endif
 
        ! Add keywords for bitpix=16 and bitpix=8 
@@ -844,23 +848,23 @@ module image_mod
        !
        !  Write another optional keyword to the header.
        !
-!       call ftpkyj(unit,'EXPOSURE',1500,'Total Exposure Time',status)
+       !       call ftpkyj(unit,'EXPOSURE',1500,'Total Exposure Time',status)
 
        select case (fluxUnits)
-          case("MJy/str")
-             call ftpkys(unit,'BUNIT', "MJy/sr", "units of image values", status)
-          case("mJy/arcsec2")
-             call ftpkys(unit,'BUNIT', "mJY/arcsec2", "units of image values", status)
-          case("Jy/pix")
-             call ftpkys(unit,'BUNIT', "Jy/Pix", "units of image values", status)
-          case("Jy/beam")
-             call ftpkys(unit,'BUNIT', "Jy/beam", "units of image values", status)
-          case("mag/arcsec2")
-             call ftpkys(unit,'BUNIT', "MAG/ARCSEC2", "units of image values", status)
-          case("flux/arcsec2")
-             call ftpkys(unit,'BUNIT', "FLUX/ARCSEC2", "units of image values", status)
-          case DEFAULT
-             call writeFatal("Flux unit not recognised: "//trim(fluxUnits))
+       case("MJy/str")
+          call ftpkys(unit,'BUNIT', "MJy/sr", "units of image values", status)
+       case("mJy/arcsec2")
+          call ftpkys(unit,'BUNIT', "mJY/arcsec2", "units of image values", status)
+       case("Jy/pix")
+          call ftpkys(unit,'BUNIT', "Jy/Pix", "units of image values", status)
+       case("Jy/beam")
+          call ftpkys(unit,'BUNIT', "Jy/beam", "units of image values", status)
+       case("mag/arcsec2")
+          call ftpkys(unit,'BUNIT', "MAG/ARCSEC2", "units of image values", status)
+       case("flux/arcsec2")
+          call ftpkys(unit,'BUNIT', "FLUX/ARCSEC2", "units of image values", status)
+       case DEFAULT
+          call writeFatal("Flux unit not recognised: "//trim(fluxUnits))
        end select
 
 
@@ -912,7 +916,7 @@ module image_mod
        end select
 
        if (axisUnits == "arcsec") then 
-!       if (.false.) then
+          !       if (.false.) then
           ! write x-axis keywords
           call ftpkys(unit,'CTYPE1',"RA---SIN","x axis", status)
           call ftpkyd(unit,'CRPIX1',dble(image%nx/2.d0),-3,'reference pixel',status)
@@ -927,10 +931,10 @@ module image_mod
           call ftpkyd(unit,'CROTA2',0.d0,10,' ',status)
           call ftpkyd(unit,'CRVAL2',refValY,-5,'coordinate value at reference point',status)
 
-!          call ftpkyd(unit,'CD1_1',dx,10,' ',status)
-!          call ftpkyd(unit,'CD1_2',0.d0,10,' ',status)
-!          call ftpkyd(unit,'CD2_1',0.d0,10,' ',status)
-!          call ftpkyd(unit,'CD2_2',dy,10,' ',status)
+          !          call ftpkyd(unit,'CD1_1',dx,10,' ',status)
+          !          call ftpkyd(unit,'CD1_2',0.d0,10,' ',status)
+          !          call ftpkyd(unit,'CD2_1',0.d0,10,' ',status)
+          !          call ftpkyd(unit,'CD2_2',dy,10,' ',status)
 
        else
           ! write x-axis keywords
@@ -972,8 +976,8 @@ module image_mod
           if (n/=0)write(22,*) 0.5d0*(rMin+rMax)*1.d10/objectDistance*radianstoarcsec,tot/dble(n)
        enddo
        close(22)
-                
-          
+
+
        !
        !  Check for any error, and if so print out error messages
        !
@@ -991,14 +995,14 @@ module image_mod
        use utils_mod, only : returnFlux
        use image_utils_mod
 
-! Arguments
+       ! Arguments
        type(IMAGETYPE),intent(in) :: image
        character (len=*), intent(in) :: filename, type, fluxUnits, axisUnits
        character(len=80) :: rFile
        real(double) :: objectDistance
        real, intent(in), optional :: lambdaImage
        logical, optional :: pointTest, cylinderTest
-! Local variables
+       ! Local variables
        integer :: status,unit,blocksize,bitpix,naxis,naxes(2)
        integer :: group,fpixel,nelements
        real, allocatable :: array(:,:)
@@ -1067,102 +1071,104 @@ module image_mod
        scale = 1.
        array = 0.
        select case(type)
-          case("intensity")
-             array = real(image%pixel%i * scale)
-!             print *, "image%pixel%i", image%pixel%i
-          case("stokesq")
-             where (image%pixel%i /= 0.d0) 
-                array = real(image%pixel%q/image%pixel%i)
-             end where
-          case("stokesu")
-             where (image%pixel%i /= 0.d0) 
-                array = real(image%pixel%u/image%pixel%i)
-             end where
-          case("pol")
-             array = real(sqrt(image%pixel%q**2 + image%pixel%u**2))
+       case("intensity")
+          array = real(image%pixel%i * scale)
+          !             print *, "image%pixel%i", image%pixel%i
+       case("stokesq")
+          where (image%pixel%i /= 0.d0) 
+             array = real(image%pixel%q/image%pixel%i)
+          end where
+       case("stokesu")
+          where (image%pixel%i /= 0.d0) 
+             array = real(image%pixel%u/image%pixel%i)
+          end where
+       case("pol")
+          array = real(sqrt(image%pixel%q**2 + image%pixel%u**2))
 
-          case("polr2")
-             array = real(sqrt(image%pixel%q**2 + image%pixel%u**2))
-             if (abs(lambdaImage - 1.22d4)/1.22d4 < 1.d-4) then
-                starFlux = returnFlux(7.3d0, "J")
-                starFlux = 10.d0**(-0.4d0 * 7.3d0) 
-             else if (abs(lambdaImage - 1.63d4)/1.63d4 < 1.d-4) then
-                starFlux = returnFlux(6.9d0, "H")
-                starFlux = 10.d0**(-0.4d0 * 6.9d0)
-             else
-                starFlux = 1.d0
-             endif
-             do i = 1, image%nx
-                do j = 1, image%ny
-                   xt = (( image%xAxisCentre(i) * 1.d10)/objectDistance)*radiansToArcsec
-                   yt = (( image%yAxisCentre(j) * 1.d10)/objectDistance)*radiansToArcsec
-                   array(i,j) = array(i,j) * real(fourPi * (xt**2 + yt**2)) ! /starFlux )
-                enddo
+       case("polr2")
+          array = real(sqrt(image%pixel%q**2 + image%pixel%u**2))
+          if (abs(lambdaImage - 1.22d4)/1.22d4 < 1.d-4) then
+             starFlux = returnFlux(7.3d0, "J")
+             starFlux = 10.d0**(-0.4d0 * 7.3d0) 
+          else if (abs(lambdaImage - 1.63d4)/1.63d4 < 1.d-4) then
+             starFlux = returnFlux(6.9d0, "H")
+             starFlux = 10.d0**(-0.4d0 * 6.9d0)
+          else
+             starFlux = 1.d0
+          endif
+          do i = 1, image%nx
+             do j = 1, image%ny
+                xt = (( image%xAxisCentre(i) * 1.d10)/objectDistance)*radiansToArcsec
+                yt = (( image%yAxisCentre(j) * 1.d10)/objectDistance)*radiansToArcsec
+                array(i,j) = array(i,j) * real(fourPi * (xt**2 + yt**2)) ! /starFlux )
              enddo
+          enddo
 
-          case("qphi")
-             do i = 1, image%nx
-                do j = 1, image%ny
-                   phi = atan2(image%xAxisCentre(i), image%yAxisCentre(j)) + piby2
-                   array(i,j) = real(-cos(2.d0*phi) * image%pixel(i,j)%q - sin(2.d0*phi)*image%pixel(i,j)%u)
-                enddo
+       case("qphi")
+          do i = 1, image%nx
+             do j = 1, image%ny
+                phi = atan2(image%xAxisCentre(i), image%yAxisCentre(j)) + piby2
+                array(i,j) = real(-cos(2.d0*phi) * image%pixel(i,j)%q - sin(2.d0*phi)*image%pixel(i,j)%u)
              enddo
+          enddo
 
-          case("uphi")
-             do i = 1, image%nx
-                do j = 1, image%ny
-                   phi = atan2(image%xAxisCentre(i), image%yAxisCentre(j)) + piby2
-                   array(i,j) = real(sin(2.d0*phi) * image%pixel(i,j)%q - cos(2.d0*phi)*image%pixel(i,j)%u)
-                enddo
+       case("uphi")
+          do i = 1, image%nx
+             do j = 1, image%ny
+                phi = atan2(image%xAxisCentre(i), image%yAxisCentre(j)) + piby2
+                array(i,j) = real(sin(2.d0*phi) * image%pixel(i,j)%q - cos(2.d0*phi)*image%pixel(i,j)%u)
              enddo
+          enddo
 
-          case("pa")
-             array = real(-0.5*atan2(image%pixel%u,image%pixel%q)*radtodeg)
-             where (array < 0.e0) 
-                array = array + 180.e0
-             end where
-             where (array > 180.e0) 
-                array = array - 180.e0
-             end where
-          case DEFAULT
-             write(*,*) "Unknown type in writefitsimage ",type
+       case("pa")
+          array = real(-0.5*atan2(image%pixel%u,image%pixel%q)*radtodeg)
+          where (array < 0.e0) 
+             array = array + 180.e0
+          end where
+          where (array > 180.e0) 
+             array = array - 180.e0
+          end where
+       case DEFAULT
+          write(*,*) "Unknown type in writefitsimage ",type
        end select
 
 
 
        samplings = 0
 
-! Convert pixel units if a wavelength has been provided
+       ! Convert pixel units if a wavelength has been provided
 
-       if (present(lambdaImage)) then 
-          write(message,"(a,f14.2,a)") "Converting flux units using lambda= ", &
-               lambdaImage, " Angstrom"
-          call writeInfo(message,FORINFO)
-          if(present(pointTest)) then
-             call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, &
-                  samplings, pointTest=.true.)
-          else if(present(cylinderTest)) then
-             samplings = image%nSamples
-             call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, &
-                  samplings, cylinderTest=.true.)
+       if ((type.ne."pol").and.(type.ne."pa")) then
+          if (present(lambdaImage)) then 
+             write(message,"(a,f14.2,a)") "Converting flux units using lambda= ", &
+                  lambdaImage, " Angstrom"
+             call writeInfo(message,FORINFO)
+             if(present(pointTest)) then
+                call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, &
+                     samplings, pointTest=.true.)
+             else if(present(cylinderTest)) then
+                samplings = image%nSamples
+                call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, &
+                     samplings, cylinderTest=.true.)
+             else
+                select case (trim(fluxUnits))
+                case("Jy/beam")
+                   call ConvertArrayToJanskiesPerBeam(array, lambdaImage, dx, objectDistance, beamArea)
+                case("MJy/str")
+                   call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, samplings)
+                case("Jy/pix")
+                   call ConvertArrayToJanskysPerPix(array, lambdaImage, objectDistance)
+                case("mag/arcsec2")
+                   call ConvertArrayToMagPerSqArcsec(array, lambdaImage, dx, objectDistance)
+                case("flux/arcsec2")
+                   call ConvertArrayToFluxPerSqArcsec(array, lambdaImage, dx, objectDistance)
+                case DEFAULT
+                   call writeFatal("Flux unit not recognised: "//trim(fluxUnits))
+                end select
+             end if
           else
-             select case (trim(fluxUnits))
-             case("Jy/beam")
-                call ConvertArrayToJanskiesPerBeam(array, lambdaImage, dx, objectDistance, beamArea)
-             case("MJy/str")
-                call ConvertArrayToMJanskiesPerStr(array, lambdaImage, dx, objectDistance, samplings)
-             case("Jy/pix")
-                call ConvertArrayToJanskysPerPix(array, lambdaImage, objectDistance)
-             case("mag/arcsec2")
-                call ConvertArrayToMagPerSqArcsec(array, lambdaImage, dx, objectDistance)
-             case("flux/arcsec2")
-                call ConvertArrayToFluxPerSqArcsec(array, lambdaImage, dx, objectDistance)
-             case DEFAULT
-                call writeFatal("Flux unit not recognised: "//trim(fluxUnits))
-             end select
-          end if
-       else
-          call writeInfo("No wavelength provided, not converting axis units")
+             call writeInfo("No wavelength provided, not converting axis units")
+          endif
        endif
 
        ! Add keywords for bitpix=16 and bitpix=8 
