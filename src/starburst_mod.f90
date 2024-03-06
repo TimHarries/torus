@@ -520,13 +520,32 @@ contains
   end subroutine setClusterSpectra
 
   subroutine setSourceSpectra(sources, nSource)
+    use inputs_mod, only : sourceSpectrumType
     type(SOURCETYPE) :: sources(:) 
     integer :: i, nSource
 
-    do i = 1, nSource
-      ! update spectrum. If tlusty spectrum is not found for a source, kurucz spectrum is used instead
-      call fillSpectrumTlusty(sources(i)%spectrum, sources(i)%teff, sources(i)%mass, sources(i)%radius*1.d10)
-    enddo
+   select case (trim(sourceSpectrumType))
+      case("tlusty")
+         do i = 1, nSource
+            ! update spectrum. If tlusty spectrum is not found for a source, kurucz spectrum is used instead
+            ! If kurucz spectrum is not found, blackbody spectrum is used instead
+            call fillSpectrumTlusty(sources(i)%spectrum, sources(i)%teff, sources(i)%mass, sources(i)%radius*1.d10)
+         enddo
+
+      case("kurucz")
+         do i = 1, nSource
+            call fillSpectrumKurucz(sources(i)%spectrum, sources(i)%teff, sources(i)%mass, sources(i)%radius*1.d10)
+         enddo
+
+      case("blackbody")
+         do i = 1, nSource
+            call fillSpectrumBB(sources(i)%spectrum, sources(i)%teff, 10.d0, 1.d7, 200)
+         enddo
+
+      case DEFAULT
+          write(*,*) "source spectrum type not recognised ", sourceSpectrumType
+          stop
+   end select
   end subroutine setSourceSpectra
 
   subroutine freeSubsourceSpectra(clusters, nClusters)
@@ -1039,13 +1058,17 @@ contains
          case("singlestartest")
             source%position = burstPosition 
             source%velocity = VECTOR(0.d0, 0.d0, 0.d0)
+            write(*,*) "star mass (msol) ", source%mass/msol
+            write(*,*) "Lum (Lsol)", source%luminosity/lsol
+            write(*,*) "Teff (K) ", source%teff
+            write(*,*) "radius (1e10 cm) ", source%radius
          case DEFAULT
       end select
 
     end subroutine setSourceProperties
 
     subroutine updateSourceProperties(source)
-      use inputs_mod, only : clusterSinks, stellarMetallicity
+      use inputs_mod, only : clusterSinks, stellarMetallicity, sourceSpectrumType
       type(SOURCETYPE) :: source
       type(TRACKTABLE),save :: thisTable, nextTable
       logical,save :: firstTime = .true.
@@ -1194,10 +1217,20 @@ contains
       endif
 
 
-!     ! update spectrum. If tlusty spectrum is not found for a source, kurucz spectrum is used instead
-!     call fillSpectrumTlusty(source%spectrum, source%teff, source%mass, source%radius*1.d10)
       
       if (.not. clusterSinks) then
+         select case (trim(sourceSpectrumType))
+            case("tlusty")
+            ! update spectrum. If tlusty spectrum is not found for a source, kurucz spectrum is used instead
+               call fillSpectrumTlusty(source%spectrum, source%teff, source%mass, source%radius*1.d10)
+            case("kurucz")
+               call fillSpectrumKurucz(source%spectrum, source%teff, source%mass, source%radius*1.d10)
+            case("blackbody")
+               call fillSpectrumBB(source%spectrum, source%teff, 10.d0, 1.d7, 200)
+            case DEFAULT
+               write(*,*) "source spectrum type not recognised ", sourceSpectrumType
+               stop
+         end select
          call emptySurface(source%surface)
          call buildSphereNBody(source%position, source%accretionRadius/1.d10, source%surface, 20)
       endif
@@ -1492,7 +1525,7 @@ contains
 
 
      subroutine removeSource(source, nSource, n)
-       use inputs_mod, only : smallestCellSize
+       use inputs_mod, only : smallestCellSize, sourceSpectrumType
        type(SOURCETYPE) :: source(:)
        integer :: nSource, n, i
 
@@ -1513,7 +1546,18 @@ contains
           call emptySurface(source(i)%surface)
           call buildSphereNBody(source(i)%position, 2.5d0*smallestCellSize, source(i)%surface, 20)
 !          call fillSpectrumkurucz(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)
-          call fillSpectrumTlusty(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)
+!          call fillSpectrumTlusty(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)
+         select case (trim(sourceSpectrumType))
+            case("tlusty")
+               call fillSpectrumTlusty(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)
+            case("kurucz")
+               call fillSpectrumKurucz(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)
+            case("blackbody")
+               call fillSpectrumBB(source(i)%spectrum, source(i)%teff, 10.d0, 1.d7, 200)
+            case DEFAULT
+               write(*,*) "source spectrum type not recognised ", sourceSpectrumType
+               stop
+         end select
        enddo
      end subroutine removeSource
 
@@ -2004,6 +2048,63 @@ contains
         close(68)
      endif
   end subroutine testClusterSPlit
+
+!  subroutine testMassNly
+!     use inputs_mod, only : sourceSpectrumType
+!     real(double) :: thissourceflux, mstart, mend, dm, thismass
+!     character(len=30) :: fn
+!     integer :: i,k
+!
+!     if (associated(globalSourceArray)) deallocate(globalSourceArray)
+!
+!     globalnsource = 100
+!     mstart = 8.d0
+!!     mend = 120.d0
+!!     dm = (mend - mstart)/dble(globalnSource)
+!     dm = 1.0
+!     allocate(globalsourcearray(1:globalnsource))
+!     do i = 1, globalnSource
+!        globalSourceArray(i)%mass = (mstart + dble(i-1)*dm)*msol ! g
+!        globalSourceArray(i)%initialMass = globalSourceArray(i)%mass/msol ! msol
+!        globalSourceArray(i)%position = VECTOR(0.d0, 0.d0, 0.d0)
+!        globalSourceArray(i)%age = 0.d0
+!     enddo
+!     globalSourceArray(1:globalnSource)%stellar = .true.
+!     globalSourceArray(1:globalnSource)%viscosity = .false.
+!     globalSourceArray(1:globalnSource)%diffuse = .false.
+!     globalSourceArray(1:globalnSource)%outsideGrid = .false.
+!     globalSourceArray(1:globalnSource)%prob = 0.d0 ! 1.d0/dble(nsource)
+!
+!     do i = 1, globalnSource
+!        call updateSourceProperties(globalsourcearray(i))
+!     enddo
+!     call setSourceSpectra(globalSourceArray, globalnSource) 
+!
+!     if (writeoutput) then
+!        open(101,file='mass_nly.dat',status="replace",form="formatted")
+!        write(101,'(a9,a13,a9)') "# mass","nly", "teff"
+!        do i = 1, globalnsource
+!           thisSourceFlux = ionizingFlux(globalsourcearray(i))
+!           write(101,'(f9.2,es13.5,f9.2)') globalSourceArray(i)%mass/msol, thisSourceFlux, globalSourceArray(i)%teff
+!
+!           thismass = globalSourceArray(i)%mass/msol
+!           if (thismass < 43.5 .and. thismass > 42.5) then
+!              write(fn, '(a,i2,a,a,a)') "spectrum_m",nint(thismass),"_", trim(sourceSpectrumType), ".dat"
+!              open(102,file=trim(fn),status="replace",form="formatted")
+!              write(102,*) "#", thismass, thisSourceFlux, globalSourceArray(i)%luminosity/lsol, globalSourceArray(i)%teff
+!              write(102,*) "# lambda, flux"
+!              do k = 1, globalSourceArray(i)%spectrum%nlambda
+!                 write(102,*) (globalSourceArray(i)%spectrum%lambda(k)),&
+!                  globalSourceArray(i)%spectrum%flux(k)
+!              enddo
+!              close(102)
+!           endif
+!        enddo
+!        close(101)
+!     endif
+!
+!
+!  end subroutine testMassNly
 
 
 

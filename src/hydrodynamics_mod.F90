@@ -12808,7 +12808,7 @@ real(double) :: rho
                    endif
 
                 case DEFAULT
-                   write(*,*) "Unrecognised boundary condition in impose boundary: ", thisOctal%boundaryCondition(subcell)
+                   write(*,*) "Unrecognised boundary condition in impose boundary level: ", thisOctal%boundaryCondition(subcell)
              end select
              
              if(fixedRhoBound) then

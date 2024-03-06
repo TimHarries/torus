@@ -120,7 +120,7 @@ contains
        else
 
           thisOctal%etaCont(subcell) = 0.
-          thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+          thisOctal%nh(subcell) = hMassFrac * thisOctal%rho(subcell) / mHydrogen
           thisOctal%ne(subcell) = thisOctal%nh(subcell)
           if (.not.associated(thisOctal%nhi)) allocate(thisOctal%nhi(1:thisOctal%maxChildren))
           thisOctal%nhi(subcell) = 1.e-8
@@ -155,7 +155,7 @@ contains
           thisOctal%ionFrac(subcell,:) = 1.e-10
           thisOctal%ionFrac(subcell,1) = 1.
           thisOctal%ne(subcell) = 1.d-10
-          thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+          thisOctal%nh(subcell) = hMassFrac * thisOctal%rho(subcell) / mHydrogen
           thisOctal%temperature(subcell) = max(tminglobal, thisOctal%temperature(subcell))
           thisOctal%tdust(subcell) = max(dble(tminglobal), thisOctal%tdust(subcell))
           if (SIZE(thisOctal%ionFrac,2)>2) then
@@ -182,7 +182,7 @@ contains
              end if
           end do
        else
-          thisOctal%nh(subcell) = thisOctal%rho(subcell)/ mHydrogen
+          thisOctal%nh(subcell) = hMassFrac * thisOctal%rho(subcell)/ mHydrogen
        endif
     enddo
   end subroutine resetNh
@@ -1631,12 +1631,12 @@ function recombToGround(temperature) result (alpha1)
 end function recombToGround
 
 ! eq 3.25, Hollenbach & McKee 1979, ApJS, 41, 555
-function gasGrainCoolingRate(rhoGas, ionizationFraction, tGas, tDust) result (Gamma)
+function gasGrainCoolingRate(rhoGas, ionizationFraction, tGas, tDust, mu) result (Gamma)
   use inputs_mod, only : grainType, grainFrac, amin, amax, a0, qdist, pdist
   use dust_mod, only : getMedianSize
   real(double) :: rhoGas, ionizationFraction, tGas, tDust, gamma
   real(double) :: vProton, nGrain, sigmaGrain, f, rGrain, dustToGas, grainVolume, grainDensity
-  real(double) :: nHydrogen
+  real(double) :: nGas, mu
   
   rGrain = micronTocm * getMedianSize(aMin(1), aMax(1), a0(1), qDist(1), pDist(1)) !todo expand for ngrain > 1
   sigmaGrain = pi * rGrain**2
@@ -1675,8 +1675,8 @@ function gasGrainCoolingRate(rhoGas, ionizationFraction, tGas, tDust) result (Ga
 
   vproton = sqrt(2.d0*(1.5d0*kerg*tGas)/mHydrogen)
   nGrain = dustToGas * rhoGas / (grainVolume * grainDensity)
-  nHydrogen = rhoGas/mHydrogen
-  gamma = nHydrogen * nGrain * sigmaGrain * vProton * f * 2.d0 * kerg * (tGas - tDust)
+  nGas = rhoGas/(mu*mHydrogen)
+  gamma = nGas * nGrain * sigmaGrain * vProton * f * 2.d0 * kerg * (tGas - tDust)
 end function gasGrainCoolingRate
 
 

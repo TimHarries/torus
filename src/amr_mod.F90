@@ -7470,6 +7470,7 @@ endif
   subroutine calcLexington(thisOctal,subcell,grid)
 
     use inputs_mod, only : hydrodynamics
+    use ion_mod, only : hMassFrac
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
@@ -7486,7 +7487,7 @@ endif
     thisOctal%rho(subcell) = 1.d-30
     thisOctal%temperature(subcell) = 10000.
     thisOctal%etaCont(subcell) = 0.
-    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%nh(subcell) = hMassFrac * thisOctal%rho(subcell) / mHydrogen
     thisOctal%ne(subcell) = thisOctal%nh(subcell)
     thisOctal%nhi(subcell) = 1.e-8
     thisOctal%nhii(subcell) = thisOctal%ne(subcell)
@@ -7494,10 +7495,10 @@ endif
 
     if (r > grid%rinner) then
        thisOctal%inFlow(subcell) = .true.
-       thisOctal%rho(subcell) = 100.*mHydrogen
 
+       thisOctal%nh(subcell) = 100.
+       thisOctal%rho(subcell) = thisOctal%nh(subcell) * mHydrogen / hMassFrac
 
-       thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
        thisOctal%ne(subcell) = thisOctal%nh(subcell)
        thisOctal%nhi(subcell) = 1.e-5
        thisOctal%nhii(subcell) = thisOctal%ne(subcell)

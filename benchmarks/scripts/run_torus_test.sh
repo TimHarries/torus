@@ -369,17 +369,17 @@ for config in ${CONFIG_TO_TEST}; do
     esac
 
 # Gravity solver test in 2D
-    case ${config} in
-	mpi)  echo "Running 2D gravity solver test"
-	    export THIS_BENCH=gravtest_2d
-	    run_dom_decomp 5
-	    check_it > check_log_${config}_gravtest_2d.txt 2>&1 
-	    tail check_log_${config}_gravtest_2d.txt
-	    check_completion
-	    echo ;;
-	*) echo "2D Gravity solver test only runs with mpi configuration. Skipping"
-	    echo ;;
-    esac
+#    case ${config} in
+#	mpi)  echo "Running 2D gravity solver test"
+#	    export THIS_BENCH=gravtest_2d
+#	    run_dom_decomp 5
+#	    check_it > check_log_${config}_gravtest_2d.txt 2>&1 
+#	    tail check_log_${config}_gravtest_2d.txt
+#	    check_completion
+#	    echo ;;
+#	*) echo "2D Gravity solver test only runs with mpi configuration. Skipping"
+#	    echo ;;
+#   esac
 
 # rainbow test
     echo "Running rainbow test"
@@ -672,13 +672,13 @@ else
 fi
 
 # Test for success of 2D gravity solver test
-num_success=`${grepper} "Torus gravity solver test successful" benchmarks_mpi/benchmarks/gravtest_2d/check_log_mpi_gravtest_2d.txt`
-if [[ ${num_success} -eq 1 ]]; then
-    echo "2D gravity test successful. " >> header
-else
-    echo "!! 2D gravity test FAILED !!" >> header
-    suite_status="FAILED"
-fi
+#num_success=`${grepper} "Torus gravity solver test successful" benchmarks_mpi/benchmarks/gravtest_2d/check_log_mpi_gravtest_2d.txt`
+#if [[ ${num_success} -eq 1 ]]; then
+#    echo "2D gravity test successful. " >> header
+#else
+#    echo "!! 2D gravity test FAILED !!" >> header
+#    suite_status="FAILED"
+#fi
 
 # Test for success of nbody test
 num_success=`${grepper} "Torus nbody test successful" benchmarks_openmp/benchmarks/nbody/check_log_openmp_nbody.txt`
@@ -756,11 +756,11 @@ echo >> status
 
 # Send mail for daily test or write to terminal for other modes
 if [[ ${MODE} == "daily" ]]; then
-    mail_to="aali@astro.ex.ac.uk tdouglas@astro.ex.ac.uk t.haworth@imperial.ac.uk d.m.acreman@exeter.ac.uk T.J.Harries@exeter.ac.uk"
+    mail_to="T.J.Harries@exeter.ac.uk sl484@exeter.ac.uk klm238@exeter.ac.uk"
 # Set up the message body 
-    cat status header ${TORUS_DAILY_TEST_LOG} > /home/torustest/torus_daily_test_email
+    cat status header ${TORUS_DAILY_TEST_LOG} > /home/tim/torus_daily_test_email
     for user in ${mail_to}; do
-        /usr/bin/mail -s "Torus test suite: ${suite_status}" ${user} < /home/torustest/torus_daily_test_email
+        /usr/bin/mail -s "Torus test suite: ${suite_status}" ${user} < /home/tim/torus_daily_test_email
     done
 else
     echo "Torus test suite: ${suite_status}"

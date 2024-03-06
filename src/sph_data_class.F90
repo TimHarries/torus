@@ -575,7 +575,7 @@ contains
 
     read(unit(ix),*) uDist
     uDist =  toTorusUnits(unitName(ix)) * uDist
-    
+    write(*,*) "!!!!udist ",udist
 ! Check how the velocity columns are labelled, there are two possibilities so handle both
     if ( wordIsPresent("v\dx",word,nWord) ) then
        ivx = indexWord("v\dx",word,nWord)
@@ -2757,7 +2757,7 @@ contains
     integer, intent(in) :: i
     real(double), intent(out) :: x, y, z
     
-    X = sphdata%xn(i) 
+    X = sphdata%xn(i)
     y = sphdata%yn(i)
     z = sphdata%zn(i)
     
@@ -3469,7 +3469,7 @@ contains
     umass = get_umass()
     codeLengthtoTORUS =  udist
     codeVelocitytoTORUS = sphdata%codeVelocitytoTORUS
-    codeDensitytoTORUS = 1.d0 !umass / ((udist) ** 3)
+    codeDensitytoTORUS = umass / ((udist*1.d10) ** 3)
     write(*,*) "code length to torus ",codeLengthToTorus
     write(*,*) "code vel to torus ",codeVelocityToTorus
     write(*,*) "code density to torus ",codeDensityToTorus
@@ -3497,7 +3497,8 @@ contains
     Positionarray(1,:) = sphdata%xn(ind(:)) * codeLengthtoTORUS ! fill with x's in sorted order
     PositionArray(2,:) = sphdata%yn(ind(:)) * codeLengthtoTORUS ! y's go with their x's
     PositionArray(3,:) = sphdata%zn(ind(:)) * codeLengthtoTORUS ! z's go with their x's
-          
+
+    
     ! Decide if we need to set velocities for this configuration
     if ( associated(sphData%vxn) ) then 
           
