@@ -77,8 +77,11 @@ contains
     case("melvin")
        out = melvinDensity(r_vec, grid)
 
-    case("shakara","aksco","circumbin")
+    case("shakara","aksco","circumbin","bec")
        out = shakaraSunyaevDisc(r_vec, grid)
+       if (trim(grid%geometry)=="bec") then
+          out = max(out, becBlob(r_vec))
+       endif
 
     case("HD169142")
        out = HD169142Disc(r_vec)
@@ -954,6 +957,18 @@ contains
 !    endif
   end function benchmarkDensity
 
+  function becBlob(point) result (rhoOut)
+    TYPE(VECTOR), INTENT(IN) :: point
+    type(VECTOR) :: blobPos
+    real(double) :: blobRadius, rhoOut, r
+
+    rhoOut = 1.d-30
+    blobPos = VECTOR(0.5*autocm/1.d10, 1.d0, 0.1*autocm/1.d10)
+    blobRadius = 0.1 * autocm / 1.d10
+    r = modulus(blobPos - point)
+    if (r < blobRadius) rhoOut = 1d-10
+  end function becBlob
+  
   function shakaraSunyaevDisc(point, grid) result (rhoOut)
     use inputs_mod, only: massRatio, binarySep, rInner, rOuter, betaDisc, height, &
          alphaDisc, rho0, smoothInnerEdge, streamFac, rGapInner, rGapOuter, rhoGap, &

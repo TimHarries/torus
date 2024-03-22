@@ -1145,7 +1145,7 @@ CONTAINS
     CASE ("ggtau")
        CALL ggtauFill(thisOctal, subcell)
 
-    CASE ("shakara","aksco","circumbin")
+    CASE ("shakara","aksco","circumbin", "bec")
        CALL shakaraDisk(thisOctal, subcell ,grid)
        
     CASE ("spiraldisc")
@@ -3705,11 +3705,12 @@ CONTAINS
     real(double) :: vgradx, vgrady, vgradz, vgrad
     INTEGER      :: nparticle, limit
     real(double) :: dummyDouble
-    type(VECTOR) :: minV, maxV
+    type(VECTOR) :: minV, maxV, blobPos, thisPos, rHat
+    real(double) :: blobRadius
     real(double) :: T, vturb,h
 #endif
     real(double) :: chi, zeta0dash, psi, eta, zeta
-    real(double) :: dx, cornerDist(8), d, muval(8), r1, r2, v, enhancedheight, cfac
+    real(double) :: dx, cornerDist(8), d, muval(8), r1, r2, v, enhancedheight, cfac,thisCellSize
 
     splitInAzimuth = .false.
     split = .false.
@@ -5419,7 +5420,7 @@ CONTAINS
 
 
           
-       case("shakara","aksco","HD169142","MWC275")
+       case("shakara","aksco","HD169142","MWC275","bec")
           ! used to be 5
           if (thisOctal%ndepth  < mindepthamr) split = .true.
           cellSize = thisOctal%subcellSize
@@ -5657,6 +5658,25 @@ CONTAINS
              endif
           endif
 
+          if (trim(grid%geometry)=="bec") then
+             r = sqrt(cellCentre%x**2 + cellCentre%y**2)
+             thisCellSize = max(cellSize,r * thisOctal%dphi/2.)
+             blobPos = VECTOR(0.5*autocm/1.d10, 1.d0, 0.1*autocm/1.d10)
+             blobRadius = 0.1 * autocm / 1.d10
+             do i = 1, 1000
+                rHat = randomUnitVector()
+                thisPos = blobPos + rhat * blobRadius
+                r = modulus(cellCentre - thisPos)
+                if (inSubcell(thisOctal, subcell, thisPos).and.(thiscellSize > blobRadius/10.)) then
+                   split = .true.
+                   splitInAzimuth = .true.
+                endif
+             enddo 
+             if ((r < 1.5*blobRadius).and.(thiscellsize > blobRadius/10.)) then
+                split = .true.
+                splitInAzimuth = .true.
+             endif
+          endif
        case("modular")
           
           splitInAzimuth = .false.
@@ -17026,7 +17046,7 @@ END SUBROUTINE assignDensitiesStellarWind
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child
   logical, save :: firstTimeMem
-  logical :: outOfMemory, splitInAz
+  logical :: outOfMemory
   integer :: subcell, i
     logical, optional :: inheritProps, interpProps
     character(len=80) :: message

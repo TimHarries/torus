@@ -3398,7 +3398,7 @@ end subroutine fillVelocityCornersFromCentresCylindrical
 
 
 recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, facArray, converged)
-  use inputs_mod, only : heightSplitFac, rOuter, minDepthAMR, rInner
+  use inputs_mod, only : heightSplitFac, rOuter, minDepthAMR
   integer :: nr
   logical :: converged, aziSplit, debug
   real(double) :: rArray(:), facArray(:)

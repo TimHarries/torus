@@ -1910,7 +1910,7 @@ contains
        call getReal("heightsplitfac", heightSplitFac, 1., cLine, fLine, nLines, &
             "Splitting factor for scale height (local scale heights): ","(a,f5.2,a)", 0.2, ok, .false.)
 
-    case("shakara")
+    case("shakara", "bec")
 
        oneKappa = .true.
        call getLogical("gasopacity", includeGasOpacity, cLine, fLine, nLines, &
