@@ -77,7 +77,7 @@ contains
     type(romanova) :: romData ! parameters and data for romanova geometry
     type(VECTOR) :: amrGridCentre
     integer :: ihydro, iIter_grand, iMultiplier
-    character(len=80) :: tfilename, fname
+    character(len=80) :: tfilename
     type(GRIDTYPE) :: grid
     logical :: gridConverged, smoothConverged
     Real(double) :: astar, mass_accretion_old, totalMass
@@ -3398,7 +3398,7 @@ end subroutine fillVelocityCornersFromCentresCylindrical
 
 
 recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, facArray, converged)
-  use inputs_mod, only : heightSplitFac, rOuter, minDepthAMR, rInner, minphiresolution
+  use inputs_mod, only : heightSplitFac, rOuter, minDepthAMR
   integer :: nr
   logical :: converged, aziSplit, debug
   real(double) :: rArray(:), facArray(:)
