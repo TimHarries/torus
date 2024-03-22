@@ -77,7 +77,7 @@ contains
     type(romanova) :: romData ! parameters and data for romanova geometry
     type(VECTOR) :: amrGridCentre
     integer :: ihydro, iIter_grand, iMultiplier
-    character(len=80) :: tfilename
+    character(len=80) :: tfilename, fname
     type(GRIDTYPE) :: grid
     logical :: gridConverged, smoothConverged
     Real(double) :: astar, mass_accretion_old, totalMass
@@ -233,7 +233,7 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
              call fillgridKatie(grid, gridconverged, dosplit=.true.)
 
              j = j + 1
-             if (mod(j,20) == 0) then
+             if (mod(j,1000) == 0) then
              call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
              do
                 smoothConverged = .true.
@@ -244,21 +244,21 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
              end do
              call writeInfo("...grid smoothing complete", TRIVIAL)
                 call fillgridKatie(grid, gridconverged, dosplit=.false.)
-
-!                call writeVtkFile(grid, "rho.vtk",  valueTypeString=(/"rho     ","velocity"/))
              endif
-             write(*,*) j,gridConverged
+!             write(*,*) j,gridConverged
+!             write(fname,'(a,i3.3,a)') "build",j,".vtk"
+!             call writeVtkFile(grid, fname,  valueTypeString=(/"rho"/))
 
           enddo
-             call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
-             do
-                smoothConverged = .true.
+!             call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
+!             do
+!                smoothConverged = .true.
                 ! The following is Tim's replacement for soomthAMRgrid.
 !                call myScaleSmooth(smoothFactor, grid, &
 !                     smoothConverged,  inheritProps = .false., interpProps = .false.)
-                if (smoothConverged) exit
-             end do
-             call writeInfo("...grid smoothing complete", TRIVIAL)
+!                if (smoothConverged) exit
+!             end do
+!             call writeInfo("...grid smoothing complete", TRIVIAL)
           call fillgridKatie(grid, gridconverged, dosplit=.false.)
 !          call fillVelocityCornersFromCentresCylindrical(grid, grid%octreeRoot)
 
@@ -3398,7 +3398,7 @@ end subroutine fillVelocityCornersFromCentresCylindrical
 
 
 recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, facArray, converged)
-  use inputs_mod, only : heightSplitFac, rOuter, minDepthAMR, rInner
+  use inputs_mod, only : heightSplitFac, rOuter, minDepthAMR, rInner, minphiresolution
   integer :: nr
   logical :: converged, aziSplit, debug
   real(double) :: rArray(:), facArray(:)
@@ -3454,6 +3454,7 @@ recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, fac
               if (lArray(j)%z < 1.d0) aziSplit = .true.
            endif
         enddo
+        
 !!        !$OMP ENDDO
 !!        !$OMP END PARALLEL
         if (debug) write(*,*) thisZ/thisH
@@ -3465,12 +3466,12 @@ recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, fac
         endif
 
 
+        
         thisOctal%rho(subcell) = max(thisRho*fac,1.d-30)
 
         if ((abs(thisZ/thisH)< 100.).and.abs(thisOctal%subcellSize/thisH)>5.) then
            thisOctal%adot(subcell) = -1.
            converged = .false.
-           aziSplit = .true.
         endif
 
 
@@ -3479,6 +3480,9 @@ recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, fac
            thisOctal%adot(subcell) = -1.
            converged = .false.
         endif
+
+!        if (aziSplit.and.(thisOctal%dphi>minphiresolution)) thisOctal%adot(subcell) = -1.d0
+
         
 !        if ((abs(thisZ/thisH) < 10.).and.(thisOctal%subcellSize > abs(thisZ/2.))) then
 !           thisOctal%adot(subcell) = -1.
@@ -3596,7 +3600,6 @@ end subroutine fillGridKatie
              else
                 if (.not.firstTime) then
                    write(*,*) "negative density but not split ",maxdepthAMR
-                   firstTime  = .false.
                 endif
              endif
           endif

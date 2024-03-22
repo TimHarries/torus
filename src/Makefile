@@ -141,7 +141,7 @@ ifeq ($(SYSTEM), gfortran)
 # -Wl,-stack_size,0x40000000,-stack_addr,0xf0000000
 # -static-libgcc fixes linking problems under Mac OS
 #    STARLIBS += -static-libgcc -static-libgfortran
-    INCLUDEFLAG = -I/usr/local/include -L/usr/local/lib -I/opt/homebrew/include
+    INCLUDEFLAG = -I/usr/local/include -L/usr/local/lib 
 #    HEALPIXLIB = -lhealpix
     EXE = torus.gfortran
     KNOWN_SYSTEM = yes
