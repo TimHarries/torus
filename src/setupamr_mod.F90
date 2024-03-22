@@ -245,7 +245,7 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
              call writeInfo("...grid smoothing complete", TRIVIAL)
                 call fillgridKatie(grid, gridconverged, dosplit=.false.)
              endif
-!             write(*,*) j,gridConverged
+             write(*,*) j,gridConverged
 !             write(fname,'(a,i3.3,a)') "build",j,".vtk"
 !             call writeVtkFile(grid, fname,  valueTypeString=(/"rho"/))
 
@@ -272,7 +272,8 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           call findTotalMass(grid%octreeRoot, totalMass)
           write(*,*) "Total mass ",totalmass/mSol
 
-          call findMultiFilename("rho****.vtk", iModel, tfilename)
+          !          call findMultiFilename("rho****.vtk", iModel, tfilename)
+          tfilename = "rho.vtu"
           call writeVtkFile(grid, tfilename,  valueTypeString=(/"rho     ","velocity"/))
           
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
@@ -3457,7 +3458,7 @@ recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, fac
         
 !!        !$OMP ENDDO
 !!        !$OMP END PARALLEL
-        if (debug) write(*,*) thisZ/thisH
+!        if (debug) write(*,*) thisZ/thisH
 
         if (thisOctal%nDepth < minDepthAMR) then
            thisOctal%adot(subcell) = -1.d0
@@ -3529,8 +3530,8 @@ end subroutine katieRho
 
 
 subroutine fillGridKatie(grid, converged, doSplit)
-  use inputs_mod, only : iModel
-  use utils_mod, only : findMultiFilename
+!  use inputs_mod, only : iModel
+!  use utils_mod, only : findMultiFilename
 
   type(GRIDTYPE) :: grid
   integer :: i
@@ -3542,9 +3543,10 @@ subroutine fillGridKatie(grid, converged, doSplit)
   
 
 
-  call findMultiFilename("radial****.dat", iModel, tfilename)
+  !  call findMultiFilename("radial****.dat", iModel, tfilename)
+  tfilename = "radial.dat"
   open(20,file=tfilename,form="formatted",status="old")
-  write(*,*) "reading radial file from: ",trim(tfilename)
+!  write(*,*) "reading radial file from: ",trim(tfilename)
   read(20,*) nrarray
   allocate(rArray(1:nrArray), facArray(1:nrArray), lArray(1:nrArray))
   do i = 1, nrArray
