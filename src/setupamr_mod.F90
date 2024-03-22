@@ -69,7 +69,7 @@ contains
     use gridFromFlash
     use ramses_mod, only: rd_gas
     use dust_mod, only : sumDustMass
-    use inputs_mod, only : imodel
+!    use inputs_mod, only : imodel
     use utils_mod, only : findmultifilename 
     implicit none
 
