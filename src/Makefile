@@ -141,7 +141,7 @@ ifeq ($(SYSTEM), gfortran)
 # -Wl,-stack_size,0x40000000,-stack_addr,0xf0000000
 # -static-libgcc fixes linking problems under Mac OS
 #    STARLIBS += -static-libgcc -static-libgfortran
-    INCLUDEFLAG = -I/usr/local/include -L/usr/local/lib -I/opt/homebrew/include
+    INCLUDEFLAG = -I/usr/local/include -L/usr/local/lib 
 #    HEALPIXLIB = -lhealpix
     EXE = torus.gfortran
     KNOWN_SYSTEM = yes
@@ -674,7 +674,7 @@ COBJ = $(CSOURCE:.c=.o)
 CLIB = $(CSOURCELIB:.c=.o)
 ALLOBJ = $(CAPF90OBJ) $(F90OBJ)  $(INPUTSMODOBJ) $(COBJ)
 LIBOBJ = $(CAPF90OBJLIB) $(F90OBJ)  $(INPUTSMODOBJ) $(CLIB)
-NCDF_LIB = -L/opt/homebrew/lib -lnetcdff
+#NCDF_LIB = -L/opt/homebrew/lib -lnetcdff
 
 #
 # Compilers and compiler flags

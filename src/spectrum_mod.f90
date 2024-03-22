@@ -741,7 +741,7 @@ module spectrum_mod
 
          !Packet weight is the ratio of normalised unbiased to biased probabilities
          !These will be interpolated between later !Thaw
-         do i = 1, spectrum%nLambda-1
+         do i = 2, spectrum%nLambda-1
             spectrum%ppw(i) = abs(unbiasedProb(i+1) - unbiasedProb(i)) / abs(spectrum%prob(i+1) - spectrum%prob(i))
          end do
       end if
