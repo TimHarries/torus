@@ -1629,8 +1629,10 @@ contains
           end if
 
 
-          write(mpiFilename,'(a,i4.4,a)') "nbody",grid%iDump,".vtk"
-          call writeVtkFilenBody(globalnSource, globalsourceArray, mpiFilename)
+          if (.not.grid%octreeRoot%oneD) then
+             write(mpiFilename,'(a,i4.4,a)') "nbody",grid%iDump,".vtk"
+             call writeVtkFilenBody(globalnSource, globalsourceArray, mpiFilename)
+          endif
 
           if (writeoutput) then
              write(mpiFilename,'(a,i4.4,a)') "source",grid%idump,".dat"
@@ -1840,6 +1842,7 @@ end subroutine radiationHydro
     logical :: escapeCheck
     logical :: sourcePhoton
     logical :: ionizingPhoton 
+    logical :: intoDust
 
     integer :: dprCounter
     integer :: recCounter
@@ -1937,7 +1940,7 @@ end subroutine radiationHydro
     real(double), allocatable :: maxDiffRadius(:)
     real(double), allocatable :: maxDiffRadius1(:), maxDiffRadius2(:),maxDiffRadius3(:)
     real(double) :: tauWanted, photonMomentum
-    type(VECTOR) ::  vec_tmp, uNew
+    type(VECTOR) ::  vec_tmp, uNew, thisRadMom
     integer :: receivedStackSize
     integer :: nDomainThreads, localRank, m, nBundles
     real :: FinishTime, WaitingTime, globalStartTime, globalTime
@@ -3026,12 +3029,12 @@ end subroutine radiationHydro
                !$OMP PRIVATE(escaped, nScat, optCounter, octVec, ierr, thisLam, kappaabsdb) &
                !$OMP PRIVATE(doingsmallpackets,startnewsmallpacket,ismallphotonpacket,bigphotonpacket) &
                !$OMP PRIVATE(smallphotonpacket,smallpacketorigin,smallpacketfreq,smallphotonpacketweight,kappap) &
-               !$OMP PRIVATE(kappascadb, albedo, r, kappaabsdust, thisOctal, subcell) &
+               !$OMP PRIVATE(kappascadb, albedo, r, kappaabsdust, thisOctal, subcell, intoDust) &
                !$OMP PRIVATE(crossedMPIboundary, newThread, kappaabsgas, escat, tempcell, lastPhoton) &
                !$OMP PRIVATE(finished, voidThread, crossedPeriodic, nperiodic,  myrankworldglobal) &
                !$OMP PRIVATE(bigPhotonPacketWeight, iLam, flushbuffer) &
                !$OMP PRIVATE(photonOne, photonN, SUBCELLCONVERGED) &
-               !$OMP PRIVATE(uHatBefore, vec_tmp, unew, uhatafter, uHatDash, rHat, zHat, movedCells) & 
+               !$OMP PRIVATE(uHatBefore, vec_tmp, unew, uhatafter, uHatDash, rHat, zHat, movedCells, thisRadMom) &
                !$OMP SHARED(photonPacketStack, myRankGlobal, currentStack, escapeCheck, cart2d) &
                !$OMP SHARED(grid, epsoverdeltat, iSignal, MPI_PHOTON_STACK) &
                !$OMP SHARED(nlambda, lamarray, tlimit, nHydroThreadsGlobal, sendAllPhotons,toSendStack) &
@@ -3275,6 +3278,7 @@ end subroutine radiationHydro
                             call randomNumberGenerator(getDouble=r)
 
 
+                            intoDust = .true.
                             if (r < albedo) then
 
 !                               uHat = randomUnitVector() ! isotropic scattering
@@ -3293,6 +3297,8 @@ end subroutine radiationHydro
                                        2.d0*grid%octreeRoot%subcellSize)
                                end if
 !                               if (myrankglobal == 1) write(*,*) "new uhat scattering ",uhat, ntotscat
+
+                               intoDust = .true.
                             else
                                
                                if (.not.associated(thisOctal%spectrum)) then
@@ -3321,6 +3327,7 @@ end subroutine radiationHydro
                                   
                                   ! spectra are only calculated once per rad step
                                   if (r1 < (kappaAbsGas / max(1.d-30,(kappaAbsGas + kappaAbsDust)))) then  ! absorbed by gas rather than dust
+                                     intoDust = .false.
                                      if (.not.thisOctal%gasSpectrumAdded(subcell)) then
                                         call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
                                         call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid,&
@@ -3331,6 +3338,7 @@ end subroutine radiationHydro
                                         thisOctal%gasSpectrumAdded(subcell) = .true.
                                      endif
                                   else
+                                     intoDust = .true.
                                      if (.not. thisOctal%dustContinuumAdded(subcell)) then
                                         call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, & 
                                              nlambda, lamArray)
@@ -3338,6 +3346,7 @@ end subroutine radiationHydro
                                      endif
                                   endif
                                else ! non-ionizing photon must be absorbed by dust
+                                  intoDust = .true.
                                   if (.not. thisOctal%dustContinuumAdded(subcell)) then
                                      call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, &
                                           subcell, grid, nlambda, lamArray)
@@ -3348,7 +3357,7 @@ end subroutine radiationHydro
                                   call removeLymanSpectrum(nFreq, freq, spectrum)
                                endif
                                !Subsequent progress is now a diffuse photon
-                               sourcePhoton = .false.
+!                               sourcePhoton = .false.
 
 
 !                                  if (firsttime.and.(myrankWorldglobal==1)) then
@@ -3402,9 +3411,25 @@ end subroutine radiationHydro
                             endif
 
 
+                            thisRadMom = uHatDash * photonMomentum * photonPacketWeight
+                            thisOctal%radiationMomentum(subcell) = thisOctal%radiationMomentum(subcell) + thisRadMom
 
-                            thisOctal%radiationMomentum(subcell) = thisOctal%radiationMomentum(subcell) + uHatDash * &
-                                 photonMomentum * photonPacketWeight
+                            ! exerted by source vs diffuse field
+                            if (sourcePhoton) then
+                               thisOctal%sourceRadMom(subcell) = thisOctal%sourceRadMom(subcell) + thisRadMom
+                            else
+                               thisOctal%diffuseRadMom(subcell) = thisOctal%diffuseRadMom(subcell) + thisRadMom
+                            endif
+                            ! exerted on dust vs gas
+                            if (intoDust) then
+                               thisOctal%dustRadMom(subcell) = thisOctal%dustRadMom(subcell) + thisRadMom
+                            else
+                               thisOctal%gasRadMom(subcell) = thisOctal%gasRadMom(subcell) + thisRadMom
+                            endif
+
+                            !Subsequent progress is now a diffuse photon
+                            sourcePhoton = .false.
+
 !                            write(*,*) "mom ",thisOctal%radiationMomentum(subcell)
 
                                ! no of events for this photon on this thread
@@ -5376,6 +5401,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
           if (.not.associated(thisOctal%nCrossIonizing)) found = .false. 
           if (.not.associated(thisOctal%temperatureConv)) found = .false. 
           if (.not.associated(thisOctal%habingFlux)) found = .false. 
+          if (.not.associated(thisOctal%sourceRadMom)) found = .false.
        endif
     enddo
   end subroutine CheckPhotoionAllocationsSub
@@ -5441,6 +5467,16 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
       call allocateAttribute(thisOctal%HeHeating, thisOctal%maxChildren)
       call allocateAttribute(thisOctal%radiationMomentum,thisOctal%maxChildren)
 
+      call allocateAttribute(thisOctal%sourceRadMom,thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%diffuseRadMom,thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%dustRadMom,thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%gasRadMom,thisOctal%maxChildren)
+
+      call allocateAttribute(thisOctal%sourceKappaTimesFlux,thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%diffuseKappaTimesFlux,thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%dustKappaTimesFlux,thisOctal%maxChildren)
+      call allocateAttribute(thisOctal%gasKappaTimesFlux,thisOctal%maxChildren)
+
       call allocateAttribute(thisOctal%corner,thisOctal%maxchildren)
       call allocateAttribute(thisOctal%boundaryPartner,thisOctal%maxChildren)
       call allocateAttribute(thisOctal%boundaryCondition,thisOctal%maxchildren)
@@ -5501,7 +5537,27 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
           if (.not.associated(thisOctal%UVvectorMinus)) then
              allocate(thisOctal%UVvectorMinus(1:thisOctal%maxChildren))
           endif
+          if (.not.associated(thisOctal%sourceRadMom)) then
+             allocate(thisOctal%sourceRadMom(1:thisOctal%maxChildren))
+             allocate(thisOctal%diffuseRadMom(1:thisOctal%maxChildren))
+             allocate(thisOctal%dustRadMom(1:thisOctal%maxChildren))
+             allocate(thisOctal%gasRadMom(1:thisOctal%maxChildren))
+          endif
+          if (.not.associated(thisOctal%sourceKappaTimesFlux)) then
+             allocate(thisOctal%sourceKappaTimesFlux(1:thisOctal%maxChildren))
+             allocate(thisOctal%diffuseKappaTimesFlux(1:thisOctal%maxChildren))
+             allocate(thisOctal%dustKappaTimesFlux(1:thisOctal%maxChildren))
+             allocate(thisOctal%gasKappaTimesFlux(1:thisOctal%maxChildren))
+          endif
+          thisOctal%sourceRadMom(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+          thisOctal%diffuseRadMom(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+          thisOctal%dustRadMom(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+          thisOctal%gasRadMom(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
           thisOctal%kappaTimesFlux(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+          thisOctal%sourceKappaTimesFlux(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+          thisOctal%diffuseKappaTimesFlux(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+          thisOctal%dustKappaTimesFlux(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+          thisOctal%gasKappaTimesFlux(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
           thisOctal%habingFlux(subcell) = 0.d0 
           thisOctal%UVvector(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
           thisOctal%UVvectorPlus(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
@@ -6658,7 +6714,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     integer :: nFreq, iFreq
     real(double) :: freq(:)
     integer :: subcell
-    real(double) :: thisFreq, distance, kappaAbs,kappaAbsDust, kappaSca, kappaExt
+    real(double) :: thisFreq, distance, kappaAbs,kappaAbsDust, kappaSca, kappaExt, kappaAbsGas
     integer :: ilambda
     real(double) :: photonPacketWeight
     integer :: i 
@@ -6731,7 +6787,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     endif
 
     call returnkappa(grid, thisoctal, subcell, ilambda=ilambda, kappaabsdust=kappaabsdust, &
-         kappaabs=kappaabs, kappaSca=kappaSca, dir=uHat)
+         kappaabs=kappaabs, kappaSca=kappaSca, dir=uHat, kappaAbsGas=kappaAbsGas)
     kappaExt = kappaAbs + kappaSca
 
 
@@ -6787,6 +6843,20 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        endif
        thisoctal%kappaTimesFlux(subcell) = thisoctal%kappaTimesFlux(subcell) &
             + (dS * dble(kappaAbs + kappaSca*(1.d0-gfac)) * photonPacketWeight)*uHatDash
+
+       ! exerted by source vs diffuse field
+       if (sourcePhoton) then
+          thisoctal%sourceKappaTimesFlux(subcell) = thisoctal%sourceKappaTimesFlux(subcell) &
+               + (dS * dble(kappaAbs + kappaSca*(1.d0-gfac)) * photonPacketWeight)*uHatDash
+       else
+          thisoctal%diffuseKappaTimesFlux(subcell) = thisoctal%diffuseKappaTimesFlux(subcell) &
+               + (dS * dble(kappaAbs + kappaSca*(1.d0-gfac)) * photonPacketWeight)*uHatDash
+       endif
+       ! exerted on dust vs gas
+       thisoctal%dustKappaTimesFlux(subcell) = thisoctal%dustKappaTimesFlux(subcell) &
+            + (dS * dble(kappaAbsDust + kappaSca*(1.d0-gfac)) * photonPacketWeight)*uHatDash
+       thisoctal%gasKappaTimesFlux(subcell) = thisoctal%gasKappaTimesFlux(subcell) &
+            + (dS * dble(kappaAbsGas) * photonPacketWeight)*uHatDash
     enddo
 
 !     thisoctal%kappaTimesFlux(subcell) = thisoctal%kappaTimesFlux(subcell) &
@@ -8279,8 +8349,8 @@ recursive subroutine packvalues(thisOctal,nIndex,nCrossings,nCrossIonizing,nScat
   real(double) :: heHeating(:)
   real(double) :: distanceGrid(:)
   real(double) :: habingFlux(:)
-  type(VECTOR) :: radMomVec(:)
-  type(VECTOR) :: kappaTimesFlux(:)
+  type(VECTOR) :: radMomVec(:,:)
+  type(VECTOR) :: kappaTimesFlux(:,:)
   type(VECTOR) :: uvVec(:)
   
   integer :: nIndex
@@ -8307,8 +8377,16 @@ recursive subroutine packvalues(thisOctal,nIndex,nCrossings,nCrossIonizing,nScat
         hHeating(nIndex) = thisOctal%hHeating(subcell)
         heHeating(nIndex) = thisOctal%heHeating(subcell)
         distanceGrid(nIndex) = thisOctal%distanceGrid(subcell)
-        radMomVec(nIndex) = thisOctal%radiationMomentum(subcell)
-        kappaTimesFlux(nIndex) = thisOctal%kappaTimesFlux(subcell)
+        radMomVec(nIndex, 1) = thisOctal%radiationMomentum(subcell)
+        radMomVec(nIndex, 2) = thisOctal%sourceRadMom(subcell)
+        radMomVec(nIndex, 3) = thisOctal%diffuseRadMom(subcell)
+        radMomVec(nIndex, 4) = thisOctal%dustRadMom(subcell)
+        radMomVec(nIndex, 5) = thisOctal%gasRadMom(subcell)
+        kappaTimesFlux(nIndex, 1) = thisOctal%kappaTimesFlux(subcell)
+        kappaTimesFlux(nIndex, 2) = thisOctal%sourceKappaTimesFlux(subcell)
+        kappaTimesFlux(nIndex, 3) = thisOctal%diffuseKappaTimesFlux(subcell)
+        kappaTimesFlux(nIndex, 4) = thisOctal%dustKappaTimesFlux(subcell)
+        kappaTimesFlux(nIndex, 5) = thisOctal%gasKappaTimesFlux(subcell)
         uvVec(nIndex) = thisOctal%uvVector(subcell)
         habingFlux(nIndex) = thisOctal%habingFlux(subcell)
      endif
@@ -8327,8 +8405,8 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings,nCrossIonizing,nSc
   real(double) :: heHeating(:)
   real(double) :: distanceGrid(:)
   real(double) :: habingFlux(:)
-  type(VECTOR) :: radMomVec(:)
-  type(VECTOR) :: kappaTimesFlux(:)
+  type(VECTOR) :: radMomVec(:,:)
+  type(VECTOR) :: kappaTimesFlux(:,:)
   type(VECTOR) :: uvvec(:)
 
   integer :: nIndex
@@ -8355,8 +8433,16 @@ recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings,nCrossIonizing,nSc
           thisOctal%hHeating(subcell) = hHeating(nIndex) 
           thisOctal%heHeating(subcell) = heHeating(nIndex) 
           thisOctal%distanceGrid(subcell) = distanceGrid(nIndex) 
-          thisOctal%radiationMomentum(subcell) = radMomVec(nIndex)
-          thisOctal%kappaTimesFlux(subcell) = kappaTimesFlux(nIndex)
+          thisOctal%radiationMomentum(subcell) = radMomVec(nIndex,1)
+          thisOctal%sourceRadMom(subcell)      = radMomVec(nIndex,2)
+          thisOctal%diffuseRadMom(subcell)     = radMomVec(nIndex,3)
+          thisOctal%dustRadMom(subcell)        = radMomVec(nIndex,4)
+          thisOctal%gasRadMom(subcell)         = radMomVec(nIndex,5)
+          thisOctal%kappaTimesFlux(subcell)        = kappaTimesFlux(nIndex, 1)
+          thisOctal%sourceKappaTimesFlux(subcell)  = kappaTimesFlux(nIndex, 2)
+          thisOctal%diffuseKappaTimesFlux(subcell) = kappaTimesFlux(nIndex, 3)
+          thisOctal%dustKappaTimesFlux(subcell)    = kappaTimesFlux(nIndex, 4)
+          thisOctal%gasKappaTimesFlux(subcell)     = kappaTimesFlux(nIndex, 5)
           thisOctal%uvvector(subcell) = uvvec(nIndex)
           thisOctal%habingFLux(subcell) = habingFlux(nIndex)
        endif
@@ -8772,9 +8858,19 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
        else
           V = cellVolume(thisOctal, subcell)*1.d30
           thisOctal%kappaTimesFlux(subcell) = epsOverDeltaT * thisOctal%kappaTimesFlux(subcell) / V
+          thisOctal%sourceKappaTimesFlux(subcell) = epsOverDeltaT * thisOctal%sourceKappaTimesFlux(subcell) / V
+          thisOctal%diffuseKappaTimesFlux(subcell) = epsOverDeltaT * thisOctal%diffuseKappaTimesFlux(subcell) / V
+          thisOctal%dustKappaTimesFlux(subcell) = epsOverDeltaT * thisOctal%dustKappaTimesFlux(subcell) / V
+          thisOctal%gasKappaTimesFlux(subcell) = epsOverDeltaT * thisOctal%gasKappaTimesFlux(subcell) / V
+
           thisOctal%radiationMomentum(subcell) = thisOctal%radiationMomentum(subcell) / V
+          thisOctal%sourceRadMom(subcell) = thisOctal%sourceRadMom(subcell) / V
+          thisOctal%diffuseRadMom(subcell) = thisOctal%diffuseRadMom(subcell) / V
+          thisOctal%dustRadMom(subcell) = thisOctal%dustRadMom(subcell) / V
+          thisOctal%gasRadMom(subcell) = thisOctal%gasRadMom(subcell) / V
 !          write(*,*) "mom ",thisOctal%radiationMomentum(subcell)
 !          write(*,*) " k times f ",thisOctal%kappaTimesFlux(subcell)
+
 
        endif
     enddo
@@ -9670,8 +9766,8 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     real(double), allocatable :: tempDoubleArray(:)
     real(double), allocatable :: distanceGrid(:)
     real(double), allocatable :: habingFlux(:)
-    type(VECTOR), allocatable :: radMomVec(:)
-    type(VECTOR), allocatable :: kappaTimesFlux(:)
+    type(VECTOR), allocatable :: radMomVec(:,:)
+    type(VECTOR), allocatable :: kappaTimesFlux(:,:)
     type(VECTOR), allocatable :: uvvec(:)
     integer :: ierr, nIndex
 
@@ -9686,8 +9782,8 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     allocate(heHeating(1:nVoxels))
     allocate(distanceGrid(1:nVoxels))
     allocate(photoIonCoeff(1:nVoxels, 1:grid%nIon))
-    allocate(radMomVec(1:nVoxels))
-    allocate(kappaTimesFlux(1:nVoxels))
+    allocate(radMomVec(1:nVoxels, 1:5))
+    allocate(kappaTimesFlux(1:nVoxels, 1:5))
     allocate(uvvec(1:nVoxels))
     allocate(habingFlux(1:nVoxels))
 
@@ -9739,36 +9835,39 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
          MPI_SUM, amrParComm, ierr)
     habingFlux = tempDoubleArray 
 
-    tempDoubleArray = 0.0
-    call MPI_ALLREDUCE(radMomVec(1:nVoxels)%x,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
-         MPI_SUM, amrParComm, ierr)
-    radMomVec(1:nVoxels)%x = tempDoubleArray 
+    do i = 1, 5
+       ! i = total, source, diffuse, dust, gas
+       tempDoubleArray = 0.0
+       call MPI_ALLREDUCE(radMomVec(1:nVoxels,i)%x,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+            MPI_SUM, amrParComm, ierr)
+       radMomVec(1:nVoxels,i)%x = tempDoubleArray
 
-    tempDoubleArray = 0.0
-    call MPI_ALLREDUCE(radMomVec(1:nVoxels)%y,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
-         MPI_SUM, amrParComm, ierr)
-    radMomVec(1:nVoxels)%y = tempDoubleArray 
+       tempDoubleArray = 0.0
+       call MPI_ALLREDUCE(radMomVec(1:nVoxels,i)%y,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+            MPI_SUM, amrParComm, ierr)
+       radMomVec(1:nVoxels,i)%y = tempDoubleArray
 
-    tempDoubleArray = 0.0
-    call MPI_ALLREDUCE(radMomVec(1:nVoxels)%z,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
-         MPI_SUM, amrParComm, ierr)
-    radMomVec(1:nVoxels)%z = tempDoubleArray 
+       tempDoubleArray = 0.0
+       call MPI_ALLREDUCE(radMomVec(1:nVoxels,i)%z,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+            MPI_SUM, amrParComm, ierr)
+       radMomVec(1:nVoxels,i)%z = tempDoubleArray
 
-    tempDoubleArray = 0.0
-    call MPI_ALLREDUCE(kappaTimesFlux(1:nVoxels)%x,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
-         MPI_SUM, amrParComm, ierr)
-    kappaTimesFlux(1:nVoxels)%x = tempDoubleArray 
-!    write(*,*) "temp ",tempDoubleArray(1:nVoxels)
+       tempDoubleArray = 0.0
+       call MPI_ALLREDUCE(kappaTimesFlux(1:nVoxels,i)%x,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+            MPI_SUM, amrParComm, ierr)
+       kappaTimesFlux(1:nVoxels,i)%x = tempDoubleArray
+   !    write(*,*) "temp ",tempDoubleArray(1:nVoxels)
 
-    tempDoubleArray = 0.0
-    call MPI_ALLREDUCE(kappaTimesFlux(1:nVoxels)%y,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
-         MPI_SUM, amrParComm, ierr)
-    kappaTimesFlux(1:nVoxels)%y = tempDoubleArray
+       tempDoubleArray = 0.0
+       call MPI_ALLREDUCE(kappaTimesFlux(1:nVoxels,i)%y,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+            MPI_SUM, amrParComm, ierr)
+       kappaTimesFlux(1:nVoxels,i)%y = tempDoubleArray
 
-    tempDoubleArray = 0.0
-    call MPI_ALLREDUCE(kappaTimesFlux(1:nVoxels)%z,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
-         MPI_SUM, amrParComm, ierr)
-    kappaTimesFlux(1:nVoxels)%z = tempDoubleArray 
+       tempDoubleArray = 0.0
+       call MPI_ALLREDUCE(kappaTimesFlux(1:nVoxels,i)%z,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+            MPI_SUM, amrParComm, ierr)
+       kappaTimesFlux(1:nVoxels,i)%z = tempDoubleArray 
+    enddo
 
 
     tempDoubleArray = 0.0
@@ -11043,6 +11142,8 @@ end subroutine putStarsInGridAccordingToDensity
     real(double) :: fudgeFac = 1.d-3
     integer :: subcell, i
     character(len=*) :: variable
+    real(double) :: pradSource, pradDiffuse, pradDust, pradGas
+    real(double) :: ktf, ktfSource, ktfDiffuse, ktfDust, ktfGas
 
     sigma = 0.d0
     currentPosition = rVec
@@ -11064,10 +11165,46 @@ end subroutine putStarsInGridAccordingToDensity
           dx = thisoctal%subcellsize * 1.d10 ! cm
           if (thisOctal%undersampled(subcell)) then
              prad = 1.d-30
+             pradSource = prad
+             pradDiffuse = prad
+             pradDust = prad
+             pradGas = prad
+             ktf = prad
+             ktfSource = prad
+             ktfDiffuse = prad
+             ktfDust = prad
+             ktfGas = prad
           else
              prad = dx * sqrt(thisOctal%radiationMomentum(subcell)%x**2 + &
                                   thisOctal%radiationMomentum(subcell)%y**2 + &
                                   thisOctal%radiationMomentum(subcell)%z**2)
+             pradSource = dx * sqrt(thisOctal%sourceRadMom(subcell)%x**2 + &
+                                    thisOctal%sourceRadMom(subcell)%y**2 + &
+                                    thisOctal%sourceRadMom(subcell)%z**2)
+             pradDiffuse = dx * sqrt(thisOctal%DiffuseRadMom(subcell)%x**2 + &
+                                     thisOctal%DiffuseRadMom(subcell)%y**2 + &
+                                     thisOctal%DiffuseRadMom(subcell)%z**2)
+             pradDust = dx * sqrt(thisOctal%dustRadMom(subcell)%x**2 + &
+                                  thisOctal%dustRadMom(subcell)%y**2 + &
+                                  thisOctal%dustRadMom(subcell)%z**2)
+             pradGas = dx * sqrt(thisOctal%gasRadMom(subcell)%x**2 + &
+                                 thisOctal%gasRadMom(subcell)%y**2 + &
+                                 thisOctal%gasRadMom(subcell)%z**2)
+             ktf = dx / cspeed * sqrt(thisOctal%kappaTimesFlux(subcell)%x**2 + &
+                              thisOctal%kappaTimesFlux(subcell)%y**2 + &
+                              thisOctal%kappaTimesFlux(subcell)%z**2)
+             ktfSource = dx / cspeed * sqrt(thisOctal%sourcekappaTimesFlux(subcell)%x**2 + &
+                                    thisOctal%sourcekappaTimesFlux(subcell)%y**2 + &
+                                    thisOctal%sourcekappaTimesFlux(subcell)%z**2)
+             ktfDiffuse = dx / cspeed * sqrt(thisOctal%DiffusekappaTimesFlux(subcell)%x**2 + &
+                                     thisOctal%DiffusekappaTimesFlux(subcell)%y**2 + &
+                                     thisOctal%DiffusekappaTimesFlux(subcell)%z**2)
+             ktfDust = dx / cspeed * sqrt(thisOctal%dustkappaTimesFlux(subcell)%x**2 + &
+                                  thisOctal%dustkappaTimesFlux(subcell)%y**2 + &
+                                  thisOctal%dustkappaTimesFlux(subcell)%z**2)
+             ktfGas = dx / cspeed * sqrt(thisOctal%gaskappaTimesFlux(subcell)%x**2 + &
+                                 thisOctal%gaskappaTimesFlux(subcell)%y**2 + &
+                                 thisOctal%gaskappaTimesFlux(subcell)%z**2)
           endif
 
           ! like Lopez et al. 2011 equation 1
@@ -11079,20 +11216,39 @@ end subroutine putStarsInGridAccordingToDensity
 
           mu = returnMu(thisOctal, subcell, globalIonArray, nGlobalIon)
           pgas = thisOctal%rho(subcell)*kerg*thisOctal%temperature(subcell)/(mu*mHydrogen)
-          if (trim(variable) == 'prad') then
-             pressure = prad
-          elseif (trim(variable) == 'pgas') then
-             pressure = pgas
-          elseif (trim(variable) == 'ratio') then
-             pressure = prad/pgas
-          elseif (trim(variable) == 'pbol') then
-             pressure = pbol
-          elseif (trim(variable) == 'pradOverPbol') then
-             pressure = prad/pbol
-          else
-             write(*,*) "variable not recognised ", trim(variable)
-             stop
-          endif
+          select case (trim(variable))
+             case('prad')
+                pressure = prad
+             case('pgas')
+                pressure = pgas
+             case('ratio')
+                pressure = prad/pgas
+             case('pbol')
+                pressure = pbol
+             case('pradOverPbol')
+                pressure = prad/pbol
+             case('pradSource')
+                pressure = pradSource
+             case('pradDiffuse')
+                pressure = pradDiffuse
+             case('pradDust')
+                pressure = pradDust
+             case('pradGas')
+                pressure = pradGas
+             case('ktf')
+                pressure = ktf
+             case('ktfSource')
+                pressure = ktfSource
+             case('ktfDiffuse')
+                pressure = ktfDiffuse
+             case('ktfDust')
+                pressure = ktfDust
+             case('ktfGas')
+                pressure = ktfGas
+             case default
+                write(*,*) "variable not recognised ", trim(variable)
+                stop
+          end select
 
           if (vtkIncludeGhosts) then
 !             sigma = sigma + distToNextCell*1.d10*pressure/thisOctal%rho(subcell)

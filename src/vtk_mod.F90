@@ -683,7 +683,9 @@ contains
 
     select case (valueType)
        case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom", &
-            "radforce", "uvvec", "velcall","surfnorm")
+            "radforce", "uvvec", "velcall","surfnorm",&
+            "sourceradmom", "diffuseradmom", "dustradmom", "gasradmom", &
+            "sourceradforce", "diffuseradforce", "dustradforce", "gasradforce")
           scalarvalue = .false.
           vectorvalue = .true.
        case DEFAULT
@@ -973,6 +975,47 @@ contains
                   else
                      write(lunit, *) real(thisOctal%radiationMomentum(subcell)%x), &
                                      real(thisOctal%radiationMomentum(subcell)%z), &
+                                     0.
+                  endif
+
+               case("sourceradmom")
+                  if (thisOctal%threed) then
+                     write(lunit, *) real(thisOctal%sourceRadMom(subcell)%x), &
+                                     real(thisOctal%sourceRadMom(subcell)%y), &
+                                     real(thisOctal%sourceRadMom(subcell)%z)
+                  else
+                     write(lunit, *) real(thisOctal%sourceRadMom(subcell)%x), &
+                                     real(thisOctal%sourceRadMom(subcell)%z), &
+                                     0.
+                  endif
+               case("diffuseradmom")
+                  if (thisOctal%threed) then
+                     write(lunit, *) real(thisOctal%diffuseradmom(subcell)%x), &
+                                     real(thisOctal%diffuseradmom(subcell)%y), &
+                                     real(thisOctal%diffuseradmom(subcell)%z)
+                  else
+                     write(lunit, *) real(thisOctal%diffuseradmom(subcell)%x), &
+                                     real(thisOctal%diffuseradmom(subcell)%z), &
+                                     0.
+                  endif
+               case("dustradmom")
+                  if (thisOctal%threed) then
+                     write(lunit, *) real(thisOctal%dustradmom(subcell)%x), &
+                                     real(thisOctal%dustradmom(subcell)%y), &
+                                     real(thisOctal%dustradmom(subcell)%z)
+                  else
+                     write(lunit, *) real(thisOctal%dustradmom(subcell)%x), &
+                                     real(thisOctal%dustradmom(subcell)%z), &
+                                     0.
+                  endif
+               case("gasradmom")
+                  if (thisOctal%threed) then
+                     write(lunit, *) real(thisOctal%gasradmom(subcell)%x), &
+                                     real(thisOctal%gasradmom(subcell)%y), &
+                                     real(thisOctal%gasradmom(subcell)%z)
+                  else
+                     write(lunit, *) real(thisOctal%gasradmom(subcell)%x), &
+                                     real(thisOctal%gasradmom(subcell)%z), &
                                      0.
                   endif
 
@@ -2820,7 +2863,9 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
   do ivalues = 1, nValueType
      select case (valueType(iValues))
      case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom",&
-          "radforce", "uvvec","velcall","surfnorm")
+          "radforce", "uvvec","velcall","surfnorm",&
+          "sourceradmom", "diffuseradmom", "dustradmom", "gasradmom", &
+          "sourceradforce", "diffuseradforce", "dustradforce", "gasradforce")
         scalarvalue = .false.
         vectorvalue = .true.
      case DEFAULT
@@ -3243,6 +3288,47 @@ end subroutine writeXMLVtkFileAMR
                      rArray(2, n) = real(1.d20*thisOctal%radiationMomentum(subcell)%z)
                      rArray(3, n) = 0.
                   endif
+               case("sourceradmom")
+                  if (thisOctal%threed) then
+                     rArray(1, n) = real(1.d20*thisOctal%sourceRadMom(subcell)%x)
+                     rArray(2, n) = real(1.d20*thisOctal%sourceRadMom(subcell)%y)
+                     rArray(3, n) = real(1.d20*thisOctal%sourceRadMom(subcell)%z)
+                  else
+                     rArray(1, n) = real(1.d20*thisOctal%sourceRadMom(subcell)%x)
+                     rArray(2, n) = real(1.d20*thisOctal%sourceRadMom(subcell)%z)
+                     rArray(3, n) = 0.
+                  endif
+               case("diffuseradmom")
+                  if (thisOctal%threed) then
+                     rArray(1, n) = real(1.d20*thisOctal%diffuseradmom(subcell)%x)
+                     rArray(2, n) = real(1.d20*thisOctal%diffuseradmom(subcell)%y)
+                     rArray(3, n) = real(1.d20*thisOctal%diffuseradmom(subcell)%z)
+                  else
+                     rArray(1, n) = real(1.d20*thisOctal%diffuseradmom(subcell)%x)
+                     rArray(2, n) = real(1.d20*thisOctal%diffuseradmom(subcell)%z)
+                     rArray(3, n) = 0.
+                  endif
+               case("dustradmom")
+                  if (thisOctal%threed) then
+                     rArray(1, n) = real(1.d20*thisOctal%dustradmom(subcell)%x)
+                     rArray(2, n) = real(1.d20*thisOctal%dustradmom(subcell)%y)
+                     rArray(3, n) = real(1.d20*thisOctal%dustradmom(subcell)%z)
+                  else
+                     rArray(1, n) = real(1.d20*thisOctal%dustradmom(subcell)%x)
+                     rArray(2, n) = real(1.d20*thisOctal%dustradmom(subcell)%z)
+                     rArray(3, n) = 0.
+                  endif
+               case("gasradmom")
+                  if (thisOctal%threed) then
+                     rArray(1, n) = real(1.d20*thisOctal%gasradmom(subcell)%x)
+                     rArray(2, n) = real(1.d20*thisOctal%gasradmom(subcell)%y)
+                     rArray(3, n) = real(1.d20*thisOctal%gasradmom(subcell)%z)
+                  else
+                     rArray(1, n) = real(1.d20*thisOctal%gasradmom(subcell)%x)
+                     rArray(2, n) = real(1.d20*thisOctal%gasradmom(subcell)%z)
+                     rArray(3, n) = 0.
+                  endif
+
                case("surfnorm")
                      rArray(1, n) = real(thisOctal%surfaceNormal(subcell)%x)
                      rArray(2, n) = real(thisOctal%surfaceNormal(subcell)%y)
@@ -3260,6 +3346,51 @@ end subroutine writeXMLVtkFileAMR
                      else
                         rArray(1, n) = real(1.d20*thisOctal%kappaTimesFlux(subcell)%x/cSpeed)
                         rArray(2, n) = real(1.d20*thisOctal%kappaTimesFlux(subcell)%z/cSpeed)
+                        rArray(3, n) = 0.
+                     endif
+               case("sourceradforce")
+                     v = cellVolume(thisOctal, subcell)*1.d30
+                     if (thisOctal%threed) then
+                        rArray(1, n) = real(1.d20*thisOctal%sourcekappaTimesFlux(subcell)%x/cSpeed)
+                        rArray(2, n) = real(1.d20*thisOctal%sourcekappaTimesFlux(subcell)%y/cSpeed)
+                        rArray(3, n) = real(1.d20*thisOctal%sourcekappaTimesFlux(subcell)%z/cSpeed)
+                     else
+                        rArray(1, n) = real(1.d20*thisOctal%sourcekappaTimesFlux(subcell)%x/cSpeed)
+                        rArray(2, n) = real(1.d20*thisOctal%sourcekappaTimesFlux(subcell)%z/cSpeed)
+                        rArray(3, n) = 0.
+                     endif
+               case("diffuseradforce")
+                     v = cellVolume(thisOctal, subcell)*1.d30
+                     if (thisOctal%threed) then
+                        rArray(1, n) = real(1.d20*thisOctal%diffusekappaTimesFlux(subcell)%x/cSpeed)
+                        rArray(2, n) = real(1.d20*thisOctal%diffusekappaTimesFlux(subcell)%y/cSpeed)
+                        rArray(3, n) = real(1.d20*thisOctal%diffusekappaTimesFlux(subcell)%z/cSpeed)
+                     else
+                        rArray(1, n) = real(1.d20*thisOctal%diffusekappaTimesFlux(subcell)%x/cSpeed)
+                        rArray(2, n) = real(1.d20*thisOctal%diffusekappaTimesFlux(subcell)%z/cSpeed)
+                        rArray(3, n) = 0.
+                     endif
+               case("dustradforce")
+                     v = cellVolume(thisOctal, subcell)*1.d30
+                     if (thisOctal%threed) then
+                        rArray(1, n) = real(1.d20*thisOctal%dustkappaTimesFlux(subcell)%x/cSpeed)
+                        rArray(2, n) = real(1.d20*thisOctal%dustkappaTimesFlux(subcell)%y/cSpeed)
+                        rArray(3, n) = real(1.d20*thisOctal%dustkappaTimesFlux(subcell)%z/cSpeed)
+                     else
+                        rArray(1, n) = real(1.d20*thisOctal%dustkappaTimesFlux(subcell)%x/cSpeed)
+                        rArray(2, n) = real(1.d20*thisOctal%dustkappaTimesFlux(subcell)%z/cSpeed)
+                        rArray(3, n) = 0.
+                     endif
+
+               case("gasradforce")
+                     v = cellVolume(thisOctal, subcell)*1.d30
+                     if (thisOctal%threed) then
+                        rArray(1, n) = real(1.d20*thisOctal%gaskappaTimesFlux(subcell)%x/cSpeed)
+                        rArray(2, n) = real(1.d20*thisOctal%gaskappaTimesFlux(subcell)%y/cSpeed)
+                        rArray(3, n) = real(1.d20*thisOctal%gaskappaTimesFlux(subcell)%z/cSpeed)
+                     else
+                        rArray(1, n) = real(1.d20*thisOctal%gaskappaTimesFlux(subcell)%x/cSpeed)
+                        rArray(2, n) = real(1.d20*thisOctal%gaskappaTimesFlux(subcell)%z/cSpeed)
                         rArray(3, n) = 0.
                      endif
 
@@ -3690,7 +3821,9 @@ end subroutine writeXMLVtkFileAMR
 
      select case (valueType)
      case("velocity","hydrovelocity","linearvelocity","quadvelocity", "cornervel","radmom",&
-          "radforce", "uvvec")
+          "radforce", "uvvec",&
+          "sourceradmom", "diffuseradmom", "dustradmom", "gasradmom", &
+          "sourceradforce", "diffuseradforce", "dustradforce", "gasradforce")
         scalarvalue = .false.
         vectorvalue = .true.
      case DEFAULT

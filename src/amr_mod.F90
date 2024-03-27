@@ -15059,8 +15059,17 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%oldphotonEnergyDensity, source%oldphotonEnergyDensity)
 
     call copyAttribute(dest%radiationMomentum, source%radiationMomentum)
+    call copyAttribute(dest%sourceRadMom, source%sourceRadMom)
+    call copyAttribute(dest%diffuseRadMom, source%diffuseRadMom)
+    call copyAttribute(dest%dustRadMom, source%dustRadMom)
+    call copyAttribute(dest%gasRadMom, source%gasRadMom)
 
     call copyAttribute(dest%kappaTimesFlux, source%kappaTimesFlux)
+    call copyAttribute(dest%sourceKappaTimesFlux, source%sourceKappaTimesFlux)
+    call copyAttribute(dest%diffuseKappaTimesFlux, source%diffuseKappaTimesFlux)
+    call copyAttribute(dest%dustKappaTimesFlux, source%dustKappaTimesFlux)
+    call copyAttribute(dest%gasKappaTimesFlux, source%gasKappaTimesFlux)
+
     call copyAttribute(dest%kappaTimesFluxHistory, source%kappaTimesFluxHistory)
     call copyAttribute(dest%habingFlux, source%habingFlux)
     call copyAttribute(dest%UVvector, source%UVvector)
@@ -19125,9 +19134,20 @@ END SUBROUTINE assignDensitiesStellarWind
        call allocateAttribute(thisOctal%tDust, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%HeHeating, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%HeHeatingHistory, thisOctal%maxChildren)
+
        call allocateAttribute(thisOctal%radiationMomentum,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%sourceRadMom,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%diffuseRadMom,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%dustRadMom,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%gasRadMom,thisOctal%maxChildren)
+
        call allocateAttribute(thisOctal%kappaTimesFlux, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%sourceKappaTimesFlux,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%diffuseKappaTimesFlux,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%dustKappaTimesFlux,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%gasKappaTimesFlux,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%kappaTimesFluxHistory, thisOctal%maxChildren)
+
        call allocateAttribute(thisOctal%habingFlux, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%UVvector, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%UVvectorPlus, thisOctal%maxChildren)
@@ -19338,7 +19358,15 @@ END SUBROUTINE assignDensitiesStellarWind
 
 
        call allocateAttribute(thisOctal%radiationMomentum,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%sourceRadMom,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%diffuseRadMom,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%dustRadMom,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%gasRadMom,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%kappaTimesFlux,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%sourceKappaTimesFlux,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%diffuseKappaTimesFlux,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%dustKappaTimesFlux,thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%gasKappaTimesFlux,thisOctal%maxChildren)
        call allocateAttribute(thisOctal%kappaTimesFluxHistory, thisOctal%maxChildren)
 
     endif
@@ -19549,7 +19577,15 @@ END SUBROUTINE assignDensitiesStellarWind
     call deallocateAttribute(thisOctal%gravboundaryPartner)
     call deallocateAttribute(thisOctal%surfaceNormal)
     call deallocateAttribute(thisOctal%radiationMomentum)
+    call deallocateAttribute(thisOctal%sourceRadMom)
+    call deallocateAttribute(thisOctal%diffuseRadMom)
+    call deallocateAttribute(thisOctal%dustRadMom)
+    call deallocateAttribute(thisOctal%gasRadMom)
     call deallocateAttribute(thisOctal%kappaTimesFlux)
+    call deallocateAttribute(thisOctal%sourceKappaTimesFlux)
+    call deallocateAttribute(thisOctal%diffuseKappaTimesFlux)
+    call deallocateAttribute(thisOctal%dustKappaTimesFlux)
+    call deallocateAttribute(thisOctal%gasKappaTimesFlux)
     call deallocateAttribute(thisOctal%kappaTimesFluxHistory)
 
     call deallocateAttribute(thisOctal%habingFlux)
