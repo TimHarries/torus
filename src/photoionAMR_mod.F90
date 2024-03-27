@@ -8888,6 +8888,10 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     character(len=80) :: message
     type(VECTOR) :: xAxis, yAxis
 
+    if (loadBalancingThreadGlobal) then
+       call torus_abort("Imaging currently doesn't work with loadbalancing")
+    endif
+
     allocate(nDoneArray(1:nHydroThreadsGlobal))
     allocate(totalFluxArray(1:nHydroThreadsGlobal))
     allocate(tempTotalFlux(1:nHydroThreadsGlobal))
@@ -8897,14 +8901,26 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     outputImageType = getImageType(imageNum)
     imageFilename   = getImageFilename(imageNum)
     observerDirection = getImageViewVec(imageNum)
-    write(*,*) "observer direction ",observerDirection
     inclination = getImageInc(imageNum)
+    call normalize(observerDirection)
 
-    xAxis = VECTOR(1.d0, 0.d0, 0.d0)
-    yAxis = VECTOR(0.d0, 1.d0, 0.d0)
-    xAxis = rotateX(xAxis, inclination)
-    yAxis = rotateX(yAxis, inclination)
+    if (inclination /= 0.d0) then
+       xAxis = observerDirection.cross.VECTOR(0.d0, 0.d0, 1.d0)
+    else
+       xAxis = VECTOR(1.d0, 0.d0, 0.d0)
+    endif
+    call normalize(xAxis)
+    yAxis =  observerDirection .cross. xAxis
+    call normalize(yAxis)
 
+    if (writeoutput) then
+       write(message,*) "Setting up observer/image vectors"
+       call writeInfo (message, FORINFO)
+       write(*,'(2(a15, f9.4))') "INC: ", inclination*180.d0/pi, " PA:  ", getImagePA(imageNum)*180.d0/pi
+       write(*,'(a13, 3f9.4)') "observerDir ",observerDirection
+       write(*,'(a13, 3f9.4)') "image xAxis ", xAxis
+       write(*,'(a13, 3f9.4)') "image yAxis ", yAxis
+    endif
 
     call randomNumberGenerator(randomSeed=.true.)
     totalFluxArray = 0.d0
@@ -9156,6 +9172,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
     call writeInfo("FITS not enabled, not writing "//trim(imageFilename),FORINFO)
 #endif
     call freeImage(thisImage)
+
   end subroutine createImageSplitGrid
 
 
