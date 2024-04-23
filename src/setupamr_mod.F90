@@ -501,7 +501,6 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
 
-
        case DEFAULT
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, romData=romData)
           call writeInfo("First octal initialized.", TRIVIAL)
@@ -3521,7 +3520,7 @@ subroutine katieRho(rVec, lHat, rIn, rOut, rho, h, z, r)
   r = modulus(pVec)
   h = 1.d30
   rho = 0.d0
-  if ((r > rIn*0.9).and.(r < rOut)) then
+  if ((r > rIn*0.5).and.(r < rOut)) then
      h = height*(r/(100.d0*autocm/1.d10))**betaDisc
      rho = 1.e-10*(r/rInner)**(-alphaDisc) * exp(-0.5d0*(z/h)**2)
      if (r < rIn) rho = 1.d-30

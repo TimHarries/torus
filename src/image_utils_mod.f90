@@ -318,7 +318,7 @@ contains
 !    tempVec%y = sin(myImages(i)%positionAngle) * sin(myImages(i)%inclination)
 !    tempVec%z = cos(myImages(i)%inclination)
 
-    origVec = VECTOR(0.d0, 0.d0, 1.d0)
+    origVec = VECTOR(0.d0, 0.d0, -1.d0)
     tempVec = rotateX(origVec, dble(myImages(i)%inclination))
 
     setImageViewVec =  tempVec

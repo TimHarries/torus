@@ -678,7 +678,7 @@ contains
          "Inter-cell maximum ratio before smooth: ","(a,f6.1,1x,a)", 3., ok, .false.)
 
     call getBigInteger("maxmemory", maxMemoryAvailable, cLine, fLine, nLines, &
-         "Maximum memory available (Mb): ","(a,i12,a)", 2000_bigInt, ok, .false.)
+         "Maximum memory available (Mb): ","(a,i12,a)", 10000_bigInt, ok, .false.)
     maxMemoryAvailable = maxMemoryAvailable * 1000000
 
     if (statisticalEquilibrium.and.molecularPhysics) call readMolecularLoopParameters(cLine, fLine, nLines)
@@ -900,6 +900,8 @@ contains
     character(len=20) :: heightLabel, betaLabel, dustFracLabel
     character(len=20) :: alphaDiscLabel, betaDiscLabel, hDiscLabel, rinDiscLabel, routDiscLabel
     integer :: i, j
+    real(double) :: theta, phi
+    character(len=20) :: keyword
 
     select case(geometry)
 
@@ -1906,7 +1908,6 @@ contains
        call getReal("mdisc", mDisc, real(msol), cLine, fLine, nLines, &
             "Disc mass (solar masses): ","(a,f6.4,a)", 1.e-4, ok, .true.)
 
-
        call getReal("heightsplitfac", heightSplitFac, 1., cLine, fLine, nLines, &
             "Splitting factor for scale height (local scale heights): ","(a,f5.2,a)", 0.2, ok, .false.)
 
@@ -1916,7 +1917,7 @@ contains
        call getLogical("gasopacity", includeGasOpacity, cLine, fLine, nLines, &
             "Include gas opacity: ","(a,1l,a)", .false., ok, .false.)
 
-       call getReal("mdot", mdot,  real(msol * secstoyears), cLine, fLine, nLines, &
+       call getReal("mdot", mdot, real(msol * secstoyears), cLine, fLine, nLines, &
             "Mass accretion  rate (msol/yr): ","(a,1p,e12.5,a)", 0.0,  ok, .false.)
 
        call getLogical("noscat", noScattering, cLine, fLine, nLines, &
@@ -1928,16 +1929,32 @@ contains
        call getLogical("curvedinneredge", curvedInnerEdge, cLine, fLine, nLines, &
             "Curved inner edge: ","(a,1l,1x,a)", .false., ok, .false.)
 
-       call getReal("radius1", rCore, real(rsol/1.e10), cLine, fLine, nLines, &
-            "Core radius (solar radii): ","(a,f7.3,a)", 10., ok, .true.)
+       call getRealWithUnits("radius1", rCore, "rsol", "codeunits", cLine, fLine, nLines, &
+            "Core radius: ", 10., ok, .true.)
 
-       call getReal("rinner", rInner, real(sourceRadius(1)), cLine, fLine, nLines, &
-            "Inner Radius (stellar radii): ","(a,f7.3,a)", 12., ok, .true.)
+       call getRealWithUnits("mdisc", mdisc, "msol", "gram", cLine, fLine, nLines, &
+            "Disc mass: ", 12., ok, .true.)
+       
+       call getRealWithUnits("rinner", rInner, "au", "codeunits", cLine, fLine, nLines, &
+            "Inner Radius: ", 12., ok, .true.)
+
+       call getRealWithUnits("router", rOuter, "au", "codeunits", cLine, fLine, nLines, &
+            "Outer Radius: ", 20., ok, .true.)
+
+       call getRealWithUnits("height", height, "au", "codeunits", cLine, fLine, nLines, &
+            "Scale height: ",1.e0,ok,.true.)
+
+       call getReal("alphadisc", alphaDisc, 1., cLine, fLine, nLines, &
+            "Disc alpha parameter: ","(a,f5.3,a)", 2.25, ok, .true.)
+
+       call getReal("betadisc", betaDisc, 1., cLine, fLine, nLines, &
+            "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
+
 
        call getReal("teff1", teff, 1., cLine, fLine, nLines, &
             "Source effective temperature: ","(a,f7.1,a)", 12., ok, .true.)
 
-          call getReal("rsub", rSublimation, rcore, cLine, fLine, nLines, &
+       call getReal("rsub", rSublimation, rcore, cLine, fLine, nLines, &
                "Sublimation radius (rstar): ","(a,f5.1,a)", 0., ok, .false.)
 
        call getLogical("setsubradius", setSubRadius, cLine, fLine, nLines, &
@@ -1959,9 +1976,6 @@ contains
        endif
 
 
-
-       call getReal("router", rOuter, real(autocm/1.d10), cLine, fLine, nLines, &
-            "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
 
        call getReal("rgapinner", rGapInner, real(autocm/1.d10), cLine, fLine, nLines, &
             "Inner gap  radius (AU): ","(a,f5.1,a)", 1.e30, ok, .false.)
@@ -1986,14 +2000,8 @@ contains
             "Level of azimuthal refinement (degrees): ","(a,f5.1,a)", 1.d30, ok, .false.)
 
 
-       call getReal("height", height, real(autocm/1.d10), cLine, fLine, nLines, &
-            "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
-
        call getReal("mass1", mCore, real(msol), cLine, fLine, nLines, &
             "Core mass (solar masses): ","(a,f8.4,a)", 0.5, ok, .true.)
-
-       call getReal("mdisc", mDisc, real(msol), cLine, fLine, nLines, &
-            "Disc mass (solar masses): ","(a,f8.4,a)", 1.e-4, ok, .true.)
 
        call getReal("alphadisc", alphaDisc, 1., cLine, fLine, nLines, &
             "Disc alpha parameter: ","(a,f5.3,a)", 2.25, ok, .true.)
@@ -2129,6 +2137,31 @@ contains
             * (dble(rInner)*1.d10)**alphaDisc * &
             (((dble(rOuter)*1.d10)**(betaDisc-alphaDisc+2.)-(dble(rInner)*1.d10)**(betaDisc-alphaDisc+2.))) ))
        if (Writeoutput) write(*,*) "rho0: ",rho0
+
+
+       if (geometry == "bec") then
+          call getInteger("nblobs", nBlobs,  cline, fLine, nLines, &
+               "Number of blobs: ","(a,i4,a)", 1, ok, .true.)
+          do i = 1, nBlobs
+             write(keyword, '(a,i1.1)') "blobpos",i
+             call getVector(keyword, blobPos(i), autocm/1.d10, cLine, fLine, nLines, &
+               "Blob position (au): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
+             write(keyword, '(a,i1.1)') "aradius",i
+             call getDouble(keyword, aRadius(i), autocm/1.d10, cLine, fLine, nLines, &
+                  "a radius (au):  ","(a,e12.3,1x,a)", 1.d-30, ok, .true.)
+             write(keyword, '(a,i1.1)') "cradius",i             
+             call getDouble(keyword, cRadius(i), autocm/1.d10, cLine, fLine, nLines, &
+                  "c radius (au):  ","(a,e12.3,1x,a)", 1.d-30, ok, .true.)
+             write(keyword, '(a,i1.1)') "theta",i             
+             call getDouble(keyword, theta, pi/180.d0, cLine, fLine, nLines, &
+                  "Blob theta angle (deg):  ","(a,e12.3,1x,a)", 1.d-30, ok, .true.)
+             write(keyword, '(a,i1.1)') "phi",i             
+             call getDouble(keyword, phi, pi/180.d0, cLine, fLine, nLines, &
+                  "Blob phi angle (deg):  ","(a,e12.3,1x,a)", 1.d-30, ok, .true.)
+             blobZVec(i) = VECTOR(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta))
+          enddo
+       endif
+
 
     CASE("spiraldisc")
 
@@ -3353,12 +3386,13 @@ contains
                   "Density power-law index  for dust sublimation (K):  ","(a,e12.3,1x,a)", 0.d0, ok, .false.)
 
              if (.not. readDustFromFile) &
-                  call getReal(aminLabel, aMin(i), 1., cLine, fLine, nLines, &
-                  "Min grain size (microns): ","(a,f8.5,1x,a)", 0.005, ok,  .true.)
+                  call getRealwithUnits(aminLabel, aMin(i), "micron", "micron", cLine, fLine, nLines, &
+                  "Min grain size: ", 1000.0, ok, .true.)
 
              if (.not. readDustFromFile) &
-                  call getReal(amaxLabel, aMax(i), 1., cLine, fLine, nLines, &
-                  "Max grain size (microns): ","(a,f10.5,1x,a)", 0.25, ok, .true.)
+                  call getRealwithUnits(amaxLabel, aMax(i), "micron", "micron", cLine, fLine, nLines, &
+                  "Min grain size: ", 1000.0, ok, .true.)
+
 
              if (.not. readDustFromFile) &
                   call getReal(qDistLabel, qdist(i), 1., cLine, fLine, nLines, &
@@ -4934,9 +4968,9 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     call getLogical("noscatlight", excludeScatteredLight, cLine, fLine, nLines, &
          "Exclude dust-scattered light from image: ","(a,1l,1x,a)", .false., ok, .false.)
 
-    call getReal("lambdaimage", lambdaImage, 1., cLine, fLine, nLines, &
-         "Wavelength for monochromatic image (A):","(a,f12.2,1x,a)", 6562.8, ok, .false.)
 
+    call getRealwithUnits("lambdaimage", lambdaImage, "angstrom", "angstrom", cLine, fLine, nLines, &
+         "Wavelength for monochromatic image: ", 1000.0, ok, .false.)
 
     call getDouble("imagepa", thisimagePA, degtorad, cLine, fLine, nLines, &
          "Position angle for image :","(a,f12.2,1x,a)", 0.d0, ok, .false.)
@@ -4992,8 +5026,8 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
           call getString(keyword, imageFilename, cLine, fLine, nLines, &
                "Output image  filename: ","(a,a,1x,a)","none", ok, .true.)
           write(keyword,'(a)') "lambdaimage"//iChar
-          call getReal(keyword, thisLambdaImage, 1., cLine, fLine, nLines, &
-               "Wavelength for monochromatic image (A):","(a,f12.2,1x,a)", lambdaImage, ok, .false.)
+          call getRealwithUnits(keyword, thislambdaImage, "angstrom", "angstrom", cLine, fLine, nLines, &
+               "Wavelength of monochromatic image: ", 1000.0, ok, .true.)
 
           if (photoionPhysics) then
              write(keyword,'(a)') "imagetype"//iChar
@@ -5171,8 +5205,8 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     call getLogical("forcefirstscat", forceFirstScat, cLine, fLine, nLines, &
          "Force first scattering: ","(a,1l,1x,a)", .false., ok, .false.)
 
-    call getReal("lambdaimage", lambdaImage, 1., cLine, fLine, nLines, &
-         "Wavelength for monochromatic image (A):","(a,f12.2,1x,a)", 6562.8, ok, .false.)
+    call getRealwithUnits("lambdaimage", lambdaImage, "angstrom", "angstrom", cLine, fLine, nLines, &
+         "Wavelength of monochromatic image: ", 1000.0, ok, .true.)
 
     call writeInfo(" ")
     write(message,'(a)') "Details for movie: "
@@ -5183,8 +5217,8 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
          "Output movie filename: ","(a,a,1x,a)","none", ok, .true.)
 
 
-    call getReal("movielambda", thisLambdaImage, 1., cLine, fLine, nLines, &
-         "Wavelength for monochromatic image (A):","(a,f12.2,1x,a)", lambdaImage, ok, .false.)
+    call getRealwithUnits("movielambdae", thislambdaImage, "angstrom", "angstrom", cLine, fLine, nLines, &
+         "Wavelength of monochromatic image: ", 1000.0, ok, .true.)
 
     outputimageType = "stokes"
 
@@ -5621,6 +5655,44 @@ subroutine findReal(name, value, unitString, cLine, fLine, nLines, ok)
 endif
 end do
  end subroutine findUnitDouble
+
+ subroutine findUnitVECTOR(name, value, cLine, fLine, nLines, ok)
+ implicit none
+ character(len=*) :: name
+ type(VECTOR) :: value
+ character(len=10) :: unit
+ integer :: readStat
+ character(len=lencLine) :: cLine(:)
+ logical :: fLine(:)
+ integer :: nLines
+ logical :: ok
+ integer :: i, j, k
+
+ ok = .false.
+ do i = 1, nLines
+    j = len_trim(name)
+    k = index(cline(i)," ")-1
+    if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
+       if (.not.ok) then
+          ok = .true.
+          read(cLine(i)(j+1:lencline),*,iostat=readstat) value, unit
+          if(readstat /= 0) then
+           read(cLine(i)(j+1:lencline),*,iostat=readstat) value
+           if(readstat /= 0) then
+              write(*,*) "parameters.dat entry with no value given!!" //name
+              call torus_stop
+           else
+              unit = "default"
+           end if
+        end if
+        fLine(i) = .true.
+     else
+        call writeFatal("Keyword "//name(1:j)//" appears more than once in the input deck")
+        call torus_stop
+     endif
+  endif
+end do
+end subroutine findUnitVECTOR
 
  subroutine findVECTOR(name, value, cLine, fLine, nLines, ok)
  implicit none
@@ -6174,6 +6246,50 @@ end subroutine getDoubleWithUnits
  endif
  dval = dval  * unitConversion
 end subroutine getVector
+
+ subroutine getVectorWithUnits(name, dval, defaultUnits, requiredUnits, cLine, fLine, nLines, message, format, ddef, ok, &
+                    musthave)
+  character(len=*) :: name, requiredUnits, defaultUnits
+  real(double) :: unitConversion, thisUnitConversion
+  type(VECTOR) :: dval, ddef
+  logical :: musthave
+  character(len=10) :: unitString
+  character(len=lencLine) :: cLine(:)
+  logical :: fLine(:)
+  integer :: i, j
+  character(len=100) :: output
+  integer :: nLines
+  character(len=*) :: message, format
+  character(len=10) :: default
+  logical :: ok
+  ok = .true.
+  default = " "
+  call findVECTOR(name, dval, cLine, fLine, nLines, ok)
+  if (.not. ok) then
+    if (musthave) then
+       if (writeoutput) write(*,'(a,a)') name, " must be defined"
+       call torus_stop
+    endif
+    dval = ddef
+    default = " (default)"
+ else
+    if (len(trim(unitString)) .ne. 0) then
+       i = unitNumber(unitString)
+       j = unitNumber(requiredUnits)
+       thisUnitConversion = unitList(i)%unitInCGS/unitList(j)%unitInCGS
+    else
+       i = unitNumber(defaultUnits)
+       j = unitNumber(requiredUnits)
+       thisUnitConversion = unitList(i)%unitInCGS/unitList(j)%unitInCGS
+    endif
+ endif
+
+ if (ok) then
+    write(output,format) trim(message),dval,default
+    call writeInfo(output, TRIVIAL)
+ endif
+ dval = dval  * unitConversion
+end subroutine getVectorWithUnits
 
 
  subroutine getString(name, rval, cLine, fLine, nLines, message, format, rdef, ok, &

@@ -325,6 +325,12 @@ contains
 
   end function rotateY
 
+  real(double) function distanceFromPointToLine(p,a,n) result(d)
+    type(VECTOR) :: p, n, a
+    d = modulus((p-a).cross.n)/modulus(n)
+  end function distanceFromPointToLine
+
+  
 !thap
   subroutine melvinUnitVector(rVec, photonPacketWeight)
     use constants_mod, only: pi, degToRad

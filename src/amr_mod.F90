@@ -3623,6 +3623,7 @@ CONTAINS
     use inputs_mod, only : cavdens, limitscalar, addDisc, flatdisc, ttauristellarwind, SW_rMax, SW_rmin
     use inputs_mod, only : discWind, planetDisc, sourceMass, sourceRadius, sourceTeff, rGapInner1, accretionFeedback
     use inputs_mod, only : nDiscModule, rOuterMod, rInnerMod, betaMod, heightMod, tiltAngleMod, rSpiral
+    use inputs_mod, only : nBlobs, blobPos, aRadius, cRadius, blobZVec
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use magnetic_mod, only : accretingAreaMahdavi
@@ -3666,7 +3667,8 @@ CONTAINS
     real(oct)  :: cellSize
     TYPE(vector)     :: searchPoint, rVec
     TYPE(vector)     :: cellCentre
-    REAL                  :: x, y, z
+    REAL                 :: x, y, z
+    REAL(double)                  :: xd, yd, zd
     REAL(double) :: hr, rd, fac, warpHeight, phi1, phi2, phi
     real(double) :: warpheight1, warpheight2
     real(double) :: warpradius1, warpradius2, height1, height2
@@ -3705,13 +3707,16 @@ CONTAINS
     real(double) :: vgradx, vgrady, vgradz, vgrad
     INTEGER      :: nparticle, limit
     real(double) :: dummyDouble
-    type(VECTOR) :: minV, maxV, blobPos, thisPos, rHat
-    real(double) :: blobRadius
+    type(VECTOR) :: minV, maxV,  thisPos
     real(double) :: T, vturb,h
 #endif
-    real(double) :: chi, zeta0dash, psi, eta, zeta
-    real(double) :: dx, cornerDist(8), d, muval(8), r1, r2, v, enhancedheight, cfac,thisCellSize
+    real(double) :: chi, zeta0dash, psi, eta, zeta, a, c
+    type(VECTOR) :: zVec, xAxis, cVec, thisVec
+    real(double) :: dx, cornerDist(8), d, muval(8), r1, r2, v, enhancedheight, cfac
+    real(double) :: thisCellSizeLinear, thisCellSizeArc, ang, s
 
+    integer :: j
+    
     splitInAzimuth = .false.
     split = .false.
 
@@ -5660,23 +5665,54 @@ CONTAINS
 
           if (trim(grid%geometry)=="bec") then
              r = sqrt(cellCentre%x**2 + cellCentre%y**2)
-             thisCellSize = max(cellSize,r * thisOctal%dphi/2.)
-             blobPos = VECTOR(0.5*autocm/1.d10, 1.d0, 0.1*autocm/1.d10)
-             blobRadius = 0.1 * autocm / 1.d10
-             do i = 1, 1000
-                rHat = randomUnitVector()
-                thisPos = blobPos + rhat * blobRadius
-                r = modulus(cellCentre - thisPos)
-                if (inSubcell(thisOctal, subcell, thisPos).and.(thiscellSize > blobRadius/10.)) then
-                   split = .true.
-                   splitInAzimuth = .true.
-                endif
-             enddo 
-             if ((r < 1.5*blobRadius).and.(thiscellsize > blobRadius/10.)) then
-                split = .true.
-                splitInAzimuth = .true.
-             endif
+             thisCellSizeLinear = thisOctal%subcellSize
+             thisCellSizeArc = r * thisOctal%dphi/2.
+             fac = 10.d0
+
+             do j = 1, nBlobs
+                a = aRadius(j)
+                c = cRadius(j)
+                zVec = blobZVec(j)
+                xAxis = VECTOR(1.d0,0.d0,0.d0)
+                cVec = zVec .cross. xAxis
+                call normalize(cVec)
+
+                !$OMP PARALLEL DO default(none) private(i, r, ang, xd, yd, zd, r1, thisVec, thisPos, rVec,z) &
+                !$OMP shared (a,c,blobPos,zVec,xAxis, cVec, j, thisCellSizeLinear, thisCellSizeArc, thisOctal,s) &
+                !$OMP shared (subcell, fac, split,splitInAzimuth)
+                do i = 1, 1000
+                   if (split.and.splitInAzimuth) cycle
+                   call randomNumberGenerator(getDouble=r)
+                   r = sqrt(r) * a
+                   call randomNumberGenerator(getDouble=ang)
+                   ang = ang * twoPi
+                   xd = r * cos(ang)
+                   yd = r * sin(ang)
+                   zd = c*sqrt(max(0.d0,1.d0 - (xd/a)**2 - (yd/a)**2))
+                   call randomNumberGenerator(getDouble=r1)
+                   if (r1 > 0.5d0) zd = -zd
+                   rVec = arbitraryRotate(cVec, ang, zVec)
+                   thisVec = (r * rVec) + (zd * zVec)
+                   thisPos = blobPos(j) + thisVec
+                   if (inSubcell(thisOctal, subcell, thisPos).and.(max(thisCellSizeLinear,thisCellSizeArc) > min(a,c)/fac)) then
+                      split = .true.
+                      if (thisCellSizeArc > min(a,c)/fac) splitInAzimuth = .true.
+                   endif
+                   
+                   rVec = randomPositionInCell(thisOctal, subcell)
+                   z = (rVec - blobPos(j)).dot.zVec
+                   r = distanceFromPointToLine(rVec, blobPos(j), zVec)
+                   s = r**2 / a**2 + z**2/c**2
+                   
+                   if ((s < 1.).and.(max(thiscellsizeLinear,thisCellSizeArc) > min(a,c)/fac)) then
+                      split = .true.
+                      if (thisCellSizeArc > min(a,c)/fac) splitInAzimuth = .true.
+                   endif
+                enddo
+                !$OMP END PARALLEL DO
+             enddo
           endif
+          
        case("modular")
           
           splitInAzimuth = .false.
