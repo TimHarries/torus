@@ -3623,6 +3623,7 @@ CONTAINS
     use inputs_mod, only : cavdens, limitscalar, addDisc, flatdisc, ttauristellarwind, SW_rMax, SW_rmin
     use inputs_mod, only : discWind, planetDisc, sourceMass, sourceRadius, sourceTeff, rGapInner1, accretionFeedback
     use inputs_mod, only : nDiscModule, rOuterMod, rInnerMod, betaMod, heightMod, tiltAngleMod, rSpiral
+    use inputs_mod, only : nBlobs, blobPos, aRadius, cRadius, blobZVec
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use magnetic_mod, only : accretingAreaMahdavi
@@ -3666,7 +3667,8 @@ CONTAINS
     real(oct)  :: cellSize
     TYPE(vector)     :: searchPoint, rVec
     TYPE(vector)     :: cellCentre
-    REAL                  :: x, y, z
+    REAL                 :: x, y, z
+    REAL(double)                  :: xd, yd, zd
     REAL(double) :: hr, rd, fac, warpHeight, phi1, phi2, phi
     real(double) :: warpheight1, warpheight2
     real(double) :: warpradius1, warpradius2, height1, height2
@@ -3705,13 +3707,16 @@ CONTAINS
     real(double) :: vgradx, vgrady, vgradz, vgrad
     INTEGER      :: nparticle, limit
     real(double) :: dummyDouble
-    type(VECTOR) :: minV, maxV, blobPos, thisPos, rHat
-    real(double) :: blobRadius
+    type(VECTOR) :: minV, maxV,  thisPos
     real(double) :: T, vturb,h
 #endif
-    real(double) :: chi, zeta0dash, psi, eta, zeta
-    real(double) :: dx, cornerDist(8), d, muval(8), r1, r2, v, enhancedheight, cfac,thisCellSize
+    real(double) :: chi, zeta0dash, psi, eta, zeta, a, c
+    type(VECTOR) :: zVec, xAxis, cVec, thisVec
+    real(double) :: dx, cornerDist(8), d, muval(8), r1, r2, v, enhancedheight, cfac
+    real(double) :: thisCellSizeLinear, thisCellSizeArc, ang, s
 
+    integer :: j
+    
     splitInAzimuth = .false.
     split = .false.
 
@@ -5660,23 +5665,54 @@ CONTAINS
 
           if (trim(grid%geometry)=="bec") then
              r = sqrt(cellCentre%x**2 + cellCentre%y**2)
-             thisCellSize = max(cellSize,r * thisOctal%dphi/2.)
-             blobPos = VECTOR(0.5*autocm/1.d10, 1.d0, 0.1*autocm/1.d10)
-             blobRadius = 0.1 * autocm / 1.d10
-             do i = 1, 1000
-                rHat = randomUnitVector()
-                thisPos = blobPos + rhat * blobRadius
-                r = modulus(cellCentre - thisPos)
-                if (inSubcell(thisOctal, subcell, thisPos).and.(thiscellSize > blobRadius/10.)) then
-                   split = .true.
-                   splitInAzimuth = .true.
-                endif
-             enddo 
-             if ((r < 1.5*blobRadius).and.(thiscellsize > blobRadius/10.)) then
-                split = .true.
-                splitInAzimuth = .true.
-             endif
+             thisCellSizeLinear = thisOctal%subcellSize
+             thisCellSizeArc = r * thisOctal%dphi/2.
+             fac = 10.d0
+
+             do j = 1, nBlobs
+                a = aRadius(j)
+                c = cRadius(j)
+                zVec = blobZVec(j)
+                xAxis = VECTOR(1.d0,0.d0,0.d0)
+                cVec = zVec .cross. xAxis
+                call normalize(cVec)
+
+                !$OMP PARALLEL DO default(none) private(i, r, ang, xd, yd, zd, r1, thisVec, thisPos, rVec,z) &
+                !$OMP shared (a,c,blobPos,zVec,xAxis, cVec, j, thisCellSizeLinear, thisCellSizeArc, thisOctal,s) &
+                !$OMP shared (subcell, fac, split,splitInAzimuth)
+                do i = 1, 1000
+                   if (split.and.splitInAzimuth) cycle
+                   call randomNumberGenerator(getDouble=r)
+                   r = sqrt(r) * a
+                   call randomNumberGenerator(getDouble=ang)
+                   ang = ang * twoPi
+                   xd = r * cos(ang)
+                   yd = r * sin(ang)
+                   zd = c*sqrt(max(0.d0,1.d0 - (xd/a)**2 - (yd/a)**2))
+                   call randomNumberGenerator(getDouble=r1)
+                   if (r1 > 0.5d0) zd = -zd
+                   rVec = arbitraryRotate(cVec, ang, zVec)
+                   thisVec = (r * rVec) + (zd * zVec)
+                   thisPos = blobPos(j) + thisVec
+                   if (inSubcell(thisOctal, subcell, thisPos).and.(max(thisCellSizeLinear,thisCellSizeArc) > min(a,c)/fac)) then
+                      split = .true.
+                      if (thisCellSizeArc > min(a,c)/fac) splitInAzimuth = .true.
+                   endif
+                   
+                   rVec = randomPositionInCell(thisOctal, subcell)
+                   z = (rVec - blobPos(j)).dot.zVec
+                   r = distanceFromPointToLine(rVec, blobPos(j), zVec)
+                   s = r**2 / a**2 + z**2/c**2
+                   
+                   if ((s < 1.).and.(max(thiscellsizeLinear,thisCellSizeArc) > min(a,c)/fac)) then
+                      split = .true.
+                      if (thisCellSizeArc > min(a,c)/fac) splitInAzimuth = .true.
+                   endif
+                enddo
+                !$OMP END PARALLEL DO
+             enddo
           endif
+          
        case("modular")
           
           splitInAzimuth = .false.
@@ -18396,6 +18432,136 @@ END SUBROUTINE assignDensitiesStellarWind
     end do
   end subroutine tauAlongPath
 
+    subroutine tauScatAlongPath(ilambda, grid, rVec, direction, tau, tauMax, ross, startOctal, startSubcell, nTau, &
+       xArray, tauArray, distanceToEdge, subRadius, stopatGap, stopatdistance)
+    use inputs_mod, only : rGap, rGapInner, rGapOuter
+    type(GRIDTYPE) :: grid
+    type(VECTOR) :: rVec, direction, currentPosition, beforeVec, afterVec
+    real(double), optional,intent(out) :: xArray(:), tauArray(:)
+    real(double), optional :: stopAtDistance
+    integer, optional, intent(out) :: nTau
+    logical, optional :: stopAtGap
+    integer :: iLambda
+    real(double), optional :: subRadius
+    real(double), intent(out) :: tau
+    real(double), optional, intent(out) :: distanceToEdge
+    real(double) :: distToNextCell
+    real(double), optional :: tauMax
+    type(OCTAL), pointer :: thisOctal, sOctal
+    type(OCTAL), pointer, optional :: startOctal
+    integer, optional :: startSubcell
+    integer :: nArray
+    real(double) :: fudgeFac = 1.d-1
+    real(double) :: kappaSca, kappaAbs, kappaExt
+    real(double) :: r, rStart
+    logical :: outwards, inwards
+    integer :: subcell
+    logical, optional :: ross
+    logical :: planetGap
+
+! Set subradius to missing data in case tau > tauMax condition is never triggered
+    if (present(subradius)) then
+       subradius=-1.0d30
+    end if
+
+    kappaAbs = 0.d0; kappaSca = 0.d0
+    tau = 0.d0
+    currentPosition = rVec
+    if (PRESENT(nTau)) then
+       xArray = 0.d0
+       tauArray = 0.d0
+       ntau = 1
+       nArray = size(tauArray)
+    endif
+    planetGap  = .false.
+    if (grid%geometry == "planetgap") planetgap = .true.
+    rStart = modulus(rVec)
+    if ((rVec .dot. direction) > 0.d0) then
+       outwards = .true.
+       inwards = .false.
+    else
+       inwards = .true.
+       outwards=.false.
+    endif
+
+    if (PRESENT(startOctal)) then
+       thisOctal => startOctal
+       subcell = startSubcell
+!       if (.not.inOctal(thisOctal, currentPosition)) then
+!          write(*,*) "bug in startreturnsamples2"
+!          stop
+!       endif
+    else
+       CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
+    endif
+
+    if (PRESENT(distanceToEdge)) distanceToEdge = 0.d0
+    do while (inOctal(grid%octreeRoot, currentPosition))
+
+       call findSubcellLocal(currentPosition, thisOctal,subcell)
+       if (.not.PRESENT(ross)) then
+          call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs, dir=direction)
+          kappaExt = kappaSca
+       else
+          call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, rosselandKappa=kappaExt, dir=direction)
+          kappaExt = kappaExt * thisOctal%rho(subcell) * 1.d10
+       endif
+       sOctal => thisOctal
+       call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
+
+       beforeVec = VECTOR(currentPosition%x, currentPosition%y,0.d0)
+       currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
+       afterVec = VECTOR(currentPosition%x, currentPosition%y,0.d0)
+
+       if (thisOctal%twod.and.(direction%x < 0.d0).and.(currentPosition%x < 0.d0)) exit
+
+       if ((thisOctal%cylindrical).and.((beforeVec.dot.afterVec).lt.0.d0)) then
+          exit
+       endif
+
+
+       if (planetGap) then
+          if ((direction%x < 0.d0).and.(rVec%x > rGap*autocm/1.d10) &
+               .and.(currentPosition%x < rGap*autocm/1.d10)) exit
+          if ((direction%x > 0.d0).and.(rVec%x < rGap*autocm/1.d10) &
+               .and.(currentPosition%x > rGap*autocm/1.d10)) exit
+       endif
+
+       if (PRESENT(stopAtGap)) then
+          r = modulus(currentPosition)
+          if (inwards.and.(rStart > rGapOuter).and.(r < rGapOuter)) exit
+          if (outwards.and.(rStart < rGapInner).and.(r > rGapInner)) exit
+       endif
+
+       if (PRESENT(stopAtDistance)) then
+          r = modulus(currentPosition)
+          if (r > stopAtDistance) exit
+       endif
+
+
+       tau = tau + distToNextCell*kappaExt
+       if (PRESENT(nTau)) then
+          nTau = nTau + 1
+          if (nTau > nArray) then
+             call writeFatal("Tau array size exceeded")
+             stop
+          endif
+          xArray(nTau) = xArray(nTau-1) + distToNextCell
+          tauArray(nTau) = tau
+       endif
+       if (PRESENT(distanceToEdge)) distanceToEdge = distanceToEdge + distToNextCell
+       if (PRESENT(tauMax)) then
+          if (tau > tauMax) then
+             if (PRESENT(subRadius)) then
+                subRadius = modulus(subcellCentre(thisOctal,subcell))
+             endif
+             exit
+          endif
+
+       endif
+    end do
+  end subroutine tauScatAlongPath
+
   subroutine tauAlongPathFast(ilambda, grid, rVec, direction, tau, tauMax, ross, startOctal, startSubcell, nTau, &
        xArray, tauArray, distanceToEdge, debug)
     use source_mod, only : globalSourceArray, globalNsource, distanceToSource
@@ -20988,26 +21154,30 @@ END SUBROUTINE assignDensitiesStellarWind
   end subroutine tauAlongPathCMF
 
   subroutine writeScatteringSurfaceFile(thisFile, grid)
-    use inputs_mod, only : lambdaTau
+    use inputs_mod, only : lambdaTau, height, betaDisc
     character(len=*) :: thisFile
     type(GRIDTYPE) :: grid
-    real(double) :: theta,  sArray(10000),tauArray(10000), s, tau
+    real(double) :: theta,  sArray(10000),tauArray(10000), s, tau, r, hgas,hdust
     type(VECTOR) :: rVec, radialVec
     integer :: i, ntau, iLambda, itau
 
     call locate(grid%lamArray, grid%nLambda, lambdaTau, iLambda)
 
     open(33, file=thisFile, status="unknown", form="formatted")
+    write(33,'(a15,a15,a15,a15)') "%        R (au)", "H dust (au)", "H gas (au)", "Hdust/Hgas"
     do i = 1, 500
        theta = dble(i-1)/499. * pi /2.d0
        radialVec = VECTOR(cos(theta),0.d0, sin(theta))
-       rVec = VECTOR(0.d0, 0.d0, 0.d0)
-       call tauAlongPath(ilambda, grid, rVec, radialVec, tau, tauMax=10.d0, nTau=nTau, &
+       rVec = VECTOR(1.d-6, 1.d-6, 1.d-6)
+       call tauScatAlongPath(ilambda, grid, rVec, radialVec, tau, tauMax=10.d0, nTau=nTau, &
             xArray=sArray, tauArray=tauArray)
        if (tau < 1.d0) cycle
        call locate(tauArray, nTau, 1.d0, iTau)
-       s = sArray(iTau) + sArray(iTau+1)*(tauArray(iTau+1) - 1.d0)/(tauArray(iTau+1) - tauArray(iTau))
-       write(33,*) s*1.d10/autocm/cos(theta),s * sin(theta)*1.d10/autocm
+       s = sArray(iTau) + (sArray(iTau+1)-sArray(iTau))*(tauArray(iTau+1) - 1.d0)/(tauArray(iTau+1) - tauArray(iTau))
+       r = s * cos(theta) * 1.d10/autocm
+       hdust = s * sin(theta)*1.d10/autocm
+       hgas = (height*1.d10/autocm)*(r/100)**betaDisc
+       write(33,'(f15.3,f15.3,f15.3,f15.3)') r,hdust,hgas,hdust/hgas
     enddo
     close(33)
   end subroutine writeScatteringSurfaceFile

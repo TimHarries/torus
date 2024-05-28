@@ -958,15 +958,26 @@ contains
   end function benchmarkDensity
 
   function becBlob(point) result (rhoOut)
+    use inputs_mod, only : nBlobs, aRadius, cRadius, blobPos, blobZVec
     TYPE(VECTOR), INTENT(IN) :: point
-    type(VECTOR) :: blobPos
-    real(double) :: blobRadius, rhoOut, r
-
+    real(double) :: rhoOut, r, z
+    type(VECTOR) :: zVec
+    real(double) :: a, c, s
+    integer :: i
+    
     rhoOut = 1.d-30
-    blobPos = VECTOR(0.5*autocm/1.d10, 1.d0, 0.1*autocm/1.d10)
-    blobRadius = 0.1 * autocm / 1.d10
-    r = modulus(blobPos - point)
-    if (r < blobRadius) rhoOut = 1d-10
+    do i = 1, nBlobs
+       a = aRadius(i)
+       c = cRadius(i)
+       zVec = blobZVec(i)
+    
+       z = (point - blobPos(i)).dot.zVec
+       r = distanceFromPointToLine(point, blobPos(i), zVec)
+
+       s = r**2 / a**2 + z**2/c**2
+    
+       if (s < 1.) rhoOut = 1d-13
+    enddo
   end function becBlob
   
   function shakaraSunyaevDisc(point, grid) result (rhoOut)

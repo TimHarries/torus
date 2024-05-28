@@ -713,14 +713,15 @@ contains
 
    end subroutine doPhysics
 
-   subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam, dustRadeq, photoion, atomicDataCube, phaseloop)
+   subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam, dustRadeq, &
+        photoion, atomicDataCube, phaseloop, scatsur)
      use inputs_mod, only : lamFile, lamFilename, lamLine, vMinSpec, vMaxSpec, nv, resolveSilicateFeature, writepolar, &
-          polarWavelength
+          polarWavelength,  lambdaTau
 #ifdef PHOTOION
      use photoion_utils_mod, only : refineLambdaArray
 #endif
 
-     logical, optional :: dustRadeq, photoion, atomicDataCube, phaseloop
+     logical, optional :: dustRadeq, photoion, atomicDataCube, phaseloop, scatSur
      type(GRIDTYPE) :: grid
      real, pointer :: xArray(:)
      integer :: nLambda
@@ -736,6 +737,14 @@ contains
         nLambda = numLam
         allocate(xarray(1:nLambda))
         xArray(1) = real(polarWavelength)
+     endif
+
+     if (present(scatSur)) then
+        if (scatSur) then
+           nLambda = numLam
+           allocate(xarray(1:nLambda))
+           xArray(1) = real(lambdaTau)
+        endif
      endif
 
      if (PRESENT(dustRadEq)) then

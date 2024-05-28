@@ -91,8 +91,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   integer, parameter :: nvec=1
   type(VECTOR) :: distortionVec(nvec)
   real :: infallParticleMass=0.0     ! for T Tauri infall models
-  integer :: maxBlobs=0
-  type(BLOBTYPE) :: blobs(1)
   real :: dtime = 0.0
 
   real(double) :: finalTau
@@ -225,7 +223,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
   character(len=80) :: tempChar, tempChar2
   character(len=80) :: phasePopFilename
-  character(len=80) :: outFile, originalOutFile, filename
+  character(len=80) :: outFile, originalOutFile
   character(len=80) :: specfile
 
 
@@ -661,11 +659,11 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
      end if ! (.not. gridUsesAMR)
 
-     if (nBlobs > 0) then
-        write(filename,"(a,i3.3,a)") "run",iPhase,".blob"
-        call readBlobs(filename, maxBlobs, blobs, .false.)
-        call distortGridWithBlobs(grid, maxBlobs, blobs)
-     endif
+!     if (nBlobs > 0) then
+!        write(filename,"(a,i3.3,a)") "run",iPhase,".blob"
+!        call readBlobs(filename, maxBlobs, blobs, .false.)
+!        call distortGridWithBlobs(grid, maxBlobs, blobs)
+!     endif
 
      
 
@@ -1109,12 +1107,12 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
         end if
 
         if (inclination /= 0.) then
-           xAxisImage = viewVec.cross.VECTOR(0.d0, 0.d0, 1.d0)
+           xAxisImage = VECTOR(0.d0, 0.d0, 1.d0).cross.viewVec
         else
            xAxisImage = VECTOR(1.d0, 0.d0, 0.d0)
         endif
         call normalize(xAxisImage)
-        yAxisImage =  viewVec .cross. xAxisimage
+        yAxisImage =  viewVec .cross. xAxisImage
         call normalize(yAxisImage)
         write(*,*) "xAxis image ",xAxisImage
         write(*,*) "yAxis image ",yAxisImage

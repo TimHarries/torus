@@ -701,6 +701,12 @@
   logical :: curtains, enhance
   real :: dipoleOffset
 
+  ! bec stuff
+  type(VECTOR) :: blobPos(10), blobZVec(10)
+  real(double) :: aRadius(10), cRadius(10)
+
+
+  
   ! T Tauri parameters ----------------------------------------------------
   character(len=80) :: MdotType ! variable accretion rate model in use
   real :: MdotParameter1, MdotParameter2, MdotParameter3, MdotParameter4
