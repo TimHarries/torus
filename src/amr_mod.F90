@@ -905,7 +905,7 @@ CONTAINS
     CASE("lighthouse")
        CALL calcLighthouseDensity(thisOctal,subcell)
 
-    CASE("lighthousesimple")
+    CASE("simplighth")
        call calcLighthouseSimple(thisOctal, subcell)
 
     CASE("slab")
