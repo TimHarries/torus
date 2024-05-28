@@ -1785,6 +1785,45 @@ contains
 !      stop
 !   end subroutine testTracks
 
+  subroutine testClusterFlux
+     real(double) :: thissourceflux, fluxWanted, fluxMin, fluxMax, euvsWanted, mass, totalCreatedMass,ionflux
+     integer :: i, converged
+
+     globalnSource = 1
+     if (associated(globalSourceArray)) deallocate(globalSourceArray)
+     allocate(globalsourcearray(1:globalnsource))
+
+     fluxWanted = 5.60894d38
+     fluxMin = fluxWanted * 0.99
+     fluxMax = fluxWanted * 1.01
+
+     euvsWanted = 1.60910d49
+
+     converged = 0
+     i = 1
+     do while (converged <= 200) 
+        mass = 45.d0 + dble(converged)*0.05 ! msol
+        call createSources(globalnSource,globalsourcearray, 'singlestartest', 0.d0, mass, 1.d0, totalCreatedMass)
+        thisSourceFlux = sumSourceLuminosity(globalsourcearray(1:1), 1, 912., 2400.)
+        ionFlux = ionizingFlux(globalSourceArray(1))
+        write(*,'(a, f9.3, 4es13.5)') "RESULT ", globalSourceArray(1)%mass/msol, thisSourceFlux, &
+           thisSourceFlux/fluxWanted, ionFlux/euvsWanted
+        if ((thisSourceFlux > fluxMin) .and. (thisSourceFlux < fluxMax)) then
+           converged = 10000
+        else
+           converged = converged + 1
+        endif
+     enddo
+     if (converged == 10000) then
+        write(*,*) "msol ", globalSourceArray(1)%mass/msol
+        write(*,*) "lsol ", globalSourceArray(1)%luminosity/lsol
+        write(*,*) "teff ", globalSourceArray(1)%teff
+        write(*,*) "FUV/wanted ", thisSourceFlux, thisSourceFlux/fluxWanted
+        write(*,*) "EUV/wanted ", ionFlux, ionFlux/euvsWanted
+     endif
+
+  end subroutine testClusterFlux
+
    
 !  subroutine testClusterSpectra
 !     real(double) :: thissourceflux, tot, burstMass

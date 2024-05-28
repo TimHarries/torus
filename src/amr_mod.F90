@@ -10261,7 +10261,7 @@ logical function insideCone(position, binarySep, momRatio)
   end subroutine calcUniformDensityGrid
 
   subroutine calcLighthouseSimple(thisOctal,subcell)
-    use inputs_mod, only : hydrodynamics, gridDensity, decoupleGasDustTemperature
+    use inputs_mod, only : hydrodynamics, gridDensity, decoupleGasDustTemperature, cavAngle
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -10277,7 +10277,7 @@ logical function insideCone(position, binarySep, momRatio)
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
 
     theta = acos(rVec%z/rMod)
-    if (theta < (45.d0 * degToRad)) then
+    if (theta < cavAngle) then
        ! cavity
        thisOctal%rho(subcell) = gridDensity / 1.d3
     else
