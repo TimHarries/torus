@@ -343,7 +343,7 @@ contains
          "Number of photon packets","(a,i12,a)", 0_bigInt, ok, .false.)
 
     call getInteger("maxiter", maxPhotoionIter, cLine, fLine, nLines, &
-         "Maximum number of iterations","(a,i8,a)", 10, ok, .false.)
+         "Maximum number of iterations","(a,i8,a)", 20, ok, .false.)
 
     call getLogical("starburst", starburst, cLine, fline, nLines, &
          "Generate sources as starburst: ", "(a,1l,1x,a)", .false., ok, .false.)
@@ -943,6 +943,13 @@ contains
        case("lighthouse")
        call getDouble("cavangle", cavAngle, degToRad, cLine, fLine, nLines, &
             "Cavity angle (deg): ","(a,f5.2,a)", 30.d0, ok, .false.)
+
+       case("lighthousesimple")
+          call getDouble("griddensity", gridDensity, 1.d0, cLine, fLine, nLines, &
+               "Initial density of grid (in g cm^-3): ","(a,e12.3,1x,a)", 1.d-18, ok, .false.)
+          call getDouble("cavangle", cavAngle, degToRad, cLine, fLine, nLines, &
+               "Cavity angle (deg): ","(a,f5.2,a)", 30.d0, ok, .false.)
+
 
        case("slab")
        call getdouble("tauslab", tauSlab, 1.d0, cLine, fLine, nLines, &

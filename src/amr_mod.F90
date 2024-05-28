@@ -905,6 +905,8 @@ CONTAINS
     CASE("lighthouse")
        CALL calcLighthouseDensity(thisOctal,subcell)
 
+    CASE("lighthousesimple")
+       call calcLighthouseSimple(thisOctal, subcell)
 
     CASE("slab")
        CALL calcSlabDensity(thisOctal,subcell)
@@ -1008,10 +1010,8 @@ CONTAINS
     CASE("unimed")
        call calcUniMed(thisOctal, subcell)
 
-
     CASE("shell")
        call calcShell(thisOctal, subcell)
-
 
     CASE("sphere")
        call calcSphere(thisOctal, subcell)
@@ -10259,6 +10259,32 @@ logical function insideCone(position, binarySep, momRatio)
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
 
   end subroutine calcUniformDensityGrid
+
+  subroutine calcLighthouseSimple(thisOctal,subcell)
+    use inputs_mod, only : hydrodynamics, gridDensity, decoupleGasDustTemperature
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: rMod, theta
+
+    rVec = subcellCentre(thisOctal, subcell)
+    rMod = modulus(rVec)
+
+    thisOctal%temperature(subcell) = 10.d0
+    if (decoupleGasDustTemperature) thisOctal%tdust(subcell) = 10.d0
+    if (hydrodynamics) thisOctal%iequationOfState(subcell) = 1 ! isothermal
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+
+    theta = acos(rVec%z/rMod)
+    if (theta < (45.d0 * degToRad)) then
+       ! cavity
+       thisOctal%rho(subcell) = gridDensity / 1.d3
+    else
+       ! ambient
+       thisOctal%rho(subcell) = gridDensity
+    endif
+  end subroutine calcLighthouseSimple
 
 
   subroutine calcSphere(thisOctal,subcell)
