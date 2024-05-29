@@ -37,7 +37,7 @@ module ion_mod
      integer :: z         ! nuclear charge
      integer :: n         ! number of electrons
      integer :: outerShell    ! outer shell
-     real :: ipot         ! ionization potential
+     real :: ipot         ! ionization potential eV
      real :: abundance    ! of element relative to H
      real(double) :: nuthresh ! freq equivalent of ion pot
      real(double) :: nucleons     ! number of nucleons, use to calculate mass

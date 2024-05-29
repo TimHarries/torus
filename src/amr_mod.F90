@@ -10302,18 +10302,27 @@ logical function insideCone(position, binarySep, momRatio)
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rVec
-    real(double) :: rMod, theta
+    real(double) :: rMod, theta, dx
+    logical :: cavity
 
     rVec = subcellCentre(thisOctal, subcell)
     rMod = modulus(rVec)
 
-    thisOctal%temperature(subcell) = 10.d0
+    thisOctal%temperature(subcell) = 10.
     if (decoupleGasDustTemperature) thisOctal%tdust(subcell) = 10.d0
     if (hydrodynamics) thisOctal%iequationOfState(subcell) = 1 ! isothermal
     thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
 
-    theta = acos(rVec%z/rMod)
-    if (theta < cavAngle) then
+    ! cell centre
+    theta = acos(abs(rVec%z)/rMod)
+    cavity = (theta < cavAngle)
+
+    ! radius of dx around 0.
+    ! Fudge for low res to make the central cells part of the cavity
+    dx = thisOctal%subcellSize
+    cavity = cavity .or. (rMod < dx)
+
+    if (cavity) then
        ! cavity
        thisOctal%rho(subcell) = gridDensity / 1.d3
     else
@@ -16289,18 +16298,24 @@ end function readparameterfrom2dmap
 
 #ifdef PHOTOION
    if (photoionization.and.(.not.dustonly)) then
+      ! AA 2024-05
+      ! Can sometimes get situation where the binned lambda is > 13.6eV but interpolated lambda is < 13.6eV.
+      ! This means ionization equilibrium (uses interpolated lambda) sees NON-ionizing photon (so kappaH should be 0)
+      ! while using binned lambda here means kappaTimesFlux sees ionizing photon (= high kappaH)
+      ! tldr: pass interpolated lambda into returnKappa when doing photoion + radiation pressure
       if (PRESENT(kappaAbs)) then
          if (present(lambda)) then
             e = real((hCgs * (cSpeed / (lambda * 1.e-8))) * ergtoev)
          else
+            call torus_abort("returnKappa requires interpolated lambda to calculate photoion xsec")
             e = real((hCgs * (cSpeed / (grid%lamArray(iLambda) * 1.e-8))) * ergtoev)
             !            write(*,*) "! using rough grid"
          endif
          call phfit2(1, 1, 1 , e , h0)
          call phfit2(2, 2, 1 , e , he0)
-         kappaH =  thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1) * h0
+         kappaH =  thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1) * dble(h0)
          if (.not. hOnly) then
-            kappaHe = thisOctal%nh(subcell)*grid%ion(3)%abundance*thisOctal%ionFrac(subcell,3) * he0
+            kappaHe = thisOctal%nh(subcell)*grid%ion(3)%abundance*thisOctal%ionFrac(subcell,3) * dble(he0)
          else
             kappaHe = 0.d0
          end if

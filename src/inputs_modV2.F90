@@ -946,7 +946,7 @@ contains
        call getDouble("cavangle", cavAngle, degToRad, cLine, fLine, nLines, &
             "Cavity angle (deg): ","(a,f5.2,a)", 30.d0, ok, .false.)
 
-       case("lighthousesimple")
+       case("simplighth")
           call getDouble("griddensity", gridDensity, 1.d0, cLine, fLine, nLines, &
                "Initial density of grid (in g cm^-3): ","(a,e12.3,1x,a)", 1.d-18, ok, .false.)
           call getDouble("cavangle", cavAngle, degToRad, cLine, fLine, nLines, &

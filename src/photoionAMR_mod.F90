@@ -3312,7 +3312,7 @@ end subroutine radiationHydro
                                   spectrum(1:nFreq) = thisOctal%spectrum(subcell,1:nfreq) 
                                endif
                                
-                               call returnKappa(grid, thisOctal, subcell, ilambda=ilam, &
+                               call returnKappa(grid, thisOctal, subcell, ilambda=ilam, lambda=thisLam, &
                                     kappaAbsDust=kappaAbsDust, kappaAbsGas=kappaAbsGas, &
                                     kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat, dir=uHat)
                                                
@@ -3379,6 +3379,7 @@ end subroutine radiationHydro
                                thisOctal%spectrum(subcell,1:nfreq) = spectrum(1:nFreq)
 
                                thisFreq =  getPhotonFreq(nfreq, freq, thisOctal%spectrum(subcell,1:nFreq))
+                               thisLam = real(cSpeed / thisFreq) * 1.e8
 
                                uHat = randomUnitVector() ! isotropic emission
 !                               if(cart2d) then
@@ -3459,7 +3460,7 @@ end subroutine radiationHydro
                                   thisLam = real(cSpeed / thisFreq) * 1.e8
                                   call locate(lamArray, nLambda, real(thisLam), iLam)
                                   
-                                  call returnKappa(grid, thisOctal, subcell, ilambda=ilam, &
+                                  call returnKappa(grid, thisOctal, subcell, ilambda=ilam, lambda=thisLam, &
                                  kappaSca=kappaScadb, kappaAbs=kappaAbsdb, dir=uHat)
 
 !                                  write(*,*) "small packet wavelength ", thisLam
@@ -3475,7 +3476,7 @@ end subroutine radiationHydro
                             thisLam = real(cSpeed / thisFreq) * 1.e8
                             call locate(lamArray, nLambda, real(thisLam), iLam)
                             
-                            call returnKappa(grid, thisOctal, subcell, ilambda=ilam, &
+                            call returnKappa(grid, thisOctal, subcell, ilambda=ilam, lambda=thisLam, &
                                  Kappaabsdust=kappaAbsDust, kappaAbsGas=kappaAbsGas, &
                                  kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat, dir=uHat)
 !                            write(*,*) "thislam",thislam,ilam, lamArray(ilam)
@@ -6723,7 +6724,9 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     character(len=*) :: flag
     integer :: nMuMie
     type(PHASEMATRIX) :: miePhase(:,:,:)
+    real :: thisLam
 
+    thisLam = real(cSpeed / thisFreq) * 1.e8
     
     kappaAbs = 0.d0; kappaAbsDust = 0.d0
 
@@ -6786,7 +6789,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        enddo
     endif
 
-    call returnkappa(grid, thisoctal, subcell, ilambda=ilambda, kappaabsdust=kappaabsdust, &
+    call returnkappa(grid, thisoctal, subcell, ilambda=ilambda, lambda=thisLam, kappaabsdust=kappaabsdust, &
          kappaabs=kappaabs, kappaSca=kappaSca, dir=uHat, kappaAbsGas=kappaAbsGas)
     kappaExt = kappaAbs + kappaSca
 
@@ -8896,7 +8899,6 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
        else
           V = cellVolume(thisOctal, subcell)*1.d30
           thisOctal%habingFlux(subcell) = epsOverDeltaT * thisOctal%habingFlux(subcell) / (V * habing)
-
        endif
     enddo
   end subroutine calculateHabingFlux 
