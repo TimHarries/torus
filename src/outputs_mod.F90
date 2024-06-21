@@ -126,6 +126,8 @@ contains
 
     if (scatteringSurface) then
        call writeInfo("Writing scattering surface file")
+       call setupXarray(grid, xarray, nLambda, numLam=1, scatSur=.true.)
+       call setupDust(grid, xArray, nLambda, miePhase, nMumie)
        call writeScatteringSurfaceFile(scatteringSurfaceFilename, grid)
     endif
 
