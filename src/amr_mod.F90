@@ -5452,7 +5452,7 @@ CONTAINS
 
 !          write(*,*) hr, height, r, betadisc
 
-          if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > thisheightSplitFac)) split = .true.
+          if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > thisheightSplitFac)) split = .true.
 
           if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
@@ -18554,6 +18554,65 @@ END SUBROUTINE assignDensitiesStellarWind
     end do
   end subroutine tauAlongPath2
 
+    subroutine tauAlongPathScat(ilambda, grid, rVec, direction, tau, tauMax, ross, startOctal, startSubcell, nTau, xArray, tauArray)
+    type(GRIDTYPE) :: grid
+    type(VECTOR) :: rVec, direction, currentPosition, beforeVec, afterVec
+    integer :: iLambda
+    real(double), intent(out) :: tau
+    real(double) :: distToNextCell
+    real(double), optional :: tauMax
+    type(OCTAL), pointer :: thisOctal, sOctal
+    type(OCTAL), pointer, optional :: startOctal
+    integer, optional :: startSubcell
+    integer :: ntau
+    real(double) xArray(:), tauArray(:)
+    real(double) :: fudgeFac = 1.d-1
+    real(double) :: kappaSca, kappaAbs, kappaExt
+    integer :: subcell
+    logical, optional :: ross
+    kappaAbs = 0.d0; kappaSca = 0.d0
+    tau = 0.d0
+    currentPosition = rVec
+
+
+    if (PRESENT(startOctal)) then
+       thisOctal => startOctal
+       subcell = startSubcell
+    else
+       CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
+    endif
+    ntau = 1
+    xArray(1) = 0.
+    tauArray(1) = 0.
+    
+    do while (inOctal(grid%octreeRoot, currentPosition))
+
+       call findSubcellLocal(currentPosition, thisOctal,subcell)
+       if (.not.PRESENT(ross)) then
+          call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs, dir=direction)
+          kappaExt =  kappaSca ! scattering only
+       else
+          call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, rosselandKappa=kappaExt, dir=direction)
+          kappaExt = kappaExt * thisOctal%rho(subcell) * 1.d10
+       endif
+       sOctal => thisOctal
+       call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
+
+       beforeVec = VECTOR(currentPosition%x, currentPosition%y,0.d0)
+       currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
+       afterVec = VECTOR(currentPosition%x, currentPosition%y,0.d0)
+
+
+       tau = tau + distToNextCell*kappaExt
+       ntau = ntau + 1
+       tauArray(nTau) = tau
+       xArray(ntau) = xArray(ntau-1) + distToNextCell
+       if (PRESENT(tauMax)) then
+          if (tau > tauMax) exit
+       endif
+    end do
+  end subroutine tauAlongPathScat
+
   subroutine getMagStreamValues3(thisOctal, subcell, stream)
     type(OCTAL) :: thisOctal
     integer :: subcell
@@ -20976,12 +21035,12 @@ END SUBROUTINE assignDensitiesStellarWind
        theta = dble(i-1)/499. * pi /2.d0
        radialVec = VECTOR(cos(theta),0.d0, sin(theta))
        rVec = VECTOR(0.d0, 0.d0, 0.d0)
-       call tauAlongPath(ilambda, grid, rVec, radialVec, tau, tauMax=10.d0, nTau=nTau, &
+       call tauAlongPathScat(ilambda, grid, rVec, radialVec, tau, tauMax=10.d0, nTau=nTau, &
             xArray=sArray, tauArray=tauArray)
        if (tau < 1.d0) cycle
        call locate(tauArray, nTau, 1.d0, iTau)
        s = sArray(iTau) + sArray(iTau+1)*(tauArray(iTau+1) - 1.d0)/(tauArray(iTau+1) - tauArray(iTau))
-       write(33,*) s*1.d10/autocm/cos(theta),s * sin(theta)*1.d10/autocm
+       write(33,*) s* cos(theta) * 1.d10/autocm,s * sin(theta)*1.d10/autocm
     enddo
     close(33)
   end subroutine writeScatteringSurfaceFile

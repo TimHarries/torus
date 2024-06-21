@@ -1141,6 +1141,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
           write(tempChar,'(i3.3)') NINT(inclination*radToDeg)
           write(tempChar2,'(i3.3)') NINT(imagePA*radToDeg)
           if (imagePA == 0.0 ) then
+             if (sedIncSeq) write(tempChar,'(i2.2)') iInclination
              outFile = trim(originalOutFile)//'_inc'//TRIM(tempChar)
           else
              outFile = trim(originalOutFile)//'_inc'//TRIM(tempChar)//'_PA'//TRIM(tempChar2)

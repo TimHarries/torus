@@ -5435,6 +5435,10 @@ incStyle: if (checkPresent("inclinations", cline, nlines)) then
 
     end if incStyle
 
+
+    call getLogical("sedincseq", sedIncSeq, cLine, fLine, nLines, &
+         "Spectrum filename named in sequence by inclination: ","(a,1l,1x,a)", .false., ok, .false.)
+
     call getReal("inclination", thisinclination, real(degtorad), cLine, fLine, nLines, &
          "Inclination angle (deg): ","(a,f4.1,1x,a)", 0., ok, .false.)
 

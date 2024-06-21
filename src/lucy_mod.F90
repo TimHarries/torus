@@ -3415,9 +3415,9 @@ subroutine setBiasOnTau(grid, iLambda)
                    tau = min(tau, thisTau)
                 enddo
 !                if (tau < 5.) then
-!                   thisOctal%biasCont3D(subcell) = 1.d0
+                   thisOctal%biasCont3D(subcell) = 1.d0
 !                else
-                   thisOctal%biasCont3D(subcell) = max(exp(-tau),1.d-3)
+!                   thisOctal%biasCont3D(subcell) = max(exp(-tau),1.d-3)
 !                endif
                  
 

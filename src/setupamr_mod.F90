@@ -3398,7 +3398,7 @@ end subroutine fillVelocityCornersFromCentresCylindrical
 
 
 recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, facArray, converged)
-  use inputs_mod, only : heightSplitFac, rOuter, minDepthAMR
+  use inputs_mod, only : heightSplitFac, rOuter, minDepthAMR, maxDepthAMR
   integer :: nr
   logical :: converged, aziSplit, debug
   real(double) :: rArray(:), facArray(:)
@@ -3421,65 +3421,66 @@ recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, fac
            end if
         end do
      else
-        testVec = vector(1500.d0,-666d0,193.)
-        debug = .false.
-        if (inSubcell(thisOctal,subcell,testVec)) debug = .true.
+        if (thisOctal%nDepth < maxDepthAMR) then
+           testVec = vector(1500.d0,-666d0,193.)
+           debug = .false.
+           if (inSubcell(thisOctal,subcell,testVec)) debug = .true.
 
 
-        rVec = subcellCentre(thisOctal,subcell)
+           rVec = subcellCentre(thisOctal,subcell)
 
         
-        thisRho = 0.d0
-        thisH = 1.d30
-        thisZ  = 0.
-        thisR = 0.
-        aziSplit = .false.
-!!        !$OMP PARALLEL DEFAULT(none) &
-!!        !$OMP PRIVATE (j,  rho, h, z, r) &
-!!        !$OMP SHARED (thisZ, thisR, thisH, thisRho, fac, facArray, aziSplit) &
-!!        !$OMP SHARED (lArray, rArray, rOuter, nr, rVec) 
-!!        !$OMP DO SCHEDULE(DYNAMIC)
-        do j = 1, nr
-           if (j < nr) then
-              call katieRho(rVec, lArray(j),rArray(j),rArray(j+1), rho, h, z, r)
-           else
-              call katieRho(rVec, lArray(j),rArray(j),dble(rOuter), rho, h, z, r)
+           thisRho = 0.d0
+           thisH = 1.d30
+           thisZ  = 0.
+           thisR = 0.
+           aziSplit = .false.
+           !!        !$OMP PARALLEL DEFAULT(none) &
+           !!        !$OMP PRIVATE (j,  rho, h, z, r) &
+           !!        !$OMP SHARED (thisZ, thisR, thisH, thisRho, fac, facArray, aziSplit) &
+           !!        !$OMP SHARED (lArray, rArray, rOuter, nr, rVec) 
+           !!        !$OMP DO SCHEDULE(DYNAMIC)
+           do j = 1, nr
+              if (j < nr) then
+                 call katieRho(rVec, lArray(j),rArray(j),rArray(j+1), rho, h, z, r)
+              else
+                 call katieRho(rVec, lArray(j),rArray(j),dble(rOuter), rho, h, z, r)
+              endif
+              if (rho > thisRho) then
+                 thisH = h
+                 thisZ = z
+                 thisR = r
+                 thisRho = rho
+                 fac = facArray(j)
+                 if (lArray(j)%z < 1.d0) aziSplit = .true.
+              endif
+           enddo
+        
+           !!        !$OMP ENDDO
+           !!        !$OMP END PARALLEL
+           !        if (debug) write(*,*) thisZ/thisH
+
+           if (thisOctal%nDepth < minDepthAMR) then
+              thisOctal%adot(subcell) = -1.d0
+              aziSplit = .true.
+              converged = .false.
            endif
-           if (rho > thisRho) then
-              thisH = h
-              thisZ = z
-              thisR = r
-              thisRho = rho
-              fac = facArray(j)
-              if (lArray(j)%z < 1.d0) aziSplit = .true.
+
+
+        
+           thisOctal%rho(subcell) = max(thisRho*fac,1.d-30)
+           
+           if ((abs(thisZ/thisH)< 100.).and.abs(thisOctal%subcellSize/thisH)>5.) then
+              thisOctal%adot(subcell) = -1.
+              converged = .false.
            endif
-        enddo
-        
-!!        !$OMP ENDDO
-!!        !$OMP END PARALLEL
-!        if (debug) write(*,*) thisZ/thisH
-
-        if (thisOctal%nDepth < minDepthAMR) then
-           thisOctal%adot(subcell) = -1.d0
-           aziSplit = .true.
-           converged = .false.
-        endif
-
-
-        
-        thisOctal%rho(subcell) = max(thisRho*fac,1.d-30)
-
-        if ((abs(thisZ/thisH)< 100.).and.abs(thisOctal%subcellSize/thisH)>5.) then
-           thisOctal%adot(subcell) = -1.
-           converged = .false.
-        endif
 
 
 
-        if ((abs(thisZ/thisH)< 10.).and.abs(thisOctal%subcellSize/thisH)>heightSplitFac) then
-           thisOctal%adot(subcell) = -1.
-           converged = .false.
-        endif
+           if ((abs(thisZ/thisH)< 10.).and.abs(thisOctal%subcellSize/thisH)>heightSplitFac) then
+              thisOctal%adot(subcell) = -1.
+              converged = .false.
+           endif
 
 !        if (aziSplit.and.(thisOctal%dphi>minphiresolution)) thisOctal%adot(subcell) = -1.d0
 
@@ -3504,7 +3505,8 @@ recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, fac
 !           endif
 !        endif
               
-        if (aziSplit) thisOctal%adot(subcell) = thisOctal%adot(subcell) * 2.
+           if (aziSplit) thisOctal%adot(subcell) = thisOctal%adot(subcell) * 2.
+        endif
 
      endif
   enddo
