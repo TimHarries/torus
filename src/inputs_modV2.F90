@@ -4232,6 +4232,9 @@ contains
     call getReal("smoothfactor", smoothFactor, 1.0, cLine, fLine, nLines, &
          "Inter-cell maximum ratio before smooth: ","(a,f6.1,1x,a)", 3., ok, .false.)
 
+    call getLogical("noscat", noScattering, cLine, fLine, nLines, &
+         "No scattering opacity in model: ","(a,1l,1x,a)", .false., ok, .false.)
+
   end subroutine readPhotoionEquilibriumParameters
 
   subroutine readHydrodynamicsParameters(cLine, fLine, nLines)

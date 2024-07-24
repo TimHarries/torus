@@ -500,7 +500,7 @@ contains
   subroutine fillGridMie(grid, aMin, aMax, a0, qDist, pDist, fillingFactor,&
        ngrain, abundance, grainname, thisDust)
 !DEC$ NOOPTIMIZE
-    use inputs_mod, only : grainFrac, grainDensity
+    use inputs_mod, only : grainFrac, grainDensity, photoionEquilibrium, noScattering
 ! This compiler directive disables optimisation in this subroutine, as  
 ! ifort 12 was incorrectly setting up grid%oneKappaAbs and grid%oneKappaSca. 
     use mieDistCrossSection_mod, only: mieDistCrossSection, mieSingleCrossSection
@@ -651,6 +651,10 @@ contains
     sigmaSca = tempArray
     deallocate(tempArray)
 #endif
+    if (photoionEquilibrium .and. noScattering) then
+       if (writeoutput) write(*,'(a)') "WARNING: Turned off scattering opacity!"
+       sigmaSca = 1.1e-25
+    endif
     if (.not.grid%oneKappa) then
        if (grid%adaptive) then
           if (writeoutput) write(*,'(a,i3)') "Filling AMR grid with mie cross sections...",grid%nLambda

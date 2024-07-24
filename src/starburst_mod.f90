@@ -1058,10 +1058,12 @@ contains
          case("singlestartest")
             source%position = burstPosition 
             source%velocity = VECTOR(0.d0, 0.d0, 0.d0)
-            write(*,*) "star mass (msol) ", source%mass/msol
-            write(*,*) "Lum (Lsol)", source%luminosity/lsol
-            write(*,*) "Teff (K) ", source%teff
-            write(*,*) "radius (1e10 cm) ", source%radius
+            if (writeoutput) then
+               write(*,*) "star mass (msol) ", source%mass/msol
+               write(*,*) "Lum (Lsol)", source%luminosity/lsol
+               write(*,*) "Teff (K) ", source%teff
+               write(*,*) "radius (1e10 cm) ", source%radius
+            endif
          case DEFAULT
       end select
 
