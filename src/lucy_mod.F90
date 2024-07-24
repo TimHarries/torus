@@ -2192,7 +2192,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     kappaScaPAH = 0.d0
     if (usePAH)  then
        kappaAbsPAH = getKappaAbsPAH(thisFreq) * thisOctal%rho(subcell) * 1.d10
-       kappaAbsPAH = getKappaScaPAH(thisFreq) * thisOctal%rho(subcell) * 1.d10
+       kappaScaPAH = getKappaScaPAH(thisFreq) * thisOctal%rho(subcell) * 1.d10
     endif
 
     if(present(kappaAbsOut)) kappaAbsOut = kappaAbsdb
