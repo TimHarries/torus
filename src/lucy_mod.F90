@@ -3236,10 +3236,11 @@ subroutine addDustContinuumLucyMonoAtDustTemp(thisOctal, subcell, grid,  lambda,
   type(GRIDTYPE) :: grid
   integer :: iPhotonLambda
   real ::  lambda
-  real(double) :: kappaAbs
+  real(double) :: kappaAbs, kappaAbsDust
   logical, save :: firstTime = .true.
 
   kappaAbs = 0.d0
+  kappaAbsDust = 0.d0
   thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont(subcell))
 
   if (.not.decoupleGasDustTemperature) then
@@ -3251,9 +3252,9 @@ subroutine addDustContinuumLucyMonoAtDustTemp(thisOctal, subcell, grid,  lambda,
   endif
 
 
-  call returnKappa(grid, thisOctal, subcell, lambda=lambda, iLambda=iPhotonLambda, kappaAbs=kappaAbs)
+  call returnKappa(grid, thisOctal, subcell, lambda=lambda, iLambda=iPhotonLambda, kappaAbs=kappaAbs, kappaAbsDust=kappaAbsDust)
   thisOctal%etaCont(subcell) =  bLambda(dble(lambda), thisOctal%tdust(subcell)) * &
-             kappaAbs * 1.d-10 * fourPi * 1.d-8 ! conversion from per cm to per A
+             kappaAbsDust * 1.d-10 * fourPi * 1.d-8 ! conversion from per cm to per A
   if (usePAH) then
      thisOctal%pahEmissivity(subcell) =  PAHemissivityFromAdot(dble(lambda), &
           thisOctal%adotPAH(subcell), &
