@@ -713,14 +713,14 @@ contains
    end subroutine doPhysics
 
    subroutine setupXarray(grid, xArray, nLambda, lamMin, lamMax, wavLin, numLam, dustRadeq, &
-        photoion, atomicDataCube, phaseloop, scatsur)
+        photoion, atomicDataCube, phaseloop, scatsur, fromlamfile)
      use inputs_mod, only : lamFile, lamFilename, lamLine, vMinSpec, vMaxSpec, nv, resolveSilicateFeature, writepolar, &
           polarWavelength,  lambdaTau
 #ifdef PHOTOION
      use photoion_utils_mod, only : refineLambdaArray
 #endif
 
-     logical, optional :: dustRadeq, photoion, atomicDataCube, phaseloop, scatSur
+     logical, optional :: dustRadeq, photoion, atomicDataCube, phaseloop, scatSur, fromlamfile
      type(GRIDTYPE) :: grid
      real, pointer :: xArray(:)
      integer :: nLambda
@@ -729,7 +729,12 @@ contains
      integer, optional, intent(in) :: numLam
      integer :: nCurrent, nt, i
      real(double) :: fac, logLamStart, logLamEnd, lamStart,lamEnd, junk
+     logical :: doFromLamFile
 
+     doFromLamFile = .false.
+     if (present(fromlamFile)) doFromLamFile = fromLamFile 
+     
+     
      if (associated(xarray)) deallocate(xarray)
 
      if (writePolar) then
@@ -782,7 +787,7 @@ contains
               call setupLogSpacing
            end if
 
-           if ((lamFile).and.(nLambda /= 1))  then
+           if ((lamFile).and.(nLambda /= 1).and.doFromlamFile)  then
               call setupLamFile
            endif
 
