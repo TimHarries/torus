@@ -3230,13 +3230,14 @@ end subroutine addDustContinuumLucyMono
 !-------------------------------------------------------------------------------
 
 subroutine addDustContinuumLucyMonoAtDustTemp(thisOctal, subcell, grid,  lambda, iPhotonLambda)
-  use inputs_mod, only : tminGlobal, decoupleGasDustTemperature, usePAH
+  use inputs_mod, only : tminGlobal, decoupleGasDustTemperature, usePAH, photoionPAH, destroyPAH
   type(OCTAL), pointer :: thisOctal
   integer :: subcell
   type(GRIDTYPE) :: grid
   integer :: iPhotonLambda
   real ::  lambda
   real(double) :: kappaAbs, kappaAbsDust
+  logical :: addPAHemissivity
   logical, save :: firstTime = .true.
 
   kappaAbs = 0.d0
@@ -3255,7 +3256,14 @@ subroutine addDustContinuumLucyMonoAtDustTemp(thisOctal, subcell, grid,  lambda,
   call returnKappa(grid, thisOctal, subcell, lambda=lambda, iLambda=iPhotonLambda, kappaAbs=kappaAbs, kappaAbsDust=kappaAbsDust)
   thisOctal%etaCont(subcell) =  bLambda(dble(lambda), thisOctal%tdust(subcell)) * &
              kappaAbsDust * 1.d-10 * fourPi * 1.d-8 ! conversion from per cm to per A
-  if (usePAH) then
+
+  addPAHemissivity = usePAH .or. photoionPAH
+  if (photoionPAH) then
+      ! option to turn off PAH emission in ionized gas
+     if (destroyPAH .and. (thisOctal%ionFrac(subcell,2) > 1.d-5)) addPAHemissivity = .false.
+  endif
+  if (addPAHemissivity) then
+     if (.not. associated(thisOctal%pahEmissivity)) allocate (thisOctal%pahEmissivity(1:thisOctal%maxChildren))
      thisOctal%pahEmissivity(subcell) =  PAHemissivityFromAdot(dble(lambda), &
           thisOctal%adotPAH(subcell), &
           thisOctal%rho(subcell)) &

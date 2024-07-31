@@ -272,6 +272,7 @@ MODULE octal_mod
     integer, pointer :: nFreq(:) =>  null()
     logical, DIMENSION(:), pointer :: gasSpectrumAdded => null()
     logical, DIMENSION(:), pointer :: dustContinuumAdded  => null()
+    logical, DIMENSION(:), pointer :: PAHemissionAdded  => null()
 
 
 ! time dependent RT stuff

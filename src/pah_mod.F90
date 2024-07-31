@@ -11,11 +11,11 @@ module pah_mod
      integer :: nu
      real(double), allocatable :: u(:)
      real(double), allocatable :: adot(:)
-     real(double), allocatable :: freq(:)
-     real(double), allocatable :: jnu(:,:)
-     real(double), allocatable :: lamKappa(:)
-     real(double), allocatable :: kappaSca(:)
-     real(double), allocatable :: kappaAbs(:)
+     real(double), allocatable :: freq(:)     ! Hz
+     real(double), allocatable :: jnu(:,:)    ! erg cm-2 s-1
+     real(double), allocatable :: lamKappa(:) ! micron
+     real(double), allocatable :: kappaSca(:) ! cm2 (g gas)-1
+     real(double), allocatable :: kappaAbs(:) ! cm2 (g gas)-1
      real(double), allocatable :: gFac(:)
      real(double), allocatable :: pnu(:,:)
   end type PAHTABLETYPE
@@ -99,12 +99,20 @@ contains
        PAHtable%kappaSca(i) =  (junk1 + junk2 + junk4 + junk5) - PAHtable%kappaAbs(i)
     enddo
     close(30)
+    ! table reads xsec - convert to kappa (cm2/g)
     PAHtable%kappaAbs = PAHscale * PAHtable%kappaAbs / (mu*mHydrogen) * 1.d-8
     PAHtable%kappaSca = PAHscale * PAHtable%kappaSca / (mu*mHydrogen) * 1.d-8
 
-   do i = 1, SIZE(PAHtable%lamKappa)
-      if (writeoutput) write(36,*) PAHtable%lamKappa(i), (PAHtable%kappaAbs(i) + PAHtable%kappaSca(i))
-   enddo
+   if (writeoutput) then
+      open(36, file='albedo_pah.dat', status="unknown", form="formatted")
+      write(36,'(a)') "# Columns are: wavelength (microns), kappa ext (cm^2 g^-1), kappa abs (cm^2 g^-1), kappa sca (cm^2 g^-1)"
+      write(36,*) "# Note that the opacities are per gram of gas"
+      do i = 1, SIZE(PAHtable%lamKappa)
+         write(36,*) PAHtable%lamKappa(i), (PAHtable%kappaAbs(i) + PAHtable%kappaSca(i)), &
+         PAHtable%kappaAbs(i), PAHtable%kappaSca(i)
+      enddo
+      close(36)
+   endif
 
   end subroutine readDraineOpacity
 
@@ -119,7 +127,7 @@ contains
     call unixGetenv("TORUS_DATA", dataDirectory, i)
 
     PAHtable%nU = 30
-    allocate(PAHtable%U(1:PAHtable%nU), PAHtable%freq(1001), PAHtable%jnu(1:PAHtable%nu,1:1001))
+    allocate(PAHtable%U(1:PAHtable%nU), PAHtable%freq(1001), PAHtable%jnu(1:PAHtable%nU,1:1001))
     PAHtable%U(01) = 0.10
     PAHtable%U(02) = 0.15
     PAHtable%U(03) = 0.20
@@ -151,7 +159,7 @@ contains
     PAHtable%U(29) = 1e5
     PAHtable%U(30) = 3e5
    
-    do i = 1, PAHtable%nu
+    do i = 1, PAHtable%nU
 
        if (PAHtable%u(i) <= 10.d0) then
           write(cval,'(f4.2)') PAHtable%u(i)          
@@ -293,38 +301,38 @@ contains
           PAHtable%adot(i) = PAHtable%adot(i) + 4.d0 * pi * PAHtable%u(i) * Jisrf(PAHtable%freq(j)) &
                * getkappaAbsPAH(PAHtable%freq(j)) *  (PAHtable%freq(j) - PAHtable%freq(j-1))
        enddo
-       if (writeoutput) write(*,*) "U_i ",i, " adot ",PAHtable%adot(i)
+       if (writeoutput) write(*,'(i6,a,es13.5,a,es13.5)') i, " U_i ", PAHtable%u(i), " adot_i ",PAHtable%adot(i)
     enddo
   end subroutine calculateAdots
 
 
 
-  real(double) function PAHemissivity(lambda, u, rho)
-    real(double) :: lambda, u, thisjnu(1001)
-    real(double) :: freq, t1, rho, nH
-    integer :: i, j
-    freq = cspeed/(lambda * angstromTocm)
-
-
-    PAHemissivity = 0.d0
-    if ( (freq > PAHtable%freq(1)).and.(freq < PAHtable%freq(1001)) ) then
-       if ( (u > PAHtable%u(1)) .and. (u < PAHtable%u(PAHtable%nu)) ) then
-
-          nH = rho/mHydrogen
-
-          call locate(PAHtable%u, PAHtable%nu, u, i)
-          t1 = (u - PAHtable%u(i)) / (PAHtable%u(i+1) - PAHtable%u(i))
-          
-          thisJnu = PAHtable%jnu(i,:) + t1 * (PAHtable%jnu(i+1,:) + PAHtable%jnu(i,:))
-       
-          call locate(PAHtable%freq, 1001, freq, j)
-
-          t1 = (freq - PAHtable%freq(j)) / (PAHtable%freq(j+1) - PAHtable%freq(j))
-
-          PAHemissivity =  nh *  (thisJnu(j) + t1 * (thisJnu(j+1) - thisJnu(j)))
-       endif
-    endif
-  end function PAHemissivity
+!  real(double) function PAHemissivity(lambda, u, rho)
+!    real(double) :: lambda, u, thisjnu(1001)
+!    real(double) :: freq, t1, rho, nH
+!    integer :: i, j
+!    freq = cspeed/(lambda * angstromTocm)
+!
+!
+!    PAHemissivity = 0.d0
+!    if ( (freq > PAHtable%freq(1)).and.(freq < PAHtable%freq(1001)) ) then
+!       if ( (u > PAHtable%u(1)) .and. (u < PAHtable%u(PAHtable%nu)) ) then
+!
+!          nH = rho/mHydrogen
+!
+!          call locate(PAHtable%u, PAHtable%nu, u, i)
+!          t1 = (u - PAHtable%u(i)) / (PAHtable%u(i+1) - PAHtable%u(i))
+!          
+!          thisJnu = PAHtable%jnu(i,:) + t1 * (PAHtable%jnu(i+1,:) + PAHtable%jnu(i,:))
+!       
+!          call locate(PAHtable%freq, 1001, freq, j)
+!
+!          t1 = (freq - PAHtable%freq(j)) / (PAHtable%freq(j+1) - PAHtable%freq(j))
+!
+!          PAHemissivity =  nh *  (thisJnu(j) + t1 * (thisJnu(j+1) - thisJnu(j)))
+!       endif
+!    endif
+!  end function PAHemissivity
 
   real(double) function PAHemissivityFromAdot(lambda, adot, rho)
     real(double) :: lambda, adot, thisjnu(1001),thisAdot
@@ -340,7 +348,6 @@ contains
        if ( (adot > PAHtable%adot(1)) .and. (adot < PAHtable%adot(PAHtable%nu)) ) then
 
           nH = rho/(mu * mHydrogen)
-
 
           thisAdot = min(PAHtable%adot(PAHtable%nu),max(adot, PAHtable%adot(1)))
           call locate(PAHtable%adot, PAHtable%nu, thisadot, i)

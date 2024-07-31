@@ -1016,6 +1016,9 @@ CONTAINS
     CASE("sphere")
        call calcSphere(thisOctal, subcell)
 
+    CASE("champagne")
+       call calcChampagne(thisOctal, subcell)
+
     CASE("user")
        call userSubroutine(thisOctal,subcell)
 
@@ -4557,7 +4560,7 @@ CONTAINS
        case("bonnor", "empty", "unimed", "SB_WNHII", "SB_instblt", "SB_CD_1Da" &
             ,"SB_CD_2Da" , "SB_CD_2Db", "SB_offCentre", "SB_isoshck", &
             "SB_coolshk", "SB_gasmix", "bubble", "SB_Dtype", "uniformden", &
-            "arthur06", "3dgaussian", "krumholz")
+            "arthur06", "3dgaussian", "krumholz","champagne")
 
           if (thisOctal%nDepth < minDepthAMR) split = .true.
 
@@ -10418,6 +10421,36 @@ logical function insideCone(position, binarySep, momRatio)
 
   end subroutine calcShell
 
+  subroutine calcChampagne(thisOctal,subcell)
+    use inputs_mod, only : rInner, rOuter, cavAngle, rhoFloor
+    use inputs_mod, only : gridDensity, decoupleGasDustTemperature, hydrodynamics
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    type(VECTOR) :: rVec
+    real(double) :: r, theta
+    logical :: opening
+
+    rVec = subcellCentre(thisOctal, subcell)
+    r = modulus(rVec)
+    theta = acos(abs(rVec%z)/r)
+    opening = (theta < cavAngle) .and. (rVec%z > 0.)
+
+    thisOctal%rho(subcell) = gridDensity
+    if ((r > rInner).and.(r < rOuter).and.(.not.opening)) then
+       ! shell
+       thisOctal%rho(subcell) = gridDensity * 100.d0 
+    elseif (r > rOuter) then
+       ! environment
+       thisOctal%rho(subcell) = gridDensity / 100.d0 
+    endif
+    thisOctal%rho(subcell) = max(rhoFloor, thisOctal%rho(subcell))
+
+    thisOctal%temperature(subcell) = 1.e4
+    if (decoupleGasDustTemperature) thisOctal%tdust(subcell) = 10.d0
+    if (hydrodynamics) thisOctal%iequationOfState(subcell) = 1 ! isothermal
+    thisOctal%velocity(subcell) = VECTOR(0.d0, 0.d0, 0.d0)
+  end subroutine calcChampagne
+
   subroutine calcPlumber(thisOctal,subcell)
 
     use inputs_mod, only : plumberRadius, plumberMass, plumberExponent, amrGridSize, rhoFloor, gridDistanceScale
@@ -15902,13 +15935,15 @@ end function readparameterfrom2dmap
   END SUBROUTINE amrUpdateGrid
 
   subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, allSca, &
-       rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, debug, reset_kappa, dir)
+       rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, debug, reset_kappa, dir, &
+       kappaAbsPAH, kappaScaPAH)
     use inputs_mod, only: nDustType, mie, includeGasOpacity, lineEmission, dustPhysics, dustonly, decoupleGasDustTemperature
     use atom_mod, only: bnu
     use gas_opacity_mod, only: returnGasKappaValue
 #ifdef PHOTOION
-    use inputs_mod, only: photoionization, hOnly, CAKlineOpacity
+    use inputs_mod, only: photoionization, hOnly, CAKlineOpacity, photoionPAH, destroyPAH
     use phfit_mod, only : phfit2
+    use pah_mod, only: getKappaAbsPAH, getKappaScaPAH
 #endif
     implicit none
     type(GRIDTYPE) :: grid
@@ -15917,7 +15952,7 @@ end function readparameterfrom2dmap
     integer, optional :: ilambda
     real, optional :: lambda
     real(double), optional :: allSca(:)
-    real(double), intent(out), optional :: kappaSca, kappaAbs
+    real(double), intent(out), optional :: kappaSca, kappaAbs, kappaScaPAH, kappaAbsPAH
     real(double), optional, intent(out) :: kappaAbsArray(:), kappaScaArray(:)
     real(double), optional, intent(out) :: rosselandKappa
     real(double), optional, intent(out) :: kappaAbsDust, kappaScaDust, kappaAbsGas, kappaScaGas
@@ -15943,7 +15978,7 @@ end function readparameterfrom2dmap
     real(double) :: tgas, tdust
 
 #ifdef PHOTOION
-    real(double) :: kappaH, kappaHe
+    real(double) :: kappaH, kappaHe, kappaThomson, kappaCAK
     real :: e, h0, he0
 #endif
 #ifdef _OPENMP
@@ -16298,6 +16333,9 @@ end function readparameterfrom2dmap
 
 #ifdef PHOTOION
    if (photoionization.and.(.not.dustonly)) then
+      kappaH = 0.d0
+      kappaHe = 0.d0
+
       ! AA 2024-05
       ! Can sometimes get situation where the binned lambda is > 13.6eV but interpolated lambda is < 13.6eV.
       ! This means ionization equilibrium (uses interpolated lambda) sees NON-ionizing photon (so kappaH should be 0)
@@ -16322,34 +16360,82 @@ end function readparameterfrom2dmap
          kappaAbs = kappaAbs + (kappaH + kappaHe)
       endif
       if (PRESENT(kappaAbsGas)) kappaAbsGas = (kappaH + kappaHe)
-      if (present(dir).AND.CAKlineOpacity.AND.&
-          thisOctal%Ne(subcell)>1.0d-40.AND. associated(thisOctal%rhoU)) then
-         tempDouble = sigmaE*thisOctal%rho(subcell)
-         tempDouble= tempDouble * sqrt(5.0/3.0*kErg*thisOctal%temperature(subcell)/mHydrogen)
-         tempDouble = tempDouble / 1.0e10/amrGridDirectionalDeriv(grid,subcellCentre(thisOctal,subcell),&
-                                                                  dir,startOctal=thisOctal, Hydro=.true.)
-         tempDouble=min(1.0d3,0.28*tempDouble**(-0.56)*(thisOctal%Ne(subcell)/1.0e11)**0.09) !Abbott 1982 temp invarient form of CAK line driving, valid for roughly 10kK < Teff < 50kK
-      else
-         tempDouble=0.0
-      endif
-      if (PRESENT(kappaScaGas)) then
-         if (present(debug)) write(*,*) "kappasca3 ",kappasca, thisOctal%ne(subcell) * sigmaE * 1.e10, thisOctal%ne(subcell),&
-              thisOctal%rho(subcell)/mHydrogen,thisOctal%nh(subcell)
-         kappaScaGas = kappaScaGas + thisOctal%ne(subcell) * sigmaE * 1.e10 *(1+tempDouble)
-      else if (PRESENT(kappaSca)) then
-         kappaSca = kappaSca + thisOctal%ne(subcell) * sigmaE * 1.e10 *(1+tempDouble)
-      else if (PRESENT(kappaScaArray)) then
-         kappaScaArray = kappaScaArray + thisOctal%ne(subcell) * sigmaE * 1.e10 *(1+tempDouble)
 
-      elseif (PRESENT(kappaScaGas)) then
-         kappaScaGas = thisOctal%ne(subcell) * sigmaE * 1.e10
+      kappaThomson = 0.d0
+      kappaCAK = 0.d0
+      if (PRESENT(kappaSca)) then
+         ! Thomson
+         kappaThomson = thisOctal%ne(subcell) * sigmaE * 1.e10
+
+         ! CAK
+         if (present(dir).AND.CAKlineOpacity.AND.&
+             thisOctal%Ne(subcell)>1.0d-40.AND. associated(thisOctal%rhoU)) then
+            kappaCAK = sigmaE*thisOctal%rho(subcell)
+            kappaCAK= kappaCAK * sqrt(5.0/3.0*kErg*thisOctal%temperature(subcell)/mHydrogen)
+            kappaCAK = kappaCAK / 1.0e10/amrGridDirectionalDeriv(grid,subcellCentre(thisOctal,subcell),&
+                                                                     dir,startOctal=thisOctal, Hydro=.true.)
+            kappaCAK=min(1.0d3,0.28*kappaCAK**(-0.56)*(thisOctal%Ne(subcell)/1.0e11)**0.09) !Abbott 1982 temp invarient form of CAK line driving, valid for roughly 10kK < Teff < 50kK
+            kappaCAK = kappaCAK * kappaThomson 
+         else
+            kappaCAK=0.d0
+         endif
+
+         ! sum
+         kappaSca = kappaSca + kappaThomson + kappaCAK
+
+
+         if (present(debug)) write(*,*) "kappasca3 ",kappasca, kappaThomson, thisOctal%ne(subcell),&
+              thisOctal%rho(subcell)/mHydrogen,thisOctal%nh(subcell)
       endif
+      if (PRESENT(kappaScaGas)) kappaScaGas = kappaThomson + kappaCAK
+
+      ! AA commented out 2024-07-24: this adds TOTAL Thomson/CAK to every wav bin...
+!      if (PRESENT(kappaScaArray)) then
+!         kappaScaArray = kappaScaArray + kappaThomson + kappaCAK
+!      endif
+   endif
+
+   if (PRESENT(kappaAbsPAH)) kappaAbsPAH = 0.0
+   if (PRESENT(kappaScaPAH)) kappaScaPAH = 0.0
+   if (photoionization .and. photoionPAH) then
+      ! option to turn off PAH opacity in ionized gas
+      if (destroyPAH .and. (thisOctal%ionFrac(subcell,2) > 1.d-5)) goto 444
+
+      ! absorb
+      tempDouble = 0.d0
+      if (PRESENT(kappaAbs)) then
+         if (present(lambda)) then
+            freq = cSpeed / (lambda * 1.e-8)
+         else
+            call torus_abort("returnKappa requires interpolated lambda to calculate kappaPAH")
+         endif
+         tempDouble = getKappaAbsPAH(freq) * thisOctal%rho(subcell) * 1.d10
+         kappaAbs = kappaAbs + tempDouble 
+      endif
+      if (PRESENT(kappaAbsPAH)) kappaAbsPAH = tempDouble
+
+      ! scatter
+      tempDouble = 0.d0
+      if (PRESENT(kappaSca)) then
+         if (present(lambda)) then
+            freq = cSpeed / (lambda * 1.e-8)
+         else
+            call torus_abort("returnKappa requires interpolated lambda to calculate kappaPAH")
+         endif
+         tempDouble = getKappaScaPAH(freq) * thisOctal%rho(subcell) * 1.d10
+         kappaSca = kappaSca + tempDouble 
+      endif
+      if (PRESENT(kappaScaPAH)) kappaScaPAH = tempDouble
+444   continue
    endif
 #else
    if (PRESENT(kappaAbsGas)) kappaAbsGas = 0.0
    if (PRESENT(kappaScaGas)) kappaScaGas = 0.0
-#endif
 
+   if (PRESENT(kappaAbsPAH)) kappaAbsPAH = 0.0
+   if (PRESENT(kappaScaPAH)) kappaScaPAH = 0.0
+#endif
+      
   end subroutine returnKappa
 
   subroutine interpFromParent(centre, cellSize, grid, temperature, density, dusttypeFraction, thisEtaLine)
@@ -19816,6 +19902,7 @@ END SUBROUTINE assignDensitiesStellarWind
     call deallocateAttribute(thisOctal%nFreq)
     call deallocateAttribute(thisOctal%gasSpectrumAdded)
     call deallocateAttribute(thisOctal%dustContinuumAdded)
+    call deallocateAttribute(thisOctal%PAHemissionAdded)
 
 
   end subroutine deallocateOctalDynamicAttributes

@@ -65,7 +65,9 @@
 
 ! pah
 
-  logical :: usePAH
+  logical :: usePAH ! lucy_mod
+  logical :: photoionPAH ! photoionAMR_mod
+  logical :: destroyPAH  ! photoionAMR_mod
   real(double) :: pahScale
   character(len=10) :: pahType
 

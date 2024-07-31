@@ -383,7 +383,7 @@ contains
          lucy_undersampled, molecularPhysics, hydrodynamics, setupMolecularLteOnly !, UV_vector
     use inputs_mod, only : useDust, realDust, variableDustSublimation, massEnvelope, dustSettling
     use inputs_mod, only : mCore, solveVerticalHydro, sigma0!, scatteredLightWavelength,  storeScattered
-    use inputs_mod, only : tEnd, tDump, usepah
+    use inputs_mod, only : tEnd, tDump, usepah, photoionPAH
     use inputs_mod, only : timeDependentRT
     use gas_opacity_mod
     use pah_mod
@@ -474,7 +474,7 @@ contains
     nLower = 2
     nUpper = 3
 
-    if (usePAH) then
+    if (usePAH .or. photoionPAH) then
        call readPAHEmissivityTable()
        do u = 1, 8
           write(fname,'(a,i1,a)') "pah",u

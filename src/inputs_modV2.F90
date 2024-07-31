@@ -944,7 +944,23 @@ contains
 
        case("lighthouse")
        call getDouble("cavangle", cavAngle, degToRad, cLine, fLine, nLines, &
+            "Cavity angle (deg): ","(a,f5.2,a)", 30.d0, ok, .true.)
+       
+       case("champagne")
+          call getDouble("griddensity", gridDensity, 1.d0, cLine, fLine, nLines, &
+               "Initial density of grid (in g cm^-3): ","(a,e12.3,1x,a)", 1.d-18, ok, .false.)
+
+          call getReal("rinner", rInner, 1.e-10, cLine, fLine, nLines, &
+               "Inner Radius (cm): ","(a,f5.1,a)", 3.0e18, ok, .true.)
+
+          call getReal("router", rOuter, 1.e-10, cLine, fLine, nLines, &
+               "Outer Radius (cm): ","(a,f5.1,a)", 3.2e18, ok, .true.)
+
+          call getDouble("cavangle", cavAngle, degToRad, cLine, fLine, nLines, &
             "Cavity angle (deg): ","(a,f5.2,a)", 30.d0, ok, .false.)
+
+          call getDouble("rhofloor", rhoFloor, 1.d0, cLine, fLine, nLines, &
+               "Minimum density in advection:  ","(a,e12.3,1x,a)", 1.d-30, ok, .false.)
 
        case("simplighth")
           call getDouble("griddensity", gridDensity, 1.d0, cLine, fLine, nLines, &
@@ -3296,14 +3312,23 @@ contains
                "Dust settling model: : ","(a,1l,1x,a)", .false., ok, .false.)
 
 
+       ! lucy_mod
        call getLogical("pah", usePAH, cLine, fLine, nLines, &
                "Include PAH/VSG physics : ","(a,1l,1x,a)", .false., ok, .false.)
 
-       if (usePAH) then
+       ! photoionAMR_mod
+       call getLogical("photoionpah", photoionPAH, cLine, fLine, nLines, &
+               "Include PAH/VSG physics in photoionAMR: ","(a,1l,1x,a)", .false., ok, .false.)
+
+       if (usePAH .or. photoionPAH) then
           call getString("pahtype", pahType, cLine, fLine, nLines, &
                "PAH/VSG dust type: ","(a,a,1x,a)","MW3.1_60", ok, .true.)
           call getDouble("pahscale", PAHscale, 1.d0, cLine, fLine, nLines, &
                "Scaling factor for PAH emissivities and opacities: ","(a,f7.3,a)",1.d0, ok, .false.)
+       endif
+       if (photoionPAH) then
+          call getLogical("destroypah", destroyPAH, cLine, fLine, nLines, &
+               "Remove PAH absorption/emission in ionized gas","(a,1l,1x,a)", .true., ok, .false.)
        endif
 
        call getInteger("ndusttype", nDustType, cLine, fLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)
