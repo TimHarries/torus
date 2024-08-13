@@ -3443,9 +3443,9 @@ recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, fac
            !!        !$OMP DO SCHEDULE(DYNAMIC)
            do j = 1, nr
               if (j < nr) then
-                 call katieRho(rVec, lArray(j),rArray(j),rArray(j+1), rho, h, z, r, debug)
+                 call katieRho(rVec, lArray(j),rArray(j),rArray(j+1), rho, h, z, r)
               else
-                 call katieRho(rVec, lArray(j),rArray(j),dble(rOuter), rho, h, z, r, debug)
+                 call katieRho(rVec, lArray(j),rArray(j),dble(rOuter), rho, h, z, r)
               endif
               if (rho > thisRho) then
                  thisH = h
@@ -3516,9 +3516,8 @@ recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, fac
 end subroutine fillGridRecurKatie
 
 
-subroutine katieRho(rVec, lHat, rIn, rOut, rho, h, z, r, debug)
+subroutine katieRho(rVec, lHat, rIn, rOut, rho, h, z, r)
   use inputs_mod, only : alphaDisc, betaDisc, height, rInner
-  logical :: debug
   type(VECTOR) :: lHat, rVec, pVec
   real(double) :: h, z, r, rho, rIn, rOut
   z = lHat.dot.rVec
@@ -3531,7 +3530,6 @@ subroutine katieRho(rVec, lHat, rIn, rOut, rho, h, z, r, debug)
      rho = max(1.d-300,(r/rInner)**(-alphaDisc) * exp(-0.5d0*(z/h)**2))
      if (r < rIn) rho = 1.d-30
   endif
-!  if (debug) write(*,*) "kr",r,z,h,rho
 end subroutine katieRho
 
 
