@@ -5380,6 +5380,8 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     call getInteger("maxscat", maxScat, cLine, fLine, nLines, &
          "Maximum number of scatterings: ","(a,i9,a)", 10000, ok, .false.)
 
+    call getLogical("forcefirstscat", forceFirstScat, cLine, fLine, nLines, &
+         "Force first scattering: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getInteger("ninc", nInclination, cLine, fLine, nLines, &
          "Number of inclination angles: ", "(a,i3,1x,a)", 1, ok, .false.)

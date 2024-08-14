@@ -19,7 +19,7 @@ contains
     use inputs_mod, only : writePolar
     use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark, calcMovie, calcColumnImage
     use inputs_mod, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
-    use inputs_mod, only : mie, gridDistance, nLambda, ncubes
+    use inputs_mod, only : mie, gridDistance, nLambda, ncubes, lamfile
     use inputs_mod, only : postsublimate, lineEmission, nv
     use inputs_mod, only : dowriteradialfile, radialfilename
     use inputs_mod, only : scatteringSurface, ScatteringSurfaceFilename
@@ -406,8 +406,15 @@ if (.false.) then
     if (dustPhysics.and.(calcspectrum.or.calcimage.or.calcMovie).and.(.not.photoionPhysics)) then
        mie = .true.
        if ( calcspectrum ) then 
-          call setupXarray(grid, xarray, nLambda, lamMin=SEDlamMin, lamMax=SEDlamMax, &
-               wavLin=SEDwavLin, numLam=SEDnumLam, dustRadEq=.true.)
+          if (lamfile) then
+             call setupXarray(grid, xarray, nLambda, lamMin=SEDlamMin, lamMax=SEDlamMax, &
+                  wavLin=SEDwavLin, numLam=SEDnumLam, dustRadEq=.true., fromlamfile=.true.)
+          else
+             call setupXarray(grid, xarray, nLambda, lamMin=SEDlamMin, lamMax=SEDlamMax, &
+                  wavLin=SEDwavLin, numLam=SEDnumLam, dustRadEq=.true., fromlamfile=.false.)
+          endif
+
+             
           call setupDust(grid, xArray, nLambda, miePhase, nMumie, filestart="sed")
           if (gasOpacityPhysics) then
              allocate(xArrayDouble(1:nLambda))

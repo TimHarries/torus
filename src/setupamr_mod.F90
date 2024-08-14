@@ -3422,9 +3422,10 @@ recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, fac
         end do
      else
         if (thisOctal%nDepth < maxDepthAMR) then
-           testVec = vector(1500.d0,-666d0,193.)
+           testVec = vector(-400.d0,0.d0,1.d-6)
+!           testVec = vector(83.d0,357.d0,1.d-3)
            debug = .false.
-           if (inSubcell(thisOctal,subcell,testVec)) debug = .true.
+!           if (inSubcell(thisOctal,subcell,testVec)) debug = .true.
 
 
            rVec = subcellCentre(thisOctal,subcell)
@@ -3458,7 +3459,7 @@ recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, fac
         
            !!        !$OMP ENDDO
            !!        !$OMP END PARALLEL
-           !        if (debug) write(*,*) thisZ/thisH
+                   if (debug) write(*,*) thisZ/thisH
 
            if (thisOctal%nDepth < minDepthAMR) then
               thisOctal%adot(subcell) = -1.d0
@@ -3506,6 +3507,8 @@ recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, fac
 !        endif
               
            if (aziSplit) thisOctal%adot(subcell) = thisOctal%adot(subcell) * 2.
+           if (debug) write(*,*) thisOctal%nDepth,thisOctal%adot(subcell), &
+                thisOctal%rho(subcell),thisrho,abs(thisZ/thisH),thisZ,thisH
         endif
 
      endif
@@ -3524,7 +3527,7 @@ subroutine katieRho(rVec, lHat, rIn, rOut, rho, h, z, r)
   rho = 0.d0
   if ((r > rIn*0.5).and.(r < rOut)) then
      h = height*(r/(100.d0*autocm/1.d10))**betaDisc
-     rho = 1.e-10*(r/rInner)**(-alphaDisc) * exp(-0.5d0*(z/h)**2)
+     rho = max(1.d-300,(r/rInner)**(-alphaDisc) * exp(-0.5d0*(z/h)**2))
      if (r < rIn) rho = 1.d-30
   endif
 end subroutine katieRho
