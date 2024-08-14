@@ -1971,6 +1971,7 @@ contains
           endif
        else
           rsublimation = rCore * (1600./teff)**(-2.1) ! Robitaille 2006 equation 7
+          rinner = rsublimation
           write(message, '(a,f7.1,a)') "Dust sublimation radius is ",rSublimation/rcore, " stellar radii"
           call writeInfo(message,TRIVIAL)
        endif
@@ -5371,6 +5372,10 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
 
     call getBigInteger("nphotspec", nPhotSpec, cLine, fLine, nLines, &
          "Number of photons in SED: ", "(a,i15,1x,a)", nphotons, ok, .false.)
+
+    call getLogical("forcefirstscat", forceFirstScat, cLine, fLine, nLines, &
+         "Force first scattering: ","(a,1l,1x,a)", .false., ok, .false.)
+
 
     call getInteger("maxscat", maxScat, cLine, fLine, nLines, &
          "Maximum number of scatterings: ","(a,i9,a)", 10000, ok, .false.)

@@ -5458,7 +5458,7 @@ CONTAINS
 
           if ((.not.smoothinneredge).and.(.not.variableDustSublimation)) then
              if (((r-cellsize/2.d0) < rSublimation).and. ((r+cellsize/2.d0) > rSublimation) .and. &
-                  (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 1.d0) .and. &
+                  (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 2.d0) .and. &
                   (.not.thisOctal%cylindrical)) split=.true.
          endif
 

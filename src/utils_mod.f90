@@ -150,7 +150,7 @@ contains
           write(cformat,'(a,i1,a)') "(i",p+1,")"
           write(cval,cformat) int(r)
        else
-          write(cformat,'(a,i1,a,i1,a)') "(f",max(n,p)+1,".",max(n-p-1,0),")"
+          write(cformat,'(a,i2.2,a,i2.2,a)') "(f",max(n,p)+1,".",max(n-p-1,0),")"
           write(cval,cformat) r
        endif
     endif
@@ -160,41 +160,41 @@ contains
           write(cformat,'(a,i1,a)') "(i",p+2,")"
           write(cval,cformat) int(r)
        else
-          write(cformat,'(a,i1,a,i1,a)') "(f",max(n,p)+2,".",max(n-p-1,0),")"
+          write(cformat,'(a,i2.2,a,i2.2,a)') "(f",max(n,p)+2,".",max(n-p-1,0),")"
           write(cval,cformat) r
        endif
     endif
 
     if ((p > -4).and.(p < 0).and.(r > 0.d0)) then
-       write(cformat,'(a,i1,a,i1,a)') "(f",abs(p)-1+n+2,".",n+abs(p)-1,")"
+       write(cformat,'(a,i2.2,a,i2.2,a)') "(f",abs(p)-1+n+2,".",n+abs(p)-1,")"
        write(cval,cformat) r
     endif
 
     if ((p > -4).and.(p < 0).and.(r < 0.d0)) then
-       write(cformat,'(a,i1,a,i1,a)') "(f",abs(p)-1+n+3,".",n+abs(p)-1,")"
+       write(cformat,'(a,i2.2,a,i2.2,a)') "(f",abs(p)-1+n+3,".",n+abs(p)-1,")"
        write(cval,cformat) r
     endif
 
 
     if (p >= 4) then
        if (r > 0.d0) then
-          write(cformat,'(a,i2,a,i2,a)') "(f",n+1,".",n-1,")"
+          write(cformat,'(a,i2.2,a,i2.2,a)') "(f",n+1,".",n-1,")"
        else
-          write(cformat,'(a,i2,a,i2,a)') "(f",n+2,".",n-1,")"
+          write(cformat,'(a,i2.2,a,i2.2,a)') "(f",n+2,".",n-1,")"
        endif
        write(val,cformat) r/(10d0**p-1)
        if (p < 10) then
           write(cval,'(a,i1)') trim(val)//" x 10^",p
        else
-          write(cval,'(a,i2)') trim(val)//" x 10^",p
+          write(cval,'(a,i2.2)') trim(val)//" x 10^",p
        endif
     endif
 
     if (p < -3) then
        if (r > 0.d0) then
-          write(cformat,'(a,i2,a,i2,a)') "(f",n+1,".",n-1,")"
+          write(cformat,'(a,i2.2,a,i2.2,a)') "(f",n+1,".",n-1,")"
        else
-          write(cformat,'(a,i2,a,i2,a)') "(f",n+2,".",n-1,")"
+          write(cformat,'(a,i2.2,a,i2.2,a)') "(f",n+2,".",n-1,")"
        endif
        write(val,cformat) r/(10d0**p)
        if (abs(p) < 10) then
@@ -221,38 +221,38 @@ contains
           write(cval,cformat) int(r)
        else
           write(*,*) r,n,p
-          write(cformat,'(a,i1,a,i1,a)') "(f",max(n,p)+1,".",max(n-p-1,0),")"
+          write(cformat,'(a,i2.2,a,i2.2,a)') "(f",max(n,p)+1,".",max(n-p-1,0),")"
           write(cval,cformat) r
        endif
     endif
 
     if ( (p>= 0).and.(p < 4).and.(r < 0.d0)) then
        if ((p+1)>=n) then
-          write(cformat,'(a,i1,a)') "(i",p+2,")"
+          write(cformat,'(a,i2.2,a)') "(i",p+2,")"
           write(cval,cformat) int(r)
        else
-          write(cformat,'(a,i1,a,i1,a)') "(f",max(n,p)+2,".",max(n-p-1,0),")"
+          write(cformat,'(a,i2.2,a,i2.2,a)') "(f",max(n,p)+2,".",max(n-p-1,0),")"
           write(cval,cformat) r
        endif
     endif
 
     if ((p > -4).and.(p < 0).and.(r > 0.d0)) then
-!       write(*,*) r,n,p
-       write(cformat,'(a,i1,a,i1,a)') "(f",abs(p)-1+n+2,".",n+abs(p)-1,")"
+       write(*,*) r,n,p
+       write(cformat,'(a,i2.2,a,i2.2,a)') "(f",abs(p)-1+n+2,".",n+abs(p)-1,")"
        write(cval,cformat) r
     endif
 
     if ((p > -4).and.(p < 0).and.(r < 0.d0)) then
-       write(cformat,'(a,i1,a,i1,a)') "(f",abs(p)-1+n+3,".",n+abs(p)-1,")"
+       write(cformat,'(a,i2.2,a,i2.2,a)') "(f",abs(p)-1+n+3,".",n+abs(p)-1,")"
        write(cval,cformat) r
     endif
 
 
     if (p >= 4) then
        if (r > 0.d0) then
-          write(cformat,'(a,i2,a,i2,a)') "(f",n+1,".",n-1,")"
+          write(cformat,'(a,i2.2,a,i2.2,a)') "(f",n+1,".",n-1,")"
        else
-          write(cformat,'(a,i2,a,i2,a)') "(f",n+2,".",n-1,")"
+          write(cformat,'(a,i2.2,a,i2.2,a)') "(f",n+2,".",n-1,")"
        endif
        write(val,cformat) r/(10d0**p-1)
        if (p < 10) then
@@ -264,9 +264,9 @@ contains
 
     if (p < -3) then
        if (r > 0.d0) then
-          write(cformat,'(a,i2,a,i2,a)') "(f",n+1,".",n-1,")"
+          write(cformat,'(a,i2.2,a,i2.2,a)') "(f",n+1,".",n-1,")"
        else
-          write(cformat,'(a,i2,a,i2,a)') "(f",n+2,".",n-1,")"
+          write(cformat,'(a,i2.2,a,i2.2,a)') "(f",n+2,".",n-1,")"
        endif
        write(val,cformat) r/(10d0**p)
        if (abs(p) < 10) then
