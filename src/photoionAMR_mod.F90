@@ -8938,7 +8938,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
 
     call zeroEtaCont(grid%octreeRoot)
     
-    call quickSublimate(grid%octreeRoot) ! do dust sublimation
+    ! call quickSublimate(grid%octreeRoot) ! do dust sublimation
 
     call torus_mpi_barrier ! Why is there a barrier here?
 
