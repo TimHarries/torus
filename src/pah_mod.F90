@@ -1,5 +1,6 @@
 module pah_mod
 
+  use citations_mod
   use constants_mod
   use utils_mod, only : locate
   use unix_mod
@@ -9,10 +10,10 @@ module pah_mod
 
   type PAHTABLETYPE
      integer :: nu
-     real(double), allocatable :: u(:)
-     real(double), allocatable :: adot(:)
+     real(double), allocatable :: u(:)        ! dimensionless scale fac
+     real(double), allocatable :: adot(:)     ! erg cm-3 s-1 / rho
      real(double), allocatable :: freq(:)     ! Hz
-     real(double), allocatable :: jnu(:,:)    ! erg cm-2 s-1
+     real(double), allocatable :: jnu(:,:)    ! erg cm-2 s-1 sr-1 H-1
      real(double), allocatable :: lamKappa(:) ! micron
      real(double), allocatable :: kappaSca(:) ! cm2 (g gas)-1
      real(double), allocatable :: kappaAbs(:) ! cm2 (g gas)-1
@@ -77,7 +78,7 @@ contains
     read(30,'(A)') cjunk
     do i = 1,n
        read(30,*) PAHtable%lamKappa(i), junk1, junk2, junk3, junk4, junk5, junk6
-       
+
        PAHtable%kappaAbs(i) = junk1 + junk2 + junk4 + junk5
     enddo
     close(30)
@@ -99,7 +100,7 @@ contains
        PAHtable%kappaSca(i) =  (junk1 + junk2 + junk4 + junk5) - PAHtable%kappaAbs(i)
     enddo
     close(30)
-    ! table reads xsec - convert to kappa (cm2/g)
+    ! table reads xsec (um2/H) - convert to kappa (cm2/g_gas)
     PAHtable%kappaAbs = PAHscale * PAHtable%kappaAbs / (mu*mHydrogen) * 1.d-8
     PAHtable%kappaSca = PAHscale * PAHtable%kappaSca / (mu*mHydrogen) * 1.d-8
 
@@ -116,8 +117,61 @@ contains
 
   end subroutine readDraineOpacity
 
+  subroutine readHensleyOpacity()
+    use inputs_mod, only : PAHscale
+    character(len=200) :: filename, dataDirectory
+    character(len=80) :: cjunk
+    integer :: i, n
+    real(double) :: junk0, junk1, junk2, junk3, junk4, junk5, junk6, junk
+    real(double), parameter :: mu = 1.4d0
+    ! Hensley & Draine 2023 PAH opacities
+
+    call unixGetenv("TORUS_DATA", dataDirectory, i)
+    filename = trim(dataDirectory)//"/astrodust+PAH_opacities.dat"
+    call addBibcode("2023ApJ...948...55H","Astrodust+PAH opacities")
+
+    n = 1000
+    allocate(PAHtable%kappaAbs(1:n), PAHtable%kappaSca(1:n), PAHtable%lamKappa(1:n))
+
+
+    open(30, file=filename, status="old", form="formatted")
+    read(30,'(A)') cjunk
+    read(30,'(A)') cjunk
+    read(30,'(A)') cjunk
+    read(30,'(A)') cjunk
+    read(30,'(A)') cjunk
+    ! AA: first entry in the file is entered by me to give a const Astrodust kappa in EUV
+    ! But this is irrelevant for PAHs 
+    read(30,*) junk, junk1, junk2, junk3, junk4, junk5, junk6, junk, junk
+
+    ! read original data
+    do i = 1,n
+       read(30,*) PAHtable%lamKappa(i), junk1, junk2, junk3, junk4, junk5, junk6, junk, junk
+
+       PAHtable%kappaAbs(i) = junk1
+       PAHtable%kappaSca(i) = junk3
+    enddo
+    close(30)
+    ! table reads xsec (cm2/H) - convert to kappa (cm2/g dust), then to per g of gas by setting PAHscale = desired torus d/g ratio
+    PAHtable%kappaAbs = PAHscale * PAHtable%kappaAbs / mHydrogen / 0.00708d0
+    PAHtable%kappaSca = PAHscale * PAHtable%kappaSca / mHydrogen / 0.00708d0
+
+   if (writeoutput) then
+      open(36, file='albedo_pah.dat', status="unknown", form="formatted")
+      write(36,'(a)') "# Columns are: wavelength (microns), kappa ext (cm^2 g^-1), kappa abs (cm^2 g^-1), kappa sca (cm^2 g^-1)"
+      write(36,*) "# Note that the opacities are per gram of gas"
+      do i = 1, SIZE(PAHtable%lamKappa)
+         write(36,*) PAHtable%lamKappa(i), (PAHtable%kappaAbs(i) + PAHtable%kappaSca(i)), &
+         PAHtable%kappaAbs(i), PAHtable%kappaSca(i)
+      enddo
+      close(36)
+   endif
+
+  end subroutine readHensleyOpacity
+
+  ! read DL07 table
   subroutine readPAHEmissivityTable()
-    use inputs_mod, only : pahtype, pahscale
+    use inputs_mod, only : pahtype, pahscale, pahKappa
     integer :: i, j 
     character(len=10) :: cval
     character(len=120) :: filename, dataDirectory, cjunk
@@ -181,6 +235,7 @@ contains
             trim(dataDirectory),"/PAH/", &
             "U",trim(cval),"/U",trim(cval),"_", &
             trim(cval),"_",trim(PAHtype),".txt"
+       call writeInfo("Reading PAH emissivities from: "//trim(filename),TRIVIAL)
 
        open(20,file=filename,status="old",form="formatted")
        read(20,'(a)') cjunk
@@ -196,6 +251,8 @@ contains
        do j = 1, 1001
           read(20,*) lambda, vjunk, PAHtable%jnu(i,j)
 
+          ! jnu read in as Jy cm2 sr-1 H-1
+
           PAHtable%freq(j) = cSpeed/(lambda*micronToCm)
           PAHtable%jnu(i,j) = PAHscale * PAHtable%jnu(i,j) * 1.d-23 ! from jy to erg/cm^2/s
        enddo
@@ -204,10 +261,92 @@ contains
 
 
 
-    call readDraineOpacity()
+    call writeInfo("Reading PAH opacities for type: "//trim(pahKappa),TRIVIAL)
+    select case(pahKappa)
+       case("astrodust+PAH_opacities.dat")
+          call readHensleyOpacity()
+       case("DL07")
+          call readDraineOpacity()
+       case DEFAULT
+          call writeWarning("Couldn't find PAH opacities, using DL07 instead")
+          stop
+          call readDraineOpacity()
+    end select
+
     call createPAHprobs()
     call calculateAdots()
   end subroutine readPAHEmissivityTable
+
+  ! read Draine et al. 2021 tables
+  subroutine readPAHEmissivityTable2021()
+    use inputs_mod, only : pahtype, pahscale, pahKappa
+    integer :: i, j 
+    integer, parameter :: nfreq = 1973
+    character(len=10) :: cval
+    character(len=120) :: filename, dataDirectory, cjunk, population, metallicity, populationAge
+    real :: vjunk, ion, neutral
+    real(double) :: lambda, logU
+
+    call unixGetenv("TORUS_DATA", dataDirectory, i)
+    write(population, '(a)') "bc03"    ! stellar population reference
+    write(metallicity, '(a)') "z0.02"  ! Z = 0.02 == solar
+    write(populationAge, '(a)') "3e6"  ! yr
+    PAHtable%nU = 15
+
+    allocate(PAHtable%U(1:PAHtable%nU), PAHtable%freq(nfreq), PAHtable%jnu(1:PAHtable%nU,1:nfreq))
+    do i = 1, PAHtable%nU
+       logU = dble(i-1)/2.d0
+       PAHtable%U(i) = 10.d0**logU
+
+       write(filename,'(a,a,a,a,a,a,f4.2,a)') &
+            trim(dataDirectory),"/draine2021pah/", &
+            "pahspec.out_", &
+            population, "_", &
+            metallicity, "_", &
+            populationAge, "_" ,&
+            logU, & 
+            "_st_std"
+
+       call writeInfo("Reading PAH emissivities from: "//trim(filename),TRIVIAL)
+
+       open(20,file=filename,status="old",form="formatted")
+       ! header
+       do j = 1, 7
+          read(20,'(a)') cjunk
+       enddo
+       ! variables not needed but DL07 routine uses them(?)
+       a01 = 0.d0
+       sigma1 = 0.d0
+       b1 = 0.d0
+       a02 = 0.d0
+       sigma2 = 0.d0
+       b2 = 0.d0
+       ! data
+       do j = 1, nfreq
+          read(20,*) lambda, vjunk, vjunk, ion, neutral
+
+          PAHtable%freq(j) = cSpeed/(lambda*micronToCm)  ! s-1
+
+          ! nu*Pnu (erg/s/H) to jnu (erg/cm2/s)
+          PAHtable%jnu(i,j) = dble(ion + neutral) / (PAHtable%freq(j) * 4.d0 * pi) * PAHscale
+       enddo
+       close(20)
+    enddo
+
+
+
+    call writeInfo("Reading PAH opacities for type: "//trim(pahKappa),TRIVIAL)
+    select case(pahKappa)
+       case("astrodust+PAH_opacities.dat")
+          call readHensleyOpacity()
+       case DEFAULT
+          call writeFatal("Draine2021 PAH emission requires Hensley PAH opacity")
+          stop
+    end select
+
+    call createPAHprobs()
+    call calculateAdots()
+  end subroutine readPAHEmissivityTable2021
  
   real(double) function getKappaAbsPAH(freq)
     use utils_mod
@@ -259,17 +398,18 @@ contains
           call writeFatal("Cannot read isrf.dat")
           stop
        endif
+
+       spectrum%lambda = spectrum%lambda * micronsToAngs ! A
+       spectrum%dlambda = spectrum%dlambda * micronsToAngs ! A
+       spectrum%flux = spectrum%flux / micronsToAngs ! per A
        
-       spectrum%lambda = spectrum%lambda * micronsToAngs
-       spectrum%dlambda = spectrum%dlambda * micronsToAngs
-       spectrum%flux = spectrum%flux / micronsToAngs
-       
-       spectrum%flux = spectrum%flux / (4.d0 * pi)  ! from fourpi jnu to jnu
+       spectrum%flux = spectrum%flux / (4.d0 * pi)  ! from fourpi Jlambda to Jlambda
     end if
 
 
-    lambda = (cSpeed/freq) / AngstromToCm
-    Jisrf = getFlux(lambda, spectrum)*cspeed/freq**2
+    lambda = (cSpeed/freq) / AngstromToCm ! lambda in A
+    ! Jlambda (per A) to Jnu (per Hz)
+    Jisrf = getFlux(lambda, spectrum)*cspeed/freq**2 / angstromToCm
        
   end function Jisrf
 
@@ -292,16 +432,38 @@ contains
   end subroutine createPAHprobs
 
   subroutine calculateAdots()
-    integer :: i,j 
+    integer :: i,j , n_nu
+    real(double) :: g0(1:pahTable%nu), nu, nu_1, nu_n, dnu
     allocate(PAHtable%adot(PAHtable%nu))
 
     do i = 1, PAHtable%nu
        PAHtable%adot(i) = 0.d0
        do j = 2, 1001
+          ! this is Adot/rho = 4pi sum(kappa J dnu); J = U * Jisrf (e.g. robitaille+ 2011)
+          ! note MCRT Adot   = 4pi sum(kappa rho J dnu)
+          ! cgs units 
           PAHtable%adot(i) = PAHtable%adot(i) + 4.d0 * pi * PAHtable%u(i) * Jisrf(PAHtable%freq(j)) &
                * getkappaAbsPAH(PAHtable%freq(j)) *  (PAHtable%freq(j) - PAHtable%freq(j-1))
        enddo
-       if (writeoutput) write(*,'(i6,a,es13.5,a,es13.5)') i, " U_i ", PAHtable%u(i), " adot_i ",PAHtable%adot(i)
+!       if (writeoutput) write(*,'(i6,a,es13.5,a,es13.5)') i, " U_i ", PAHtable%u(i), " adot_i ",PAHtable%adot(i)
+    enddo
+
+    ! test Jisrf is correct
+    nu_1 = 6.d0*evtoErg/hcgs 
+    nu_n = 13.6d0*evtoerg/hcgs
+    n_nu = 100
+    dnu = (nu_n - nu_1)/dble(n_nu)
+    do i = 1, PAHtable%nu
+       g0(i) = 0.d0
+       do j = 2, n_nu
+          nu = nu_1 + dble(j-1)*dnu
+          if ((hcgs*nu > 6.d0*evtoerg) .and. (hcgs*nu < 13.6d0*evtoerg)) then
+             g0(i) = g0(i) + 4.d0 * pi * PAHtable%u(i) * Jisrf(nu) * dnu
+          endif
+       enddo
+       ! g0/habing/U ~ 1 is correct
+       if (writeoutput) write(*,'(i6,a,es11.3,a,es11.3,2(a,es11.3))') i, " U_i ", PAHtable%u(i), " adot_i ",PAHtable%adot(i),&
+          " g0_i/U_i ",g0(i)/habing/pahtable%u(i)!," u(6-13.6eV)_i ", g0(i)/cspeed
     enddo
   end subroutine calculateAdots
 
@@ -336,20 +498,22 @@ contains
 
   real(double) function PAHemissivityFromAdot(lambda, adot, rho)
     real(double) :: lambda, adot, thisjnu(1001),thisAdot
-    real(double) :: freq, t1, rho, nH
+    real(double) :: freq, t1, rho, nH, adotpermass
     integer :: i, j
     real(double), parameter :: mu = 1.4d0
+    adotpermass = adot/rho
 
     freq = cspeed/(lambda * angstromTocm)
 
+    ! input adot should be actual adot (erg/s/cm3)
 
     PAHemissivityfromAdot = 0.d0
     if ( (freq > PAHtable%freq(1)).and.(freq < PAHtable%freq(1001)) ) then
-       if ( (adot > PAHtable%adot(1)) .and. (adot < PAHtable%adot(PAHtable%nu)) ) then
+       if ( (adotpermass > PAHtable%adot(1)) .and. (adotpermass < PAHtable%adot(PAHtable%nu)) ) then
 
           nH = rho/(mu * mHydrogen)
 
-          thisAdot = min(PAHtable%adot(PAHtable%nu),max(adot, PAHtable%adot(1)))
+          thisAdot = min(PAHtable%adot(PAHtable%nu),max(adotpermass, PAHtable%adot(1)))
           call locate(PAHtable%adot, PAHtable%nu, thisadot, i)
 
           t1 = (thisadot - PAHtable%adot(i)) / (PAHtable%adot(i+1) - PAHtable%adot(i))
@@ -361,6 +525,7 @@ contains
           t1 = (freq - PAHtable%freq(j)) / (PAHtable%freq(j+1) - PAHtable%freq(j))
 
           PAHemissivityfromAdot =  nh *  (thisJnu(j) + t1 * (thisJnu(j+1) - thisJnu(j)))
+          ! jnu per Hz
        endif
     endif
   end function PAHemissivityFromAdot
@@ -384,12 +549,13 @@ contains
     getPAHfreq = PAHtable%freq(j) + t1 * (PAHtable%freq(j+1) - PAHtable%freq(j))
   end function getPAHFreq
 
-  real(double) function  getPAHFreqfromAdot(adot)
-    real(double) :: prob(1001), adot, thisAdot
+  real(double) function  getPAHFreqfromAdot(adot,rho)
+    real(double) :: prob(1001), adot, thisAdot,rho
     integer :: i, j
-    real(double) :: t1, r
+    real(double) :: t1, r, adotpermass
+    adotpermass = adot/rho
 
-    thisAdot = max(min(adot, PAHtable%adot(PAHtable%nu)),PAHtable%adot(1))
+    thisAdot = max(min(adotpermass, PAHtable%adot(PAHtable%nu)),PAHtable%adot(1))
 
     call locate(PAHtable%adot, PAHtable%nu, thisadot, i)
     t1 = (thisadot - PAHtable%adot(i)) / (PAHtable%adot(i+1) - PAHtable%adot(i))
@@ -435,6 +601,7 @@ contains
           
   end subroutine testPAHtable
 
+  ! not used?
   subroutine readPAHkappa()
     character(len=80) :: dataDirectory, ifilename, junk
     integer :: i, j, na, nLambda

@@ -1374,7 +1374,8 @@ end subroutine addRecombinationEmissionLine
 
 ! ??07 Imaging
 subroutine setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, nsource, source, lcore)
-  use lucy_mod, only: calcContinuumEmissivityLucyMonoAtDustTemp
+  use lucy_mod, only: calcContinuumEmissivityLucyMonoAtDustTemp, calcPAHemissivityLucyMono
+  use inputs_mod, only : usepah, photoionPAH
 
   implicit none
   
@@ -1434,6 +1435,24 @@ subroutine setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, 
      call writeInfo(message, FORINFO)
      call locate(grid%lamArray, grid%nlambda, real(lambdaImage), ilambdaPhoton)
      call calcContinuumEmissivityLucyMonoAtDustTemp(grid, grid%octreeRoot, grid%lamArray, lambdaImage,iLambdaPhoton)
+
+     if (nSource > 0) then
+        lCore = sumSourceLuminosityMonochromatic(grid, source, nsource, dble(grid%lamArray(iLambdaPhoton)))
+     else
+        lcore = tiny(lcore)
+     endif
+
+  case("pahonly")
+
+     if (.not. (usePAH .or. photoionPAH)) then
+        write(message,'(a)') "pahonly requires either usePAH or photoionPAH"
+        call writeInfo(message, FORINFO)
+        stop
+     endif
+     write(message,"(a,f8.2,a)") "Image wavelength: ", lambdaImage*angsToMicrons, " microns"
+     call writeInfo(message, FORINFO)
+     call locate(grid%lamArray, grid%nlambda, real(lambdaImage), ilambdaPhoton)
+     call calcPAHemissivityLucyMono(grid, grid%octreeRoot, grid%lamArray, lambdaImage)
      
      if (nSource > 0) then              
         lCore = sumSourceLuminosityMonochromatic(grid, source, nsource, dble(grid%lamArray(iLambdaPhoton)))
@@ -1531,12 +1550,13 @@ end subroutine setupGridForImage
 !   pu09 Dust
 
 recursive subroutine quickSublimate(thisOctal, fraction)
-  use inputs_mod, only : grainFrac, nDustType
+  use inputs_mod, only : grainFrac, nDustType, decoupleGasDustTemperature
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   ! Where dust is present set dustTypeFraction to this value. 
   real, optional, intent(in) :: fraction
   integer :: subcell, i
+  real(double) :: temperature
   
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -1554,8 +1574,14 @@ recursive subroutine quickSublimate(thisOctal, fraction)
           end do
        else
 
+          if (decoupleGasDustTemperature) then
+             temperature = thisOctal%tdust(subcell)
+          else
+             temperature = dble(thisOctal%temperature(subcell))
+          endif
 
-          if (thisOctal%temperature(subcell) > 1500.) then
+
+          if (temperature > 1500.d0) then
              thisOctal%dustTypeFraction(subcell,:) = 1.d-20
           else
              if (present(fraction)) then
@@ -1632,43 +1658,66 @@ end function recombToGround
 
 ! eq 3.25, Hollenbach & McKee 1979, ApJS, 41, 555
 function gasGrainCoolingRate(rhoGas, ionizationFraction, tGas, tDust, mu) result (Gamma)
-  use inputs_mod, only : grainType, grainFrac, amin, amax, a0, qdist, pdist
+  use inputs_mod, only : grainType, grainFrac, amin, amax, a0, qdist, pdist, dustFile, kappaFilename, nDustType
   use dust_mod, only : getMedianSize
   real(double) :: rhoGas, ionizationFraction, tGas, tDust, gamma
   real(double) :: vProton, nGrain, sigmaGrain, f, rGrain, dustToGas, grainVolume, grainDensity
   real(double) :: nGas, mu
-  
-  rGrain = micronTocm * getMedianSize(aMin(1), aMax(1), a0(1), qDist(1), pDist(1)) !todo expand for ngrain > 1
+  logical, save :: firstTime = .true.
+  integer :: i
+
+  ! TODO expand for ndusttype > 1
+  if (nDustType > 1 .and. firstTime) then
+     write(*,*) "WARNING: gasGrainCoolingRate only uses graintype1"
+     firstTime = .false.
+  endif
+
+
+  if (dustFile(1)) then
+     ! dust from file
+     select case(trim(kappaFilename(1)))
+     case("astrodust+PAH_opacities.dat")
+        graindensity = 2.74d0
+        rGrain = 0.2d0 * microntocm ! peak of size distrib
+     case DEFAULT
+        write(*,*) "gasGrainCoolingRate: kappafile unknown ", kappaFilename(1)
+        stop
+     end select
+
+  else
+     ! dust not from file
+     select case(grainType(1))
+     case("am_olivine", "am_pyroxene")
+        graindensity = 3.71d0
+     case("forsterite")
+        graindensity = 3.33d0
+     case("enstatite")
+        graindensity = 2.8d0
+     case("sio2")
+        graindensity = 2.21d0
+     case("sil_dl")
+        graindensity = 3.6d0
+     case("draine_sil")
+        graindensity = 3.5d0
+     case("pinteISM")
+        graindensity = 0.5d0
+     case DEFAULT
+        graindensity = 3.5d0
+     end select
+     rGrain = micronTocm * getMedianSize(aMin(1), aMax(1), a0(1), qDist(1), pDist(1))
+  endif
+
   sigmaGrain = pi * rGrain**2
   grainVolume = (4.d0/3.d0)*pi*rGrain**3
-
-  select case(grainType(1))
-  case("am_olivine", "am_pyroxene")
-     graindensity = 3.71d0
-  case("forsterite")
-     graindensity = 3.33d0
-  case("enstatite")
-     graindensity = 2.8d0
-  case("sio2")
-     graindensity = 2.21d0
-  case("sil_dl")
-     graindensity = 3.6d0
-  case("draine_sil")
-     graindensity = 3.5d0
-  case("pinteISM")
-     graindensity = 0.5d0
-  case DEFAULT
-     graindensity = 3.5d0
-  end select
 
   dustTogas = grainFrac(1)
 
   if (ionizationFraction > 0.5d0) then
      f = 11.8d0
-  else  
+  else
      if (tGas > 1000.d0)  then
         f = 0.16 ! atomic
-     else 
+     else
         f = 1.   ! atomic
      endif
   endif

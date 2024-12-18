@@ -390,10 +390,11 @@ contains
     call getLogical("clustersinks", clusterSinks, cLine, fLine, nLines, &
          "Sinks represent clusters: ", "(a,1l,1x,a)", .false., ok, .false.)
     if (clusterSinks) then
+       splitClusters = .false.
        call getString("population", populationMethod, cLine, fLine, nLines, &
             "Cluster population method: ","(a,a,1x,a)","threshold", ok, .true.)
 
-       call getDouble("criticalmass", criticalMass, mSol, cLine, fLine, nLines, &
+       call getDouble("criticalmass", criticalMass, 1.d0*mSol, cLine, fLine, nLines, &
             "Critical mass for creating subsources (msol): ","(a,f6.1,a)", 600.d0, ok, .false.)
 
        call getDouble("sfe", starFormationEfficiency, 1.d0, cLine, fLine, nLines, &
@@ -406,7 +407,7 @@ contains
           call getString("imffile", imfFilename, cLine, fLine, nLines, &
                "Filename of IMF to read in: ","(a,a,1x,a)","imf.dat", ok, .true.)
        else
-          call getDouble("popmass", populationMass, mSol, cLine, fLine, nLines, &
+          call getDouble("popmass", populationMass, 1.d0*mSol, cLine, fLine, nLines, &
                "Total mass to generate in IMF list (msol): ","(a,e12.3,a)", 1.d5, ok, .false.)
        endif
 
@@ -418,6 +419,9 @@ contains
 
        call getDouble("imfmax", imfMax, 1.d0, cLine, fLine, nLines, &
             "IMF maximum mass (msol): ","(a,f6.1,a)", 120.d0, ok, .false.)
+
+       call getDouble("accradius", accretionRadius, 1.d0, cLine, fLine, nLines, &
+            "Accretion radius of sinks (smallest cell): ","(a,e12.3,1x,a)", 2.6d0, ok, .false.)
     endif
 
     if (nBodyPhysics .or. starburst .or. clusterSinks) then
@@ -951,10 +955,10 @@ contains
                "Initial density of grid (in g cm^-3): ","(a,e12.3,1x,a)", 1.d-18, ok, .false.)
 
           call getReal("rinner", rInner, 1.e-10, cLine, fLine, nLines, &
-               "Inner Radius (cm): ","(a,f5.1,a)", 3.0e18, ok, .true.)
+               "Inner Radius (cm): ","(a,e12.3,a)", 3.0e18, ok, .true.)
 
           call getReal("router", rOuter, 1.e-10, cLine, fLine, nLines, &
-               "Outer Radius (cm): ","(a,f5.1,a)", 3.2e18, ok, .true.)
+               "Outer Radius (cm): ","(a,e12.3,a)", 3.2e18, ok, .true.)
 
           call getDouble("cavangle", cavAngle, degToRad, cLine, fLine, nLines, &
             "Cavity angle (deg): ","(a,f5.2,a)", 30.d0, ok, .false.)
@@ -3322,13 +3326,15 @@ contains
 
        if (usePAH .or. photoionPAH) then
           call getString("pahtype", pahType, cLine, fLine, nLines, &
-               "PAH/VSG dust type: ","(a,a,1x,a)","MW3.1_60", ok, .true.)
+               "PAH/VSG dust type for emission: ","(a,a,1x,a)","MW3.1_60", ok, .true.)
+          call getString("pahkappa", pahKappa, cLine, fLine, nLines, &
+               "PAH/VSG dust type for opacity: ","(a,a,1x,a)","dl07", ok, .true.)
           call getDouble("pahscale", PAHscale, 1.d0, cLine, fLine, nLines, &
                "Scaling factor for PAH emissivities and opacities: ","(a,f7.3,a)",1.d0, ok, .false.)
        endif
        if (photoionPAH) then
           call getLogical("destroypah", destroyPAH, cLine, fLine, nLines, &
-               "Remove PAH absorption/emission in ionized gas","(a,1l,1x,a)", .true., ok, .false.)
+               "Remove PAH absorption/emission in ionized gas: ","(a,1l,1x,a)", .true., ok, .false.)
        endif
 
        call getInteger("ndusttype", nDustType, cLine, fLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)

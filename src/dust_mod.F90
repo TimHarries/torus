@@ -776,6 +776,7 @@ contains
 
   subroutine dustPropertiesfromFile(filename, nlambda, lambda, kappaAbs, kappaSca, gfac)
     use utils_mod, only: logInt
+    use inputs_mod, only : isotropicScattering
     implicit none
     character(len=*) :: filename
     integer :: nlambda
@@ -783,14 +784,25 @@ contains
     real :: kappaAbs(:), kappaSca(:)
     real :: sigmaExt(2000),sigmaSca(2000), kappa(2000), albedo(2000), tlam(2000)
     real :: tSca(2000), tAbs(2000), sigmaAbs(2000), junk
+    real(double) :: tAbsdb(2000), tScadb(2000)
     real(double) :: gfac(2000), tgfac(2000)
     character(len=40) :: filetype
     character(len=80) :: message, junkchar
+    character(len=200) :: fullfilename, dataDirectory
     integer :: npts, i, j
 
-    write(message,'(a,a)') "Reading dust properties from: ",trim(filename)
+    if (trim(filename) == "astrodust+PAH_opacities.dat") then
+       ! this file goes in TORUS_DATA
+       call unixGetenv("TORUS_DATA", dataDirectory, i)
+       fullfilename = trim(dataDirectory)//"/astrodust+PAH_opacities.dat"
+    else
+       ! other files go in run directory 
+       fullfilename = filename
+    endif
+
+    write(message,'(a,a)') "Reading dust properties from: ",trim(fullfilename)
     call writeInfo(message, TRIVIAL)
-    open(20, file=filename, status="old", form="formatted")
+    open(20, file=fullfilename, status="old", form="formatted")
     read(20,'(a)') filetype
 
     select case (filetype)
@@ -836,6 +848,30 @@ contains
        tAbs(1:npts) = (1.0-albedo(1:npts)) * kappa(1:npts)
        tSca(1:npts) = albedo(1:npts) * kappa(1:npts)
        tlam(1:npts) = tlam(1:npts) * 1.e4 ! microns to angstrom
+
+    case("astrodust")
+       ! Hensley & Draine 2023 Astrodust opacities
+       ! Doesn't include PAHs! PAHs are done differently, not as a dust type (see photoionPAH input variable)
+       ! Data doesn't include any EUV opacity (> 13.6 eV). To avoid extrapolation, I've added a line in the
+       ! TORUS_DATA file which gives a constant EUV opacity (duplicated the 0.1um line)
+       call addBibcode("2023ApJ...948...55H","Astrodust+PAH opacities")
+       npts = 1001
+
+       read(20,*) junkchar
+       read(20,*) junkchar
+       read(20,*) junkchar
+       read(20,*) junkchar
+       do i = 1, npts
+          read(20,*) tlam(i), junk, tAbsdb(i), junk, tScadb(i), junk, junk, junk, albedo(i)
+       enddo
+       tlam(1:npts) = tlam(1:npts) * 1.e4 ! microns to angstrom
+       tAbs(1:npts) = real(tAbsdb(1:npts) / mHydrogen / 0.00708d0) ! cm2/H to cm2/(g dust)
+       tSca(1:npts) = real(tScadb(1:npts) / mHydrogen / 0.00708d0)
+       tgfac(1:npts) = 0.d0
+       if (.not. isotropicScattering) then
+          write(*,*) "iso_scatter F but astrodust dust file doesn't have gfac"
+          stop
+       endif
 
     case DEFAULT
        write(*,'(a)') "! Dust properties file has unknown type",trim(filetype)
