@@ -945,6 +945,9 @@ contains
                case("habing")
                   write(lunit, *) real(thisOctal%habingFlux(subcell)*1.e10)
 
+               case("adotpah")
+                  write(lunit, *) real(thisOctal%adotpah(subcell))
+
                case("hydrovelocity")
                   if (thisOctal%threeD) then
                      write(lunit, *) real(thisOctal%rhou(subcell)/thisOctal%rho(subcell)), &
@@ -3336,6 +3339,9 @@ end subroutine writeXMLVtkFileAMR
 
                case("habing")
                   rArray(1, n) = real(thisOctal%habingFlux(subcell)*1.e10)
+
+               case("adotpah")
+                  rArray(1, n) = real(thisOctal%adotpah(subcell))
 
                case("radforce")
                      v = cellVolume(thisOctal, subcell)*1.d30

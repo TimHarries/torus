@@ -928,12 +928,12 @@ contains
      use inputs_mod, only: splitOverMPI
 #endif
 #endif
-     use source_mod, only : globalNsource, globalSourceArray
+     use source_mod, only : globalNsource, globalSourceArray, clusterReservoir
      use inputs_mod, only : inputNsource, mstarburst, lxoverlbol, readsources, &
           hosokawaTracks, nbodyPhysics, nSphereSurface, discardSinks, hotSpot, starburst, &
           burstType, burstAge, burstTime, sourceMass, sourceTeff, sourceRadius, accretionradius, &
           sourceProb, smallestCellsize, sourcemdot, pointsourcearray,inputcontfluxfile, imodel, periodMode, pulsatingStar, &
-          fracmode, lmode, mmode, nmodes, nModelEnd
+          fracmode, lmode, mmode, nmodes, nModelEnd, clustersinks, burstPosition
 #ifdef MPI
      use mpi
 #endif
@@ -949,6 +949,9 @@ contains
      real :: fAccretion
      character(len=120) :: message
      logical :: ok
+     real(double), pointer :: imf(:)=>null()
+     integer :: iIMF, nIMF
+     logical :: doMorePhoto, populated(1:1000)
 
      if (associated(globalsourceArray)) then
         deallocate(globalSourceArray)
@@ -1098,10 +1101,45 @@ contains
         allocate(globalsourcearray(1:10000))
         globalsourceArray(:)%outsideGrid = .false.
         globalnSource = 0
-        call createSources(globalnSource,globalsourcearray, burstType, burstAge, mStarburst, 1.d0, totalCreatedMass)
+
+        if (clusterSinks) then
+           ! create a single sink particle containing a stellar population from file
+           write(*,*) "GETTING IMF"
+           iIMF = 0
+           nIMF = 0
+           call getStarList(imf, iIMF, nIMF)
+           if (writeoutput) write(*,*) "START iIMF, nIMF: ", iIMF, nIMF
+           globalnSource = 1
+           globalSourceArray(1)%initialmass = mstarburst
+           globalSourceArray(1)%mass = globalSourceArray(1)%initialmass * msol
+           globalSourceArray(1)%age = burstAge
+           globalSourceArray(1)%position = burstPosition
+           globalSourceArray(1)%velocity = VECTOR(0.d0,0.d0,0.d0)
+           globalSourceArray(1)%stellar = .true.
+           globalSourceArray(1)%diffuse = .false.
+           globalSourceArray(1)%accretionRadius = 1.d10*accretionRadius*smallestCellSize
+           globalSourceArray(1)%nsubsource = 0
+
+           call populateClusters(globalSourceArray, globalnSource, 0.d0, populated, doMorePhoto, &
+               imf=imf, iIMF=iIMF, nIMF=nIMF)
+           write(*,*) "populated ", populated(1:globalnsource)
+           call setClusterSpectra(globalSourceArray, globalnSource, populated)
+           call torus_mpi_barrier
+           write(*,*) "Cluster properties"
+           write(*,'(a2,1x,a4,5x,a12,1x,a4,1x,a12,1x,a12,1x,a12)') "r", "i", "Mcl", "n*", "Mres", "age", "lum"
+           do i = 1, globalnSource
+              write(*,'(i2.2,1x,i4.4,5x,f12.5,1x,i4,1x,f12.5,1x,es12.5,1x,es12.5)') myrankglobal, i, globalSourceArray(i)%mass/msol,&
+                 globalSourceArray(i)%nSubsource, clusterReservoir(globalSourceArray(i))/msol, globalsourceArray(i)%age, &
+                 globalsourceArray(i)%luminosity/lsol
+              write(*,*) "lum ", globalSourceArray(i)%subsourceArray(1)%luminosity/lsol
+              write(*,*) "teff ", globalSourceArray(i)%subsourceArray(1)%teff
+           enddo
+        else
+           ! create individual sink particles for each star in the starburst
+           call createSources(globalnSource,globalsourcearray, burstType, burstAge, mStarburst, 1.d0, totalCreatedMass)
+        endif
         call randomNumberGenerator(randomSeed = .true.)
     endif
-
 
     if (grid%geometry(1:6) == "ttauri") then
        coreContinuumFlux = 0.d0

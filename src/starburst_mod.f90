@@ -168,7 +168,7 @@ contains
 
   subroutine populateClusters(clusters, nClusters, age, populated, doMorePhoto, imf, iIMF, nIMF) 
     use inputs_mod, only : criticalMass ! [g]
-    use inputs_mod, only : populationMethod, splitClusters
+    use inputs_mod, only : populationMethod
     use source_mod, only : clusterReservoir
     type(SOURCETYPE), pointer :: clusters(:)
     logical, intent(out) :: populated(:), doMorePhoto
@@ -239,7 +239,8 @@ contains
                 ! randomly select a cluster from the eligible list
                 call randomSourceUniform(nEligible, iEligible)
                 i = eligibleClusters(iEligible)
-                addToCluster = (thisMass >= 8.d0*msol) .or. (.not. splitClusters)
+!                addToCluster = (thisMass >= 8.d0*msol) .or. (.not. splitClusters)
+                addToCluster = .true.
                 if (addToCluster) then
                    ! save the star to add in later
                    nStarsForCluster(i) = nStarsForCluster(i) + 1
@@ -727,6 +728,9 @@ contains
              source(1)%initialMass = burstMass
              totmass = burstmass
              source(1)%age = burstAge
+
+       case("cluster")
+             continue
 
        case DEFAULT
          write(message,'(a,a)') "Burst type not recognised: ", trim(burstType)
