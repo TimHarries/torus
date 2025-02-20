@@ -324,19 +324,15 @@ contains
   subroutine readPAHEmissivityTable2021()
     use inputs_mod, only : pahtype, pahscale, pahKappa
     integer :: i, j
-    character(len=120) :: filename, dataDirectory, cjunk!, population, metallicity, populationAge
+    character(len=120) :: filename, dataDirectory, cjunk
     real :: vjunk, ion, neutral, lambda
     real(double) :: logU
 
     call unixGetenv("TORUS_DATA", dataDirectory, i)
-!    write(population, '(a)') "bc03"    ! stellar population reference
-!    write(metallicity, '(a)') "z0.02"  ! Z = 0.02 == solar
-!    write(populationAge, '(a)') "3e6"  ! yr
     PAHtable%nU = 15
     PAHtable%nfreq = 1973
 
     allocate(PAHtable%U(1:PAHtable%nU), PAHtable%freq(PAHtable%nfreq), PAHtable%jnu(1:PAHtable%nU,1:PAHtable%nfreq))
-!    if (writeoutput) open(43, file='spectrum1.dat', status="unknown", form="formatted")
     do i = 1, PAHtable%nU
        logU = dble(i-1)/2.d0
        PAHtable%U(i) = 10.d0**logU
@@ -375,9 +371,6 @@ contains
 
           ! jnu/nh = (nu*Pnu)/nu/(4*pi)
           PAHtable%jnu(i,j) = dble(ion + neutral) / (PAHtable%freq(j) * 4.d0 * pi)* PAHscale
-!          if (writeoutput .and. i==1) then
-!             write(43,*) lambda, PAHtable%freq(j), ion+neutral, PAHtable%jnu(i,j)
-!          endif
        enddo
        close(20)
     enddo
@@ -550,21 +543,6 @@ contains
        spectrum%flux = spectrum%flux / micronsToAngs ! per A
     endif
 
-    ! TODO remove
-!    if (writeoutput) then
-!       open(43, file="isrf_"//trim(pahtype)//".dat", status="unknown", form="formatted")
-!       do i = 1, spectrum%nlambda
-!          write(43,*) spectrum%lambda(i), spectrum%flux(i), spectrum%dlambda(i)
-!       enddo
-!       close(43)
-!       ! also write U=1e3 isrf
-!       open(43, file="isrf_"//trim(pahtype)//"_U3.00.dat", status="unknown", form="formatted")
-!       do i = 1, spectrum%nlambda
-!          write(43,*) spectrum%lambda(i), 1.d3*spectrum%flux(i)
-!       enddo
-!       close(43)
-!    endif
-
     ! now calculate Adots
     allocate(PAHtable%adot(PAHtable%nu))
 
@@ -583,18 +561,19 @@ contains
           ! note MCRT Adot   = 4pi sum(kappa_per_gas  *  rho * J * dlambda)
           PAHtable%adot(i) = PAHtable%adot(i) + 4.d0 * pi * PAHtable%u(i) * spectrum%flux(j) &
                * getkappaAbsPAH(spectrum%lambda(j)) * spectrum%dlambda(j)
-           if (writeoutput) then
-              ! lambda (micron)
-              ! Adot,lambda
-              ! kappaPAH,lambda(cm2/g_dust)
-              ! U * Jisrf,lambda
-              write(44,*) spectrum%lambda(j)*angstoMicrons, &
-              4.d0 * pi * PAHtable%u(i) * spectrum%flux(j) * getkappaAbsPAH(spectrum%lambda(j)) * spectrum%dlambda(j) ,&
-               getkappaAbsPAH(spectrum%lambda(j)) , &
-               PAHtable%u(i) * spectrum%flux(j)
-           endif
+!TODO remove
+!           if (writeoutput) then
+!              ! lambda (micron)
+!              ! Adot,lambda
+!              ! kappaPAH,lambda(cm2/g_dust)
+!              ! U * Jisrf,lambda
+!              write(44,*) spectrum%lambda(j)*angstoMicrons, &
+!              4.d0 * pi * PAHtable%u(i) * spectrum%flux(j) * getkappaAbsPAH(spectrum%lambda(j)) * spectrum%dlambda(j) ,&
+!               getkappaAbsPAH(spectrum%lambda(j)) , &
+!               PAHtable%u(i) * spectrum%flux(j)
+!           endif
        enddo
-       close(44)
+!       close(44)
     enddo
 
     ! TODO remove
@@ -672,13 +651,6 @@ contains
           ! TODO interpolate in log space?
           ! emission coefficient per H for this Adot per dustmass
           thisJnu = PAHtable%jnu(i,:) + t1 * (PAHtable%jnu(i+1,:) - PAHtable%jnu(i,:))
-
-!          if (writeoutput) then
-!             open(55, file='interp_thisjnu_nu', status="unknown", form="formatted")
-!             do k = 1, pahtable%nfreq
-!                write(55,*) pahtable%freq(k), PAHtable%jnu(i,k), thisJnu(k), pahtable%jnu(i+1,k)
-!             enddo
-!          endif
 
           call locate(PAHtable%freq, PAHtable%nfreq, freq, j)
 
