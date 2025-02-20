@@ -512,11 +512,11 @@ contains
     use spectrum_mod
     use inputs_mod, only : pahkappa, pahType
     type(SPECTRUMTYPE) :: spectrum
-    real(double) :: g0(1:pahTable%nu)
+!    real(double) :: g0(1:pahTable%nu)
     integer :: i,j
     logical :: ok, convert2021
     character(len=80) :: dataDirectory, ifilename
-    character(len=120) :: outfn
+!    character(len=120) :: outfn
 
     ! read the incident radiation field which (in the Draine+ models) excites the PAH emission
 
@@ -699,7 +699,6 @@ contains
   end function PAHemissivityFromAdot
 
   subroutine calculateEdots
-    use inputs_mod, only : pahKappa
     real(double) :: dnu
     integer :: i, j
     ! for each U, integrate the PAH emission per H (4 pi jnu/nh dnu)
@@ -726,7 +725,7 @@ contains
     real(double), intent(in) :: adot, rho, dustToGas
     real(double) :: thisAdot
     real(double) :: t1, nH, adotpermass, dgConversion
-    integer :: i, j
+    integer :: i
     real(double), parameter :: mu = 1.4d0
           ! TODO interpolate in log space?
 

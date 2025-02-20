@@ -6249,16 +6249,10 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     integer, intent(in) :: grandIter
     integer :: subcell
     logical :: converged
-    real(double) :: a, b, c, d, e, fa, fb, fc, r, s, p, q, tol, tol1, xm
-    integer, parameter :: itmax = 100
-    integer :: iter
-    real(double), parameter :: eps = 3.d-8
-    real :: t1, t2
     real(double) :: Hheating, Heheating, dustHeating, newT, deltaT
-    real(double) :: newTdust, deltaTdust, kappap, gasGrainCool, mu
+    real(double) :: newTdust, deltaTdust!, kappap, gasGrainCool, mu
     real :: underCorrection
 !    logical, optional :: debug
-    tol = 1.d-2
 
     undercorrection = 0.6
     if (grandIter > 10) then
@@ -6282,7 +6276,6 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                       ! if decoupling gas and dust temperatures, totalHeating and HHeCooling only consider gas heating/cooling
                       ! otherwise they also include dust heating/cooling
 
-                      iter = 0
                       if ((totalHeating < HHecooling(grid, thisOctal, subcell, tMinGlobal))) then
                          newT = tminGlobal
                          thisOctal%temperature(subcell)=max(thisOctal%temperature(subcell), tMinGlobal)
@@ -6894,19 +6887,18 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
 
   end function HHeCooling
 
-  function dustPAHcooling(grid, thisOctal, subcell, tgas, tdust, debug, iter) result (coolingRate)
+  function dustPAHcooling(grid, thisOctal, subcell, tgas, tdust, iter) result (coolingRate)
     use inputs_mod, only : decoupleGasDustTemperature, photoionPAH
+    real, intent(in) :: tgas
+    real(double), intent(in) :: tdust
     integer, optional :: iter
     integer :: nRates
     real(double) :: myRates(10)
     type(OCTAL),pointer :: thisOctal
-    integer :: subcell, j
+    integer :: subcell
     type(GRIDTYPE) :: grid
-    real(double) :: nHii, nHeii, ne, nh
-    real :: tgas
-    logical, optional :: debug
-    real(double) :: coolingRate, crate, dustCooling, gasGrainCool, mu, pahcooling
-    real(double) :: kappap, tdust, lambda, dlam
+    real(double) :: coolingRate, dustCooling, gasGrainCool, mu, pahcooling
+    real(double) :: kappap
     character(len=30) :: fn
 
     if (.not.decoupleGasDustTemperature) then
@@ -6925,7 +6917,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     coolingRate = coolingRate + dustCooling
     if (present(iter)) then
        nRates = nRates + 1
-       myRates(nRates) = dustCooling 
+       myRates(nRates) = dustCooling
     endif
 
 
@@ -8162,7 +8154,7 @@ subroutine getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating
   if (photoionPAH) then
      dustHeating = dustHeating + thisOctal%adotPAH(subcell)
      ! assume Adot = sum(4pi jnu dnu) + energy to excite PAH electrons, which then heat gas
-     peHeating = thisOctal%adotpah(subcell) - &
+     peHeating = thisOctal%adotpah(subcell) &
                          - totalPAHemissivityFromAdot(thisOctal%adotPAH(subcell), &
                            thisOctal%rho(subcell), &
                            thisOctal%dustTypeFraction(subcell,1))
