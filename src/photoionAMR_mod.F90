@@ -2495,7 +2495,8 @@ end subroutine radiationHydro
           if (myrankWorldGlobal == 1) call tune(6, "Setting up load balance")  ! start a stopwatch
 
           if (firstLoadBalancing.and.(.not.readGrid)) then
-             call setLoadBalancingThreadsBySources(grid)
+!             call setLoadBalancingThreadsBySources(grid)
+             call setLoadBalancingThreadsByCells(grid)
              firstLoadBalancing = .false.
           else
              select case(loadBalancingMethod)
@@ -8138,7 +8139,7 @@ subroutine getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating
   type(GRIDTYPE) :: grid
   type(OCTAL) :: thisOctal
   integer :: subcell
-  real(double) :: v, epsOverDeltaT, peHeating
+  real(double) :: v, epsOverDeltaT
   real(double), intent(out) :: hHeating, heHeating, totalHeating, dustHeating
 
   dustHeating  = 0.d0
@@ -8153,28 +8154,12 @@ subroutine getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating
   dustHeating = (epsOverDeltaT / (v * 1.d30))*thisOctal%distanceGrid(subcell) ! equation 14 of Lucy 1999
   if (photoionPAH) then
      dustHeating = dustHeating + thisOctal%adotPAH(subcell)
-     ! assume Adot = sum(4pi jnu dnu) + energy to excite PAH electrons, which then heat gas
-     peHeating = thisOctal%adotpah(subcell) &
-                         - totalPAHemissivityFromAdot(thisOctal%adotPAH(subcell), &
-                           thisOctal%rho(subcell), &
-                           thisOctal%dustTypeFraction(subcell,1))
-  else
-     peHeating = 0.d0
   endif
-!  ! pah heating in neutral cells
-!  ! wolfire2003
-!  if (thisOctal%ionFrac(subcell,2)<1.d-5 .and. (Hheating < 1.d-50)) then
-!     g0fac = thisOctal%habingFlux(subcell) * 1.d10 * thisOctal%temperature(subcell)**0.5/thisOctal%ne(subcell)
-!     epsPAH = (4.9d-2 / (1.d0 + 4.d-3 * g0fac**0.73)) + &
-!              ((3.7d-2 * (thisOctal%temperature(subcell)/1.d4)**0.7) / (1.d0 + 2.d-4*g0fac))
-!     Hheating = 1.3d-24 * thisOctal%nh(subcell) * epsPAH * thisOctal%habingFlux(subcell) * 1.d10 * &
-!             (thisOctal%dustTypeFraction(subcell,1)/1.d-2)
-!  endif
 
   if (decoupleGasDustTemperature) then
-     totalHeating = (Hheating + HeHeating + peHeating)
+     totalHeating = (Hheating + HeHeating)
   else
-     totalHeating = (Hheating + HeHeating + peHeating + dustHeating)
+     totalHeating = (Hheating + HeHeating + dustHeating)
   endif
 
 end subroutine getHeating
