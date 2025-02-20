@@ -787,7 +787,7 @@ contains
     real(double) :: tAbsdb(2000), tScadb(2000)
     real(double) :: gfac(2000), tgfac(2000)
     character(len=40) :: filetype
-    character(len=80) :: message, junkchar
+    character(len=300) :: message, junkchar
     character(len=200) :: fullfilename, dataDirectory
     integer :: npts, i, j
 

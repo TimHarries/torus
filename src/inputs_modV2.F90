@@ -367,10 +367,8 @@ contains
        call getString("bursttype", burstType, cLine, fLine, nLines, &
             "Star burst type: ","(a,a,1x,a)","none", ok, .true.)
 
-       if (burstType == 'singlestartest') then
-          call getVector("burstposition", burstPosition, 1.d0, cLine, fLine, nLines, &
-               "Star position (10^10 cm): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .false.)
-       endif
+       call getVector("burstposition", burstPosition, 1.d0, cLine, fLine, nLines, &
+            "Star position (10^10 cm): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .false.)
 
        call getString("imf", imfType, cLine, fLine, nLines, &
             "Initial mass function: ","(a,a,1x,a)","salpeter", ok, .false.)
@@ -728,6 +726,9 @@ contains
     call getLogical("clusteranalysis", doClusterAnalysis, cLine, fLine, nLines, &
          "Perform a grid analysis for cluster models: ","(a,1l,1x,a)", .false., ok, .false.)
     if (doClusterAnalysis) then
+       call getLogical("destroypah", destroyPAH, cLine, fLine, nLines, &
+            "Remove PAH absorption/emission in ionized gas: ","(a,1l,1x,a)", .true., ok, .false.)
+
        call getLogical("decouplegasdust", decoupleGasDustTemperature, cLine, fLine, nLines, &
             "Decouple gas and dust temperature: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -3315,6 +3316,12 @@ contains
        call getLogical("dustsettling", dustSettling, cLine, fLine, nLines, &
                "Dust settling model: : ","(a,1l,1x,a)", .false., ok, .false.)
 
+       call getLogical("decouplegasdust", decoupleGasDustTemperature, cLine, fLine, nLines, &
+            "Decouple gas and dust temperature: ","(a,1l,1x,a)", .false., ok, .false.)
+       if (photoionphysics .and. dustOnly .and. decoupleGasDustTemperature) then
+          decoupleGasDustTemperature = .false.
+          call writeWarning("dustonly T requires decouplegasdust F... Forcing decouplegasdust to F")
+       endif
 
        ! lucy_mod
        call getLogical("pah", usePAH, cLine, fLine, nLines, &
@@ -3918,11 +3925,11 @@ contains
     call getLogical("quickthermal", quickThermal, cLine, fLine, nLines, &
          "Compute photoionization equilibrium: ","(a,1l,a)", .false., ok, .false.)
 
-    decoupleGasDustTemperature = .false.
-    if (.not. quickthermal) then
-       call getLogical("decouplegasdust", decoupleGasDustTemperature, cLine, fLine, nLines, &
-            "Decouple gas and dust temperature: ","(a,1l,1x,a)", .false., ok, .false.)
-    endif
+!    decoupleGasDustTemperature = .false.
+!    if (.not. quickthermal) then
+!       call getLogical("decouplegasdust", decoupleGasDustTemperature, cLine, fLine, nLines, &
+!            "Decouple gas and dust temperature: ","(a,1l,1x,a)", .false., ok, .false.)
+!    endif
 
     call getLogical("isothermal", isoThermal, cLine, fLine, nLines, &
          "Isothermal (no photoionization loop): ","(a,1l,1x,a)", .false., ok, .false.)

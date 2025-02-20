@@ -2191,8 +2191,8 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     kappaAbsPAH = 0.d0
     kappaScaPAH = 0.d0
     if (usePAH)  then
-       kappaAbsPAH = getKappaAbsPAH(thisFreq) * thisOctal%rho(subcell) * 1.d10
-       kappaScaPAH = getKappaScaPAH(thisFreq) * thisOctal%rho(subcell) * 1.d10
+       kappaAbsPAH = thisOctal%dustTypeFraction(subcell,1) * getKappaAbsPAH(cspeed/thisFreq*1e8) * thisOctal%rho(subcell) * 1.d10
+       kappaScaPAH = thisOctal%dustTypeFraction(subcell,1) * getKappaScaPAH(cspeed/thisFreq*1e8) * thisOctal%rho(subcell) * 1.d10
     endif
 
     if(present(kappaAbsOut)) kappaAbsOut = kappaAbsdb
@@ -2377,8 +2377,8 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           kappaAbsPAH = 0.d0
           kappaScaPAH = 0.d0
           if (usePAH) then
-             kappaAbsPAH = getKappaAbsPAH(thisFreq) * thisOctal%rho(subcell) * 1.d10
-             kappaScaPAH = getKappaScaPAH(thisFreq) * thisOctal%rho(subcell) * 1.d10
+             kappaAbsPAH = thisOctal%dustTypeFraction(subcell,1)*getKappaAbsPAH(cspeed/thisFreq*1e8)*thisOctal%rho(subcell) * 1.d10
+             kappaScaPAH = thisOctal%dustTypeFraction(subcell,1)*getKappaScaPAH(cspeed/thisFreq*1e8)*thisOctal%rho(subcell) * 1.d10
           endif
           sOctal => thisOctal
           oldOctal => thisOctal
@@ -2438,8 +2438,8 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
        kappaAbsPAH = 0.d0
        kappaScaPAH = 0.d0
        if (usePAH) then
-          kappaAbsPAH = getKappaAbsPAH(thisFreq) * thisOctal%rho(subcell) * 1.d10
-          kappaScaPAH = getKappaScaPAH(thisFreq) * thisOctal%rho(subcell) * 1.d10
+          kappaAbsPAH = thisOctal%dustTypeFraction(subcell,1) * getKappaAbsPAH(cspeed/thisFreq*1e8) * thisOctal%rho(subcell) * 1.d10
+          kappaScaPAH = thisOctal%dustTypeFraction(subcell,1) * getKappaScaPAH(cspeed/thisFreq*1e8) * thisOctal%rho(subcell) * 1.d10
        endif
 
        if (thisOctal%diffusionApprox(subcell)) then
@@ -3099,6 +3099,37 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     enddo
   end subroutine calcContinuumEmissivityLucyMono
 
+  ! not mono!
+  recursive subroutine  calcContinuumEmissivityLucyAtDustTemp(grid, thisOctal, nlambda, lamArray)
+    type(GRIDTYPE) :: grid
+    integer :: nLambda
+    real :: lamArray(:)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calcContinuumEmissivityLucyAtDustTemp(grid, child, nlambda, lamArray)
+                exit
+             end if
+          end do
+       else
+          thisOctal%etaCont(subcell) = 1.d-40
+          if ((thisOctal%temperature(subcell) > 1.d-3).and.(thisOctal%tdust(subcell) > 1.d-3)) then
+
+             call addDustContinuumLucyAtDustTemp(thisOctal, subcell, grid, nlambda, lamArray)
+             
+          endif
+
+       endif
+    enddo
+  end subroutine calcContinuumEmissivityLucyAtDustTemp
+
   recursive subroutine  setDustTemperatureIfZero(thisOctal)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
@@ -3213,7 +3244,7 @@ subroutine addDustContinuumLucy(thisOctal, subcell, grid, nlambda, lamArray)
      if (usePAH) then
         thisOctal%pahEmissivity(subcell) = PAHemissivityFromAdot(dble(lamArray(i)), &
              thisOctal%adotPAH(subcell), &
-             thisOctal%rho(subcell)) & 
+             thisOctal%rho(subcell),thisOctal%dustTypeFraction(subcell,1)) & 
              *cSpeed/(lamArray(i)*angstromtocm)**2 *dlam * fourPi * 1.d-8
 
         thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + thisOctal%pahEmissivity(subcell)
@@ -3246,7 +3277,7 @@ subroutine addDustContinuumLucyMono(thisOctal, subcell, grid,  lambda, iPhotonLa
   if (usePAH) then
      thisOctal%pahEmissivity(subcell) =  PAHemissivityFromAdot(dble(lambda), &
           thisOctal%adotPAH(subcell), &
-          thisOctal%rho(subcell)) &
+          thisOctal%rho(subcell),thisOctal%dustTypeFraction(subcell,1)) & 
           *cSpeed/(lambda*angstromtocm)**2 * fourPi * 1.d-8
 
 
@@ -3267,7 +3298,6 @@ subroutine addDustContinuumLucyMonoAtDustTemp(thisOctal, subcell, grid,  lambda,
   integer :: iPhotonLambda
   real ::  lambda
   real(double) :: kappaAbs, kappaAbsDust, temperature
-  logical :: addPAHemissivity
 
   kappaAbs = 0.d0
   kappaAbsDust = 0.d0
@@ -3283,19 +3313,19 @@ subroutine addDustContinuumLucyMonoAtDustTemp(thisOctal, subcell, grid,  lambda,
   thisOctal%etaCont(subcell) =  bLambda(dble(lambda), temperature) * &
              kappaAbsDust * 1.d-10 * fourPi * 1.d-8 ! conversion from per cm to per A
 
-  addPAHemissivity = usePAH .or. photoionPAH
-  if (photoionPAH) then
-      ! option to turn off PAH emission in ionized gas
-     if (destroyPAH .and. (thisOctal%ionFrac(subcell,2) > 1.d-5)) addPAHemissivity = .false.
-  endif
-  if (addPAHemissivity) then
+  if (photoionPAH.or. usePAH) then
      if (.not. associated(thisOctal%pahEmissivity)) allocate (thisOctal%pahEmissivity(1:thisOctal%maxChildren))
-     thisOctal%pahEmissivity(subcell) =  PAHemissivityFromAdot(dble(lambda), &
-          thisOctal%adotPAH(subcell), &
-          thisOctal%rho(subcell)) &
-          *cSpeed/(lambda*angstromtocm)**2 * fourPi * 1.d-8
-
-     thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + thisOctal%pahEmissivity(subcell)
+     if (destroyPAH .and. (thisOctal%temperature(subcell) > 2.e3)) then ! TODO - use ionfrac
+        ! option to turn off PAH emission in ionized gas
+        thisOctal%pahEmissivity(subcell) = 0.d0
+     else
+        thisOctal%pahEmissivity(subcell) =  PAHemissivityFromAdot(dble(lambda), &
+             thisOctal%adotPAH(subcell), &
+             thisOctal%rho(subcell), &
+             thisOctal%dustTypeFraction(subcell,1)) &
+             *cSpeed/(lambda*angstromtocm)**2 * fourPi * 1.d-8
+        thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + thisOctal%pahEmissivity(subcell)
+     endif
   endif
 
 
@@ -3310,36 +3340,77 @@ subroutine addPAHContinuumLucyMono(thisOctal, subcell, lambda)
   type(OCTAL), pointer :: thisOctal
   integer :: subcell
   real ::  lambda
-  logical :: addPAHemissivity
 
   thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont(subcell))
 
 
-  addPAHemissivity = usePAH .or. photoionPAH
-  if (photoionPAH) then
-      ! option to turn off PAH emission in ionized gas
-     if (destroyPAH .and. (thisOctal%ionFrac(subcell,2) > 1.d-5)) addPAHemissivity = .false.
-  endif
-  if (addPAHemissivity) then
+  if (photoionPAH.or. usePAH) then
      if (.not. associated(thisOctal%pahEmissivity)) allocate (thisOctal%pahEmissivity(1:thisOctal%maxChildren))
-     thisOctal%pahEmissivity(subcell) =  PAHemissivityFromAdot(dble(lambda), & ! jnu (per Hz)
-          thisOctal%adotPAH(subcell), &
-          thisOctal%rho(subcell)) &
-          *cSpeed/(lambda*angstromtocm)**2 * fourPi * 1.d-8 ! to 4*pi*jlambda (per A)
-
-
-     thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + thisOctal%pahEmissivity(subcell)
-     if (thisOctal%pahEmissivity(subcell) > 1.d-20) then
-        write(*,'(a,es11.3,a,f6.2, a, 3es11.3)') "yes pah/dust ", thisOctal%pahEmissivity(subcell)/thisOctal%etaCont(subcell), & 
-        " td ", thisOctal%tdust(subcell), " ion ", (thisOctal%ionFrac(subcell,2)), thisOctal%adotpah(subcell), & 
-        thisOctal%pahEmissivity(subcell)
+     if (destroyPAH .and. (thisOctal%temperature(subcell) > 2.e3)) then ! TODO - use ionfrac
+        ! option to turn off PAH emission in ionized gas
+        thisOctal%pahEmissivity(subcell) = 0.d0 
+     else
+        thisOctal%pahEmissivity(subcell) =  PAHemissivityFromAdot(dble(lambda), & ! jnu (per Hz)
+             thisOctal%adotPAH(subcell), &
+             thisOctal%rho(subcell),thisOctal%dustTypeFraction(subcell,1)) & 
+             *cSpeed/(lambda*angstromtocm)**2 * fourPi * 1.d-8 ! to 4*pi*jlambda (per A)
+        thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + thisOctal%pahEmissivity(subcell)
      endif
+!     if (thisOctal%pahEmissivity(subcell) > 1.d-20) then
+!        write(*,'(a,es11.3,a,f6.2, a, 3es11.3)') "yes pah/dust ", thisOctal%pahEmissivity(subcell)/thisOctal%etaCont(subcell), & 
+!        " td ", thisOctal%tdust(subcell), " ion ", (thisOctal%ionFrac(subcell,2)), thisOctal%adotpah(subcell), & 
+!        thisOctal%pahEmissivity(subcell)
+!     endif
   endif
 
 
   if (.not.thisOctal%inFlow(subcell)) thisOctal%etaCont(subcell) = 0.d0
 
 end subroutine addPAHContinuumLucyMono
+
+subroutine addDustContinuumLucyAtDustTemp(thisOctal, subcell, grid, nlambda, lamArray)
+  use inputs_mod, only : usePAH, photoionPAH, destroyPAH
+  type(OCTAL), pointer :: thisOctal
+  integer :: subcell
+  type(GRIDTYPE) :: grid
+  integer :: nLambda
+  real :: lamArray(:)
+  integer :: i
+  real :: dlam
+  real(double), allocatable :: kabsArray(:)
+
+
+  allocate(kAbsArray(1:nlambda))
+
+  call returnKappa(grid, thisOctal, subcell, kappaAbsArray=kAbsArray)
+
+  thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont(subcell))
+
+  do i = 2, nLambda
+     dlam = lamArray(i)-lamArray(i-1)
+     thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + &
+          bLambda(dble(lamArray(i)), thisOctal%tdust(subcell)) * &
+             kAbsArray(i) *1.d-10* dlam * fourPi * 1.d-8 ! conversion from per cm to per A
+
+     if (photoionPAH.or.usePAH) then
+        if (.not. associated(thisOctal%pahEmissivity)) allocate (thisOctal%pahEmissivity(1:thisOctal%maxChildren))
+        if (destroyPAH .and. (thisOctal%temperature(subcell) > 2.e3)) then ! TODO - use ionfrac
+           ! option to turn off PAH emission in ionized gas
+           thisOctal%pahEmissivity(subcell) = 0.d0 
+        else
+           thisOctal%pahEmissivity(subcell) = PAHemissivityFromAdot(dble(lamArray(i)), &
+                thisOctal%adotPAH(subcell), &
+                thisOctal%rho(subcell),thisOctal%dustTypeFraction(subcell,1)) & 
+                *cSpeed/(lamArray(i)*angstromtocm)**2 *dlam * fourPi * 1.d-8
+
+           thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + thisOctal%pahEmissivity(subcell)
+        endif
+     endif
+  enddo
+
+  deallocate(kAbsArray)
+
+end subroutine addDustContinuumLucyAtDustTemp
 
 subroutine setBiasOnTau(grid, iLambda)
     use inputs_mod, only : cylindrical, amr3d, amr1d, smallestCellSize

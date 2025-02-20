@@ -233,6 +233,7 @@ MODULE octal_mod
     INTEGER(bigint), DIMENSION(:), pointer      :: nCrossIonizing  => null() ! no of H-ionizing photon crossings
     INTEGER(bigint), DIMENSION(:), pointer      :: nScatters  => null()    ! no of scattering events
     real(double), dimension(:), pointer       :: adotPAH => null()
+    real(double), dimension(:), pointer       :: adotPAHtemp => null()
     real(double), DIMENSION(:), pointer :: nTot => null()          ! total density
     real, dimension(:), pointer :: oldFrac  => null() ! Previous value of dust sublimation fraction
 

@@ -539,7 +539,7 @@ contains
        filterSet, mie,  starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,&
        VoigtProf,  photonFromEnvelope, dopShift, sourceOctal, sourceSubcell)
     use inputs_mod, only : photoionization, pencilbeam, lineEmission, vRot, useBias, &
-         narrowBandImage, nspot, thetaSpot, phiSpot, usePAH
+         narrowBandImage, nspot, thetaSpot, phiSpot, usePAH, photoionPAH
     use atom_mod, only: bLambda, bigGamma
     use amr_mod
     use phasematrix_mod
@@ -796,7 +796,7 @@ contains
                   thisPhoton%position = randomPositionInCell(sourceOctal, sourcesubcell)
 
 
-                  if (usePAH) then
+                  if (usePAH .or. photoionPAH) then
                      probPAH = sourceOctal%PAHemissivity(sourceSubcell) / &
                           sourceOctal%etaCont(sourcesubcell)
                      call randomNumberGenerator(getDouble=randomDouble)

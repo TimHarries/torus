@@ -46,7 +46,8 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   use TTauri_mod
   use blob_mod, only: blobtype, distortgridwithblobs, readblobs
   use lucy_mod, only: calccontinuumemissivitylucy, calccontinuumemissivitylucymono, setbiasontau, & 
-       addDustContinuumLucyMono, calcContinuumEmissivityLucyMonoAtDustTemp, setDustTemperatureIfZero
+       addDustContinuumLucyMono, calcContinuumEmissivityLucyMonoAtDustTemp, setDustTemperatureIfZero,&
+       calccontinuumemissivitylucyAtDustTemp
   use timing, only: tune
   use formal_solutions, only: compute_obs_line_flux
   use distortion_mod, only: distortgridtest, distortstrom, distortwindcollision, distortwrdisk
@@ -736,7 +737,16 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      if (mie .and. (.not. useDust)) then
 
 !        write(*,*) "nlambda ",nlambda, " grid%lamArray ",grid%lamarray
-        call calcContinuumEmissivityLucy(grid, grid%octreeRoot , nlambda, grid%lamArray)
+        if (associated(grid%octreeRoot%tdust)) then
+           call setDustTemperatureIfZero(grid%octreeRoot)
+           write(message,*) "Setting poly emissivity from dust temperature"
+           call writeInfo(message,TRIVIAL)
+           call calcContinuumEmissivityLucyAtDustTemp(grid, grid%octreeRoot , nlambda, grid%lamArray)
+        else
+           write(message,*) "Setting poly emissivity from temperature (same for gas and dust)"
+           call writeInfo(message,TRIVIAL)
+           call calcContinuumEmissivityLucy(grid, grid%octreeRoot , nlambda, grid%lamArray)
+        endif
 
 
         call computeProbDist(grid, totLineEmission, &
@@ -1137,7 +1147,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
 
 
-       if (index(originalOutFile,".") == 0) then
+       if (index(originalOutFile,".") == 0) then ! "." not present
           write(tempChar,'(i3.3)') NINT(inclination*radToDeg)
           write(tempChar2,'(i3.3)') NINT(imagePA*radToDeg)
           if (imagePA == 0.0 ) then

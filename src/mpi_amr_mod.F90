@@ -9167,6 +9167,7 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     call packAttributePointer(thisOctal%uvvector)
     call packAttributePointer(thisOctal%oldfrac)
     call packAttributePointer(thisOctal%adotpah)
+    call packAttributePointer(thisOctal%adotpahtemp)
 
   end subroutine packOctal
 
@@ -9241,6 +9242,7 @@ function shepardsMethod(xi, yi, zi, fi, n, x, y, z) result(out)
     call unpackAttributePointer(thisOctal%uvvector)
     call unpackAttributePointer(thisOctal%oldfrac)
     call unpackAttributePointer(thisOctal%adotpah)
+    call unpackAttributePointer(thisOctal%adotpahtemp)
 
 
   end subroutine unPackOctal

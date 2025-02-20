@@ -1373,6 +1373,21 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
        endif
     endif
 
+    ! sum PAH emission and absorption
+    if (.not. splitOverMPI) then
+       write(*,*) "doing sumPAH"
+       total = 0.d0 ! absorption rate
+       flux = 0.d0 ! emission rate
+       distance = 0.d0 ! sum of Adot for which emission==0
+       call sumPAH(grid%octreeRoot, grid, total, flux, distance)
+       write(*,*) "emi ", flux
+       write(*,*) "abs ", total
+       write(*,*) "emi/abs", flux/total
+       write(*,*) "Adot > 0 but emi > 0 ", distance
+       write(*,*) "   frac (/abs)", distance/total
+
+    endif
+
     firstTime = .false.
   end subroutine clusterAnalysis
   
@@ -2406,5 +2421,80 @@ flux, mass/msol, mass14/msol, mass15/msol, mass16/msol, mdisc/msol
 
 
   end subroutine tagLineOfSight
+
+  recursive subroutine sumPAH(thisOctal, grid, totAbsorption, totEmission, adotZeroEmission)
+    use pah_mod, only : PAHemissivityFromAdot
+    use atom_mod, only: blambda
+    use amr_mod, only : returnKappa
+#ifdef MPI
+    use amr_mod, only : octalOnThread
+#endif
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer :: subcell, i, j
+    real(double) :: totAbsorption, totEmission, emission, lambda, dlam, adotZeroEmission
+    real(double) :: kappaAbs, kappaAbsDust, V, absorption
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call sumPAH(child, grid, totAbsorption, totEmission, adotZeroEmission)
+                exit
+             end if
+          end do
+       else
+!          if(.not. thisoctal%ghostcell(subcell)) then
+#ifdef MPI
+             if (octalOnThread(thisOctal, subcell, myRankGlobal)) then
+#endif
+                if (.not. associated(thisOctal%etacont)) allocate(thisOctal%etaCont(1:thisOctal%maxchildren))
+                if (thisOctal%adotPAH(subcell) > 0.d0) then
+                   ! sum emission spectrum
+                   emission = 0.d0
+                   do j = 2, grid%nlambda
+                      lambda = dble(grid%lamArray(j))
+                      dlam = dble(grid%lamArray(j)-grid%lamArray(j-1))
+                      ! pah
+                      emission = emission +  PAHemissivityFromAdot(lambda, &
+                           thisOctal%adotPAH(subcell), &
+                           thisOctal%rho(subcell), &
+                           thisOctal%dustTypeFraction(subcell,1)) &
+                           *cSpeed/(lambda*angstromtocm)**2 * fourPi * 1.d-8 &
+                           *dlam
+                      ! dust
+                      call returnKappa(grid, thisOctal, subcell, lambda=real(lambda), iLambda=j, &
+                       kappaAbs=kappaAbs, kappaAbsDust=kappaAbsDust)
+                       emission = emission + bLambda(lambda, thisOctal%tdust(subcell)) &
+                           *kappaAbsDust * 1.d-10 * fourPi * 1.d-8 & ! conversion from per cm to per A
+                           *dlam
+                   enddo
+                   v = cellVolume(thisOctal, subcell) * 1.d30
+                   absorption = thisOctal%adotPAH(subcell) + thisOctal%distanceGrid(subcell)*9.8935326161648629E+032/V
+
+                   ! cell comparison
+                   thisOctal%etaCont(subcell) = emission/absorption
+                   if (emission == 0.d0) then
+!                      write(*,*) "emission 0 for Adot", thisOctal%adotPAH(subcell) &
+!                         / (thisOctal%dustTypeFraction(subcell,1)*thisOctal%rho(subcell))
+                      adotZeroEmission = adotZeroEmission + thisOctal%adotPAH(subcell)
+                   endif
+
+                   ! tots over grid
+                   totEmission = totEmission + emission
+                   totAbsorption = totAbsorption + absorption
+                else
+                   thisOctal%etaCont(subcell) = 1.d-15
+                endif
+#ifdef MPI
+             endif
+#endif
+!          endif
+       endif
+    enddo
+  end subroutine sumPAH
 
 end module gridanalysis_mod

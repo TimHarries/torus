@@ -10290,8 +10290,8 @@ logical function insideCone(position, binarySep, momRatio)
     INTEGER, INTENT(IN) :: subcell
 
     thisOctal%rho(subcell) = gridDensity
-    thisOctal%temperature(subcell) = 10.d0
-    if (decoupleGasDustTemperature) thisOctal%tdust(subcell) = 10.d0
+    thisOctal%temperature(subcell) = 1.e4
+    if (decoupleGasDustTemperature) thisOctal%tdust(subcell) = 100.d0
 
     if (hydrodynamics) thisOctal%iequationOfState(subcell) = 1 ! isothermal
 
@@ -14997,6 +14997,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%scatteredIntensity, source%scatteredIntensity)
     call copyAttribute(dest%meanIntensity, source%meanIntensity)
     call copyAttribute(dest%aDotPAH, source%aDotPAH)
+    call copyAttribute(dest%aDotPAHtemp, source%aDotPAHtemp)
     call copyAttribute(dest%temperaturedust, source%temperatureDust)
     call copyAttribute(dest%temperaturegas, source%temperaturegas)
     call copyAttribute(dest%dustType, source%dustType)
@@ -15941,7 +15942,7 @@ end function readparameterfrom2dmap
     use atom_mod, only: bnu
     use gas_opacity_mod, only: returnGasKappaValue
 #ifdef PHOTOION
-    use inputs_mod, only: photoionization, hOnly, CAKlineOpacity, photoionPAH, destroyPAH
+    use inputs_mod, only: photoionization, hOnly, CAKlineOpacity, photoionPAH, destroyPAH, usePAH
     use phfit_mod, only : phfit2
     use pah_mod, only: getKappaAbsPAH, getKappaScaPAH
 #endif
@@ -16345,9 +16346,10 @@ end function readparameterfrom2dmap
          if (present(lambda)) then
             e = real((hCgs * (cSpeed / (lambda * 1.e-8))) * ergtoev)
          else
-            call torus_abort("returnKappa requires interpolated lambda to calculate photoion xsec")
             e = real((hCgs * (cSpeed / (grid%lamArray(iLambda) * 1.e-8))) * ergtoev)
-            !            write(*,*) "! using rough grid"
+            if (e > 5.) then
+               call torus_abort("returnKappa requires interpolated lambda to calculate photoion xsec")
+            endif
          endif
          call phfit2(1, 1, 1 , e , h0)
          call phfit2(2, 2, 1 , e , he0)
@@ -16397,19 +16399,21 @@ end function readparameterfrom2dmap
 
    if (PRESENT(kappaAbsPAH)) kappaAbsPAH = 0.0
    if (PRESENT(kappaScaPAH)) kappaScaPAH = 0.0
-   if (photoionization .and. photoionPAH) then
+   if (usepah .or. photoionPAH) then
       ! option to turn off PAH opacity in ionized gas
-      if (destroyPAH .and. (thisOctal%ionFrac(subcell,2) > 1.d-5)) goto 444
+      if (destroyPAH .and. (thisOctal%temperature(subcell) > 2.e3)) goto 444
+      if (PRESENT(kappaAbs) .or. PRESENT(kappaSca)) then
+         if (.not.PRESENT(lambda)) then
+            tlambda = grid%lamArray(iLambda)
+         else
+            tlambda = lambda
+         endif
+      endif
 
       ! absorb
       tempDouble = 0.d0
       if (PRESENT(kappaAbs)) then
-         if (present(lambda)) then
-            freq = cSpeed / (lambda * 1.e-8)
-         else
-            call torus_abort("returnKappa requires interpolated lambda to calculate kappaPAH")
-         endif
-         tempDouble = getKappaAbsPAH(freq) * thisOctal%rho(subcell) * 1.d10
+         tempDouble = thisOctal%dustTypeFraction(subcell,1) * getKappaAbsPAH(dble(tlambda)) * thisOctal%rho(subcell) * 1.d10
          kappaAbs = kappaAbs + tempDouble 
       endif
       if (PRESENT(kappaAbsPAH)) kappaAbsPAH = tempDouble
@@ -16417,12 +16421,7 @@ end function readparameterfrom2dmap
       ! scatter
       tempDouble = 0.d0
       if (PRESENT(kappaSca)) then
-         if (present(lambda)) then
-            freq = cSpeed / (lambda * 1.e-8)
-         else
-            call torus_abort("returnKappa requires interpolated lambda to calculate kappaPAH")
-         endif
-         tempDouble = getKappaScaPAH(freq) * thisOctal%rho(subcell) * 1.d10
+         tempDouble = thisOctal%dustTypeFraction(subcell,1) * getKappaScaPAH(dble(tlambda)) * thisOctal%rho(subcell) * 1.d10
          kappaSca = kappaSca + tempDouble 
       endif
       if (PRESENT(kappaScaPAH)) kappaScaPAH = tempDouble
@@ -19406,6 +19405,7 @@ END SUBROUTINE assignDensitiesStellarWind
        call allocateAttribute(thisOctal%nTot, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%chiLine, thisOctal%maxChildren)
        call allocateAttribute(thisOctal%biasLine3D, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%adotPAHtemp, thisOctal%maxChildren)
 
        call allocateAttribute(thisOctal%corner,thisOctal%maxchildren)
        call allocateAttribute(thisOctal%boundaryPartner,thisOctal%maxChildren)

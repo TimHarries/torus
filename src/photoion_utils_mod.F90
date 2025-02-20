@@ -1664,7 +1664,6 @@ function gasGrainCoolingRate(rhoGas, ionizationFraction, tGas, tDust, mu) result
   real(double) :: vProton, nGrain, sigmaGrain, f, rGrain, dustToGas, grainVolume, grainDensity
   real(double) :: nGas, mu
   logical, save :: firstTime = .true.
-  integer :: i
 
   ! TODO expand for ndusttype > 1
   if (nDustType > 1 .and. firstTime) then

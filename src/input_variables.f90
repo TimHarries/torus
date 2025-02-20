@@ -69,7 +69,7 @@
   logical :: photoionPAH ! photoionAMR_mod
   logical :: destroyPAH  ! photoionAMR_mod
   real(double) :: pahScale
-  character(len=10) :: pahType
+  character(len=20) :: pahType
   character(len=30) :: pahKappa
 
 
