@@ -2375,13 +2375,13 @@ end subroutine radiationHydro
        end if
 
        sourceInThickCell = .false.
+       nSmallPackets = 0
     if (usePacketSplitting) then
        allocate(maxDiffRadius(1:globalnSource))
        allocate(maxDiffRadius1(1:globalnSource))
        allocate(maxDiffRadius2(1:globalnSource))
        allocate(maxDiffRadius3(1:globalnSource))
        maxDiffRadius = 0.d0
-       nSmallPackets = 0
 
        call MPI_BARRIER(localWorldCommunicator,ierr)
        if (.not. cart2d) then
