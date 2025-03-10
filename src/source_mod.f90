@@ -384,6 +384,7 @@
       read(lunit) source%accretionRadius
       read(lunit) source%time
       read(lunit) source%mdotwind
+! added in 2019
       read(lunit) source%pointSource
 
       call freeSpectrum(source%spectrum)
@@ -726,36 +727,38 @@
 
       tot = 0.d0
       do i = 1, nSource
-         if (lam > source(i)%spectrum%lambda(source(i)%spectrum%nLambda)) then
-           tot = tot + 1.d-200
-         else
-!           call locate(source(i)%spectrum%lambda, source(i)%spectrum%nLambda, lam, j)
+         if (source(i)%luminosity > 0.d0) then
+            if (lam > source(i)%spectrum%lambda(source(i)%spectrum%nLambda)) then
+              tot = tot + 1.d-200
+            else
+   !           call locate(source(i)%spectrum%lambda, source(i)%spectrum%nLambda, lam, j)
 
-           flux =  loginterp_dble(source(i)%spectrum%flux(1:source(i)%spectrum%nLambda), &
-                source(i)%spectrum%nLambda, source(i)%spectrum%lambda(1:source(i)%spectrum%nLambda), lam)
-!THAW -old
-!              tot = tot + flux * fourPi * (source(i)%radius*1.d10)**2 
+              flux =  loginterp_dble(source(i)%spectrum%flux(1:source(i)%spectrum%nLambda), &
+                   source(i)%spectrum%nLambda, source(i)%spectrum%lambda(1:source(i)%spectrum%nLambda), lam)
+   !THAW -old
+   !              tot = tot + flux * fourPi * (source(i)%radius*1.d10)**2
 
-!THaw - new
-           if (.not.source(i)%outsideGrid) then                                                    
-              tot = tot + flux * fourPi * (source(i)%radius*1.d10)**2
-           else                          
-              if(cart2d) then
-                 if(grid%octreeroot%twod) then
-                    tot = tot + flux *  (2.d0*grid%octreeRoot%subcellSize*1.d20*2.d0* &
-                         grid%halfsmallestsubcell) * &                  
-                         (source(i)%radius*1.d10)**2 / (source(i)%distance**2)                 
-                 else
-                    tot = tot + flux *  (1.d20*(2.d0* &
-                         grid%halfsmallestsubcell)**2) * &  
-                         (source(i)%radius*1.d10)**2 / (source(i)%distance**2)    
-                 end if
+   !THaw - new
+              if (.not.source(i)%outsideGrid) then
+                 tot = tot + flux * fourPi * (source(i)%radius*1.d10)**2
               else
-                 tot = tot + flux *  (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 * &                  
-                      (source(i)%radius*1.d10)**2 / (source(i)%distance**2)
-              end if
-           endif                 
+                 if(cart2d) then
+                    if(grid%octreeroot%twod) then
+                       tot = tot + flux *  (2.d0*grid%octreeRoot%subcellSize*1.d20*2.d0* &
+                            grid%halfsmallestsubcell) * &
+                            (source(i)%radius*1.d10)**2 / (source(i)%distance**2)
+                    else
+                       tot = tot + flux *  (1.d20*(2.d0* &
+                            grid%halfsmallestsubcell)**2) * &
+                            (source(i)%radius*1.d10)**2 / (source(i)%distance**2)
+                    end if
+                 else
+                    tot = tot + flux *  (2.d0*grid%octreeRoot%subcellSize*1.d10)**2 * &
+                         (source(i)%radius*1.d10)**2 / (source(i)%distance**2)
+                 end if
+              endif
 
+           endif
         endif
      enddo
     end function sumSourceLuminosityMonochromatic
