@@ -146,7 +146,8 @@ contains
       write(36,'(a)') "# Columns are: wavelength (microns), kappa ext (cm^2 g^-1), kappa abs (cm^2 g^-1), kappa sca (cm^2 g^-1)"
       write(36,*) "# Note that the opacities are per gram of gas"
       do i = 1, PAHkappaTable%nlam
-         write(36,'(4es13.5)') PAHkappaTable%lambda(i)*angsToMicrons, grainfrac(1)*(PAHkappaTable%kappaAbs(i) + PAHkappaTable%kappaSca(i)), &
+         write(36,'(4es13.5)') PAHkappaTable%lambda(i)*angsToMicrons, &
+         grainfrac(1)*(PAHkappaTable%kappaAbs(i) + PAHkappaTable%kappaSca(i)), &
          grainfrac(1)*PAHkappaTable%kappaAbs(i), grainfrac(1)*PAHkappaTable%kappaSca(i)
       enddo
       close(36)
