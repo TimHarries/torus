@@ -146,7 +146,7 @@ contains
       write(36,'(a)') "# Columns are: wavelength (microns), kappa ext (cm^2 g^-1), kappa abs (cm^2 g^-1), kappa sca (cm^2 g^-1)"
       write(36,*) "# Note that the opacities are per gram of gas"
       do i = 1, PAHkappaTable%nlam
-         write(36,*) PAHkappaTable%lambda(i)*angsToMicrons, grainfrac(1)*(PAHkappaTable%kappaAbs(i) + PAHkappaTable%kappaSca(i)), &
+         write(36,'(4es13.5)') PAHkappaTable%lambda(i)*angsToMicrons, grainfrac(1)*(PAHkappaTable%kappaAbs(i) + PAHkappaTable%kappaSca(i)), &
          grainfrac(1)*PAHkappaTable%kappaAbs(i), grainfrac(1)*PAHkappaTable%kappaSca(i)
       enddo
       close(36)
@@ -157,7 +157,7 @@ contains
   subroutine readHensleyOpacity()
     use inputs_mod, only : PAHscale, grainfrac
     character(len=200) :: filename, dataDirectory
-    character(len=80) :: cjunk
+    character(len=120) :: cjunk
     integer :: i
     real(double) :: junk1, junk2, junk3, junk4, junk5, junk6, junk
     ! Hensley & Draine 2023 PAH opacities
@@ -172,16 +172,12 @@ contains
 
 
     open(30, file=filename, status="old", form="formatted")
-    read(30,'(A)') cjunk
-    read(30,'(A)') cjunk
-    read(30,'(A)') cjunk
-    read(30,'(A)') cjunk
-    read(30,'(A)') cjunk
-    ! AA: first line in the file is entered by me to give a const Astrodust kappa above 13.6eV
-    ! But we ignore this for PAHs
-    read(30,*) junk, junk1, junk2, junk3, junk4, junk5, junk6, junk, junk
+    ! ignore header + sil_dl dust data
+    do i = 1, 89
+       read(30,'(A)') cjunk
+    enddo
 
-    ! read original data
+    ! read PAH data
     do i = 1,PAHkappaTable%nlam
        read(30,*) PAHkappaTable%lambda(i), junk1, junk2, junk3, junk4, junk5, junk6, junk, junk
 

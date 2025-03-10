@@ -785,7 +785,7 @@ contains
     real :: sigmaExt(2000),sigmaSca(2000), kappa(2000), albedo(2000), tlam(2000)
     real :: tSca(2000), tAbs(2000), sigmaAbs(2000), junk
     real(double) :: tAbsdb(2000), tScadb(2000)
-    real(double) :: gfac(2000), tgfac(2000)
+    real(double) :: gfac(2000), tgfac(2000), junkdb
     character(len=40) :: filetype
     character(len=300) :: message, junkchar
     character(len=200) :: fullfilename, dataDirectory
@@ -850,19 +850,18 @@ contains
        tlam(1:npts) = tlam(1:npts) * 1.e4 ! microns to angstrom
 
     case("astrodust")
-       ! Hensley & Draine 2023 Astrodust opacities
+       ! mixture of Hensley & Draine 2023 Astrodust opacities (> 0.1 um)
+       ! and sil_dl silicates (< 0.1 um)
        ! Doesn't include PAHs! PAHs are done differently, not as a dust type (see photoionPAH input variable)
-       ! Data doesn't include any EUV opacity (> 13.6 eV). To avoid extrapolation, I've added a line in the
-       ! TORUS_DATA file which gives a constant EUV opacity (duplicated the 0.1um line)
        call addBibcode("2023ApJ...948...55H","Astrodust+PAH opacities")
-       npts = 1001
+       ! TODO add sil_dl citation
+       npts = 1085
 
        read(20,*) junkchar
        read(20,*) junkchar
        read(20,*) junkchar
-       read(20,*) junkchar
        do i = 1, npts
-          read(20,*) tlam(i), junk, tAbsdb(i), junk, tScadb(i), junk, junk, junk, albedo(i)
+          read(20,*) tlam(i), junkdb, tAbsdb(i), junkdb, tScadb(i), junkdb, junkdb, junkdb, albedo(i)
        enddo
        tlam(1:npts) = tlam(1:npts) * 1.e4 ! microns to angstrom
        tAbs(1:npts) = real(tAbsdb(1:npts) / mHydrogen / 0.00708d0) ! cm2/H to cm2/(g dust)
