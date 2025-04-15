@@ -67,6 +67,7 @@ contains
     integer :: i, j, nBookend
     real(double), allocatable :: sedTime(:)
     real(double), allocatable :: sedWavelength(:)
+    real(double), allocatable :: dlam(:)
     real(double), allocatable :: outputFlux(:,:,:)
     real(double), allocatable :: outputFluxScat(:,:,:)
     real(double), allocatable :: sedFlux(:,:,:)
@@ -84,6 +85,7 @@ contains
     
     allocate(sedTime(1:nTime))
     allocate(sedWavelength(sedNumLam))
+    allocate(dlam(sedNumLam))
     allocate(outputFlux(nSedRadius, sedNumLam, nTime))
     allocate(outputFluxScat(nSedRadius,sedNumLam, nTime))
     allocate(sedFlux(nSedRadius,sedNumLam, nTime))
@@ -125,6 +127,15 @@ contains
        sedWavelength(i) = log10(w1) + (log10(w2)-log10(w1))*dble(i-1)/dble(sedNumLam-1)
     enddo
     sedWavelength = 10.d0**sedWavelength
+
+    dlam(1) = (sedWavelength(2)-sedWavelength(1))
+    dlam(sedNumLam) = (sedWavelength(sedNumLam)-xArray(sedNumLam-1))
+    do i = 2, sedNumLam-1
+       dlam(i) = 0.5*((sedWavelength(i+1)+sedWavelength(i))-(sedWavelength(i)+sedWavelength(i-1)))
+    enddo
+
+          
+
 
     if (writeoutput) then
        write(*,*) "Sed ",SEDNumLam, sedWavelength(1),sedWavelength(sedNumLam)
@@ -345,19 +356,16 @@ contains
           endif
 
           if (writeoutput) then
-             do i = 1, sedNumLam-1
-                outputFlux(1:nSedRadius,i,1:nTime) = sedFlux(1:nSedRadius,i,1:nTime) / &
-                     (sedWavelength(i+1)-sedWavelength(i))
-             enddo
-             outputFlux(1:nSedRadius,sedNumLam,1:nTime) = sedFlux(1:nSedRadius,sedNumLam,1:nTime) / &
-                  (2.*(sedWavelength(sedNumLam)-sedWavelength(sedNumLam-1)))
 
-             do i = 1, sedNumLam-1
-                outputFluxScat(1:nSedRadius,i,1:nTime) = sedFluxScat(1:nSedRadius,i,1:nTime) / &
-                     (sedWavelength(i+1)-sedWavelength(i))
+             do i = 1, sedNumLam
+                outputFlux(1:nSedRadius,i,1:nTime) = sedFlux(1:nSedRadius,i,1:nTime) / &
+                     dlam(i)
              enddo
-             outputFluxScat(1:nSedRadius,sedNumLam,1:nTime) = sedFluxScat(1:nSedRadius,sedNumLam,1:nTime) / &
-                  (2.*(sedWavelength(sedNumLam)-sedWavelength(sedNumLam-1)))
+
+             do i = 1, sedNumLam
+                outputFluxScat(1:nSedRadius,i,1:nTime) = sedFluxScat(1:nSedRadius,i,1:nTime) / &
+                     dlam(i)
+             enddo
 
              do j = 1, nSedRadius
                 do itime = 1, nTime
@@ -374,7 +382,7 @@ contains
                    open(32, file=vtkFilename, status="unknown", form="formatted")
                    write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT*secsToYears, " years"
                    
-                   do i = 1, sedNumLam-1
+                   do i = 1, sedNumLam
                       write(32,'(1p,2e10.3)') sedWavelength(i), &
                            real(outputFluxScat(j,i, itime)/deltaT/observerDistance**2)
                    enddo
@@ -398,19 +406,15 @@ contains
 
        if (writeoutput) then
 
-             do i = 1, sedNumLam-1
+             do i = 1, sedNumLam
                 outputFlux(1:nSedRadius,i,1:nTime) = sedFlux(1:nSedRadius,i,1:nTime) / &
-                     (sedWavelength(i+1)-sedWavelength(i))
+                     dlam(i)
              enddo
-             outputFlux(1:nSedRadius,sedNumLam,1:nTime) = sedFlux(1:nSedRadius,sedNumLam,1:nTime) / &
-                  (2.*(sedWavelength(sedNumLam)-sedWavelength(sedNumLam-1)))
-
-             do i = 1, sedNumLam-1
+             do i = 1, sedNumLam
                 outputFluxScat(1:nSedRadius,i,1:nTime) = sedFluxScat(1:nSedRadius,i,1:nTime) / &
-                     (sedWavelength(i+1)-sedWavelength(i))
+                     dlam(i)
              enddo
-             outputFluxScat(1:nSedRadius,sedNumLam,1:nTime) = sedFluxScat(1:nSedRadius,sedNumLam,1:nTime) / &
-                  (2.*(sedWavelength(sedNumLam)-sedWavelength(sedNumLam-1)))
+
              do j = 1, nSedRadius
                 do itime = 1, nTime
                    write(vtkFilename, '(a,i2.2,a,i5.5,a)') "sed_",j,"_",itime,".dat"
@@ -426,7 +430,7 @@ contains
                    open(32, file=vtkFilename, status="unknown", form="formatted")
                    write(32,'(a,1pe13.5,a)') "# ",dble(itime-1)*deltaT*secsToYears, " years"
                    
-                   do i = 1, sedNumLam-1
+                   do i = 1, sedNumLam
                       write(32,'(1p,2e10.3)') sedWavelength(i), &
                            real(outputFluxScat(j,i, itime)/DeltaT/observerDistance**2)
                    enddo

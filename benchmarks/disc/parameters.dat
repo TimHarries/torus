@@ -67,7 +67,8 @@ sedwavlin F          ! Linear spacing in SED file?
 ! Image parameters
 
 image T                    ! Produce images
-lambdaimage  220000.0      ! at 22 microns
+lambdaimage1  220000.0      ! at 22 microns
+lambdaimage2  220000.0      ! at 22 microns
 nimage 2                   ! There will be two images
 
 imagefile1 test_22um.fits  ! Filename for the first image

@@ -791,6 +791,16 @@ contains
 
     select case (filetype)
 
+
+    case("MW")
+       do i = 1, 30
+          read(20,*) junkchar
+          write(*,*) junkchar
+       enddo
+       stop
+          
+
+       
     case("kenny")
        npts = 1
 10     read(20,*,end=20) tlam(npts), sigmaExt(npts),sigmaSca(npts),kappa(npts)
