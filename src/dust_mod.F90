@@ -779,7 +779,7 @@ contains
     real :: kappaAbs(:), kappaSca(:)
     real :: sigmaExt(2000),sigmaSca(2000), kappa(2000), albedo(2000), tlam(2000)
     real :: tSca(2000), tAbs(2000), sigmaAbs(2000), junk
-    real(double) :: gfac(2000), tgfac(2000)
+    real(double) :: gfac(2000), tgfac(2000), rjunk
     character(len=40) :: filetype
     character(len=80) :: message, junkchar
     integer :: npts, i, j
@@ -793,13 +793,16 @@ contains
 
 
     case("MW")
-       do i = 1, 30
-          read(20,*) junkchar
-          write(*,*) junkchar
+       do i = 1, 80
+          read(20,'(a80)') junkchar
        enddo
-       stop
-          
-
+       do npts = 1066,1,-1
+          read(20,*) tlam(npts),albedo(npts),tgfac(npts),rjunk,kappa(npts)
+       enddo
+       npts = 1066
+       tabs(1:npts) = kappa(1:npts)
+       tsca(1:npts) = tabs(1:npts)*albedo(1:npts)/(1.d0-albedo(1:npts))
+       tlam(1:npts) = tlam(1:npts)*1e4
        
     case("kenny")
        npts = 1

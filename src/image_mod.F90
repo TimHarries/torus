@@ -785,6 +785,24 @@ module image_mod
                 enddo
              enddo
 
+          case("qphir2")
+             do i = 1, image%nx
+                do j = 1, image%ny
+                   dx = image%xAxisCentre(2) - image%xAxisCentre(1)
+                   if (dx > 0.) then
+                      phi = atan2(image%yAxisCentre(j), image%xAxisCentre(i)) + piby2
+                   else
+                      phi = atan2(image%yAxisCentre(j), -image%xAxisCentre(i)) + piby2
+                   endif
+
+                   xt = (( image%xAxisCentre(i) * 1.d10)/objectDistance)*radiansToArcsec
+                   yt = (( image%yAxisCentre(j) * 1.d10)/objectDistance)*radiansToArcsec
+
+                   array(i,j) = real(-cos(2.d0*phi) * image%pixel(i,j)%q - sin(2.d0*phi)*image%pixel(i,j)%u)
+                   array(i,j) = array(i,j) * (xt**2 + yt**2)
+                enddo
+             enddo
+
           case("pa")
              array = real(-0.5*atan2(image%pixel%u,image%pixel%q)*radtodeg)
              where (array < 0.e0) 
