@@ -798,6 +798,7 @@ contains
        enddo
        do npts = 1066,1,-1
           read(20,*) tlam(npts),albedo(npts),tgfac(npts),rjunk,kappa(npts)
+          if (writeoutput) write(*,*) tlam(npts),albedo(npts),tgfac(npts),rjunk,kappa(npts)
        enddo
        close(20)
        npts = 1066
