@@ -396,6 +396,47 @@ contains
     deallocate(frac)
 
   end subroutine setLoadBalancingThreadsByCells
+
+  subroutine setLoadBalancingThreadsFromFile(grid)
+    use mpi
+    type(GRIDTYPE) :: grid
+    integer, allocatable :: itemp(:)
+    integer, allocatable :: nThreads(:)
+    real(double), allocatable :: frac(:)
+    integer :: ierr, i, junk
+    logical :: ok
+
+    inquire(file="loadbalance.dat", exist=ok)
+    if (.not.ok) then
+       if (writeoutput) write(*,*) "loadbalance.dat not found. Setting load balancing threads by sources instead."
+       call setLoadBalancingThreadsBySources(grid)
+       goto 666
+    endif
+
+    allocate(nThreads(1:nHydroThreadsGlobal))
+    allocate(frac(1:nHydroThreadsGlobal))
+
+    ! read in table from file (same format as written out to stdout)
+    if (myrankGlobal == 0) then
+       nThreads(:) = 1
+       open(22, file="loadbalance.dat", status="old", form="formatted")
+       do i = 1, nHydroThreadsGlobal
+          read(22,*) junk, nThreads(i)
+       enddo
+       close(22)
+       nThreads(:) = nThreads(:) - 1 ! discount the hydro thread
+    endif
+
+    call MPI_BCAST(nThreads, nHydroThreadsGlobal, MPI_INTEGER, 0, localWorldCommunicator, ierr)
+    frac = dble(nThreads)/dble(SUM(nThreads))
+
+    call assignLoadBalancingThreads(grid, frac, "input file")
+
+    deallocate(nThreads)
+    deallocate(frac)
+
+666 continue
+  end subroutine setLoadBalancingThreadsFromFile
        
 
   subroutine createLoadThreadDomainCopies(grid)

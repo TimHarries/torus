@@ -460,8 +460,10 @@ contains
 !       endif
        if (.not.timeDependentRT .and. .not. uv_vector .and. .not. useionparam .and. .not.loadBalancingThreadGlobal) then
           if (startFromNeutral) then
+             call writeInfo("Starting with fully neutral grid (photoionAMR_mod)", TRIVIAL)
              call neutralGrid(grid%octreeRoot)
           else
+             call writeInfo("Starting with fully ionized grid (photoionAMR_mod)", TRIVIAL)
              call ionizeGrid(grid%octreeRoot)
           endif
        endif
@@ -2223,6 +2225,7 @@ end subroutine radiationHydro
           if (writeoutput) then
             write(*,'(a, i3, 1pe12.5)') "Ionizing photons per sec for source ", loopsource, thisSourceFlux 
           endif 
+          if (isnan(thisSourceFlux)) stop
        enddo
     else
        nIonizingPhotons = ionizingFlux(source(1))
@@ -2494,9 +2497,10 @@ end subroutine radiationHydro
        if (loadbalancing) then
           if (myrankWorldGlobal == 1) call tune(6, "Setting up load balance")  ! start a stopwatch
 
-          if (firstLoadBalancing.and.(.not.readGrid)) then
+          if (firstLoadBalancing.and.((grid%currentTime < 10.d0).or.(.not.readGrid))) then
+             call setLoadBalancingThreadsFromFile(grid)
 !             call setLoadBalancingThreadsBySources(grid)
-             call setLoadBalancingThreadsByCells(grid)
+!             call setLoadBalancingThreadsByCells(grid)
              firstLoadBalancing = .false.
           else
              select case(loadBalancingMethod)
@@ -2662,7 +2666,7 @@ end subroutine radiationHydro
                 ! sending photons from stars
                 
                 iThread = loadBalancedThreadNumber(thisOctal%mpiThread(subcell))
-                
+
                 ! location of iThread's photons in photonPacketStack
                 photonOne = (iThread-1)*maxstackLimit + 1
                 photonN = photonOne + min(nSaved(iThread), maxStackLimit-1) 
@@ -3967,8 +3971,8 @@ end subroutine radiationHydro
                    endif
                    call returnKappa(grid, thisOctal, subcell, kappap=kappap)
                    kappap = max(1.d-30,kappap)
-                   thisOctal%temperature(subcell) = max(tMinGlobal,real((pi/stefanBoltz) * dustHeating / (fourPi * kappaP))**0.25e0)
-                   thisOctal%tDust(subcell) = dble(thisOctal%temperature(subcell))
+                   thisOctal%tdust(subcell) = max(tMinGlobal,(pi/stefanBoltz) * dustHeating / (fourPi * kappaP))**0.25d0
+                   if (.not. decoupleGasDustTemperature) thisOctal%temperature(subcell) = real(thisOctal%tdust(subcell))
                 endif
              enddo
 
@@ -9359,7 +9363,7 @@ recursive subroutine countVoxelsOnThread(thisOctal, nVoxels)
        call zeroCornerEmissivity(grid, grid%octreeRoot)
     end if
     call computeProbDistAMRMpi(grid, totalEmission, threadProbArray)
-    if (myrankglobal == 0) write(*,*) "prob array ", threadProbArray(1:nHydroThreadsGlobal)
+!    if (myrankglobal == 0) write(*,*) "prob array ", threadProbArray(1:nHydroThreadsGlobal)
     totalEmission = totalEmission * 1.d30
 
     ! Probability that a photon comes from a source rather than the envelope
