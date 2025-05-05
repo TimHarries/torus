@@ -78,6 +78,8 @@ module sph_data_class
      real(double), pointer, dimension(:) :: dustfrac
      ! Density of H2
      real(double), pointer, dimension(:) :: rhoH2 => null()
+     ! H II fraction
+     real(double), pointer, dimension(:) :: hiiFrac => null()
      ! Density of CO
      real(double), pointer, dimension(:) :: rhoCO => null()
      ! Temperature of the gas particles
@@ -110,7 +112,8 @@ module sph_data_class
     
   real(double), allocatable :: PositionArray(:,:), OneOverHsquared(:), &
                                RhoArray(:), TemArray(:), VelocityArray(:,:), &
-                               RhoH2Array(:), rhoCOarray(:), dustfrac(:)
+                               RhoH2Array(:), rhoCOarray(:), dustfrac(:),&
+                               hiiFracArray(:)
 
   type(sph_data), save :: sphdata
   integer, save :: npart
@@ -390,8 +393,9 @@ contains
 
 ! Read SPH data from a splash ASCII dump.
   subroutine new_read_sph_data(rootfilename)
-    use inputs_mod, only: convertRhoToHI, sphh2col, sphmolcol, sphwithchem, iModel, discardSinks
-    use inputs_mod, only: dragon, sphdensitycut, sphVelOffset, sphPosOffset
+    use inputs_mod, only: convertRhoToHI, sphh2col, sphmolcol, sphwithchem, iModel, discardSinks, sphwithion
+    use inputs_mod, only: dragon, sphdensitycut, sphVelOffset, sphPosOffset, sphhiicol
+    use inputs_mod, only: amrgridcentrex, amrgridcentrey, amrgridcentrez, amrgridsize, splitovermpi
     use angularImage_utils, only:  internalView, galaxyPositionAngle, galaxyInclination
     use utils_mod, only : findMultiFilename
     use parallel_mod, only: torus_abort
@@ -420,6 +424,8 @@ contains
     integer :: iDustfrac
     real(double) :: dustfrac
     integer, allocatable :: pNumArray(:) ! Array of particle numbers read from header
+    type(VECTOR) :: centre
+    real(double) :: halfSize
 
 !
 ! For SPH simulations with chemistry
@@ -551,6 +557,7 @@ contains
     else
        iitype = indexWord("itype",word,nWord)
     endif
+    write(*,*) "iitype ", iitype
 
     if ( ((iiType==0).and.(nUnit /= nWord)).or. &
          ((iiType/=0).and.(nUnit /= (nWord-1))) )then
@@ -574,7 +581,7 @@ contains
     iz = indexWord("z",word,nWord)
 
     read(unit(ix),*) uDist
-    uDist =  toTorusUnits(unitName(ix)) * uDist
+    uDist =  toCGSunits(unitName(ix)) * uDist
     write(*,*) "!!!!udist ",udist
 ! Check how the velocity columns are labelled, there are two possibilities so handle both
     if ( wordIsPresent("v\dx",word,nWord) ) then
@@ -596,12 +603,12 @@ contains
 
 
     read(unit(ivx),*) uvel
-    uVel = toTorusUnits(unitName(ivx))
+    uVel = toCGSunits(unitName(ivx)) * uvel
 
     imass = indexWord("particle mass",word,nWord)
 
     read(unit(imass),*) umass
-    umass = toTorusUnits(unitName(imass)) * umass
+    umass = toCGSunits(unitName(imass)) * umass
 
     if(dragon) then
        iu = indexWord("temperature",word,nWord)
@@ -609,7 +616,7 @@ contains
        iu = indexWord("u",word,nWord)
     endif
     utemp = 1.d0
-!    if (iu /=0) read(unit(iu),*) utemp
+    if (iu /=0) read(unit(iu),*) utemp
     
     irho = indexWord("density",word,nWord)
     ih = indexWord("h",word,nWord)
@@ -683,40 +690,46 @@ contains
     close(LUIN)
 
     ! 1.4 Work out which particles need to be stored
-    if ( sphdensitycut > 0 ) then 
-       irequired=0
-       irejected=0
-       do ipart=1, nlines
-          if ( iitype == 0 ) then
-             itype=get_gadget_itype(ipart, npart, nptmass) 
-          else
-             itype = int(junkArray(iitype,ipart))
-          endif
-          ! Only consider gas particles
-          if ( itype /= 1 ) cycle
-          rhon = junkArray(irho,ipart)
-          if ( rhon > sphdensitycut ) then
-             irequired=irequired+1
-          else
-             irejected=irejected+1
-          end if
-       end do
+    centre = VECTOR(amrgridcentrex, amrgridcentrey, amrgridcentrez)
+    halfSize = amrgridSize / 2.d0
+!    if (splitOverMpi) then
+!       call  domainCentreAndSize(iThread, centre, halfsize)
+!    endif
 
-       write(message,*) "Applied density cut. ", irequired, "particles retained and ", irejected, " rejected"
-       call writeinfo(message, TRIVIAL)
-       if ( irequired==0 ) then
-          call writeFatal("No particles remaining after density cut")
-          call torus_abort
+    irequired=0
+    irejected=0
+    do ipart=1, nlines
+       if ( iitype == 0 ) then
+          itype=get_gadget_itype(ipart, npart, nptmass) 
+       else
+          itype = int(junkArray(iitype,ipart))
        endif
-       
-    ! Set npart to the number of particles required so that arrays are allocated to correct size
-       npart = int(irequired)
-       
-    else
-       ! No density cut applied
-       irequired=npart
-       irejected=0
+       ! Only consider gas particles
+       if ( itype /= 1 ) cycle
+       xn = junkArray(ix,ipart)
+       yn = junkArray(iy,ipart)
+       zn = junkArray(iz,ipart)
+       h = junkArray(ih,ipart)
+       rhon = junkArray(irho,ipart)
+!          if ( rhon > sphdensitycut ) then
+       if (particleRequiredAscii(xn,yn,zn,h,rhon,uDist,umass,centre, halfsize)) then
+          irequired=irequired+1
+       else
+          irejected=irejected+1
+       end if
+       ! TODO repeat for sink particles
+    end do
+
+    write(message,*) "Applied density/domain cut. ", irequired, "particles retained and ", irejected, " rejected"
+    call writeinfo(message, TRIVIAL)
+    if ( irequired==0 ) then
+       call writeFatal("No particles remaining after density/domain cut")
+       call torus_abort
     endif
+    
+ ! Set npart to the number of particles required so that arrays are allocated to correct size
+    npart = int(irequired)
+       
 
 ! Say what is going to be stored. In init_sph_data sphdata%npart is set to npart and gas particle arrays are 
 ! allocated to be sphdata%npart in size. The point mass arrays are allocated as nptmass in size. 
@@ -746,7 +759,7 @@ contains
        write (message,'(a)') "Will calculate molecular weight based on H2 fraction"
        call writeInfo(message,FORINFO)
        sphdata%codeEnergytoTemperature = 1.0
-    else if (sphWithChem) then
+    else if (sphWithChem.or.sphWithIon) then
        write(message,'(a)') "Will read chemistry data but will not convert total density to HI density"
        call writeInfo(message,FORINFO)
        sphdata%codeEnergytoTemperature = 1.0
@@ -774,10 +787,16 @@ contains
        allocate(sphData%rhoCO(npart))
     end if
 
-    if (convertRhoToHI.or.sphwithChem) then 
+    if (convertRhoToHI.or.sphwithChem.or.sphWithIon) then 
        write (message,'(a,i2)') "Will store particle H2 density. H2 fraction is from column ", sphh2col
        call writeInfo(message,FORINFO)
        allocate(sphdata%rhoH2(npart))
+    end if
+
+    if (sphWithIon) then 
+       write (message,'(a,i2)') "Will store particle HII fraction. HII fraction is from column ", sphhiicol
+       call writeInfo(message,FORINFO)
+       allocate(sphdata%hiiFrac(npart))
     end if
 
     if (idustfrac/=0) then
@@ -800,8 +819,8 @@ part_loop: do ipart=1, nlines
        u = 0.d0
        if (iu /= 0) then
           u = junkArray(iu,ipart)
-          read(unit(iu),*) ufac
-          u = u / ufac
+!          read(unit(iu),*) ufac
+!          u = u / ufac
        endif
        rhon = junkArray(irho,ipart)
        h = junkArray(ih,ipart)
@@ -825,8 +844,9 @@ part_loop: do ipart=1, nlines
        !if ((itype == 1) .AND. (rhon > 5.e-5))  then
        if (itype == 1) then
 
-          ! Exclude particles with density below mininum threshold
-          if ( rhon < sphdensitycut ) cycle
+          ! Exclude particles with density below mininum threshold and particles outside box/sphere
+!          if ( rhon < sphdensitycut ) cycle
+          if (.not. particleRequiredAscii(xn,yn,zn,h,rhon,uDist,umass,centre, halfsize)) cycle
           
           igas = igas + 1
 
@@ -844,12 +864,12 @@ part_loop: do ipart=1, nlines
           if (idustfrac/=0) sphdata%dustfrac = dustfrac
 
 ! For SPH simulations with chemistry we need to set up H2
-          if ( convertRhoToHI.or.sphwithChem ) then
+          if ( convertRhoToHI.or.sphwithChem .or.sphWithIon) then
              h2ratio = junkArray(sphh2col,ipart)
           endif
 
 ! Set up temperature or internal energy
-          if (convertRhoToHI.or.sphwithChem ) then 
+          if (convertRhoToHI.or.sphwithChem .or.sphWithIon) then 
              gmw = (2.*h2ratio+(1.-2.*h2ratio)+0.4) / (0.1+h2ratio+(1.-2.*h2ratio))
              if(dragon) then
                 sphdata%temperature(igas) = utemp
@@ -877,13 +897,17 @@ part_loop: do ipart=1, nlines
              sphdata%rhoCO(igas) = COfrac * rhon
           endif
 
-          if (convertRhoToHI.or.sphwithChem) then
+          if (convertRhoToHI.or.sphwithChem.or.sphWithIon) then
              sphdata%rhoH2(igas) = h2ratio*2.*rhon*5./7.
           end if
 
+          if (sphWithIon) then
+             sphdata%hiiFrac(igas) = junkArray(sphhiicol,ipart)
+          endif
+
 ! Calculate total gas mass summed over all particles and (if required) HI and CO masses. 
           sphdata%totalgasmass = sphdata%totalgasmass + gaspartmass
-          if (convertRhoToHI.or.sphwithChem) then
+          if (convertRhoToHI.or.sphwithChem.or.sphWithIon) then
              sphdata%totalHImass  = sphdata%totalHImass + (1.0-2.0*h2ratio)*gaspartmass*5.0/7.0
           endif
           if (sphwithChem) then
@@ -892,6 +916,7 @@ part_loop: do ipart=1, nlines
           
 ! 3=sink
        else if(itype .eq. 3) then
+          ! AA TODO clustersinks
 
 ! Update counter before cycling loop so that we count the sinks correctly even if we don't use them
           iptmass = iptmass + 1
@@ -2662,6 +2687,64 @@ contains
 
   end function particleRequired
 
+  logical function particleRequiredAscii(xn,yn,zn,hn,rhon,uDist,umass,cen, halfsize)
+    use inputs_mod, only: sphboxcut, sphboxxmin, sphboxxmax, sphboxymin, sphboxymax, &
+         sphboxzmin, sphboxzmax, sphspherecut, sphspherex, sphspherey, sphspherez, sphsphereradius, sphdensitycut
+    type(VECTOR) :: cen
+    real(double) :: halfSize
+    real(kind=8),intent(in) :: xn,yn,zn,hn,rhon
+    real(db) :: x, y, z, h
+    real(db) :: distFromGridCentre, maxDist, distFromSphereCentre, udens
+    real(db), intent(in) :: uDist, umass
+
+    ! Particle position in Torus units
+    x = xn * uDist / 1.0e10
+    y = yn * uDist / 1.0e10
+    z = zn * uDist / 1.0e10
+    h = hn * uDist / 1.0e10
+
+    udens = umass/udist**3
+! Reject if particle is below minimum density threshold (sphdensitycut in g/cm3)
+    if (rhon*udens < sphdensitycut) then
+       particleRequiredAscii = .false.
+       return
+    endif
+
+! If we are limiting the particles to a user specified box and this particle
+! is outside the box then it is not required. Otherwise continue to see whether
+! the particle influences the grid.
+    if (sphboxcut) then 
+       if ( x<sphboxxmin .or. x>sphboxxmax .or. &
+            y<sphboxymin .or. y>sphboxymax .or. &
+            z<sphboxzmin .or. z>sphboxzmax) then
+          particleRequiredAscii = .false.
+          return
+       endif
+    endif
+
+! Ditto for limiting particles to a sphere
+    if (sphspherecut) then
+       distFromSphereCentre = sqrt ( (x-sphspherex)**2 + (y-sphspherey)**2 + (z-sphspherez)**2 )
+       if (distFromSphereCentre > sphsphereradius) then
+          particleRequiredAscii = .false.
+          return
+       endif
+    endif
+
+    distFromGridCentre = sqrt ( (x-cen%x)**2 + (y-cen%y)**2 + (z-cen%z)**2)
+
+! Maximum distance at which a particle can influence the grid. This is taken to be the distance from the 
+! grid centre to a grid corner (in 3D) plus 3 particle smoothing lengths
+    maxDist = sqrt(3.0)*halfSize + 3.0 * h
+
+    if (distFromGridCentre < maxDist) then 
+       particleRequiredAscii = .true.
+    else
+       particleRequiredAscii = .false.
+    endif
+
+  end function particleRequiredAscii
+
   logical function particleInBox(positionArray, uDist, cen, halfsize)
     type(VECTOR) :: cen
     real(double) :: halfSize
@@ -3245,7 +3328,8 @@ contains
 
   end subroutine FindCriticalValue
 
-  TYPE(vector)  function Clusterparameter(point, thisoctal, subcell, rho_out, rhoH2_out, rhoCO_out, temp_out, dustfrac_out)
+  TYPE(vector)  function Clusterparameter(point, thisoctal, subcell, rho_out, rhoH2_out, rhoCO_out, temp_out, dustfrac_out,&
+   hiiFrac_out)
     USE inputs_mod, only: sph_norm_limit, convertRhoToHI, sphToGridSimple
     USE constants_mod, only: tcbr
     use octal_mod, only: OCTAL
@@ -3261,6 +3345,7 @@ contains
     real(double), optional, intent(out) :: rhoCO_out
     real(double), optional, intent(out) :: temp_out
     real(double), optional, intent(out) :: dustfrac_out
+    real(double), optional, intent(out) :: hiiFrac_out
     real(double) :: rhoH2_local
 
     real(double) :: r
@@ -3283,6 +3368,7 @@ contains
     if (present(rho_out))      rho_out=1d-30
     if (present(rhoH2_out))    rhoH2_out=1d-37
     if (present(rhoCO_out))    rhoCO_out=1d-99
+    if (present(hiiFrac_out))    hiiFrac_out=1d-99
     if (present(temp_out))     temp_out=tcbr
     if (present(dustfrac_out)) dustfrac_out=1d-99
     rhoH2_local=1d-30
@@ -3422,6 +3508,15 @@ contains
           rhoCO_out=rhoCO_out * fac
        end if
 
+       ! HII fraction
+       if (present(hiiFrac_out).and.allocated(hiiFracArray)) then
+          hiiFrac_out = 1.e-20
+          do i = 1, nparticles
+             hiiFrac_out = hiiFrac_out + partArray(i) * hiiFracArray(indexArray(i)) 
+          enddo
+          hiiFrac_out=hiiFrac_out * fac
+       end if
+
        ! Temperature
        if (present(temp_out)) then
           temp_out = 0.0
@@ -3467,12 +3562,13 @@ contains
     udist = get_udist()
     utime = get_utime()
     umass = get_umass()
-    codeLengthtoTORUS =  udist
+    codeLengthtoTORUS =  udist / 1.d10
     codeVelocitytoTORUS = sphdata%codeVelocitytoTORUS
-    codeDensitytoTORUS = umass / ((udist*1.d10) ** 3)
+    codeDensitytoTORUS = umass / (udist ** 3)
     write(*,*) "code length to torus ",codeLengthToTorus
     write(*,*) "code vel to torus ",codeVelocityToTorus
     write(*,*) "code density to torus ",codeDensityToTorus
+    write(*,*) "code energy to torus ", sphdata%codeEnergyToTemperature
        
     allocate(PositionArray(3,npart)) ! allocate memory
     allocate(xArray(npart))
@@ -3481,6 +3577,7 @@ contains
     allocate(RhoH2Array(npart))
     allocate(OneOverHsquared(npart))
     if (associated(sphData%rhoCO)) allocate (rhoCOarray(npart))
+    if (associated(sphData%hiiFrac)) allocate (hiiFracArray(npart))
     if (associated(sphData%dustfrac)) allocate (dustfrac(npart))
           
     PositionArray = 0.d0; hArray = 0.d0; ind = 0
@@ -3588,7 +3685,10 @@ contains
     if (allocated (dustfrac) .and. associated(sphdata%dustfrac) ) then 
        dustfrac(:) = sphdata%dustfrac(ind(:)) 
     end if
-          
+    if ( associated(sphData%hiiFrac) ) then 
+       hiiFracArray(:) = sphdata%hiiFrac(ind(:))
+    end if
+
     hcrit = hcrit * codeLengthtoTORUS          
     hmax = hmax * codeLengthtoTORUS
 
@@ -3613,6 +3713,7 @@ contains
     if (allocated(RhoArray))        deallocate(RhoArray)
     if (allocated(Temarray))        deallocate(Temarray)
     if (allocated(RhoH2Array))      deallocate(RhoH2Array)
+    if (allocated(hiiFracArray))      deallocate(hiiFracArray)
     if (allocated(OneOverHsquared)) deallocate(OneOverHsquared)
     if (allocated(etaarray))        deallocate(etaarray)
     if (allocated(rhoCOarray))      deallocate(rhoCOarray)
@@ -3960,7 +4061,7 @@ contains
       thisLen = wordLen
    else
       thisLen = 24
-      thisLen = 16
+!      thisLen = 16
    end if
 
 ! Decide whether to left adjust the string we have been given. Default is to left adjust.
@@ -4138,31 +4239,35 @@ contains
        endif
      end subroutine domainCentreAndSize
 
-     real(double) function toTorusUnits(unitName)
+     real(double) function toCGSunits(unitName)
        character(len=*) :: unitName
        select case (unitName)
           case("[au]")
-             toTorusUnits = autocm
+             toCGSunits = autocm
+          case("[pc]")
+             toCGSunits = pctocm
+          case("[kpc]")
+             toCGSunits = 1.d3 * pctocm
           case("[cm]")
-             toTorusUnits = 1.d-10
+             toCGSunits = 1.d0
           case("[M_{Sun}]")
-             toTorusUnits = mSol
+             toCGSunits = mSol
           case("[g/cm^3]")
-             toTorusUnits = 1.d0
+             toCGSunits = 1.d0
           case("[km/s]")
-             toTorusUnits = 1.d5
+             toCGSunits = 1.d5
           case("[erg/g]")
-             toTorusUnits = 1.d0
+             toCGSunits = 1.d0
           case("[g]")
-             toTorusUnits = 1.d0
+             toCGSunits = 1.d0
           case("[cm/s]")
-             toTorusUnits = 1.d0
+             toCGSunits = 1.d0
           case DEFAULT
              write(*,*) "Unit not recognised ",trim(unitName)
              write(*,*) "Setting conversion factor to unity"
-             toTorusUnits  = 1.d0
+             toCGSunits  = 1.d0
           end select
-        end function toTorusUnits
+        end function toCGSunits
      
 end module sph_data_class
 

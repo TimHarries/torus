@@ -931,6 +931,9 @@ contains
                case("mpithread")
                   write(lunit, *) real(thisOctal%mpithread(subcell))
 
+               case("ndepth")
+                  write(lunit, *) real(thisOctal%ndepth)
+
                case("bcond")
                   write(lunit, *) real(thisOctal%boundaryCondition(subcell))
 
@@ -947,6 +950,9 @@ contains
 
                case("adotpah")
                   write(lunit, *) real(thisOctal%adotpah(subcell))
+
+               case("adotpahperd")
+                  write(lunit, *) real(thisOctal%adotpah(subcell)/(thisOctal%dustTypeFraction(subcell,1)*thisOctal%rho(subcell)))
 
                case("hydrovelocity")
                   if (thisOctal%threeD) then
@@ -3255,6 +3261,9 @@ end subroutine writeXMLVtkFileAMR
                case("mpithread")
                   rArray(1, n) = real(real(thisOctal%mpithread(subcell)))
 
+               case("ndepth")
+                  rArray(1, n) = real(thisOctal%ndepth)
+
                case("bcond")
                   rArray(1, n) = real(real(thisOctal%boundaryCondition(subcell)))
 
@@ -3342,6 +3351,9 @@ end subroutine writeXMLVtkFileAMR
 
                case("adotpah")
                   rArray(1, n) = real(thisOctal%adotpah(subcell))
+
+               case("adotpahperd")
+                  rArray(1, n) = real(thisOctal%adotpah(subcell)/(thisOctal%dustTypeFraction(subcell,1)*thisOctal%rho(subcell)))
 
                case("radforce")
                      v = cellVolume(thisOctal, subcell)*1.d30

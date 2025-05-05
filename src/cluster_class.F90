@@ -219,7 +219,7 @@ contains
     n = get_nstar(this)
 
     ! using a function sph_data_class
-    length_units = get_udist() ! [10^10 cm]
+    length_units = get_udist()/1.d10 ! [10^10 cm]
     
     age = get_time()*get_utime() ! in [sec]
     ! converting to years
@@ -309,7 +309,7 @@ contains
     INTEGER :: subcell
     type(vector) :: point, clusterparam
     logical, save :: firstTime=.true.
-    real(double) :: rho, rhoH2, rhoCO, temp, dustfrac, r
+    real(double) :: rho, rhoH2, rhoCO, temp, dustfrac, r, hiiFrac
     character(len=80) :: message
     
     
@@ -321,7 +321,7 @@ contains
     r = sqrt(point%x**2 + point%y**2)
 ! This function returns density, temperature and H2 (if required) 
     clusterparam = Clusterparameter(point, thisoctal, subcell, rho_out=rho, rhoH2_out=rhoH2, rhoCO_out=rhoCO, &
-         temp_out=temp, dustfrac_out=dustfrac)
+         temp_out=temp, dustfrac_out=dustfrac, hiiFrac_out=hiiFrac)
     thisOctal%velocity(subcell)  = clusterparam
 ! Set octal density
     thisOctal%rho(subcell) = rho
@@ -377,6 +377,13 @@ contains
        thisOctal%dustTypeFraction(subcell,1) = dustfrac
     end if
 
+    if ( associated (sphData%hiiFrac) ) then 
+       if (firstTime) call writeInfo("Setting HII and HI fractions from particle HII fraction values")
+       if (.not. associated(thisOctal%ionFrac)) allocate(thisOctal%ionFrac(1:thisOctal%maxChildren, 1:2))
+       thisOctal%ionFrac(subcell,2) = hiiFrac
+       thisOctal%ionFrac(subcell,1) = 1.d0 - hiiFrac 
+    end if
+
 
 
     firstTime=.false.
@@ -413,7 +420,7 @@ contains
        np = SIZE(thisOctal%gas_particle_list)
        
        ! Units of length
-       udist = get_udist()   ! [10^10cm]
+       udist = get_udist()/1.d10   ! [10^10cm]
        
        k=0
 !       !$OMP PARALLEL DEFAULT(NONE) &
@@ -493,10 +500,10 @@ contains
        ! units of sphData
        umass = get_umass()  ! [g]
        udist = get_udist()  ! [cm]
-       udent = umass/(udist*1.d10)**3
+       udent = umass/udist**3
 
        ! convert units
-!       udist = udist/1.0d10  ! [10^10cm]
+       udist = udist/1.0d10  ! [10^10cm]
 
        first_time = .false.
     end if

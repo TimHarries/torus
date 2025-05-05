@@ -1658,12 +1658,18 @@ end function recombToGround
 
 ! eq 3.25, Hollenbach & McKee 1979, ApJS, 41, 555
 function gasGrainCoolingRate(rhoGas, ionizationFraction, tGas, tDust, mu) result (Gamma)
-  use inputs_mod, only : grainType, grainFrac, amin, amax, a0, qdist, pdist, dustFile, kappaFilename, nDustType
+  use inputs_mod, only : grainType, grainFrac, amin, amax, a0, qdist, pdist, dustFile, kappaFilename, nDustType, noGasGrainCool
   use dust_mod, only : getMedianSize
   real(double) :: rhoGas, ionizationFraction, tGas, tDust, gamma
   real(double) :: vProton, nGrain, sigmaGrain, f, rGrain, dustToGas, grainVolume, grainDensity
   real(double) :: nGas, mu
   logical, save :: firstTime = .true.
+
+  if (noGasGrainCool) then
+     Gamma = 0.d0
+     goto 666
+  endif
+
 
   ! TODO expand for ndusttype > 1
   if (nDustType > 1 .and. firstTime) then
@@ -1725,6 +1731,8 @@ function gasGrainCoolingRate(rhoGas, ionizationFraction, tGas, tDust, mu) result
   nGrain = dustToGas * rhoGas / (grainVolume * grainDensity)
   nGas = rhoGas/(mu*mHydrogen)
   gamma = nGas * nGrain * sigmaGrain * vProton * f * 2.d0 * kerg * (tGas - tDust)
+
+666 continue
 end function gasGrainCoolingRate
 
 

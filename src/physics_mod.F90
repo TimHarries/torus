@@ -428,8 +428,8 @@ contains
 #ifdef MPI
 #ifdef PHOTOION
     use photoionAMR_mod, only: photoionizationLoopAMR, ionizegrid
-    use photoion_utils_mod, only: setupphotogrid
-    use inputs_mod, only : maxPhotoionIter
+    use photoion_utils_mod, only: setupphotogrid, resetNH, resetNe
+    use inputs_mod, only : maxPhotoionIter, dustOnly
 !    use inputs_mod, only : optimizeStack
 
 #ifdef HYDRO
@@ -646,11 +646,15 @@ contains
 #ifdef MPI
            call setupevenuparray(grid, evenuparray)
 
-!           if(.not. startFromNeutral) then
-!           print *, "ionizing grid"
-           call ionizeGrid(grid%octreeRoot)
-           call setupPhotoGrid(grid%octreeRoot)
- !          endif
+           ! AA: example use case of dustonly T: want to keep ion fracs which are read in from another code and only do dust here
+           if (dustOnly) then
+             call resetNH(grid%octreeRoot)
+             call resetNe(grid%octreeRoot)
+           else
+              call writeInfo("Starting with fully ionized grid (physics_mod)", TRIVIAL)
+              call ionizeGrid(grid%octreeRoot)
+              call setupPhotoGrid(grid%octreeRoot)
+           endif
            call photoIonizationloopAMR(grid, globalsourceArray, globalnSource, nLambda, xArray, maxPhotoionIter, 1.d40, &
                 1.d40, .false.,iterTime,.true., evenuparray, optID, iterStack, miePhase, nMuMie, sublimate=.false.)
 
@@ -928,12 +932,13 @@ contains
      use inputs_mod, only: splitOverMPI
 #endif
 #endif
+     use source_mod
      use source_mod, only : globalNsource, globalSourceArray, clusterReservoir
      use inputs_mod, only : inputNsource, mstarburst, lxoverlbol, readsources, &
           hosokawaTracks, nbodyPhysics, nSphereSurface, discardSinks, hotSpot, starburst, &
           burstType, burstAge, burstTime, sourceMass, sourceTeff, sourceRadius, accretionradius, &
           sourceProb, smallestCellsize, sourcemdot, pointsourcearray,inputcontfluxfile, imodel, periodMode, pulsatingStar, &
-          fracmode, lmode, mmode, nmodes, nModelEnd, clustersinks, burstPosition
+          fracmode, lmode, mmode, nmodes, nModelEnd, clustersinks, burstPosition, sphClustersinks
 #ifdef MPI
      use mpi
 #endif
@@ -950,7 +955,7 @@ contains
      character(len=120) :: message
      logical :: ok
      real(double), pointer :: imf(:)=>null()
-     integer :: iIMF, nIMF
+     integer :: iIMF, nIMF, isub
      logical :: doMorePhoto, populated(1:1000)
 
      if (associated(globalsourceArray)) then
@@ -969,9 +974,27 @@ contains
 
 !     print *, "delta"
      if (grid%geometry == "theGalaxy" .or. grid%geometry == "sphfile") then
-!        if(.not. discardsinks .and. 0 == 1) then
-        if(.not. discardsinks) then
-           !        print *, "echo"
+        if (sphClustersinks) then
+           call readSphClustersinks(globalSourceArray, globalnSource, grid)
+           populated(1:globalnSource) = .true.
+           call setClusterSpectra(globalSourceArray, globalnSource, populated)
+           if (writeoutput) then
+              do i = 1, globalnsource
+                 write(*,'(i4, f9.2, 2es13.5)') i,  &
+                 globalsourceArray(i)%mass/msol, &
+                 globalsourceArray(i)%luminosity/lsol,&
+                 ionizingFlux(globalSourceArray(i))
+              enddo
+              do i = 1, globalnsource
+                 do isub = 1, globalsourceArray(i)%nsubsource
+                    write(*,'(2i4, 2f9.2, 3es13.5)') i, isub,  &
+                    globalsourceArray(i)%subsourceArray(isub)%initialMass,&
+                    globalsourceArray(i)%subsourceArray(isub)%mass/msol,&
+                    globalsourceArray(i)%subsourceArray(isub)%luminosity/lsol
+                 enddo
+              enddo
+           endif
+        elseif(.not. discardsinks) then
 #ifdef SPH
 
 

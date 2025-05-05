@@ -59,6 +59,7 @@ contains
     monteCarloRT = .false.
     vtkincludeGhosts = .true.
     biasToLyman = .false.
+    biasToFUV = .false.
 
     nDustType = 1
     nDiscModule = 1
@@ -390,13 +391,13 @@ contains
     if (clusterSinks) then
        splitClusters = .false.
        call getString("population", populationMethod, cLine, fLine, nLines, &
-            "Cluster population method: ","(a,a,1x,a)","threshold", ok, .true.)
+            "Cluster population method: ","(a,a,1x,a)","threshold", ok, .false.)
 
        call getDouble("criticalmass", criticalMass, 1.d0*mSol, cLine, fLine, nLines, &
             "Critical mass for creating subsources (msol): ","(a,f6.1,a)", 600.d0, ok, .false.)
 
        call getDouble("sfe", starFormationEfficiency, 1.d0, cLine, fLine, nLines, &
-            "Clustersink star formation efficiency: ","(a,f6.1,a)", 1.d0, ok, .true.)
+            "Clustersink star formation efficiency: ","(a,f6.1,a)", 1.d0, ok, .false.)
 
        call getLogical("readimf", readimf, cLine, fLine, nLines, &
             "Read IMF from file: ", "(a,1l,1x,a)", .false., ok, .false.)
@@ -1696,6 +1697,13 @@ contains
           call getString("sphdatafilename", sphdatafilename, cLine, fLine, nLines, &
                "Input sph data file: ","(a,a,1x,a)","sph.dat.ascii", ok, .true.)
 
+          call getLogical("sphclustersinks", sphClustersinks, cLine, fLine, nLines, &
+               "SPH sinks are clustersinks: ","(a,1l,a)",.false., ok, .false.)
+          if (sphClustersinks) then
+             call getString("sphsinkfilename", sphsinkfilename, cLine, fLine, nLines, &
+                  "Input sph clustersink file: ","(a,a,1x,a)","sph_sinks.dat.ascii", ok, .true.)
+          endif
+
           call getLogical("dragon", dragon, cLine, fLine, nLines, &
                "SPH file is from dragon SPH: ","(a,1l,a)",.false., ok, .false.)
 
@@ -1747,6 +1755,9 @@ contains
           call getLogical("sphwithchem", sphwithchem, cLine, fLine, nLines, &
                "SPH has chemistry information:", "(a,1l,1x,a)", .false., ok, .false.)
 
+          call getLogical("sphwithion", sphwithion, cLine, fLine, nLines, &
+               "SPH has ionization information:", "(a,1l,1x,a)", .false., ok, .false.)
+
 ! If the dump format is ASCII then we can specify which columns to read H2 and molecular abundance from
           if (inputFileFormat=="ascii" .or. inputFileFormat=="ascii-gadget") then
              ! Keep ih2frac for backwards compatibility
@@ -1765,6 +1776,11 @@ contains
                 call getInteger("iCOfrac", sphmolcol, cLine, fLine, nLines, &
                      "Column containing CO fraction: ","(a,1x,i2,a)", 15, ok, .false.)
              end if
+
+             if (sphwithion) then
+                call getInteger("sphhiicol", sphHIIcol, cLine, fLine, nLines, &
+                     "Column containing HII fraction: ","(a,1x,i2,a)", 16, ok, .false.)
+             endif
           end if
 
 ! These parameters allow SPH particles within a box to be selected. Particles
@@ -3318,10 +3334,9 @@ contains
 
        call getLogical("decouplegasdust", decoupleGasDustTemperature, cLine, fLine, nLines, &
             "Decouple gas and dust temperature: ","(a,1l,1x,a)", .false., ok, .false.)
-       if (photoionphysics .and. dustOnly .and. decoupleGasDustTemperature) then
-          decoupleGasDustTemperature = .false.
-          call writeWarning("dustonly T requires decouplegasdust F... Forcing decouplegasdust to F")
-       endif
+
+       call getLogical("nogasgraincool", noGasGrainCool, cLine, fLine, nLines, &
+            "Ignore gas/grain collisional cooling: ","(a,1l,1x,a)", .false., ok, .false.)
 
        ! lucy_mod
        call getLogical("pah", usePAH, cLine, fLine, nLines, &
@@ -3990,8 +4005,10 @@ contains
 
     call getLogical("biasToLyman", biasToLyman, cLine, fLine, nLines, &
          "Variance reduction, higher sampling of Lyman photons: ","(a,1l,1x,a)", .false., ok, .false.)
+    call getLogical("biasToFUV", biasToFUV, cLine, fLine, nLines, &
+         "Variance reduction, higher sampling of FUV (912-2400A): ","(a,1l,1x,a)", .false., ok, .false.)
 
-    if (biasToLyman) then
+    if (biasToFUV .or. biasToLyman) then
        call getDouble("biasMagnitude", biasMagnitude, 1.d0, cLine, fLine, nLines, &
                "Variance reduction, extent of bias: ", "(a,1p,e9.3,1x,a)", 100.d0, ok, .false.)
     endif

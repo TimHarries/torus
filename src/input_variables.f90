@@ -479,7 +479,7 @@
   real(double) :: inputEps ! input gravity softening length
 
   ! Variance Reduction (spectrum_mod)
-  logical :: biasToLyman
+  logical :: biasToLyman, biasToFUV
   real(double) :: biasMagnitude
   logical :: screened
   logical :: postsublimate
@@ -502,6 +502,7 @@
   logical :: isotropicScattering
   logical :: henyeyGreensteinPhaseFunction
   logical :: decoupleGasDustTemperature
+  logical :: noGasGrainCool
   real(double) :: inputgFac
   logical :: writePolar
   character(len=80) :: polarFilename
@@ -1018,6 +1019,8 @@
 
   character(len=80), protected :: sphdataFilename
   character(len=80), protected :: inputFileFormat
+  logical, protected :: sphClustersinks
+  character(len=80), protected :: sphSinkFilename
   logical, protected :: sphToGridSimple
   real, protected    :: hcritPercentile
   real, protected    :: hmaxPercentile
@@ -1031,7 +1034,9 @@
   logical, protected :: convertRhoToHI ! Convert density to HI
   integer, protected :: sphh2col       ! column of SPH file which contains H2 fraction
   integer, protected :: sphmolcol      ! column of SPH file from which molecular abundances will be read
+  integer, protected :: sphhiicol      ! column of SPH file which contains HII fraction
   logical, protected :: sphwithchem    ! SPH has chemistry data which needs to be read
+  logical, protected :: sphwithion     ! SPH has ionization data which needs to be read
   logical, protected :: discardSinks   ! Don't store sink particles
   logical :: guessNe                   !guess the electron number density based on temperature
 

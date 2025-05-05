@@ -1567,6 +1567,122 @@ contains
        enddo
      end subroutine removeSource
 
+  subroutine readSphClustersinks(source, nsource, grid)
+    use inputs_mod, only : sphSinkFilename, clustersinks, accretionRadius, smallestCellSize
+    use amr_utils_mod, only : inOctal
+    type(GRIDTYPE) :: grid
+    type(SOURCETYPE) :: source(:)
+    integer :: nsource, i, ibin, isub, istar
+    integer, parameter :: nsbins=16
+    real(double) :: binmasses(nsbins),binfluxes(nsbins)
+    real(double) :: junkr, x,y,z,age, mass
+    real(double) :: fluxes
+    character(len=100) :: junkc
+    integer :: junki, readnsource
+    integer,allocatable :: nstarsInBin(:,:)
+    logical, allocatable :: populated(:)
+
+    ! read in file which has SPHNG clustersinks (only the ones with massive stars)
+    !
+    ! discardsinks T
+    ! sphclustersinks T
+    ! sphsinkfilename blah.dat
+    ! clustersinks T
+
+
+    if (.not. clustersinks) then
+       write(*,*) "SPH clustersinks requires enabling TORUS clustersinks"
+       stop
+    endif
+    
+      ! from Tom Bending cluster_subgrid
+      ! read star bin properties (M, ionizing flux)
+      OPEN (25,file='cluster.txt', status='old')
+      READ (25,*) junki
+      READ(25,*) junki
+      IF (nsbins .NE. junki) THEN
+         PRINT*, "BINS ERROR!",nsbins,junki
+         stop
+      ENDIF
+      READ(25,*) junkc
+      DO i=1,nsbins
+         READ(25,*) binmasses(i), binfluxes(i), junkr, junkr
+      ENDDO
+      CLOSE (25)
+      binmasses = binmasses*msol ! [g]
+
+      ! read sink data (clustersink mass, star masses)
+      nsource = 1
+      open(22, file=trim(sphSinkFilename), status="old", form="formatted")
+      read(22,*) readnsource
+      allocate(nstarsInBin(readnsource,nsbins))
+      nstarsinBin(:,:) = 0
+      do i = 1, readnsource
+         read(22,*) x,y,z, mass, age, nstarsInBin(nsource, 2:nsbins)
+         if (.not. inOctal(grid%octreeRoot,VECTOR(x,y,z))) cycle
+         source(nsource)%position = VECTOR(x,y,z)  ! 1e10 cm
+         source(nsource)%mass = mass * msol
+         source(nsource)%age = 0.d0
+         nsource = nsource + 1
+      enddo
+      nsource = nsource - 1
+      close(22)
+      if (writeoutput) write(*,*) nsource, " out of ", readnsource, " sinks are in grid"
+
+      allocate(populated(1:nsource))
+
+      do i = 1, nsource
+         if (writeoutput) write(*,'(i3, a,15i3)') i, " nstar ", nstarsinBin(i, 2:nsbins)
+      enddo
+
+      do i = 1, nsource
+         ! clustersink properties
+         source(i)%stellar = .true.
+         source(i)%viscosity = .false.
+         source(i)%pointSource = .true.
+         source(i)%diffuse = .false.
+         source(i)%outsideGrid = .not. inOctal(grid%octreeRoot, source(i)%position)
+         source(i)%prob = 0.d0
+         source(i)%velocity = VECTOR(0.d0,0.d0,0.d0)
+         source(i)%accretionRadius = accretionRadius*smallestCellsize*1.d10
+
+         ! put massive stars into the subsource array
+         source(i)%nsubsource = sum(nstarsInBin(i, 2:nsbins))
+         if (source(i)%nsubsource > 0) then
+            allocate(source(i)%subsourceArray(1:source(i)%nsubsource))
+            isub = 0
+            fluxes = 0
+            do ibin = 2, nsbins
+               do istar = 1, nstarsInBin(i,ibin)
+                  isub = isub + 1
+                  ! from read-in bins
+                  source(i)%subsourceArray(isub)%mass = binmasses(ibin) ! star mass
+                  fluxes = fluxes + binfluxes(ibin)
+                  source(i)%subsourceArray(isub)%initialMass = binmasses(ibin)/msol ! star mass
+                  source(i)%subsourceArray(isub)%age = source(i)%age
+                  source(i)%subsourceArray(isub)%position = source(i)%position
+                  source(i)%subsourceArray(isub)%velocity = source(i)%velocity
+               enddo
+            enddo
+            if (writeoutput) write(*,'(i3,a,es13.5)') i, " flux from cluster.txt " , fluxes
+            if (isub /= source(i)%nsubsource) then
+               write(*,*) "mismatch between allocated subsources and read-in star bins", source(i)%nsubsource, isub
+               stop
+            endif
+            populated(i) = .true.
+         endif
+!         call emptySurface(source(i)%surface)
+!         call buildSphereNbody(source(i)%position, source(i)%accretionRadius/1.d10, source(i)%surface, 20)
+      enddo
+
+      ! apply stellar evolution track to get L, Teff, R
+      do i = 1, nsource
+         do isub = 1, source(i)%nsubsource
+            call updateSourceProperties(source(i)%subsourceArray(isub))
+         enddo
+      enddo
+  end subroutine readSphClustersinks
+
 
 !     subroutine fillSpectrum(source, nKurucz, kLabel, kSpectrum)
 !       type(SOURCETYPE) :: source

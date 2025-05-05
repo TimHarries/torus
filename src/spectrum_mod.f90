@@ -707,7 +707,7 @@ module spectrum_mod
     end subroutine copySpectrum
 
     subroutine probSpectrum(spectrum)
-      use inputs_mod, only : biasToLyman, biasMagnitude
+      use inputs_mod, only : biasToLyman, biasMagnitude, biasToFUV
       type(SPECTRUMTYPE) :: spectrum
       real(double) :: fac
       integer :: i
@@ -718,12 +718,17 @@ module spectrum_mod
 
       do i = 2, spectrum%nLambda
          fac = 1.d0
+         if (biasToFUV) then
+            if ((spectrum%lambda(i) < 2400.) .and. (spectrum%lambda(i) > 912.)) then
+               fac = biasMagnitude
+            endif
+         endif
          if (biasToLyman) then
             if (spectrum%lambda(i) < 912.) then
                fac = biasMagnitude
-            else
-               fac = 1.d0
             endif
+         endif
+         if (biasToFUV .or. biasToLyman) then
             !record both the biased and unbiased probabilities
             spectrum%prob(i) = spectrum%prob(i-1) + spectrum%flux(i) * spectrum%dLambda(i) * fac
             unbiasedProb(i) = unbiasedprob(i-1) + spectrum%flux(i) * spectrum%dLambda(i)

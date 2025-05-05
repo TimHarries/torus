@@ -310,6 +310,19 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
+          if (doSmoothGrid) then
+             call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
+             do
+                gridConverged = .true.
+                ! The following is Tim's replacement for soomthAMRgrid.
+                call myScaleSmooth(smoothfactor, grid, &
+                     gridConverged,  inheritProps = .false., &
+                     interpProps = .false.)
+                if (gridConverged) exit
+             end do
+             call writeInfo("...grid smoothing complete", TRIVIAL)
+          endif
+
        case("Gareth")
           call rd_gas
           call writeInfo("Initialising adaptive grid...", TRIVIAL)
@@ -1715,7 +1728,7 @@ end subroutine assignMgAsciiValues
 #endif
 #endif
     use ramses_mod, only: finishRamses
-    use inputs_mod, only : mDisc, geometry, sphWithChem
+    use inputs_mod, only : mDisc, geometry, sphWithChem, sphwithIon
     use memory_mod, only : findTotalMemory, reportMemory
     type(GRIDTYPE) :: grid
     integer(kind=bigInt) :: i
@@ -1769,6 +1782,10 @@ end subroutine assignMgAsciiValues
        if ( sphWithChem ) then
           call writeVTKfile(grid, "gridFromSph.vtk", valueTypeString=(/"rho         ",&
          "temperature ", "velocity    ", "molabundance", "numh2       "/))
+       elseif (sphWithIon) then
+          write(*,*) "writing vtk sphwithion", sphwithion
+          call writeVTKfile(grid, "gridFromSph.vtk", valueTypeString=(/"rho         ",&
+         "temperature ", "HI          "/))
        else
           call writeVTKfile(grid, "gridFromSph.vtk")
        end if
