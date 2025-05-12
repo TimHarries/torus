@@ -1225,6 +1225,10 @@ CONTAINS
    CASE ("runaway")
       call calcRunaway
 
+   CASE ("silcc")
+      thisOctal%rho(subcell) = 1.d-30
+      thisOctal%temperature(subcell) = 1.d-10
+
    CASE("NLR")
       call calcNarrowLineRegion(thisOctal, subcell)
 
@@ -3638,6 +3642,7 @@ CONTAINS
     use angularImage_utils, only: galaxyInclination, galaxyPositionAngle, intPosX, intPosY, refineQ2Only
     use magnetic_mod, only : safierfits
     use biophysics_mod, only : splitSkin
+    use gridFromFlash, only : splitFlash
 ! Currently commented out. Reinstate if required.
     use inputs_mod, only : smoothInnerEdge, variableDustSublimation, rCut, doDiscSplit
 !    use inputs_mod, only: ttauriwind, smoothinneredge, amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
@@ -3870,6 +3875,9 @@ CONTAINS
 
        case("skin")
           split = splitSkin(thisOctal, subcell)
+
+       case("silcc")
+          split = splitFlash(thisOctal, subcell)
 
        case("melvin")
 
@@ -15942,7 +15950,7 @@ end function readparameterfrom2dmap
     use atom_mod, only: bnu
     use gas_opacity_mod, only: returnGasKappaValue
 #ifdef PHOTOION
-    use inputs_mod, only: photoionization, hOnly, CAKlineOpacity, photoionPAH, destroyPAH, usePAH
+    use inputs_mod, only: photoionization, hOnly, CAKlineOpacity, photoionPAH, destroyPAH, usePAH, photoionEquilibrium
     use phfit_mod, only : phfit2
     use pah_mod, only: getKappaAbsPAH, getKappaScaPAH
 #endif
@@ -16333,7 +16341,10 @@ end function readparameterfrom2dmap
    endif
 
 #ifdef PHOTOION
-   if (photoionization.and.(.not.dustonly)) then
+!   if (photoionization.and.(.not.dustonly)) then
+   ! AA 2025-05-08 commented out above line. When doing photoionloop, ionizing photons should get processed out by gas, so need
+   ! kappaH. With dustonly T, kappaH = 0 so they'd all go into dust and potentially heat Tdust too much
+   if (photoionization .and. photoionEquilibrium) then
       kappaH = 0.d0
       kappaHe = 0.d0
 
@@ -16359,7 +16370,6 @@ end function readparameterfrom2dmap
          else
             kappaHe = 0.d0
          end if
-         kappaAbs = kappaAbs + (kappaH + kappaHe)
       endif
       if (PRESENT(kappaAbsGas)) kappaAbsGas = (kappaH + kappaHe)
 
@@ -16763,6 +16773,28 @@ end function readparameterfrom2dmap
        endif
     enddo
   end subroutine zeroadotlocal
+
+  recursive subroutine tagadotlocal(thisOctal,num)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer :: subcell, i
+    real(double) :: num
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call tagadotlocal(child, num)
+                exit
+             end if
+          end do
+       else
+          thisOctal%adot(subcell) = num
+       endif
+    end do
+
+  end subroutine tagadotlocal
 
 
   recursive subroutine zeroDensity(thisOctal)

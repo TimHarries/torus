@@ -647,10 +647,7 @@ contains
            call setupevenuparray(grid, evenuparray)
 
            ! AA: example use case of dustonly T: want to keep ion fracs which are read in from another code and only do dust here
-           if (dustOnly) then
-             call resetNH(grid%octreeRoot)
-             call resetNe(grid%octreeRoot)
-           else
+           if (.not. dustOnly) then
               call writeInfo("Starting with fully ionized grid (physics_mod)", TRIVIAL)
               call ionizeGrid(grid%octreeRoot)
               call setupPhotoGrid(grid%octreeRoot)
@@ -1205,6 +1202,13 @@ contains
        globalsourcearray(1)%luminosity = globalsourcearray(1)%luminosity + lAccretion
        globalNSource = 1
     endif
+
+    if (grid%geometry=="silcc" .and. clustersinks) then
+       call readSILCCclustersinks(globalSourceArray, globalnSource, grid)
+       populated(1:globalnSource) = .true.
+       call setClusterSpectra(globalSourceArray, globalnSource, populated(1:globalnsource))
+    endif
+
 
 
     if (hotSpot) then

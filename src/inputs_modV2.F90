@@ -1142,6 +1142,10 @@ contains
        call getVector("velocity", sphereVelocity, 1.d5/cspeed, cLine, fLine, nLines, &
             "Sphere velocity (km/s): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
 
+     case("silcc")
+       call getString("sinkfilename", sinkFilename, cLine, fLine, nLines, &
+            "Input SILCC clustersink file: ","(a,a,1x,a)","none.dat", ok, .false.)
+
      case("krumholz")
        call getDouble("surfacedensity", surfacedensity, 1.d0, cLine, fLine, nLines, &
             "Sphere surface density (in g cm^-2): ","(a,f7.1,1x,a)", 1.d0, ok, .true.)
@@ -1700,7 +1704,7 @@ contains
           call getLogical("sphclustersinks", sphClustersinks, cLine, fLine, nLines, &
                "SPH sinks are clustersinks: ","(a,1l,a)",.false., ok, .false.)
           if (sphClustersinks) then
-             call getString("sphsinkfilename", sphsinkfilename, cLine, fLine, nLines, &
+             call getString("sinkfilename", sinkFilename, cLine, fLine, nLines, &
                   "Input sph clustersink file: ","(a,a,1x,a)","sph_sinks.dat.ascii", ok, .true.)
           endif
 
@@ -3101,7 +3105,7 @@ contains
        amrGridCentreX = amrgridsize/2.
     endif
 
-    write(*,*) "amrgridsize ",amrgridsize,amrgridcentrex,amrgridcentrey,amrgridcentrez
+!    write(*,*) "amrgridsize ",amrgridsize,amrgridcentrex,amrgridcentrey,amrgridcentrez
     call getDouble("limitscalar", limitScalar, 1.d0, cLine, fLine, nLines, &
          "Scalar limit for subcell division: ","(a,1p,e9.3,1x,a)", 1000._db, ok, .false.)
 

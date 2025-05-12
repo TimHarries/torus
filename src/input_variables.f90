@@ -1020,7 +1020,7 @@
   character(len=80), protected :: sphdataFilename
   character(len=80), protected :: inputFileFormat
   logical, protected :: sphClustersinks
-  character(len=80), protected :: sphSinkFilename
+  character(len=80), protected :: sinkFilename
   logical, protected :: sphToGridSimple
   real, protected    :: hcritPercentile
   real, protected    :: hmaxPercentile

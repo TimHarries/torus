@@ -36,7 +36,7 @@ contains
     use inputs_mod, only : CMFGEN_rmin, CMFGEN_rmax, intextFilename, mDisc, nDustType
     use inputs_mod, only : rCore, rInner, rOuter, gridDistance, massEnvelope, readTurb, virialAlpha, restartLucy
     use inputs_mod, only : gridShuffle, minDepthAMR, maxDepthAMR, logspacegrid, nmag, dospiral, sphereMass, &
-         sphereRadius, sourceRadius, pionAMR
+         sphereRadius, sourceRadius, pionAMR, photoionPhysics
     use disc_class, only:  new
 #ifdef ATOMIC
     use cmf_mod, only : checkVelocityInterp
@@ -52,10 +52,11 @@ contains
 #endif
 #ifdef MPI
     use mpi_amr_mod
-    use inputs_mod, only : photoionPhysics, rho0
+    use inputs_mod, only : rho0
 #ifdef PHOTOION
     use photoionAMR_mod, only : ionizeGrid, resetNh, resizePhotoionCoeff, &
          hasPhotoionAllocations, allocatePhotoionAttributes
+    use photoion_utils_mod, only : resetNe
 #endif
 #ifdef HYDRO
     use inputs_mod, only : hydrodynamics, mDisc
@@ -311,6 +312,7 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
           if (doSmoothGrid) then
+
              call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
              do
                 gridConverged = .true.
@@ -322,6 +324,15 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
              end do
              call writeInfo("...grid smoothing complete", TRIVIAL)
           endif
+
+#ifdef PHOTOION
+#ifdef MPI
+          if (photoionPhysics) then
+             call resetNH(grid%octreeRoot)
+             call resetNe(grid%octreeRoot)
+          endif
+#endif
+#endif
 
        case("Gareth")
           call rd_gas
@@ -410,15 +421,9 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
 #endif
 
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
-#ifdef MPI
           call findMassOverAllThreads(grid, totalmass)
           write(message,'(a,1pe12.5,a)') "Total mass in fractal cloud (solar masses): ",totalMass/lsol
           call writeInfo(message,TRIVIAL)
-#endif
-
-
-
-
 #endif
 
        case("runaway")
@@ -432,6 +437,44 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false., romData=romData)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
+          if (doSmoothGrid) then
+             call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
+             do
+                gridConverged = .true.
+                ! The following is Tim's replacement for soomthAMRgrid.
+                call myScaleSmooth(smoothfactor, grid, &
+                     gridConverged,  inheritProps = .false., &
+                     interpProps = .false.)
+                if (gridConverged) exit
+             end do
+             call writeInfo("...grid smoothing complete", TRIVIAL)
+          endif
+
+       case("silcc")
+
+          if (flashFileRequired()) call read_flash_hdf(silcc=.true.)
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d,  romData=romData)
+          call writeInfo("First octal initialized.", TRIVIAL)
+          ! matches subcell == Flash block
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+
+          ! force 3 more splits (subcell == Flash cell)
+          do counter = 1, 3
+             call zeroadotLocal(grid%octreeRoot)
+             call tagadotlocal(grid%octreeRoot, -1.d0)
+             call splitTaggedCell(grid%octreeRoot, grid)
+             call writeInfo("...extra split complete", TRIVIAL)
+          enddo
+          call fixParentPointers(grid%octreeRoot)
+          call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+          grid%nOctals = nOctals
+
+          call writeInfo("Assigning grid variables...",FORINFO)
+          call fillSilcc(grid%octreeRoot, grid)
+          call writeInfo("...assigned grid variables",FORINFO)
+
+          ! Flash blocks have 8x8x8 cells, so probably necessary to smooth Torus structure after matching the blocks
           if (doSmoothGrid) then
              call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
              do
@@ -613,6 +656,25 @@ doGridshuffle: if(gridShuffle) then
              if (doSpiral) call addSpiralWake(grid)
              call countVoxels(grid%octreeRoot,nOctals,nVoxels)
              grid%nOctals = nOctals
+
+
+          case("silcc")
+#ifdef PHOTOION
+#ifdef MPI
+             totalMass = 0.d0
+             call findTotalMass(grid%octreeRoot, totalMass)
+             if (writeoutput) write(*,*) "Total mass (Msun)",totalmass/msol
+             if (writeoutput) write(*,*) "Grid maxdepth ", grid%maxdepth
+             if (photoionPhysics) then
+                call resetNH(grid%octreeRoot)
+                call resetNe(grid%octreeRoot)
+
+                call writeVtkFile(grid, "silcc_setupamr.vtk", &
+                  valueTypeString=(/"rho          ","HI           ","temperature  ","ndepth       ",&
+                   "ne           "/))
+             endif
+#endif
+#endif
 
           case("ttauri")
 !             if (ttauriMagnetosphere) then
@@ -3624,5 +3686,58 @@ end subroutine fillGridKatie
        endif
     enddo
   end subroutine splitTaggedRho
+
+  recursive subroutine splitTaggedCell(thisOctal, grid, inheritProps, interpProps)
+    use inputs_mod, only : maxDepthAMR
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer :: subcell, i
+    logical, optional :: inheritProps, interpProps
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call splitTaggedCell(child, grid, inheritProps, interpProps)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%adot(subcell) < 0.d0) then
+             if (thisOctal%nDepth<maxDepthAMR) then
+                call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                     inherit=inheritProps, interp=interpProps)
+             endif
+          endif
+       endif
+    enddo
+  end subroutine splitTaggedCell
+
+  recursive subroutine fillSilcc(thisOctal, grid)
+    use gridFromFlash, only: assign_from_flash_silcc
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call fillSilcc(child, grid)
+                exit
+             end if
+          end do
+       else
+          call assign_from_flash_silcc(thisOctal, subcell)
+          thisOctal%ionFrac(subcell,1) = 1.d0 - thisOctal%ionFrac(subcell,2)
+       endif
+    enddo
+  end subroutine fillSilcc
 
 end module setupamr_mod

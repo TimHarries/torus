@@ -888,7 +888,9 @@ contains
 !       kappaSca(i) = 1.d10*(tsca(j) + (lambda(i) - tlam(j)) * (tsca(j+1) - tsca(j))/ ( tlam(j+1) - tlam(j)))
        
        gfac(i) = tgfac(j) + (lambda(i)-tlam(j)) * (tgfac(j+1)-tgfac(j)) / (tlam(j+1)-tlam(j))
-       if (writeoutput) write(*,*) lambda(i), kappaAbs(i)+ kappaSca(i), kappaAbs(i), kappaSca(i)
+       if (writeoutput .and. (trim(filename) /= "astrodust+PAH_opacities.dat")) then
+          write(*,*) lambda(i), kappaAbs(i)+ kappaSca(i), kappaAbs(i), kappaSca(i)
+       endif
     enddo
 
   end subroutine dustPropertiesfromFile
