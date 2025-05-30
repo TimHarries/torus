@@ -2052,6 +2052,9 @@ contains
        call getDouble("ambientdens", ambientDens, 1.d0, cLine, fLine, nLines, &
             "Ambient density (g/cc): ","(a,e12.2,a)", 1d-30, ok, .false.)
 
+       call getDouble("ramb", ramb, autocm, cLine, fLine, nLines, &
+            "Ambient density outer radius (AU): ","(a,e12.2,a)", 1d30, ok, .false.)
+
        call getDouble("rcavity", rCavity, autocm, cLine, fLine, nLines, &
                "Cavity radius (AU): ","(a,1pe8.1,1x,a)", erOuter/autocm, ok, .false.)
 

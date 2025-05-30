@@ -607,7 +607,7 @@
   ! whitney stuff
   real(double) :: erInner, erOuter, mDotEnv, cavAngle, cavDens, rhoAmbient
   real(double) :: drInner, drOuter
-  real(double) :: rCavity, nDensity,ambientDens
+  real(double) :: rCavity, nDensity,ambientDens, rAmb
   real :: rStellar, mEnv
 
   ! variables for clumped wind models

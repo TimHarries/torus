@@ -803,7 +803,7 @@ contains
        close(20)
        npts = 1066
        tabs(1:npts) = kappa(1:npts)
-       tsca(1:npts) = tabs(1:npts)*albedo(1:npts)/(1.d0-albedo(1:npts))
+       tsca(1:npts) = tabs(1:npts)*albedo(1:npts)/(1.-albedo(1:npts))
        tlam(1:npts) = tlam(1:npts)*1e4
        
     case("kenny")
@@ -851,7 +851,7 @@ contains
     case DEFAULT
        write(*,'(a)') "! Dust properties file has unknown type",trim(filetype)
        stop
-
+       
     end select
 
     do i = 1, nLambda
