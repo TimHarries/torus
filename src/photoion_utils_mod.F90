@@ -66,9 +66,10 @@ type GAMMATABLE
 end type GAMMATABLE
 
 ! If a subroutine/function needs to be used outside this module declare it as public here. 
-public :: solvePops, refineLambdaArray, addRadioContinuumEmissivityMono, identifyForbiddenTransitionsInRange
+public :: solvePops, refineLambdaArray, addRadioContinuumEmissivityMono, identifyForbiddenTransitionsInRange, &
+     addRecombinationEmissionLine
 private :: getCollisionalRates, identifyForbiddenTransition, addForbiddenToEmission, identifyRecombinationTransition, &
-     addRecombinationToEmission, addForbiddenEmissionLine, addRecombinationEmissionLine, addRadioContinuumEmissivity
+     addRecombinationToEmission, addForbiddenEmissionLine, addRadioContinuumEmissivity
 !     addRecombinationToEmission, addRadioContinuumEmissivity, addForbiddenEmissionLine, addRecombinationEmissionLine
 
 contains
@@ -1145,22 +1146,46 @@ end subroutine addForbiddenToEmission
 ! Recombination emission lines
 !
 
-subroutine addRecombinationEmissionLine(grid, dLambda, lineWavelength)
+subroutine addRecombinationEmissionLine(grid, dLambda, lineWavelength, crash, onlyOnce, ilambda)
   type(GRIDTYPE) :: grid
   real(double), intent(in) :: lineWavelength, dLambda
+  logical, intent(in) :: crash, onlyOnce
+  integer, intent(in), optional :: ilambda
   integer :: ilower, iupper
   logical :: ok
+  logical, save :: added(3:15,2:8)=.false.
 
-  call identifyRecombinationTransition(lineWavelength, ilower, iupper, ok)
-  if (ok) call addRecombinationToEmission(grid, grid%octreeRoot, dLambda, ilower, iupper)
+  if (present(ilambda)) then
+     call identifyRecombinationTransition(lineWavelength, ilower, iupper, ok, crash, &
+      grid%lamArray(1:grid%nlambda), grid%nlambda, ilambda)
+  else
+     call identifyRecombinationTransition(lineWavelength, ilower, iupper, ok, crash)
+  endif
+
+  ! if looping through wavelength bins, this check ensures we only add the line to one bin (e.g. in phaseloop)
+  if (onlyOnce) then
+     ok = ok .and. .not. added(ilower, iupper)
+  endif
+
+  if (ok) then
+     call addRecombinationToEmission(grid, grid%octreeRoot, dLambda, ilower, iupper)
+     added(ilower, iupper) = .true.
+     if (writeoutput) write(*,'(i3,a,i3, a, f12.6)') iupper, "->", ilower, &
+        " added at wavelength (um) ", lineWavelength*1e-10/1e-6
+  endif
+
    
 end subroutine addRecombinationEmissionLine
 
-  subroutine identifyRecombinationTransition(lambdaLine, ilower, iupper, ok)
+  subroutine identifyRecombinationTransition(lambdaLine, ilower, iupper, ok, crash, lamArray, nlambda, ilambda)
     real(double),intent(in) :: lambdaLine
     integer, intent(out) :: ilower, iupper
     logical, intent(inout) :: ok
-    integer :: iup, ilow
+    logical, intent(in) :: crash
+    real, intent(in), optional :: lamArray(:)
+    integer, intent(in), optional :: nlambda, ilambda
+    integer :: iup, ilow, i
+    real(double) :: frac, frac2
      real(double) :: lambdaTrans(20,20) = reshape( source=&
           (/ 000000.d-8,1215.67d-8,1025.72d-8,992.537d-8,949.743d-8,937.803d-8,930.748d-8,926.226d-8,923.150d-8,920.963d00,&
           919.352d-8,918.129d-8,917.181d-8,916.429d-8,915.824d-8,915.329d-8,914.919d-8,914.576d-8,914.286d-8,914.039d-8,&  
@@ -1203,18 +1228,47 @@ end subroutine addRecombinationEmissionLine
           0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0,0d0 /), shape=(/20,20/))
 
      ok = .false.
-     do iup = 15, 3, -1
+outer:do iup = 15, 3, -1
         do ilow = 2, min0(8, iup-1)
-           if (abs(lambdaTrans(iup, ilow)*1.d8-lambdaLine)/lambdaLine < 0.01d0) then
+           frac = abs(lambdaTrans(iup, ilow)*1.d8-lambdaLine)/lambdaLine
+           if (frac < 0.01d0) then
               iLower = ilow
               iUpper = iUp
               ok = .true.
+
+              if (writeoutput) write(*,*) iupper, "->", ilower, lambdaTrans(iup,ilow)/1e-4,&
+!              if (writeoutput) write(*,'(i3,a,i3, f12.6,  a, f12.6, i5, es9.2)') iupper, "->", ilower, lambdaTrans(iup,ilow)/1e-4,&
+                 " ID'd at wavelength (um) ", lambdaLine*1e-10/1e-6, ilambda, frac
+
+              ! now check if this line is closer to next lam in lamArray
+              ! horrible code but works for adding lines to phaseloop at the nearest lam
+              if (present(lamArray)) then
+                 if (lamArray(ilambda) /= real(lambdaLine)) then
+                    write(*,*) "lamArray(ilambda) /= lambdaLine"
+                    stop
+                 endif
+                 if (lamArray(ilambda+1) < lamArray(ilambda)) then
+                    write(*,*) "lamArray(ilambda+1) > lamArray(ilambda)"
+                    stop
+                 endif
+                 if (ilambda < nlambda) then
+                    frac2 = abs(lambdaTrans(iup, ilow)*1.d8-lamArray(ilambda+1))/lamArray(ilambda+1)
+                    if (frac2 < frac) then
+                       ok = .false. ! later lam has smaller frac - don't add the line to this lam
+                       if (writeoutput) write(*,'(i3,a,i3, f12.6,  a, f12.6, i5, es9.2)') iupper, "->", ilower, &
+                          lambdaTrans(iup,ilow)/1e-4,&
+                          " SKIPPED at wavelength (um) ", lambdaLine*1e-10/1e-6, ilambda, frac
+                    ! else if later lam has larger frac, the line will be added to this lam
+                    endif
+                 endif
+                 exit outer
+              endif
+
            endif
         enddo
-     enddo
-     if (.not.ok) then
+     enddo outer
+     if (crash .and. .not.ok) then
         call writeFatal("Recombination line not identified")
-        stop
      endif
 
 
@@ -1421,7 +1475,7 @@ subroutine setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, 
 
      call locate(grid%lamArray, grid%nlambda, real(lambdaImage), ilambdaPhoton)
      call calcContinuumEmissivityLucyMonoAtDustTemp(grid, grid%octreeRoot, grid%lamArray, lambdaImage, iLambdaPhoton)
-     call addRecombinationEmissionLine(grid, 1.d0, dble(lambdaImage))
+     call addRecombinationEmissionLine(grid, 1.d0, dble(lambdaImage), .true., .false.)
      
      if (nSource > 0) then              
         lCore = sumSourceLuminosityMonochromatic(grid, source, nsource, dble(grid%lamArray(iLambdaPhoton)))

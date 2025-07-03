@@ -2,7 +2,7 @@ module lucy_mod
 
   use constants_mod
   use messages_mod
-  use pah_mod, only: getPAHfreqFromAdot, getKappaAbsPAH, getKappaScaPAH, PAHemissivityFromAdot
+  use pah_mod, only: getPAHfreqFromAdot, getKappaAbsPAH, getKappaScaPAH, PAHemissivityFromAdot, PAHinCell
   use vector_mod
   use amr_mod, only: addNewChild, inOctal, distanceToCellBoundary, returnKappa, amrGridValues, &
        countvoxels, findsubcelllocal, findsubcelltd
@@ -3291,7 +3291,7 @@ end subroutine addDustContinuumLucyMono
 !-------------------------------------------------------------------------------
 
 subroutine addDustContinuumLucyMonoAtDustTemp(thisOctal, subcell, grid,  lambda, iPhotonLambda)
-  use inputs_mod, only : decoupleGasDustTemperature, usePAH, photoionPAH, destroyPAH
+  use inputs_mod, only : decoupleGasDustTemperature, usePAH, photoionPAH
   type(OCTAL), pointer :: thisOctal
   integer :: subcell
   type(GRIDTYPE) :: grid
@@ -3313,18 +3313,17 @@ subroutine addDustContinuumLucyMonoAtDustTemp(thisOctal, subcell, grid,  lambda,
   thisOctal%etaCont(subcell) =  bLambda(dble(lambda), temperature) * &
              kappaAbsDust * 1.d-10 * fourPi * 1.d-8 ! conversion from per cm to per A
 
-  if (photoionPAH.or. usePAH) then
+  if (photoionPAH .or. usePAH) then
      if (.not. associated(thisOctal%pahEmissivity)) allocate (thisOctal%pahEmissivity(1:thisOctal%maxChildren))
-     if (destroyPAH .and. (thisOctal%temperature(subcell) > 2.e3)) then ! TODO - use ionfrac
-        ! option to turn off PAH emission in ionized gas
-        thisOctal%pahEmissivity(subcell) = 0.d0
-     else
+     if (PAHinCell(thisOctal, subcell)) then
         thisOctal%pahEmissivity(subcell) =  PAHemissivityFromAdot(dble(lambda), &
              thisOctal%adotPAH(subcell), &
              thisOctal%rho(subcell), &
              thisOctal%dustTypeFraction(subcell,1)) &
              *cSpeed/(lambda*angstromtocm)**2 * fourPi * 1.d-8
         thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + thisOctal%pahEmissivity(subcell)
+     else
+        thisOctal%pahEmissivity(subcell) = 0.d0
      endif
   endif
 
@@ -3336,7 +3335,7 @@ end subroutine addDustContinuumLucyMonoAtDustTemp
 !-------------------------------------------------------------------------------
 
 subroutine addPAHContinuumLucyMono(thisOctal, subcell, lambda)
-  use inputs_mod, only : usePAH, photoionPAH, destroyPAH
+  use inputs_mod, only : usePAH, photoionPAH
   type(OCTAL), pointer :: thisOctal
   integer :: subcell
   real ::  lambda
@@ -3346,15 +3345,14 @@ subroutine addPAHContinuumLucyMono(thisOctal, subcell, lambda)
 
   if (photoionPAH.or. usePAH) then
      if (.not. associated(thisOctal%pahEmissivity)) allocate (thisOctal%pahEmissivity(1:thisOctal%maxChildren))
-     if (destroyPAH .and. (thisOctal%temperature(subcell) > 2.e3)) then ! TODO - use ionfrac
-        ! option to turn off PAH emission in ionized gas
-        thisOctal%pahEmissivity(subcell) = 0.d0 
-     else
+     if (PAHinCell(thisOctal, subcell)) then
         thisOctal%pahEmissivity(subcell) =  PAHemissivityFromAdot(dble(lambda), & ! jnu (per Hz)
              thisOctal%adotPAH(subcell), &
              thisOctal%rho(subcell),thisOctal%dustTypeFraction(subcell,1)) & 
              *cSpeed/(lambda*angstromtocm)**2 * fourPi * 1.d-8 ! to 4*pi*jlambda (per A)
         thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + thisOctal%pahEmissivity(subcell)
+     else
+        thisOctal%pahEmissivity(subcell) = 0.d0 
      endif
 !     if (thisOctal%pahEmissivity(subcell) > 1.d-20) then
 !        write(*,'(a,es11.3,a,f6.2, a, 3es11.3)') "yes pah/dust ", thisOctal%pahEmissivity(subcell)/thisOctal%etaCont(subcell), & 
@@ -3369,7 +3367,7 @@ subroutine addPAHContinuumLucyMono(thisOctal, subcell, lambda)
 end subroutine addPAHContinuumLucyMono
 
 subroutine addDustContinuumLucyAtDustTemp(thisOctal, subcell, grid, nlambda, lamArray)
-  use inputs_mod, only : usePAH, photoionPAH, destroyPAH
+  use inputs_mod, only : usePAH, photoionPAH
   type(OCTAL), pointer :: thisOctal
   integer :: subcell
   type(GRIDTYPE) :: grid
@@ -3394,16 +3392,15 @@ subroutine addDustContinuumLucyAtDustTemp(thisOctal, subcell, grid, nlambda, lam
 
      if (photoionPAH.or.usePAH) then
         if (.not. associated(thisOctal%pahEmissivity)) allocate (thisOctal%pahEmissivity(1:thisOctal%maxChildren))
-        if (destroyPAH .and. (thisOctal%temperature(subcell) > 2.e3)) then ! TODO - use ionfrac
-           ! option to turn off PAH emission in ionized gas
-           thisOctal%pahEmissivity(subcell) = 0.d0 
-        else
+        if (PAHinCell(thisOctal, subcell)) then
            thisOctal%pahEmissivity(subcell) = PAHemissivityFromAdot(dble(lamArray(i)), &
                 thisOctal%adotPAH(subcell), &
                 thisOctal%rho(subcell),thisOctal%dustTypeFraction(subcell,1)) & 
                 *cSpeed/(lamArray(i)*angstromtocm)**2 *dlam * fourPi * 1.d-8
 
            thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + thisOctal%pahEmissivity(subcell)
+        else
+           thisOctal%pahEmissivity(subcell) = 0.d0 
         endif
      endif
   enddo

@@ -8,7 +8,7 @@ module gridFromFlash
 
   public :: setGridFromFlashParameters, assign_from_flash, flashFileRequired, &
        read_flash_hdf, deallocate_gridfromflash, splitFlash, copy_flash_bounds, &
-       assign_from_flash_silcc
+       assign_from_flash_silcc, getSILCCsinkList, deallocate_sinksFromFlash
 
   private
 
@@ -26,8 +26,9 @@ module gridFromFlash
   character(len=80), private  :: message
 
 !  ! SILCC Hermite sinks
-!  integer, parameter, private :: nSinkProp=106 ! no. of sink particle properties
-!  integer, parameter, private :: maxNsinks=100 ! max no. of sink particles
+  integer, private, save :: nSinkProp ! no. of sink particle properties
+  integer, private, save :: maxNsinks ! max no. of sink particles
+!  integer, parameter, private :: maxNstars=2000 ! max no. of stars
 
   real(kind=db), private, allocatable, save :: density(:,:,:,:)
   real(kind=db), private, allocatable, save :: temperature(:,:,:,:)
@@ -36,7 +37,12 @@ module gridFromFlash
   real(kind=db), private, allocatable, save :: vx(:,:,:,:)
   real(kind=db), private, allocatable, save :: vy(:,:,:,:)
   real(kind=db), private, allocatable, save :: vz(:,:,:,:)
-!  real(kind=db), private, allocatable, save :: sinkList(:,:)
+  real(kind=db), private, allocatable, save :: sinkList(:,:)
+!  real(kind=db), private, allocatable, save :: imass(:)
+!  real(kind=db), private, allocatable, save :: ctime(:)
+!  integer, private, allocatable, save       :: sinkID(:)
+!  integer, private, allocatable, save       :: active(:)
+!  real(kind=db), private, save :: time
 #ifdef USEHDF
   real(kind=db), private, save :: minRho, minTem, minVx, minVy, minVz, minTdust, minihp
   real(kind=db), private, save :: maxRho, maxTem, maxVx, maxVy, maxVz, maxTdust, maxihp
@@ -61,11 +67,11 @@ contains
   end function flashFileRequired
 
 ! Set module variables from values the parameters file. Called from inputs_mod.
-  subroutine setGridFromFlashParameters(flashfilename, numblocks, slice, doReflectY)
+  subroutine setGridFromFlashParameters(flashfilename, numblocks, slice, doReflectY, nsink, nprop)
 
     implicit none
 
-    integer, intent(in) :: numblocks
+    integer, intent(in) :: numblocks, nsink, nprop
     character(len=80), intent(in) :: flashfilename
     real(double), intent(in) :: slice
     logical, intent(in) :: doReflectY
@@ -87,6 +93,10 @@ contains
 
 ! The read subroutine is activated when setGridFromFlashParameters is called
     isRequired=.true.
+
+    ! SILCC
+    maxNsinks = nsink
+    nSinkProp = nprop
 
   end subroutine setGridFromFlashParameters
 
@@ -122,7 +132,11 @@ contains
      if (silcc) then
         allocate (tdust(NXB, NYB, NZB,maxblocks))
         allocate (ihp(NXB, NYB, NZB,maxblocks))
-!        allocate (sinkList(nSinkProp,maxNsinks))
+        allocate (sinkList(nSinkProp,maxNsinks))
+!        allocate (imass(maxNstars))
+!        allocate (ctime(maxNstars))
+!        allocate (sinkID(maxNstars))
+!        allocate (active(maxNstars))
      endif
   endif
   allocate (vx(NXB, NYB, NZB,maxblocks))
@@ -139,7 +153,15 @@ contains
      if (silcc) then
         call read_gridvar("tdus", tdust, minTdust, maxTdust)
         call read_gridvar("ihp /", ihp, minihp, maxihp) ! "ihp " has trailing space
-!        call read_silcc_sinks(sinkList)
+        call read_silcc_sinks()
+! this stuff reads the individual stars - but SILCC treeray doesn't use all the stars, it uses the most massive star in each sink
+! - which is stored in the sinkList
+!        call read_1darray_db("imass", imass, maxNstars)  ! star initial mass
+!        call read_1darray_db("ctime", ctime, maxNstars)  ! star creation time
+!        call read_1darray_int("sinkID", sinkID, maxNstars)! ID of sink to which star belongs
+!        call read_1darray_int("active", active, maxNstars)! 0=no feedback, 1=feedback, 2=SN/no more fb
+!        time = 7.88755768d15 ! FIXME
+!        call read_time(time) ! current simulation time
      endif
   endif
   call read_gridvar("velx", vx,          minVx,  maxVx)
@@ -420,64 +442,167 @@ contains
 
 !--------------------------------------------------------------------------------------
 
-! finished, should work. Check nSinkProp and maxNsinks are correct
-!  subroutine read_silcc_sinks(list)
-!
-!    character(len=*), intent(in) :: varName
-!    real(kind=db), intent(out) :: buf(maxblocks, NXB, NYB, NZB)
-!    real(kind=db), intent(out) :: minValue, maxValue
-!
-!    integer(kind=HID_T) :: dataSet, dataSpace
-!    integer(kind=HSIZE_T) :: count(4), offset(4)
-!    integer(kind=HSIZE_T) :: dims(4)
-!
-!    call writeInfo("Reading sink list",TRIVIAL)
-!
-!    ! Open data set
-!    call h5Dopen_f(file_id, "sinkList", dataSet, error)
-!    if ( error /= 0 ) then
-!       call writeFatal("Error opening data set sinkList")
-!    end if
-!
-!! Get an identifier for the data space
-!    call h5dget_space_f(dataSet, dataSpace, error)
-!    if ( error /= 0 ) then
-!       call writeFatal("Error opening data space")
-!    end if
-!
-!! Define hyperslab
-!    count = (/nSinkProp*maxNsinks/)
-!    offset(:) = (/0/)
-!    call h5sselect_hyperslab_f(dataSpace, H5S_SELECT_SET_F, offset, count, error)
-!    if ( error /= 0 ) then
-!       call writeFatal("Error selecting hyperslab")
-!    end if
-!
-!! Read the data
-!    call h5dread_f(dataSet, H5T_NATIVE_DOUBLE, buf, dims, error)
-!    if ( error /= 0 ) then
-!       call writeFatal("Error reading sink data")
-!    end if
-!    ! buf is 1d array with nSinkProp properties for each sink, one after the other
-!    do i = 1, maxNsinks
-!       j1 = 1 + (i-1)*nSinkProp
-!       j2 = nSinkProp + (i-1)*nSinkProp
-!       sinkList(1:nSinkProp,i) = buf(j1:j2)
-!    enddo
-!
-!! Close data space
-!    call h5Sclose_f(dataSpace, error)
-!    if ( error /= 0 ) then
-!       call writeFatal("Error closing data space")
-!    end if
-!
-!! Close data set
-!    call h5dclose_f(dataSet, error)
-!    if ( error /= 0 ) then
-!       call writeFatal("Error closing data set")
-!    end if
-!
-!  end subroutine read_silcc_sinks
+
+  subroutine read_silcc_sinks
+
+    real(kind=db) :: buf(maxNsinks*nSinkProp)
+
+    integer(kind=HID_T) :: dataSet, dataSpace
+    integer(kind=HSIZE_T) :: count(1), offset(1)
+    integer(kind=HSIZE_T) :: dims(1)
+    integer :: i, j1, j2
+
+    call writeInfo("Reading sink list",TRIVIAL)
+
+    ! Open data set
+    call h5Dopen_f(file_id, "sinkList", dataSet, error)
+    if ( error /= 0 ) then
+       call writeFatal("Error opening data set sinkList")
+    end if
+
+! Get an identifier for the data space
+    call h5dget_space_f(dataSet, dataSpace, error)
+    if ( error /= 0 ) then
+       call writeFatal("Error opening data space")
+    end if
+
+! Define hyperslab
+    count = (/nSinkProp*maxNsinks/)
+    offset(:) = (/0/)
+    call h5sselect_hyperslab_f(dataSpace, H5S_SELECT_SET_F, offset, count, error)
+    if ( error /= 0 ) then
+       call writeFatal("Error selecting hyperslab")
+    end if
+
+! Read the data
+    call h5dread_f(dataSet, H5T_NATIVE_DOUBLE, buf, dims, error)
+    if ( error /= 0 ) then
+       call writeFatal("Error reading sink data")
+    end if
+    ! buf is 1d array with nSinkProp properties for each sink, one after the other
+    do i = 1, maxNsinks
+       j1 = 1 + (i-1)*nSinkProp
+       j2 = nSinkProp + (i-1)*nSinkProp
+       sinkList(1:nSinkProp,i) = buf(j1:j2)
+    enddo
+
+! Close data space
+    call h5Sclose_f(dataSpace, error)
+    if ( error /= 0 ) then
+       call writeFatal("Error closing data space")
+    end if
+
+! Close data set
+    call h5dclose_f(dataSet, error)
+    if ( error /= 0 ) then
+       call writeFatal("Error closing data set")
+    end if
+
+  end subroutine read_silcc_sinks
+
+  subroutine read_1darray_db(varName,buf,length)
+
+    character(len=*), intent(in) :: varName
+    integer, intent(in) :: length
+    real(kind=db), intent(out) :: buf(length)
+
+    integer(kind=HID_T) :: dataSet, dataSpace
+    integer(kind=HSIZE_T) :: count(1), offset(1)
+    integer(kind=HSIZE_T) :: dims(1)
+
+    call writeInfo("Reading grid variable "//varName,TRIVIAL)
+
+    ! Open data set
+    call h5Dopen_f(file_id, varName, dataSet, error)
+    if ( error /= 0 ) then
+       call writeFatal("Error opening data set "//varName)
+    end if
+
+! Get an identifier for the data space
+    call h5dget_space_f(dataSet, dataSpace, error)
+    if ( error /= 0 ) then
+       call writeFatal("Error opening data space")
+    end if
+
+! Define hyperslab
+    count = (/length/)
+    offset(:) = (/0/)
+    call h5sselect_hyperslab_f(dataSpace, H5S_SELECT_SET_F, offset, count, error)
+    if ( error /= 0 ) then
+       call writeFatal("Error selecting hyperslab")
+    end if
+
+! Read the data
+    call h5dread_f(dataSet, H5T_NATIVE_DOUBLE, buf, dims, error)
+    if ( error /= 0 ) then
+       call writeFatal("Error reading data")
+    end if
+
+! Close data space
+    call h5Sclose_f(dataSpace, error)
+    if ( error /= 0 ) then
+       call writeFatal("Error closing data space")
+    end if
+
+! Close data set
+    call h5dclose_f(dataSet, error)
+    if ( error /= 0 ) then
+       call writeFatal("Error closing data set")
+    end if
+
+  end subroutine read_1darray_db
+
+  subroutine read_1darray_int(varName,buf, length)
+
+    character(len=*), intent(in) :: varName
+    integer, intent(in) :: length
+    integer, intent(out) :: buf(length)
+
+    integer(kind=HID_T) :: dataSet, dataSpace
+    integer(kind=HSIZE_T) :: count(1), offset(1)
+    integer(kind=HSIZE_T) :: dims(1)
+
+    call writeInfo("Reading grid variable "//varName,TRIVIAL)
+
+    ! Open data set
+    call h5Dopen_f(file_id, varName, dataSet, error)
+    if ( error /= 0 ) then
+       call writeFatal("Error opening data set "//varName)
+    end if
+
+! Get an identifier for the data space
+    call h5dget_space_f(dataSet, dataSpace, error)
+    if ( error /= 0 ) then
+       call writeFatal("Error opening data space")
+    end if
+
+! Define hyperslab
+    count = (/length/)
+    offset(:) = (/0/)
+    call h5sselect_hyperslab_f(dataSpace, H5S_SELECT_SET_F, offset, count, error)
+    if ( error /= 0 ) then
+       call writeFatal("Error selecting hyperslab")
+    end if
+
+! Read the data
+    call h5dread_f(dataSet, H5T_NATIVE_INTEGER, buf, dims, error)
+    if ( error /= 0 ) then
+       call writeFatal("Error reading data")
+    end if
+
+! Close data space
+    call h5Sclose_f(dataSpace, error)
+    if ( error /= 0 ) then
+       call writeFatal("Error closing data space")
+    end if
+
+! Close data set
+    call h5dclose_f(dataSet, error)
+    if ( error /= 0 ) then
+       call writeFatal("Error closing data set")
+    end if
+
+  end subroutine read_1darray_int
 
 end subroutine read_flash_hdf
 
@@ -600,32 +725,6 @@ blocks:  do i=1, maxblocks
 
 end subroutine assign_from_flash
 
-!--------------------------------------------------------------------------------------
-! Set source array properties from SILCC sink properties
-
-! AA unfinished...
-!subroutine assign_silcc_sinks(source, nSource)
-!  use source_mod
-!  implicit none
-!
-!  do i = 1, maxNsinks
-!     if (sinkexists) then
-!        nSource = nSource + 1
-!
-!        ! sinkList is in cgs
-!        source(nSource)%position%x = sinkList(1,i) / 1.d10
-!        source(nSource)%position%y = sinkList(2,i) / 1.d10
-!        source(nSource)%position%z = sinkList(3,i) / 1.d10
-!
-!        source(nSource)%mass = sinkList(60,i)
-!        source(nSource)%teff = sinkList(70,i)
-!
-!        uvlum = sinkList(62,i)
-!        source(nSource)%luminosity = uvlum
-!     endif
-!  enddo
-!
-!end subroutine assign_from_flash
 
 !--------------------------------------------------------------------------------------
 
@@ -674,12 +773,6 @@ blocks:  do i=1, maxblocks
 
 ! Find the closest Flash cell within the block
   if (iClosest /= -1 ) then
-     ! TODO
-     ! loop through blocks
-     ! < 1 or > 8 is outside the block
-     ! if outside, skip
-     ! if in side, we have the cell
-
      xdist = thisTorusCellCentre%x - boundBox(1,1,iClosest)
      dx_cell    = dx / real(NXB,db)
      icell = int(xdist / dx_cell) + 1
@@ -786,6 +879,64 @@ end function splitFlash
 
  end function inCell
 
+! For reading individual stars
+!  subroutine getSILCCstarList(x,y,z,mini,age,tag,nstar)
+!     use constants_mod
+!     implicit none
+!     integer  :: nstar, tag(:)
+!     real(double), dimension(:) :: x,y,z,mini,age
+!     integer :: i, j
+!
+!     ! FLASH vars are in cgs
+!     ! outputs are in TORUS units
+!
+!     nstar = 0
+!     do i = 1, maxNstars
+!        if (imass(i) > 0.d0 .and. active(i) == 1) then
+!           nstar = nstar + 1
+!           mini(nstar) = imass(i) / msol
+!           age(nstar) = (time - ctime(i)) * secsToYears
+!           tag(nstar) = sinkID(i)
+!           do j = 1, maxNsinks
+!              if (tag(nstar) == sinkList(85,j)) then
+!                 x(nstar) = sinkList(1,j) / 1.d10
+!                 y(nstar) = sinkList(2,j) / 1.d10
+!                 z(nstar) = sinkList(3,j) / 1.d10
+!                 exit
+!              endif
+!           enddo
+!        endif
+!     enddo
+!  end subroutine getSILCCstarList
+
+! For reading the sink
+  subroutine getSILCCsinkList(x,y,z,m,teff,uvlum,nactive)
+     use constants_mod
+     implicit none
+     real(double), dimension(:) :: x,y,z,m,teff,uvlum
+     real(double) :: radtemp
+     integer :: nactive
+     integer :: i, j
+
+     ! FLASH vars are in cgs
+     ! outputs are in TORUS units
+
+     nactive = 0
+     do i = 1, maxNsinks
+        radtemp = sinkList(70,i)
+        if (radtemp > 8000.d0) then
+           nactive = nactive + 1
+           x(nactive) = sinkList(1,i) / 1.d10
+           y(nactive) = sinkList(2,i) / 1.d10
+           z(nactive) = sinkList(3,i) / 1.d10
+           teff(nactive) = radtemp
+           uvlum(nactive) = sinkList(62,i)
+        endif
+     enddo
+  end subroutine getSILCCsinkList
+
+
+! HDF not compiled
 #else
 
 ! Stub subroutines in case Torus has been built without HDF5 support
@@ -809,6 +960,14 @@ subroutine assign_from_flash(thisOctal, subcell)
   call writeFatal("Called assign_from_flash in build without HDF support")
 
 end subroutine assign_from_flash
+
+!  subroutine getSILCCstarList(x,y,z,mini,age,tag,nstar)
+!     implicit none
+!     integer, intent(out) :: nstar
+!     real(double), intent(out), dimension(:) :: x,y,z,mini,age,tag
+!     call writeFatal("Called getSILCCstarList in build without HDF support")
+!
+!  end subroutine getSILCCstarList
 
 function splitFlash(thisOctal, subcell) result(split)
   use octal_mod
@@ -842,7 +1001,16 @@ subroutine deallocate_gridFromFlash
   if (allocated(vz))          deallocate (vz)
   if (allocated(lrefine))     deallocate (lrefine)
   if (allocated(boundBox))    deallocate (boundBox)
+  if (allocated(isLeaf))      deallocate (isLeaf)
 
 end subroutine deallocate_gridFromFlash
+
+subroutine deallocate_sinksFromFlash
+  if (allocated(sinkList))    deallocate (sinkList)
+!  if (allocated(imass))       deallocate (imass)
+!  if (allocated(ctime))       deallocate (ctime)
+!  if (allocated(sinkID))      deallocate (sinkID)
+!  if (allocated(active))      deallocate (active)
+end subroutine deallocate_sinksFromFlash
 
 end module gridFromFlash

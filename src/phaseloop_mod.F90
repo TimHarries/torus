@@ -65,7 +65,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   use fillGridRayleigh_mod
   use fillGridThomson_mod
 #ifdef PHOTOION
-  use photoion_utils_mod, only :  addRadioContinuumEmissivityMono
+  use photoion_utils_mod, only :  addRadioContinuumEmissivityMono, addRecombinationEmissionLine
 #endif
   implicit none
 
@@ -734,48 +734,49 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      weightContPhoton = 1.
      weightPhoto = 1.
 
-     if (mie .and. (.not. useDust)) then
-
-!        write(*,*) "nlambda ",nlambda, " grid%lamArray ",grid%lamarray
-        if (associated(grid%octreeRoot%tdust)) then
-           call setDustTemperatureIfZero(grid%octreeRoot)
-           write(message,*) "Setting poly emissivity from dust temperature"
-           call writeInfo(message,TRIVIAL)
-           call calcContinuumEmissivityLucyAtDustTemp(grid, grid%octreeRoot , nlambda, grid%lamArray)
-        else
-           write(message,*) "Setting poly emissivity from temperature (same for gas and dust)"
-           call writeInfo(message,TRIVIAL)
-           call calcContinuumEmissivityLucy(grid, grid%octreeRoot , nlambda, grid%lamArray)
-        endif
-
-
-        call computeProbDist(grid, totLineEmission, &
-             totDustContinuumEmission,lamline, .false.)
-        totDustContinuumEmission = totdustContinuumEmission 
-        lcore = grid%lCore
-        if (nSource > 0) then
-           lCore = sumSourceLuminosity(source, nsource, grid%lamArray(1), grid%lamArray(nLambda))
-        endif
-
-        totEnvelopeEmission = totDustContinuumEmission
-!        write(*,*) "tot dust ",totdustcontinuumemission,lcore,nsource,grid%lamArray(1),grid%lamArray(nlambda)
-        chanceDust = 0.d0
-        if ((totDustContinuumEmission+lcore) > 0.d0) then
-           chanceDust = real(totDustContinuumEmission/(totDustContinuumEmission+lCore/1.e30))
-        endif
-!        if (writeoutput) write(*,*) "totdustemission",totdustcontinuumemission
-!        if (writeoutput) write(*,'(a,f7.2)') "Chance of continuum emission from dust: ",chanceDust
-
-        weightDust = chanceDust / probDust
-        weightPhoto = (1. - chanceDust) / (1. - probDust)
-
-!        if (writeoutput) write(*,*) "WeightDust",weightDust
-!        if (writeoutput) write(*,*) "WeightPhoto",weightPhoto
-!        if (writeoutput) write(*,*) "core + envelope luminosity",lCore+totEnvelopeEmission*1.d30
-        energyPerPhoton =  ((lCore + totEnvelopeEmission*1.d30) / dble(nPhotons))/1.d20
-!        if (writeoutput) write(*,*) "Energy per photon: ", energyPerPhoton
-
-     endif
+! AA commented out 2025-05-15 - not needed, calc***Mono does it later on anyway. Result is the same without this section.
+!     if (mie .and. (.not. useDust)) then
+!
+!!        write(*,*) "nlambda ",nlambda, " grid%lamArray ",grid%lamarray
+!        if (associated(grid%octreeRoot%tdust)) then
+!           call setDustTemperatureIfZero(grid%octreeRoot)
+!           write(message,*) "Setting poly emissivity from dust temperature"
+!           call writeInfo(message,TRIVIAL)
+!           call calcContinuumEmissivityLucyAtDustTemp(grid, grid%octreeRoot , nlambda, grid%lamArray)
+!        else
+!           write(message,*) "Setting poly emissivity from temperature (same for gas and dust)"
+!           call writeInfo(message,TRIVIAL)
+!           call calcContinuumEmissivityLucy(grid, grid%octreeRoot , nlambda, grid%lamArray)
+!        endif
+!
+!
+!        call computeProbDist(grid, totLineEmission, &
+!             totDustContinuumEmission,lamline, .false.)
+!        totDustContinuumEmission = totdustContinuumEmission 
+!        lcore = grid%lCore
+!        if (nSource > 0) then
+!           lCore = sumSourceLuminosity(source, nsource, grid%lamArray(1), grid%lamArray(nLambda))
+!        endif
+!
+!        totEnvelopeEmission = totDustContinuumEmission
+!!        write(*,*) "tot dust ",totdustcontinuumemission,lcore,nsource,grid%lamArray(1),grid%lamArray(nlambda)
+!        chanceDust = 0.d0
+!        if ((totDustContinuumEmission+lcore) > 0.d0) then
+!           chanceDust = real(totDustContinuumEmission/(totDustContinuumEmission+lCore/1.e30))
+!        endif
+!!        if (writeoutput) write(*,*) "totdustemission",totdustcontinuumemission
+!!        if (writeoutput) write(*,'(a,f7.2)') "Chance of continuum emission from dust: ",chanceDust
+!
+!        weightDust = chanceDust / probDust
+!        weightPhoto = (1. - chanceDust) / (1. - probDust)
+!
+!!        if (writeoutput) write(*,*) "WeightDust",weightDust
+!!        if (writeoutput) write(*,*) "WeightPhoto",weightPhoto
+!!        if (writeoutput) write(*,*) "core + envelope luminosity",lCore+totEnvelopeEmission*1.d30
+!        energyPerPhoton =  ((lCore + totEnvelopeEmission*1.d30) / dble(nPhotons))/1.d20
+!!        if (writeoutput) write(*,*) "Energy per photon: ", energyPerPhoton
+!
+!     endif
 
      
 
@@ -1329,6 +1330,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
 !THAW - flag for multi-source SEDs
            totalOutputLuminosity = 0.d0
+!
 
      outerPhotonLoop: do iOuterLoop = 1, nOuterLoop
 
@@ -1381,9 +1383,11 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 !                   ,grid%lamArray(iLambdaPhoton) ,transitionLams)
 !              call addForbiddenEmissionLine(grid, 1.d0, dble(lambdaImage))
 !           end if
-!           if(recombinationSED) then
-!              call addRecombinationEmissionLine(grid, 1.d0, dble(lambdaImage))
-!           end if
+           if(recombinationSED .and. photoionization) then
+!              write(message,*) "Adding recombination line emissivity"
+!              call writeInfo(message,TRIVIAL)
+              call addRecombinationEmissionLine(grid, 1.d0, dble(grid%lamArray(ilambdaPhoton)),.false.,.true.,ilambda=ilambdaPhoton)
+           end if
 
            if (doTuning) call tune(6,"Calculate bias on tau")
            call setBiasOnTau(grid, iLambdaPhoton)
@@ -1401,7 +1405,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
            totDustContinuumEmission = totdustContinuumEmission 
            lcore = tiny(lcore)
-           if (nSource > 0) then              
+           if (nSource > 0) then
               lCore = sumSourceLuminosityMonochromatic(grid, source, nsource, dble(grid%lamArray(iLambdaPhoton)))
               if (writeoutput) write(*,*) "Core luminosity at ",grid%lamArray(ilambdaPHoton)," is: ",lcore, " erg/s/A "
            endif
@@ -1411,9 +1415,9 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
 
            if (writeoutput) write(*,*) "totdustemission",totdustcontinuumemission
-           if (writeoutput) write(*,*) "totcontemission",lcore/1.e30
+           if (writeoutput) write(*,*) "totcoreemission",lcore/1.e30
            if (writeoutput) write(*,'(a,f8.3)') "Chance of continuum emission from dust: ",chanceDust
-           
+
            probDust = chanceDust
            weightDust = 1.
            weightPhoto = 1.

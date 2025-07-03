@@ -539,7 +539,7 @@ contains
 
       case("blackbody")
          do i = 1, nSource
-            call fillSpectrumBB(sources(i)%spectrum, sources(i)%teff, 10.d0, 1.d7, 200)
+            call fillSpectrumBB(sources(i)%spectrum, sources(i)%teff, 10.d0, 1.d7, 1000)
          enddo
 
       case DEFAULT
@@ -921,6 +921,7 @@ contains
     end function isSourceDead
 
 
+
     subroutine checkSourceSupernova(nSource, source, nSupernova, supernovaIndex, ejectaMass, ke)
 
       use inputs_mod, only : stellarMetallicity
@@ -1231,7 +1232,7 @@ contains
             case("kurucz")
                call fillSpectrumKurucz(source%spectrum, source%teff, source%mass, source%radius*1.d10)
             case("blackbody")
-               call fillSpectrumBB(source%spectrum, source%teff, 10.d0, 1.d7, 200)
+               call fillSpectrumBB(source%spectrum, source%teff, 10.d0, 1.d7, 1000)
             case DEFAULT
                write(*,*) "source spectrum type not recognised ", sourceSpectrumType
                stop
@@ -1558,7 +1559,7 @@ contains
             case("kurucz")
                call fillSpectrumKurucz(source(i)%spectrum, source(i)%teff, source(i)%mass, source(i)%radius*1.d10)
             case("blackbody")
-               call fillSpectrumBB(source(i)%spectrum, source(i)%teff, 10.d0, 1.d7, 200)
+               call fillSpectrumBB(source(i)%spectrum, source(i)%teff, 10.d0, 1.d7, 1000)
             case DEFAULT
                write(*,*) "source spectrum type not recognised ", sourceSpectrumType
                stop
@@ -1671,7 +1672,7 @@ contains
 !       call buildSphereNbody(source(i)%position, source(i)%accretionRadius/1.d10, source(i)%surface, 20)
     enddo
 
-    ! apply stellar evolution track to get L, Teff, R
+    ! apply stellar evolution track to get current M, L, Teff, R
     do i = 1, nsource
        do isub = 1, source(i)%nsubsource
           call updateSourceProperties(source(i)%subsourceArray(isub))
@@ -1686,12 +1687,13 @@ contains
     type(SOURCETYPE), pointer :: source(:)
     integer :: nsource, i, nstar, nsink, istar, j
     real(double), allocatable, dimension(:) :: x,y,z,age,m,mini,teff,lum
-    integer, allocatable, dimension(:) :: tag, isub
+    integer, allocatable, dimension(:) :: tag
     real(double) :: thisx,thisy,thisz,thisage,thism,thismini,thisteff,thislum,thistag
     character(len=150) :: junkc
     integer :: readnstar
     integer :: status
     integer :: ierr
+    logical :: ok
 
     ! read in file which has SILCC-Zoom stars
     !
@@ -1701,6 +1703,13 @@ contains
     ! clustersinks T
     ! sinkfilename stars_0800.dat
     ! spectrumtype blackbody
+
+    inquire(file=trim(sinkFilename), exist=ok)
+    if (.not.ok) then
+       call writeInfo("SILCC sink file "//trim(sinkFilename)//" not found. Skipping source setup.", IMPORTANT)
+       nsource = 0
+       goto 666
+    endif
 
 
     if (.not. clustersinks) then
@@ -1808,10 +1817,92 @@ contains
        source(i)%outsideGrid = .not. inOctal(grid%octreeRoot, source(i)%position)
        source(i)%prob = 0.d0
 
-!       call fillSpectrumBB(source(i)%spectrum, source(i)%subsourceArray(1)%teff, 10.d0, 1.d7, 200)
     enddo
 
+  666 continue
   end subroutine readSILCCclustersinks
+
+  subroutine readSILCCclustersinksHDF(source, nsource, grid)
+    use inputs_mod, only : clustersinks, accretionRadius, smallestCellSize
+    use gridFromFlash, only : getSILCCsinkList, deallocate_sinksFromFlash
+    use amr_utils_mod, only : inOctal
+    use mpi
+    type(GRIDTYPE) :: grid
+    type(SOURCETYPE), pointer :: source(:)
+    type(TRACKTABLE) :: thisTable
+    integer :: nsource, i, nsink, istar, j
+    real(double), allocatable, dimension(:) :: x,y,z,m,uvlum,teff
+    real(double) :: uvflux, totflux
+    integer, parameter :: maxnsink=100 ! max size of HDF's imass array
+    logical :: ok
+    integer :: ierr
+
+    ! extract the sinks directly from the HDF file data
+    !
+    ! geometry silcc
+    ! flashfilename SILCC_hdf5_plt_cnt_0800
+    ! flashnumblocks 95788   ! max n blocks
+    ! clustersinks F
+
+
+    allocate(x(maxnsink))
+    allocate(y(maxnsink))
+    allocate(z(maxnsink))
+    allocate(m(maxnsink))
+    allocate(teff(maxnsink))
+    allocate(uvlum(maxnsink))
+
+    if (.not. loadBalancingThreadGlobal) then
+       call getSILCCsinkList(x,y,z,m,teff,uvlum,nsink) ! outputs are in TORUS units
+       if (writeoutput) write(*,*) "Read ", nsink, "active sinks"
+       call deallocate_sinksFromFlash()
+    endif
+    call MPI_BCAST(nsink, 1, MPI_INTEGER, 0, localWorldCommunicator, ierr)
+    call MPI_BCAST(x(1:nsink), nsink, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+    call MPI_BCAST(y(1:nsink), nsink, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+    call MPI_BCAST(z(1:nsink), nsink, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+    call MPI_BCAST(m(1:nsink), nsink, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+    call MPI_BCAST(teff(1:nsink), nsink, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+    call MPI_BCAST(uvlum(1:nsink), nsink, MPI_DOUBLE_PRECISION, 0, localWorldCommunicator, ierr)
+
+    ! transfer values into torus source array
+    nsource = 0
+    do i = 1, nsink
+       if (inOctal(grid%octreeRoot,VECTOR(x(i), y(i), z(i)))) then
+          nsource = nsource + 1
+          source(nsource)%position = VECTOR(x(i),y(i),z(i))
+
+          ! SILCC assumes every star in the same clustersink has the same Teff
+          source(nsource)%teff = teff(i)
+          call fillSpectrumBB(source(nsource)%spectrum, source(nsource)%teff, 10.d0, 1.d7, 1000)
+
+          ! uvlum is the combined UV luminosity of every SILCC star in the sink. Use this to calculate bolometric luminosity
+          uvflux  = integrateSpectrumOverBand(source(nsource)%spectrum, 0.d0, 912.d0)
+          totflux = integrateSpectrumOverBand(source(nsource)%spectrum, 0.d0, 1.d30)
+          source(nsource)%luminosity = uvlum(i) * totflux / uvflux 
+
+          ! fake radius to ensure luminosity and flux are accurate 
+          source(nsource)%radius = sqrt(source(nsource)%luminosity / (fourPi * totFlux)) / 1.d10
+
+          ! general
+          source(nsource)%mass = 50.d0 * msol ! fake mass, ensure it's seen as a massive star by other routines
+          source(nsource)%velocity = VECTOR(0.d0,0.d0,0.d0)
+          source(nsource)%accretionRadius = accretionRadius*smallestCellsize*1.d10
+          source(nsource)%stellar = .true.
+          source(nsource)%viscosity = .false.
+          source(nsource)%pointSource = .true.
+          source(nsource)%diffuse = .false.
+          source(nsource)%outsideGrid = .false.
+          source(nsource)%prob = 0.d0
+          if (writeoutput) then
+             write(*,'(i3,es9.2,a,es9.2,a,f9.2,a,es9.2,a,3es10.2)') nsource, source(nsource)%teff, " K, ", &
+             source(nsource)%luminosity/lsol, " Lsun ", source(nsource)%radius*1.d10/rsol, " Rsol. uvlum = ", uvlum(i)/lsol, &
+             " xyz = ", source(nsource)%position%x, source(nsource)%position%y, source(nsource)%position%z
+          endif
+       endif
+    enddo
+    if (writeoutput) write(*,*) "Saved ", nsource, " sources out of ", nsink, " read sinks"
+  end subroutine readSILCCclustersinksHDF
 
 
 !     subroutine fillSpectrum(source, nKurucz, kLabel, kSpectrum)

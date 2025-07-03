@@ -636,6 +636,9 @@ contains
 
     PAHemissivityfromAdot = 0.d0
     if ( (freq > PAHtable%freq(1)).and.(freq < PAHtable%freq(PAHtable%nfreq)) ) then
+
+! 2025-05-24 commenting first conditions means we have a floor emission which corresponds to the first table Adot
+! Keeping the condition means the floor is 0
        if ( (adotpermass > PAHtable%adot(1))) then !.and. (adotpermass < PAHtable%adot(PAHtable%nu)) ) then
 
           nH = rho/(mu * mHydrogen)
@@ -791,6 +794,18 @@ contains
     endif
           
   end subroutine testPAHtable
+
+  logical function PAHinCell(thisOctal, subcell)
+     use octal_mod, only: OCTAL
+     type(OCTAL), pointer :: thisOctal
+     integer :: subcell
+
+     PAHinCell = .true.
+
+     ! destroy PAH in cell
+     if (thisOctal%temperature(subcell) > 1500.) PAHinCell = .false.
+     if (thisOctal%ionFrac(subcell, 2) > 0.95d0) PAHinCell = .false.
+  end function PAHinCell
 
   ! not used?
 !  subroutine readPAHkappa()

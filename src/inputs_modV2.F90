@@ -727,9 +727,6 @@ contains
     call getLogical("clusteranalysis", doClusterAnalysis, cLine, fLine, nLines, &
          "Perform a grid analysis for cluster models: ","(a,1l,1x,a)", .false., ok, .false.)
     if (doClusterAnalysis) then
-       call getLogical("destroypah", destroyPAH, cLine, fLine, nLines, &
-            "Remove PAH absorption/emission in ionized gas: ","(a,1l,1x,a)", .true., ok, .false.)
-
        call getLogical("decouplegasdust", decoupleGasDustTemperature, cLine, fLine, nLines, &
             "Decouple gas and dust temperature: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -1142,9 +1139,9 @@ contains
        call getVector("velocity", sphereVelocity, 1.d5/cspeed, cLine, fLine, nLines, &
             "Sphere velocity (km/s): ","(a,3(1pe12.3),a)",VECTOR(0.d0, 0.d0, 0.d0), ok, .true.)
 
-     case("silcc")
-       call getString("sinkfilename", sinkFilename, cLine, fLine, nLines, &
-            "Input SILCC clustersink file: ","(a,a,1x,a)","none.dat", ok, .false.)
+!     case("silcc")
+!       call getString("sinkfilename", sinkFilename, cLine, fLine, nLines, &
+!            "Input SILCC clustersink file: ","(a,a,1x,a)","none.dat", ok, .false.)
 
      case("krumholz")
        call getDouble("surfacedensity", surfacedensity, 1.d0, cLine, fLine, nLines, &
@@ -3138,7 +3135,7 @@ contains
       use gridFromFlash, only: setGridFromFlashParameters
 
       character(len=80) :: flashfilename
-      integer :: numBlocks
+      integer :: numBlocks, maxNsinks, nSinkProp
       real(double) :: slice
       logical :: doReflectY
 
@@ -3154,7 +3151,12 @@ contains
       call getLogical("flashreflecty", doReflectY, cLine, fLine, nLines, &
            "Reflect y=axis: ","(a,1l,1x,a)", .false., ok, .false.)
 
-      call setGridFromFlashParameters(flashfilename, numblocks, slice, doReflectY)
+       call getInteger("silccnsink", maxNsinks, cLine, fLine, nLines, &
+            "Maximum number of SILCC sinks : ","(a,i8,a)", 100, ok, .false.)
+       call getInteger("silccnsinkprop", nSinkProp, cLine, fLine, nLines, &
+            "Maximum number of SILCC sink properties: ","(a,i8,a)", 109, ok, .false.)
+
+      call setGridFromFlashParameters(flashfilename, numblocks, slice, doReflectY, maxNsinks, nSinkProp)
 
     end subroutine readFlashParameters
 
@@ -3357,10 +3359,6 @@ contains
                "PAH/VSG dust type for opacity: ","(a,a,1x,a)","dl07", ok, .true.)
           call getDouble("pahscale", PAHscale, 1.d0, cLine, fLine, nLines, &
                "Scaling factor for PAH emissivities and opacities: ","(a,f7.3,a)",1.d0, ok, .false.)
-       endif
-       if (photoionPAH) then
-          call getLogical("destroypah", destroyPAH, cLine, fLine, nLines, &
-               "Remove PAH absorption/emission in ionized gas: ","(a,1l,1x,a)", .true., ok, .false.)
        endif
 
        call getInteger("ndusttype", nDustType, cLine, fLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)

@@ -12,13 +12,13 @@ contains
     use cmf_mod, only : calculateAtomSpectrum
     use modelatom_mod, only : globalAtomArray
 #endif
-    use source_mod, only : globalNSource, globalSourceArray, writeSourceHistory
+    use source_mod, only : globalNSource, globalSourceArray, writeSourceHistory, writeSourceArray
     use inputs_mod, only : gridOutputFilename, writegrid, calcPhotometry, amr2d
     use inputs_mod, only : calcDataCube, atomicPhysics, nAtom, sourceHistory, calcDustCube, doAnalysis, doClusterAnalysis
     use inputs_mod, only : iTransLine, iTransAtom, gridDistance, gasOpacityPhysics
-    use inputs_mod, only : writePolar
+    use inputs_mod, only : writePolar, clustersinks
     use inputs_mod, only : calcImage, calcSpectrum, calcBenchmark, calcMovie, calcColumnImage
-    use inputs_mod, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination
+    use inputs_mod, only : photoionPhysics, splitoverMpi, dustPhysics, thisinclination, photoionEquilibrium
     use inputs_mod, only : mie, gridDistance, nLambda, ncubes
     use inputs_mod, only : postsublimate, lineEmission, nv
     use inputs_mod, only : dowriteradialfile, radialfilename
@@ -63,8 +63,8 @@ contains
     use photoion_utils_mod, only: quickSublimate
     use photoion_mod, only: createImagePhotoion
 #ifdef MPI
-    use inputs_mod, only : columnimagedirection, imodel, columnImageFilename
-    use photoionAMR_mod, only : createImageSplitGrid
+    use inputs_mod, only : columnimagedirection, imodel, columnImageFilename, gridInputFilename
+    use photoionAMR_mod, only : createImageSplitGrid, createEmissionMeasureImage
     use mpi_global_mod, only : loadBalancingThreadGlobal
 #endif
 #endif
@@ -114,6 +114,38 @@ contains
     if (writegrid.and.(.not.loadBalancingThreadGlobal)) then
           call writeAMRgrid(gridOutputFilename,.false.,grid)
 
+          if ((geometry == "silcc") .and. (globalnSource > 0) .and. photoionEquilibrium) then
+             if (writeoutput) call writeSourceArray(trim(gridOutputFilename)//".source.dat")
+          endif
+#ifdef MPI
+#ifdef USECFITSIO
+          if (geometry == "silcc") then
+             call createColumnDensityImage(grid, VECTOR(1.d0, 0.d0, 0.d0), image)
+             if (writeoutput) call writeFitsColumnDensityImage(image, trim(gridOutputFilename)//".columnx.fits")
+
+             call createColumnDensityImage(grid, VECTOR(0.d0, 1.d0, 0.d0), image)
+             if (writeoutput) call writeFitsColumnDensityImage(image, trim(gridOutputFilename)//".columny.fits")
+
+             call createColumnDensityImage(grid, VECTOR(0.d0, 0.d0, 1.d0), image)
+             if (writeoutput) call writeFitsColumnDensityImage(image, trim(gridOutputFilename)//".columnz.fits")
+
+             call createEmissionMeasureImage(grid, VECTOR(1.d0, 0.d0, 0.d0), image)
+             if (writeoutput) call writeFitsColumnDensityImage(image, trim(gridOutputFilename)//".emx.fits")
+
+             call createEmissionMeasureImage(grid, VECTOR(0.d0, 1.d0, 0.d0), image)
+             if (writeoutput) call writeFitsColumnDensityImage(image, trim(gridOutputFilename)//".emy.fits")
+
+             call createEmissionMeasureImage(grid, VECTOR(0.d0, 0.d0, 1.d0), image)
+             if (writeoutput) call writeFitsColumnDensityImage(image, trim(gridOutputFilename)//".emz.fits")
+          endif
+#endif
+#endif
+
+!          if (globalnSource > 0 .and. photoionPhysics .and. grid%octreeRoot%threed .and. clustersinks) then
+!              call writeSourceArray(gridOutputFilename//"_source.dat")
+!          endif
+
+
        if (geometry == "kengo") then
           call writegridkengo(grid)
        endif
@@ -123,6 +155,20 @@ contains
 
 
     endif
+#ifdef MPI
+    if (photoionEquilibrium.and.grid%octreeRoot%threed) then
+       if (writegrid.and.(.not.loadBalancingThreadGlobal)) then
+          write(thisFile,*) trim(gridOutputFilename), ".vtk"
+       else
+          write(thisFile,*) "adotpah.vtk"
+       endif
+       call writeVtkFile(grid, thisFile, &
+         valueTypeString=(/"rho          ","HI           ","temperature  ","ndepth       ",&
+          "tdust        ", "adotpahperd  ","ioncross     ","habing       ","crossings    ",&
+          "dust1        ", "ne           ","tempconv     "/))
+    endif
+#endif
+
 
     if (scatteringSurface) then
        call writeInfo("Writing scattering surface file")
@@ -403,7 +449,7 @@ if (.false.) then
     end if
 #endif
 
-    if (dustPhysics.and.(calcspectrum.or.calcimage.or.calcMovie).and.(.not.photoionPhysics)) then
+    if (dustPhysics.and.(calcspectrum.or.calcimage.or.calcMovie).and.(.not.splitOverMPI)) then!.and.(.not.photoionPhysics)) then
        mie = .true.
        if ( calcspectrum ) then 
           call setupXarray(grid, xarray, nLambda, lamMin=SEDlamMin, lamMax=SEDlamMax, &

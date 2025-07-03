@@ -21,7 +21,7 @@ use diffusion_mod
 use mpi_amr_mod
 use mpi_global_mod
 use unix_mod, only: unixGetenv
-use pah_mod, only: PAHemissivityFromAdot, totalPAHemissivityFromAdot
+use pah_mod, only: PAHemissivityFromAdot, totalPAHemissivityFromAdot, PAHinCell
 use photon_mod
 use phasematrix_mod
 use phfit_mod, only : phfit2
@@ -3958,23 +3958,45 @@ end subroutine radiationHydro
           if (.not.radpressuretest) then
           
           if (dustOnly) then
-             do subcell = 1, thisOctal%maxChildren
-                if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
-                if (.not.thisOctal%hasChild(subcell)) then
-                   v = cellVolume(thisOctal, subcell)
-                   dustHeating = (epsOverDeltaT / (v * 1.d30))*thisOctal%distanceGrid(subcell) ! equation 14 of Lucy 1999
-                   if (photoionPAH) then
-                      dustHeating = dustHeating + thisOctal%adotPAH(subcell) &
-                         - totalPAHemissivityFromAdot(thisOctal%adotPAH(subcell), &
-                           thisOctal%rho(subcell), &
-                           thisOctal%dustTypeFraction(subcell,1))
-                   endif
-                   call returnKappa(grid, thisOctal, subcell, kappap=kappap)
-                   kappap = max(1.d-30,kappap)
-                   thisOctal%tdust(subcell) = max(tMinGlobal,(pi/stefanBoltz) * dustHeating / (fourPi * kappaP))**0.25d0
-                   if (.not. decoupleGasDustTemperature) thisOctal%temperature(subcell) = real(thisOctal%tdust(subcell))
+             oldT(1:thisOctal%maxChildren) = thisOctal%tdust(1:thisOctal%maxChildren)
+             subcellConverged(1:thisOctal%maxChildren) = .false.
+             converged = .false.
+             iter = 0
+             do while(.not.converged)
+                iter = iter + 1
+                call calculateThermalBalanceDust(grid, thisOctal, epsOverDeltaT, iter, subcellConverged)
+                fracT(1:thisOctal%maxChildren) = abs(thisOctal%tdust(1:thisOctal%maxChildren) - &
+                     oldT(1:thisOctal%maxChildren))/oldT(1:thisOctal%maxChildren)
+                oldT(1:thisOctal%maxChildren) = thisOctal%tdust(1:thisOctal%maxChildren)
+                subcellConverged(1:thisOctal%maxChildren) = (fracT(1:thisOctal%maxChildren) < 0.05d0)
+                converged = ALL(subcellConverged(1:thisOctal%maxChildren))
+                if (iter > maxBalanceIter .and..not. converged) then
+                   converged = .true.
+                   nNotConverged = nNotConverged + count(.not.subcellConverged(1:thisOctal%maxChildren))
                 endif
+                thisOctal%temperatureConv(1:thisOctal%maxChildren) = subcellConverged(1:thisOctal%maxChildren)
              enddo
+             if (.not.decoupleGasDustTemperature) then
+                thisOctal%temperature(1:thisOctal%maxChildren) = real(thisOctal%tdust(1:thisOctal%maxChildren))
+             endif
+!             do subcell = 1, thisOctal%maxChildren
+!                if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
+!                if (.not.thisOctal%hasChild(subcell)) then
+!                   v = cellVolume(thisOctal, subcell)
+!                   dustHeating = (epsOverDeltaT / (v * 1.d30))*thisOctal%distanceGrid(subcell) ! equation 14 of Lucy 1999
+!                   if (photoionPAH) then
+!                   ! TODO bisection + convergence loop
+!                      dustHeating = dustHeating + thisOctal%adotPAH(subcell) &
+!                         - totalPAHemissivityFromAdot(thisOctal%adotPAH(subcell), &
+!                           thisOctal%rho(subcell), &
+!                           thisOctal%dustTypeFraction(subcell,1))
+!                   endif
+!                   call returnKappa(grid, thisOctal, subcell, kappap=kappap)
+!                   kappap = max(1.d-30,kappap)
+!                   thisOctal%tdust(subcell) = max(tMinGlobal,(pi/stefanBoltz) * dustHeating / (fourPi * kappaP))**0.25d0
+!                   if (.not. decoupleGasDustTemperature) thisOctal%temperature(subcell) = real(thisOctal%tdust(subcell))
+!                endif
+!             enddo
 
           else             
 !             if(.not. uv_vector) then
@@ -4420,7 +4442,7 @@ end subroutine radiationHydro
      maxDeltaT = -1.d30
      undersampled = .false.
      if (myRankGlobal /=0 .and. .not.loadBalancingThreadGlobal ) then
-        call findMaxFracTempChangeAndUndersampled(grid%octreeRoot, maxDeltaT, undersampled)
+        call findMaxFracTempChangeAndUndersampled(grid%octreeRoot, maxDeltaT, undersampled, dustOnly)
      endif
      call MPI_ALLREDUCE(maxDeltaT, tempDouble, 1, MPI_DOUBLE_PRECISION, MPI_MAX, localWorldCommunicator, ierr)
      maxDeltaT = tempDouble
@@ -5228,14 +5250,14 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     end do
   end subroutine adjustChiline
 
-  recursive subroutine findMaxFracTempChangeAndUndersampled(thisOctal, frac, undersampled)
+  recursive subroutine findMaxFracTempChangeAndUndersampled(thisOctal, frac, undersampled, dustOnly)
     use inputs_mod, only : minCrossings
     TYPE(OCTAL),pointer :: thisOctal
     TYPE(OCTAL),pointer :: child
     real(double) :: frac
-    real         :: thisFrac
+    real         :: thisFrac, temperature
     integer :: i, subcell
-    logical :: undersampled
+    logical :: undersampled, dustOnly
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -5243,20 +5265,27 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call findMAxFracTempChangeAndUndersampled(child, frac, undersampled)
+                call findMaxFracTempChangeAndUndersampled(child, frac, undersampled, dustOnly)
                 exit
              end if
           end do
        else
           if (.not.octalOnThread(thisOctal, subcell, myrankGlobal)) cycle
 !          thisFrac = (thisOctal%temperature(subcell) - thisOctal%TlastIter(subcell)) / thisOctal%temperature(subcell)
+
+          if (dustOnly) then
+             temperature = real(thisOctal%tdust(subcell))
+          else
+             temperature = thisOctal%temperature(subcell)
+          endif
+
           if (thisOctal%tLastIter(subcell) /= 0.) then
-             thisFrac = (thisOctal%temperature(subcell) - thisOctal%TlastIter(subcell)) / thisOctal%TlastIter(subcell)
+             thisFrac = (temperature - thisOctal%TlastIter(subcell)) / thisOctal%TlastIter(subcell)
           else
              thisFrac = 1.e30
           endif
           frac = max(abs(dble(thisFrac)), frac)
-          thisOctal%tLastIter(subcell) = thisOctal%temperature(subcell)
+          thisOctal%tLastIter(subcell) = temperature
           if (thisOctal%nCrossings(subcell) < minCrossings) undersampled = .true.
        endif
     end do
@@ -6253,7 +6282,6 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     logical, intent(in) :: subcellConverged(:)
     integer, intent(in) :: grandIter
     integer :: subcell
-    logical :: converged
     real(double) :: Hheating, Heheating, dustHeating, newT, deltaT
     real(double) :: newTdust, deltaTdust!, kappap, gasGrainCool, mu
     real :: underCorrection
@@ -6287,7 +6315,6 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
                       else if ((totalHeating > HHecooling(grid, thisOctal, subcell, tMaxGlobal))) then
                          newT = tmaxGlobal
                       else
-                         converged = .false.
                          call bisectionGas(grid, thisOctal, subcell, totalHeating, newT)
                       END if
 
@@ -6337,6 +6364,72 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     enddo
   end subroutine calculateThermalBalanceNew
 
+  subroutine calculateThermalBalanceDust(grid, thisOctal, epsOverDeltaT, grandIter, subcellConverged)
+    use mpi
+    use inputs_mod, only : tMinGlobal, tMaxGlobal, decoupleGasDustTemperature
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    real(double) :: epsOverDeltaT
+    real(double) :: totalHeating
+    logical, intent(in) :: subcellConverged(:)
+    integer, intent(in) :: grandIter
+    integer :: subcell
+    real(double) :: Hheating, Heheating, dustHeating, deltaT
+    real(double) :: newTdust, deltaTdust!, kappap, gasGrainCool, mu
+    real :: underCorrection
+!    logical, optional :: debug
+
+    undercorrection = 0.6
+!    if (grandIter > 10) then
+!       undercorrection = 0.1
+!    endif
+
+    do subcell = 1, thisOctal%maxChildren
+
+       if (.not.thisOctal%hasChild(subcell)) then
+
+ !THAW - trying to root out mpi things
+          if(octalOnThread(thisOctal, subcell, myRankGlobal)) then
+             if (thisOctal%inflow(subcell)) then
+!                if (.not.thisOctal%undersampled(subcell)) then
+
+                   if (.not.subcellConverged(subcell)) then
+                      call getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDeltaT)
+                      ! if decoupling gas and dust temperatures, totalHeating and HHeCooling only consider gas heating/cooling
+                      ! otherwise they also include dust heating/cooling
+
+                      if (dustHeating < &
+                       dustPAHcooling(grid, thisOctal, subcell, thisOctal%temperature(subcell), dble(tminglobal))) then
+
+                         newTdust = dble(tminglobal)
+!                         thisOctal%tdust(subcell)=max(thisOctal%tdust(subcell), newTdust)
+
+                      else if (dustHeating > &
+                       dustPAHcooling(grid, thisOctal, subcell, thisOctal%temperature(subcell), dble(tmaxglobal))) then
+
+                         newTdust = dble(tmaxGlobal)
+                      else
+                         call bisectionDust(grid, thisOctal, subcell, dustHeating, newTdust)
+                      endif
+
+                      ! final temperature
+                      deltaTdust = newTdust- thisOctal%tDust(subcell)
+                      thisOctal%tdust(subcell) = thisOctal%tDust(subcell) + underCorrection * deltaTdust
+
+                      ! floor and ceiling
+                      thisOctal%tdust(subcell) = max(thisOctal%tdust(subcell), dble(tminglobal))
+                      thisOctal%tdust(subcell) = min(thisOctal%tdust(subcell), dble(tMaxGlobal))
+                   endif
+!                else
+                   ! undersampled
+!                   thisOctal%tdust(subcell) = tminGlobal
+!                endif
+             endif
+          end if
+       endif
+    enddo
+  end subroutine calculateThermalBalanceDust
+
 
   subroutine bisectionGas(grid, thisOctal, subcell, totalHeating, newT)
     use inputs_mod, only : tMinGlobal, tMaxGlobal
@@ -6353,8 +6446,8 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     tol = 1.d-2
 
     !try nearby temperatures to start the bracket
-    t1 = thisOctal%temperature(subcell) * 0.8 
-    t2 = min(thisOctal%temperature(subcell) * 1.2, tMaxGlobal) 
+    t1 = thisOctal%temperature(subcell) * 0.8
+    t2 = min(thisOctal%temperature(subcell) * 1.2, tMaxGlobal)
     FA = (totalHeating - HHecooling(grid, thisOctal, subcell, t1)) !FUNC(A)
     FB = (totalHeating - HHecooling(grid, thisOctal, subcell, t2)) !FUNC(B)
 
@@ -6893,7 +6986,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
   end function HHeCooling
 
   function dustPAHcooling(grid, thisOctal, subcell, tgas, tdust, iter) result (coolingRate)
-    use inputs_mod, only : decoupleGasDustTemperature, photoionPAH
+    use inputs_mod, only : decoupleGasDustTemperature, photoionPAH, noGasGrainCool
     real, intent(in) :: tgas
     real(double), intent(in) :: tdust
     integer, optional :: iter
@@ -6931,6 +7024,7 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
        pahCooling = totalPAHemissivityFromAdot(thisOctal%adotPAH(subcell), &
                          thisOctal%rho(subcell), &
                          thisOctal%dustTypeFraction(subcell,1))
+       coolingRate = coolingRate + pahCooling
        if (present(iter)) then
           nRates = nRates + 1
           myRates(nRates) = pahCooling
@@ -6938,13 +7032,15 @@ recursive subroutine checkForPhotoLoop(grid, thisOctal, photoLoop, dt)
     endif
 
     ! collisional heating/cooling (positive if gas cooled/dust heated)
-    mu = returnMu(thisOctal, subcell, grid%ion, grid%nion)
-    gasGrainCool = -gasGrainCoolingRate(thisOctal%rho(subcell), thisOctal%ionFrac(subcell,2), &
-         dble(tgas), tdust, mu)
-    coolingRate = coolingRate + gasGrainCool
-    if (present(iter)) then
-       nRates = nRates + 1
-       myRates(nRates) = gasGrainCool
+    if (.not. noGasGrainCool) then
+       mu = returnMu(thisOctal, subcell, grid%ion, grid%nion)
+       gasGrainCool = -gasGrainCoolingRate(thisOctal%rho(subcell), thisOctal%ionFrac(subcell,2), &
+            dble(tgas), tdust, mu)
+       coolingRate = coolingRate + gasGrainCool
+       if (present(iter)) then
+          nRates = nRates + 1
+          myRates(nRates) = gasGrainCool
+       endif
     endif
 
 
@@ -8518,7 +8614,6 @@ end subroutine addForbiddenLines
 !!$end subroutine addHeRecombinationLines
 
 subroutine addPAHemission(nfreq, freq, dfreq, spectrum, thisOctal, subcell)
-  use inputs_mod, only : destroyPAH
   integer :: nFreq
   real(double) :: spectrum(:), freq(:), dfreq(:)
   type(OCTAL), pointer :: thisOctal
@@ -8526,18 +8621,16 @@ subroutine addPAHemission(nfreq, freq, dfreq, spectrum, thisOctal, subcell)
   integer :: i
   real(double) :: thisLam
 
-  ! option to turn off PAH emission in ionized gas
-  if (destroyPAH .and. (thisOctal%ionFrac(subcell,2) > 1.d-5)) goto 666
+  if (PAHinCell(thisOctal, subcell)) then
+     do i = 1, nFreq
+        thisLam = cSpeed / freq(i) / angstromtocm
+        spectrum(i) = spectrum(i) + PAHemissivityFromAdot(thisLam, &
+                thisOctal%adotPAH(subcell), &
+                thisOctal%rho(subcell),thisOctal%dustTypeFraction(subcell,1)) &
+                * dFreq(i) * fourPi
+     enddo
+  endif
 
-  do i = 1, nFreq
-     thisLam = cSpeed / freq(i) / angstromtocm
-     spectrum(i) = spectrum(i) + PAHemissivityFromAdot(thisLam, &
-             thisOctal%adotPAH(subcell), &
-             thisOctal%rho(subcell),thisOctal%dustTypeFraction(subcell,1)) &
-             * dFreq(i) * fourPi
-  enddo
-
-666 continue
 end subroutine addPAHemission
 
 subroutine addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)

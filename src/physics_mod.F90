@@ -1203,10 +1203,12 @@ contains
        globalNSource = 1
     endif
 
-    if (grid%geometry=="silcc" .and. clustersinks) then
-       call readSILCCclustersinks(globalSourceArray, globalnSource, grid)
-       populated(1:globalnSource) = .true.
-       call setClusterSpectra(globalSourceArray, globalnSource, populated(1:globalnsource))
+    if (grid%geometry=="silcc" .and. .not. readSources) then
+       call readSILCCclustersinksHDF(globalSourceArray, globalnSource, grid)
+       if (clustersinks) then
+          populated(1:globalnSource) = .true.
+          call setClusterSpectra(globalSourceArray, globalnSource, populated(1:globalnsource))
+       endif
     endif
 
 

@@ -15950,9 +15950,9 @@ end function readparameterfrom2dmap
     use atom_mod, only: bnu
     use gas_opacity_mod, only: returnGasKappaValue
 #ifdef PHOTOION
-    use inputs_mod, only: photoionization, hOnly, CAKlineOpacity, photoionPAH, destroyPAH, usePAH, photoionEquilibrium
+    use inputs_mod, only: photoionization, hOnly, CAKlineOpacity, photoionPAH, usePAH, photoionEquilibrium
     use phfit_mod, only : phfit2
-    use pah_mod, only: getKappaAbsPAH, getKappaScaPAH
+    use pah_mod, only: getKappaAbsPAH, getKappaScaPAH, PAHinCell
 #endif
     implicit none
     type(GRIDTYPE) :: grid
@@ -16409,9 +16409,8 @@ end function readparameterfrom2dmap
 
    if (PRESENT(kappaAbsPAH)) kappaAbsPAH = 0.0
    if (PRESENT(kappaScaPAH)) kappaScaPAH = 0.0
-   if (usepah .or. photoionPAH) then
-      ! option to turn off PAH opacity in ionized gas
-      if (destroyPAH .and. (thisOctal%temperature(subcell) > 2.e3)) goto 444
+   if ((usepah .or. photoionPAH) .and. PAHinCell(thisOctal,subcell)) then
+
       if (PRESENT(kappaAbs) .or. PRESENT(kappaSca)) then
          if (.not.PRESENT(lambda)) then
             tlambda = grid%lamArray(iLambda)
@@ -16435,7 +16434,7 @@ end function readparameterfrom2dmap
          kappaSca = kappaSca + tempDouble 
       endif
       if (PRESENT(kappaScaPAH)) kappaScaPAH = tempDouble
-444   continue
+
    endif
 #else
    if (PRESENT(kappaAbsGas)) kappaAbsGas = 0.0

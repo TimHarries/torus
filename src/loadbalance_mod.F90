@@ -408,8 +408,8 @@ contains
 
     inquire(file="loadbalance.dat", exist=ok)
     if (.not.ok) then
-       if (writeoutput) write(*,*) "loadbalance.dat not found. Setting load balancing threads by sources instead."
-       call setLoadBalancingThreadsBySources(grid)
+       if (writeoutput) write(*,*) "loadbalance.dat not found. Setting load balancing threads by cells instead."
+       call setLoadBalancingThreadsByCells(grid)
        goto 666
     endif
 
