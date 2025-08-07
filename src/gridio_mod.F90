@@ -930,7 +930,7 @@ contains
 
      end subroutine writeOctreePrivateFlexi
     
-    
+666 continue    
    end subroutine writeAMRgridSingle
 
 
