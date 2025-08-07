@@ -2561,7 +2561,7 @@ CONTAINS
 
               if (thisPhoton%stokes%i < reallySmall) then
                  absorbed = .true.
-                 write(*,*) "! Small photon weight",thisPhoton%stokes%i,thisPhoton%lambda,albedo,hitcore,nscat
+!                 write(*,*) "! Small photon weight",thisPhoton%stokes%i,thisPhoton%lambda,albedo,hitcore,nscat
               endif
 
 
