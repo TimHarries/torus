@@ -250,7 +250,7 @@ contains
 
   subroutine writeAMRgridSingle(filename,fileFormatted,grid)
     ! writes out the 'grid' for an adaptive mesh geometry  
-    use input_variables, only :: noAMRgrid
+    use inputs_mod, only :: noAMRgrid
     implicit none
   
     character(len=*)           :: filename
