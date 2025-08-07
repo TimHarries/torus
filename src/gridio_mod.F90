@@ -373,7 +373,7 @@ contains
     endif
 
     call writeInfo("File written and closed",TRIVIAL)
-       
+666 continue
     
   contains
   
@@ -930,7 +930,6 @@ contains
 
      end subroutine writeOctreePrivateFlexi
     
-666 continue    
    end subroutine writeAMRgridSingle
 
 
