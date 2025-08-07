@@ -160,7 +160,7 @@ contains
 #ifdef MPI
     use mpi
 #endif
-    use inputs_mod, only : iModel
+    use inputs_mod, only : iModel, noAMRgrid
     use utils_mod, only : findMultiFilename
     character(len=*) :: rootfilename
     character(len=80) :: filename
@@ -173,6 +173,7 @@ contains
     integer, parameter :: tag = 33
 #endif
 
+    if (noAMRgrid) goto 666
 
     call findMultiFilename(rootFilename, iModel, filename)
 
@@ -249,7 +250,7 @@ contains
 
   subroutine writeAMRgridSingle(filename,fileFormatted,grid)
     ! writes out the 'grid' for an adaptive mesh geometry  
-
+    use input_variables, only :: noAMRgrid
     implicit none
   
     character(len=*)           :: filename
@@ -264,6 +265,7 @@ contains
 
     updatedFilename = filename
 
+    if (noAMRgrid) goto 666
 
     writeHeader = .true.
     positionStatus = "rewind"

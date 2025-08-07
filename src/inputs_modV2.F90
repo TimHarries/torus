@@ -177,6 +177,9 @@ contains
     call getLogical("novtkgrid", noVtkGrid, cLine, fLine, nLines, &
          "Suppress VTK grid files: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getLogical("noamrgrid", noAMRGrid, cLine, fLine, nLines, &
+         "Suppress AMR grid files: ","(a,1l,1x,a)", .false., ok, .false.)
+
 #ifdef USEZLIB
     call getLogical("compressdumps", compressedDumpFiles, cLine, fLine, nLines, &
          "Use compressed dump files: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -3659,9 +3662,14 @@ contains
        endif
     enddo
 
+    call getLogical("biasthetadir", biasThetaDirection, cLine, fLine, nLines, &
+         "Bias polar angle towards 90 degrees: ","(a,1l,1x,a)",.false., ok, .false.)
+
+
+
     call getDouble("biasphidir", biasPhiDirection, degtorad, cLine, fLine, nLines, &
          "Azimuthal direction of photon bias: ","(a,f5.0,a)",-1.d0, ok, .false.)
-
+    
     if (biasPhiDirection > 0.d0) then
 
        call getDouble("biasphiprob", biasPhiProb, 1.d0, cLine, fLine, nLines, &
@@ -3670,6 +3678,7 @@ contains
        call getDouble("biasphiint", biasPhiInterval, degtorad, cLine, fLine, nLines, &
             "Azimuthal interval for biased direction: ","(a,f5.0,a)",-1.d0, ok, .false.)
     endif
+
 
 
     call getLogical("hotspot", hotSpot, cLine, fLine, nLines, &

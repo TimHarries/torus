@@ -947,10 +947,10 @@
 
 
     subroutine getPhotonPositionDirection(source, position, direction, rHat, grid, weight)
-      use inputs_mod, only : biasPhiDirection, biasPhiProb, biasPhiInterval
+      use inputs_mod, only : biasPhiDirection, biasPhiProb, biasPhiInterval, biasThetaDirection
       use inputs_mod, only : amrgridcentrey, amrgridcentrex, hotSpot, amrGridSize, pulsatingStar
       type(GRIDTYPE) :: grid
-      real(double) :: r, t, u, v, w, ang, planetBiasWeight, rand
+      real(double) :: r, t, u, v, w, ang, planetBiasWeight, rand, bias
       real(double), optional :: weight
       type(SOURCETYPE) :: source
       type(VECTOR),intent(out) :: position, direction, rHat
@@ -969,12 +969,29 @@
                position = source%position
                direction = randomUnitVector()
 
-               if (grid%octreeroot%twoD) then
-                  call randomNumberGenerator(getDouble=rand)
-                  direction = Vector(sin(pi*rand), 0, cos(pi*rand))
-                  weight=weight*sin(pi*rand)*pi/2
+!               if (grid%octreeroot%twoD) then
+!                  call randomNumberGenerator(getDouble=rand)
+!                  direction = Vector(sin(pi*rand), 0, cos(pi*rand))
+!                  weight=weight*sin(pi*rand)*pi/2
+!               endif
+
+               if (biasThetaDirection) then
+                  call randomNumberGenerator(getDouble=r)
+                  bias = 0.9
+                  if (r < bias) then
+                     call randomNumberGenerator(getDouble=r)
+                     w = 1.*r-0.5
+                     weight = 0.5 / bias
+                  else
+                     call randomNumberGenerator(getDouble=r)
+                     w = 2.*r-1.
+                     weight = 1.
+                  endif
+                  t = sqrt(1.-w*w)
+                  call randomNumberGenerator(getDouble=r)
+                  u = t * cos(twoPi*r)
+                  v = t * sin(twoPi*r)
                endif
-               
                if (biasPhiDirection > 0.d0) then
                   if (.not.PRESENT(weight)) then
                      call writeFatal("getPhotonPositionDirection called without weight when weighted direction required")

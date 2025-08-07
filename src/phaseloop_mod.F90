@@ -2551,6 +2551,7 @@ CONTAINS
               if (noScattering) albedo = 0.
 
 
+
               call randomNumberGenerator(getReal=r)
               if (r > albedo) then
                  absorbed = .true.
@@ -2560,7 +2561,7 @@ CONTAINS
 
               if (thisPhoton%stokes%i < reallySmall) then
                  absorbed = .true.
-!                 write(*,*) "! Small photon weight",thisPhoton%stokes%i,thisPhoton%lambda,albedo,hitcore
+                 write(*,*) "! Small photon weight",thisPhoton%stokes%i,thisPhoton%lambda,albedo,hitcore,nscat
               endif
 
 

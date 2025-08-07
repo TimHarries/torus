@@ -756,6 +756,7 @@
 
   logical :: pointSource, pointSourceArray(50)
   real(double) :: biasPhiDirection, biasPhiInterval, biasPhiProb
+  logical :: biasThetaDirection
 
   !------ The disc wind parameters follows here -----------------------
   real(double) :: DW_d           ![10^10cm] displacement of souce point from the center of star
@@ -1075,6 +1076,7 @@
   logical           :: suppressWarnings
   logical           :: useBinaryXMLVTKfiles
   logical           :: noVtkGrid        ! Don't write out VTK files of the grid
+  logical           :: noAMRGrid        ! Don't write out AMR files of the grid
   logical           :: vtkIncludeGhosts ! include ghosts in VTK output
   logical           :: parallelVTUFiles
   character(len=80) :: absolutePath
