@@ -53,7 +53,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   use gridtype_mod, only: GRIDTYPE       
   use gridio_mod, only: writeamrgrid
   use parallel_mod, only: torus_mpi_barrier
-  use utils_mod, only: locate, hunt, findIlambda, blackBody, spline, splint, findMultiFilename
+  use utils_mod, only: locate, hunt, findIlambda, blackBody, spline, splint, findMultiFilename, median_dble
   use dust_mod, only: createDustCrossSectionPhaseMatrix, stripDustAway
   use source_mod, only: sumSourceLuminosityMonochromatic, sumSourceLuminosity, randomSource
   use random_mod
@@ -264,6 +264,12 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   character(len=80) :: thisImageType
   logical :: stokesImage 
 
+  integer :: runningNphot
+  real(double) :: mean, sigma, xsample(1000),  thisY
+  integer :: nsample
+  logical :: converged
+
+  
   ! intrinsic profile variables
 
   integer, parameter :: maxIntPro = 1000
@@ -1269,7 +1275,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
      iLambda = findIlambda(1.e5, grid%lamArray, nLambda, ok)
      if (doTuning) call tune(6,"Calculate bias on tau")
-     if (mie)     call setBiasOnTau(grid, iLambda)
+     if (mie.and.usebias)     call setBiasOnTau(grid, iLambda)
      if (doTuning) call tune(6,"Calculate bias on tau")
 
 !     call writeVtkFile(grid, "phaseloop.vtk", &
@@ -1344,6 +1350,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
            else
               write(message,*) "Setting emissivity from temperature (same for gas and dust)"
               call writeInfo(message,TRIVIAL)
+              write(*,*) "iouterloop ",iouterloop
               call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, grid%lamArray, &
                    grid%lamArray(ilambdaPhoton), iLambdaPhoton)
            endif
@@ -1377,7 +1384,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 !           end if
 
            if (doTuning) call tune(6,"Calculate bias on tau")
-           call setBiasOnTau(grid, iLambdaPhoton)
+           if (usebias) call setBiasOnTau(grid, iLambdaPhoton)
 !           call writeVtkFile(grid, "bias.vtk", &
 !                valueTypeString=(/"rho          ", &
 !                "dust1        ", &
@@ -1428,16 +1435,41 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
         if (doTuning) call tune(6, "One Outer Photon Loop") ! Start a stop watch
 
-        call do_one_outer_photon_loop
 
+        if (.not.sed_optimise) then
+           call do_one_outer_photon_loop
+        else
+           converged = .false.
+           energyPerPhoton =  (totDustContinuumEmission*1.d30 + lCore)/1.d20
+           runningNPhot = 0
+           nInnerLoop = 1000
+           nsample = 0
+           thisY = 0.
+           do while (.not.converged)
+              call do_one_outer_photon_loop
+              runningNPhot = runningNPhot + nInnerLoop
+              nsample = nsample + 1
+              xsample(nsample) = yArray(iOuterloop)%i / dble(runningNPhot)
+              if (nsample >= 10) then
+                 mean = sum(xsample(nsample-9:nSample))/10.d0
+                 sigma = sqrt(sum((xsample(nsample-9:nSample) - mean)**2)/10.d0)
+                 if (sigma/mean < 0.01d0) converged = .true.
+              endif
+           enddo
+           
+           yArray(iouterloop)%i = yArray(iouterloop)%i * (1.d0/dble(runningNPhot))
+           write(*,*) "Wavelength completed using ",runningNPhot, " packets"
+        endif
+
+           
+        
         if (doTuning) call tune(6, "One Outer Photon Loop") ! Stop a stop watch        
 
 !        yArray(1:nLambda) = STOKESVECTOR(0.,0.,0.,0.)
         do i = 1, nLambda
            errorArray(iOuterLoop,1:nLambda) = yArray(i) - oldyArray(i)
         enddo
-         oldyArray = yArray  
-  
+        
 
 
      end do outerPhotonLoop ! outer photon loop
@@ -2176,7 +2208,7 @@ CONTAINS
                  iLambda = findIlambda(observedlambda, grid%lamArray,  nLambda, ok)
                  if (ok) then
 !$OMP CRITICAL ( updateYarray )
-!                    write(*,*) "addingPhoton",thisPhoton%stokes%i,obs_weight
+!                    write(*,*) "addingPhoton",thisPhoton%stokes%i,obs_weight,tauExt(ntau)
 !                    write(*,*) "hit core",hitcore
                     yArray(iLambda) = yArray(iLambda) + thisPhoton%stokes * obs_weight
 
@@ -2273,6 +2305,7 @@ CONTAINS
                        obs_weight = (fac1 * exp(-(tauExt(ntau)+fac3)))*fac2
 
 !$OMP CRITICAL ( updateYarray )
+!                       write(*,*) "adding photon ",thisPhoton%stokes%i, obs_weight
                        yArray(iLambda) = yArray(iLambda) + (thisPhoton%stokes * obs_weight)
 
                        if (thisPhoton%stellar) then
@@ -2561,7 +2594,7 @@ CONTAINS
 
               if (thisPhoton%stokes%i < reallySmall) then
                  absorbed = .true.
-                 write(*,*) "! Small photon weight",thisPhoton%stokes%i,thisPhoton%lambda,albedo,hitcore,nscat
+!                 write(*,*) "! Small photon weight",thisPhoton%stokes%i,thisPhoton%lambda,albedo,hitcore,nscat
               endif
 
 
@@ -2693,7 +2726,8 @@ CONTAINS
                       
 
                     if (ok) then
-!$OMP CRITICAL ( updateYarray )
+                       !$OMP CRITICAL ( updateYarray )
+!                       write(*,*) "adding photon ",obsphoton%stokes%i, obs_weight
                        yArray(iLambda) = yArray(iLambda) + obsPhoton%stokes*obs_weight
 
 
@@ -3111,8 +3145,8 @@ CONTAINS
 
 #endif
      call torus_mpi_barrier !('finished syncing output. Waiting to continue...') 
-     write(message,'(i10,a)') int(real(iOuterLoop)/real(nOuterLoop)*real(nPhotons)+0.5)," photons done"
-     call writeInfo(message, TRIVIAL)
+!     write(message,'(i10,a)') int(real(iOuterLoop)/real(nOuterLoop)*real(nPhotons)+0.5)," photons done"
+!     call writeInfo(message, TRIVIAL)
 
 
         call torus_mpi_barrier

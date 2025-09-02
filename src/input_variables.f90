@@ -1121,6 +1121,7 @@
 
   integer :: nPix
   real(double) :: imageSize, lamStart, lamEnd
+  logical :: sed_optimise
 
 !Cass change
   integer :: irrchoice ! Choice of irradiation

@@ -308,6 +308,19 @@ contains
     median = it(n/2)
   end function median
 
+  real(double) function median_dble(xArray)
+    integer :: n
+    real(double) :: xArray(:)
+    real(double), allocatable :: xvals(:)
+    n = size(xArray)
+    allocate(xvals(1:n))
+    xVals(1:n) = xArray(1:n)
+    call sort(n, xvals)
+    median_dble = xvals(int(n/2))
+  end function median_dble
+
+
+  
   real(double) function getGridValue(i, r1, r2, nr, logarithmic)
     integer :: i, nr
     real(double) :: r1, r2

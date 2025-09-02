@@ -293,6 +293,8 @@ contains
                   "Source filename: ","(a,a,1x,a)","none", ok, .true.)
     endif
 
+    call getLogical("usebias", usebias, cLine, fLine, nLines, &
+         "Use tau biasing: ","(a,1l,1x,a)", .true., ok, .false.)
 
 
     call readGeometrySpecificParameters(cLine, fLine, nLines)
@@ -5394,6 +5396,10 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
 
     call getLogical("forcefirstscat", forceFirstScat, cLine, fLine, nLines, &
          "Force first scattering: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    
+    call getLogical("sed_optimise", sed_optimise, cLine, fLine, nLines, &
+         "Optimise the S/N of the SED automatically: ","(a,1l,1x,a)", .true., ok, .false.)
 
     call getInteger("ninc", nInclination, cLine, fLine, nLines, &
          "Number of inclination angles: ", "(a,i3,1x,a)", 1, ok, .false.)
