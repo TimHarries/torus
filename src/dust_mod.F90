@@ -19,6 +19,8 @@ module dust_mod
 
 contains
 
+   
+
   subroutine effectiveMedium(epsilonEffective, epsilonMatrix, epsilonInclusion, fillingFactor)
     real :: fillingFactor
     complex :: epsilonEffective, epsilonMatrix, epsilonInclusion, epsilonEffectiveMG
@@ -937,18 +939,20 @@ contains
 
   recursive subroutine fillDustShakara(grid, thisOctal, dustmass)
 
-    use inputs_mod, only: rSublimation, nDustType, curvedInnerEdge, grainFrac
+    use inputs_mod, only : rSublimation, nDustType, curvedInnerEdge, grainFrac, usemultidust
+    use inputs_mod, only : betaDisc, height, dustHeight, dustBeta
     use octal_mod, only : cellVolume
     use density_mod
 
+    
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     type(VECTOR) :: rVec
     real(double) :: r, z
-    real(double) :: dustMass, cellMass
-    real(double) :: fac, rhoFid, rho, thisRsub
-    integer :: subcell, i
+    real(double) :: dustMass, cellMass, thisHeight, tot
+    real(double) :: fac, rhoFid, rho, thisRsub, gasheight
+    integer :: subcell, i, idust
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -983,32 +987,20 @@ contains
           endif
 
 
- !         thisOctal%dustTypeFraction(subcell,1:nDustType) = thisRsub/1496.
-!          if (nDustType > 1) then
-!             if (.not.dustSettling) then
-!                if ( (r > rSublimation).and.(r < rOuter)) then
-!                   tot = 0.d0
-!                   do iDust = 1, nDustType
-!                      thisHeight = dustHeight(iDust)*(r/(100.d0*autocm/1.d10))**dustBeta(iDust)
-!                      gasHeight =  height*(r/(100.d0*autocm/1.d10))**betaDisc
-!                      fac = exp(-0.5d0*(z/thisHeight)**2 + 0.5d0*(z/gasHeight)**2)
-!                      thisOctal%dustTypeFraction(subcell, iDust) = fac
-!                      tot = tot + fac
-!                   enddo
-!                   thisOctal%dustTypeFraction(subcell,1:nDustType) = thisOctal%dustTypeFraction(subcell,1:nDustType) * &
-!                        grainFrac(1:nDustType)
-!                endif
-!
-!             else
-!                
-!                thisHeight = dustHeight(1)*(r/(100.d0*autocm/1.d10))**dustBeta(1)
-!                fac = exp(-0.5d0*(z/thisHeight)**2)
-!                thisOctal%dustTypeFraction(subcell,1) = fac * grainFrac(1)
-!                thisOctal%dustTypeFraction(subcell,2) = (1.d0-fac) * grainFrac(1)
-!                
-!                
-!             endif
-!          endif
+          if (usemultidust) then
+
+             do iDust = 1, nDustType
+                thisHeight = dustHeight(iDust)*(r/(100.d0*autocm/1.d10))**dustBeta(iDust)
+                gasHeight =  height*(r/(100.d0*autocm/1.d10))**betaDisc
+                fac = exp(-0.5d0*(z/thisHeight)**2 + 0.5d0*(z/gasHeight)**2)
+                tot = tot + fac
+                thisOctal%dustTypeFraction(subcell,idust) = fac
+             enddo
+             thisOctal%dustTypeFraction(subcell,1:nDustType) = thisOctal%dustTypeFraction(subcell,1:nDustType) * &
+                  grainFrac(1:nDustType)
+
+          endif
+             
           cellMass = cellVolume(thisOctal, subcell) * 1.d30 * thisOctal%rho(subcell)
           dustMass = dustMass + SUM(thisOctal%dustTypeFraction(subcell,1:nDustType))*cellMass
 
@@ -1072,6 +1064,18 @@ contains
        enddo
     endif
   end  subroutine reportMasses
+
+  subroutine getDustMasses(grid, dustMass)
+    use inputs_mod, only : nDustType
+    type(GRIDTYPE) :: grid
+    integer :: i
+    real(double) :: dustMass(:)
+
+    do i = 1, nDustType
+       dustMass(i) = 0.d0
+       call findDustMassSingle(grid, grid%octreeRoot, dustMass(i), i)
+    enddo
+  end  subroutine getDustMasses
 
   recursive subroutine findDustMassSingle(grid, thisOctal, dustmass, iDust)
 
@@ -1140,7 +1144,7 @@ contains
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
-    real(double) :: thisDustMass, requiredDustMass
+    real(double) :: thisDustMass(:), requiredDustMass(:)
     integer :: subcell, i
 
     do subcell = 1, thisOctal%maxChildren
@@ -1155,7 +1159,7 @@ contains
           end do
        else
           thisOctal%dustTypeFraction(subcell,1:nDustType) = thisOctal%dustTypeFraction(subcell,1:nDustType) * &
-               requiredDustMass / thisDustMass
+               requiredDustMass(1:nDusttype) / thisDustMass(1:nDustType)
        end if
     end do
 

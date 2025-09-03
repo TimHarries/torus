@@ -29,7 +29,7 @@ contains
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, iHydro, finalPass)
     use inputs_mod, only : variableDustSublimation, iterlucy, rCore, solveVerticalHydro, dustSettling, restartLucy
     use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau
-    use inputs_mod, only : object, convergeOnUndersampled, storeScattered, scatteredLightWavelength
+    use inputs_mod, only : object, convergeOnUndersampled, storeScattered, scatteredLightWavelength, grainfrac, mdisc
     use inputs_mod, only : writelucyTmpfile, discWind, mincrossings, maxiterLucy, solveDiffusionZone, quickSublimate, usePAH
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
@@ -38,7 +38,8 @@ contains
     use amr_mod, only: myScaleSmooth, myTauSmooth, findtotalmass, scaledensityamr
 !    use intensity_storage_mod
     use dust_mod, only: filldustuniform, stripdustaway, sublimatedust, sublimatedustwr104, fillDustShakara, &
-         normalizeDustFractions, findDustMass, setupOrigDustFraction, reportMasses, fillDustSettled
+         normalizeDustFractions, findDustMass, setupOrigDustFraction, reportMasses, fillDustSettled, &
+         getDustMasses
     use random_mod
     use gas_opacity_mod, only: atomhydrogenRayXsection
     use gridio_mod, only: writeAMRgrid
@@ -136,6 +137,7 @@ contains
     real(double) :: packetWeight, wavelengthWeight
     real(double) :: subRadius, dustMass, PAHprob
     real :: lamSmoothArray(5)
+    real(double), allocatable :: dustMassArray(:)
     logical :: thisIsFinalPass
     integer(bigInt) :: totMem
     character(len=10) :: stringArray(10)
@@ -253,7 +255,12 @@ contains
           dustMass = 0.d0
           call fillDustShakara(grid, grid%octreeRoot, dustMass)
           if (dustSettling) call fillDustSettled(grid)
-          !       if (nDustType > 1) call normalizeDustFractions(grid, grid%octreeRoot, dustMass, dble(dusttogas*mDisc))
+          allocate(dustMassArray(1:nDustType))
+          dustMassArray = 0.d0 
+          call getDustMasses(grid, dustMassArray)
+          write(*,*) "required mass ", grainFrac(1:nDusttype)*mDisc
+          write(*,*) "measured mass ",dustMassArray
+          if (nDustType > 1) call normalizeDustFractions(grid, grid%octreeRoot, dustMassArray, dble(grainFrac(1:nDusttype)*mDisc))
           call reportMasses(grid)
        endif
 
@@ -267,7 +274,7 @@ contains
 
        if (nDustType >= 1) then
           do i = 1, nDustType
-             write(stringArray(i),'(a,i1.1)') "dust",i
+             write(stringArray(i),'(a,i2.2)') "dust",i
           enddo
           call writeVTKfile(grid,"dust.vtk",valueTypeString=stringArray(1:nDustType))
        endif

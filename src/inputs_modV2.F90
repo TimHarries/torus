@@ -905,7 +905,7 @@ contains
     character(len=20) :: heightLabel, betaLabel, dustFracLabel
     character(len=20) :: alphaDiscLabel, betaDiscLabel, hDiscLabel, rinDiscLabel, routDiscLabel
     integer :: i, j
-    real(double) :: theta, phi
+    real(double) :: theta, phi 
     character(len=20) :: keyword
 
     select case(geometry)
@@ -3272,6 +3272,7 @@ contains
 
 
   subroutine readDustPhysicsParameters(cLine, fLine, nLines)
+    real :: amin_multi, amax_multi
     character(len=lencLine) :: cLine(:)
     logical :: fLine(:)
     integer :: nLines
@@ -3297,6 +3298,10 @@ contains
        call getLogical("dustsettling", dustSettling, cLine, fLine, nLines, &
                "Dust settling model: : ","(a,1l,1x,a)", .false., ok, .false.)
 
+       
+       call getLogical("iso_scatter", isotropicScattering, cLine, fLine, nLines, &
+            "Isotropic scattering: ","(a,1l,1x,a)", .false., ok, .false.)
+
 
        call getLogical("pah", usePAH, cLine, fLine, nLines, &
                "Include PAH/VSG physics : ","(a,1l,1x,a)", .false., ok, .false.)
@@ -3308,6 +3313,29 @@ contains
                "Scaling factor for PAH emissivities and opacities: ","(a,f7.3,a)",1.d0, ok, .false.)
        endif
 
+
+       call getLogical("multidust", useMultiDust, cLine, fLine, nLines, &
+            "Use multi-dust to set up amax bins : ","(a,1l,1x,a)", .false., ok, .false.)
+
+       if (useMultiDust) then
+
+          call getRealwithUnits("amin", aMin_multi, "micron", "micron", cLine, fLine, nLines, &
+                  "Min grain size: ", 1000.0, ok, .true.)
+
+          call getRealwithUnits("amax", aMax_multi, "micron", "micron", cLine, fLine, nLines, &
+                  "Max grain size: ", 1000.0, ok, .true.)
+
+          call getReal("xi_dust", xi_dust, 1., cLine, fLine, nLines, &
+                  "Dust settling coefficient:  ","(a,e12.3,1x,a)", 0.2, ok, .true.)
+
+          
+          call setupMultiDust(amin_multi, amax_multi, 3.5, 10)
+
+          goto 555
+       endif
+
+
+       
        call getInteger("ndusttype", nDustType, cLine, fLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)
        if (nDustType .gt. maxDustTypes) then
           if (writeoutput) write (*,*) "Max dust types exceeded: ", maxDustTypes
@@ -3432,9 +3460,6 @@ contains
 
 
 
-          call getLogical("iso_scatter", isotropicScattering, cLine, fLine, nLines, &
-               "Isotropic scattering: ","(a,1l,1x,a)", .false., ok, .false.)
-
          call getLogical("henyey", henyeyGreensteinPhaseFunction, cLine, fLine, nLines, &
               "Use Henyey-Greenstein phase function: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -3451,7 +3476,8 @@ contains
             write(*,*) "p ",polarwavelength
              call getString("polarfile", polarFilename, cLine, fLine, nLines, &
                   "Polarizability filename: ","(a,a,1x,a)","sil_dl", ok, .true.)
-         endif
+          endif
+555       continue
   end subroutine readDustPhysicsParameters
 
   subroutine readAtomicPhysicsParameters(cLine, fLine, nLines)
@@ -6586,7 +6612,83 @@ end subroutine getIntegerArray
   end subroutine parameterDefinesRange
 
 
+subroutine setupMultiDust(amin_multi, amax_multi, qdist_multi, nBins)
+      real :: amin_multi, amax_multi, qdist_multi
+      integer :: nBins
+      integer :: i
+      real :: dloga
+      real :: abundance(maxdusttypes)
+      real :: fillingFactor(maxdusttypes)
+      real(double) :: md(100)
+      
+      nDustType = nBins
+      grainfrac = 0.01/dble(nBins)
+      
+
+      if (nBins == 1) then
+         amin(1) = amin_multi
+         amax(1) = amax_multi
+         qdist(1) = qdist_multi
+         abundance(1) = 1.0
+         graintype(1) = "sil_dl"
+         fillingFactor(1) = 0.0
+         grainDensity(1) = 3.5
+         a0(1) = 1.e20
+         pdist(1) = 1.
+      else
+         dloga = (log10(amax_multi) - log10(amin_multi))/real(nBins)
+         do i = 1, nBins
+            amin(i) = amin_multi
+            amax(i) = 10.0**(log10(amin_multi) + dloga*real(i))
+            qdist(i) = qdist_multi
+            abundance(i) = 1.0
+            graintype(i) = "sil_dl"
+            fillingFactor(i) = 0.0
+            grainDensity(i) = 3.5
+            a0(i) = 1.e20
+            pdist(i) = 1.
+         enddo
+      endif
+      do i = 1, nBins
+         write(*,*) i,amin(i),amax(i)
+!         write(message, "(a,i3,a,f6.3,a,f6.3,a,f6.3,a,f6.3,a,f6.3)") &
+!              "Grain bin ", i, ": amin=", amin(i), " amax=", amax(i), &
+!              " qdist=", qdist(i), " abundance=", abundance(i), &
+!              " filling factor=", fillingFactor(i)
+!         call writeInfo(message, TRIVIAL)
+      enddo
 
 
-  
+      if (usemultidust) then
+         do i = 1, nDusttype
+            fracDustHeight(i) = (amax(i)/amin(i))**xi_dust
+            dustheight(i) = height * fracDustHeight(i)
+            dustbeta(i) = betaDisc
+            write(*,*) "Dust ",i," height ",dustheight(i), height
+         enddo
+         do i = 1, nDustType
+            md(i) = massint(dble(amin(i)),dble(amax(i)),dble(qdist(i)))
+         enddo
+         grainfrac(1:nDusttype) = 0.01 * (md(1:nDustType)/sum(md(1:nDusttype)))
+      endif
+
+
+     end subroutine setupMultiDust
+
+     function massint(amin, amax, qdist) result(mass)
+       real(double) :: amin, amax, qdist
+       real(double) :: aArray(1000), mass, da
+       integer :: i
+
+       do i = 1, 1000
+          aArray(i) = log10(amin) + (log10(amax) - log10(amin))* dble(i-1)/dble(999.d0)
+          aArray(i) = 10.**aArray(i)
+       enddo
+       mass = 0.
+       do i = 1,999
+          da = aArray(i+1)-aArray(i)
+          mass = mass + aArray(i)**(3.d0-qDist) * da
+       enddo
+          
+     end function massint
 end module inputs_mod

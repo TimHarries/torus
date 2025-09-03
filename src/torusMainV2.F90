@@ -168,6 +168,7 @@ program torus
 
      call setupMicrophysics(grid)
 
+
 !     if (trim(geometry) == "envelope") then
 !        call calculategrid()
 !        goto 666

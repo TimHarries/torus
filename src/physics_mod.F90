@@ -1219,6 +1219,7 @@ subroutine setupDust(grid, xArray, nLambda, miePhase, nMumie, fileStart)
      call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
   end if
 
+
   if (associated(grid%octreeRoot)) call allocateMemoryForDust(grid%octreeRoot)
 
 

@@ -917,10 +917,10 @@ contains
                case("jnu")
                   write(lunit, *) real(thisOctal%biasLine3d(subcell))
 
-               case("dust1")
+               case("dust01")
                   write(lunit, *) real(thisOctal%dustTypeFraction(subcell,1))
 
-               case("dust2")
+               case("dust02")
                   write(lunit, *) real(thisOctal%dustTypeFraction(subcell,2))
 
                case("bias")
@@ -2548,13 +2548,13 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
         i_tmp = nValueType
         do j = 1, i_tmp
            if (valueType(j)=="dust") then
-              valuetype(j) = "dust1"
+              valuetype(j) = "dust01"
            endif
         enddo
         if (nDustType > 1) then
            nValuetype = i_tmp + nDustType - 1
            do j = 2, nDustType
-              write(valueType(i_tmp+j-1),'(a,i1)') "dust",j
+              write(valueType(i_tmp+j-1),'(a,i2.2)') "dust",j
            enddo
         endif
      endif
@@ -3166,20 +3166,35 @@ end subroutine writeXMLVtkFileAMR
                case("biasline")
                   rArray(1, n) = real(thisOctal%biasLine3d(subcell))
 
-               case("dust1")
-                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,1)))
+               case("dust01")
+                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,1)*thisOctal%rho(subcell)))
 
-               case("dust2")
-                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,2)))
+               case("dust02")
+                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,2)*thisOctal%rho(subcell)))
 
-               case("dust3")
-                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,3)))
+               case("dust03")
+                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,3)*thisOctal%rho(subcell)))
 
-               case("dust4")
-                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,4)))
+               case("dust04")
+                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,4)*thisOctal%rho(subcell)))
 
-               case("dust5")
-                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,5)))
+               case("dust05")
+                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,5)*thisOctal%rho(subcell)))
+
+               case("dust06")
+                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,6)*thisOctal%rho(subcell)))
+
+               case("dust07")
+                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,7)*thisOctal%rho(subcell)))
+
+               case("dust08")
+                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,8)*thisOctal%rho(subcell)))
+
+               case("dust09")
+                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,9)*thisOctal%rho(subcell)))
+
+               case("dust10")
+                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,10)*thisOctal%rho(subcell)))
 
 
                case("q11")

@@ -5435,6 +5435,11 @@ CONTAINS
           if (r < rSublimation) thisheightSplitFac = 1.
 
           hr = height * (r / (100.d0*autocm/1.d10))**betadisc
+
+
+          hr = height * (r / (100.d0*autocm/1.d10))**betadisc
+
+          
           if (grid%geometry=="HD169142") then
              hr = (10.d0*autocm/1.d10) * (r/(100.d0*autocm/1.d10))**betaDisc
              if ((modulus(cellCentre) > rInner).and.(modulus(cellCentre)<rGapInner1)) then

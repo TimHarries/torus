@@ -220,7 +220,6 @@ contains
           write(cformat,'(a,i1,a)') "(i",p+1,")"
           write(cval,cformat) int(r)
        else
-          write(*,*) r,n,p
           write(cformat,'(a,i2.2,a,i2.2,a)') "(f",max(n,p)+1,".",max(n-p-1,0),")"
           write(cval,cformat) r
        endif
@@ -237,7 +236,6 @@ contains
     endif
 
     if ((p > -4).and.(p < 0).and.(r > 0.d0)) then
-       write(*,*) r,n,p
        write(cformat,'(a,i2.2,a,i2.2,a)') "(f",abs(p)-1+n+2,".",n+abs(p)-1,")"
        write(cval,cformat) r
     endif

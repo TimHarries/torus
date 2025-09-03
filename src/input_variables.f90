@@ -486,6 +486,7 @@
 !-----------------
 
   integer, parameter :: maxDustTypes = 10
+  logical :: useMultiDust
   character(len=80) :: grainType(maxDustTypes) ! sil_ow, sil_oc, sil_dl, amc_hn, sic_pg, gr1_dl, gr2_dl
   real :: grainFrac(maxDustTypes)
   real :: grainDensity(maxDustTypes)
@@ -534,6 +535,7 @@
   real(double) :: fracdustHeight(maxDustTypes)   !  p exponent in the equation above.
   real(double) :: dustBeta(maxDustTypes)   !  p exponent in the equation above.
   real :: porousFillingFactor(maxDustTypes)
+  real :: xi_dust ! settling coefficient from Pinte et al (2008)
 
 !------------------------------
 ! Inclinations for SEDs/images
