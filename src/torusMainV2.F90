@@ -135,7 +135,7 @@ program torus
 #ifdef MPI
   ! Set up amrCOMMUNICATOR and global mpi groups
   call setupAMRCOMMUNICATOR
-  write(*,*) "nthreadsglobal ",nThreadsGlobal
+!  write(*,*) "nthreadsglobal ",nThreadsGlobal
 !  call setupFitterCommunicators
 !  do i = 0, nThreadsGlobal-1
 !     if (myrankGlobal == i) then

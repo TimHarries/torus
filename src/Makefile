@@ -355,7 +355,7 @@ ifeq ($(SYSTEM), isca)
     DEBUGFLAG=-g -O0 -warn -traceback -fpe0 -fp-stack-check -gen-interfaces -check all -check noarg_temp_created
     STATICFLAG=
     EXE=torus.isca
-    CFITSIOLIBS = -lcfitsio
+    CFITSIOLIBS = -L/lustre/home/tjharrie/cfitsio -lcfitsio
     STATICLIBS= -Bstatic
     KROMELIBS = -L${HOME}/krome/build -lkrome
     ifeq ($(chemistry), yes)
