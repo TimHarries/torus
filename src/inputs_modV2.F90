@@ -6661,7 +6661,7 @@ subroutine setupMultiDust(amin_multi, amax_multi, qdist_multi, nBins)
 
       if (usemultidust) then
          do i = 1, nDusttype
-            fracDustHeight(i) = (amax(i)/amin(i))**xi_dust
+            fracDustHeight(i) = (amax(i)/amin(i))**(-xi_dust)
             dustheight(i) = height * fracDustHeight(i)
             dustbeta(i) = betaDisc
             write(*,*) "Dust ",i," height ",dustheight(i), height
@@ -6670,6 +6670,7 @@ subroutine setupMultiDust(amin_multi, amax_multi, qdist_multi, nBins)
             md(i) = massint(dble(amin(i)),dble(amax(i)),dble(qdist(i)))
          enddo
          grainfrac(1:nDusttype) = 0.01 * (md(1:nDustType)/sum(md(1:nDusttype)))
+         write(*,*) "grainfac ",grainfrac(1:nDusttype)
       endif
 
 

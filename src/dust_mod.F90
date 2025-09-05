@@ -994,7 +994,7 @@ contains
                 gasHeight =  height*(r/(100.d0*autocm/1.d10))**betaDisc
                 fac = exp(-0.5d0*(z/thisHeight)**2 + 0.5d0*(z/gasHeight)**2)
                 tot = tot + fac
-                thisOctal%dustTypeFraction(subcell,idust) = fac
+                thisOctal%dustTypeFraction(subcell,idust) = max(fac,1.d-30)
              enddo
              thisOctal%dustTypeFraction(subcell,1:nDustType) = thisOctal%dustTypeFraction(subcell,1:nDustType) * &
                   grainFrac(1:nDustType)

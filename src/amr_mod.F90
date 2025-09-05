@@ -3636,7 +3636,7 @@ CONTAINS
     use magnetic_mod, only : safierfits
     use biophysics_mod, only : splitSkin
 ! Currently commented out. Reinstate if required.
-    use inputs_mod, only : smoothInnerEdge, variableDustSublimation, rCut, doDiscSplit
+    use inputs_mod, only : smoothInnerEdge, variableDustSublimation, rCut, doDiscSplit, usemultidust,dustheight, ndusttype
 !    use inputs_mod, only: ttauriwind, smoothinneredge, amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
     use ramses_mod, only: splitRamses
 
@@ -5434,12 +5434,18 @@ CONTAINS
           thisHeightSplitFac = heightSplitFac
           if (r < rSublimation) thisheightSplitFac = 1.
 
-          hr = height * (r / (100.d0*autocm/1.d10))**betadisc
+
+          if (usemultidust) then
+             do i = 1, nDusttype
+                hr = dustheight(i) * (r / (100.d0*autocm/1.d10))**betadisc
+                if ((abs(cellcentre%z)/hr < 4.) .and. (cellsize/hr > 0.5)) split = .true.
+                if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+             enddo
+          endif
 
 
           hr = height * (r / (100.d0*autocm/1.d10))**betadisc
-
-          
+                
           if (grid%geometry=="HD169142") then
              hr = (10.d0*autocm/1.d10) * (r/(100.d0*autocm/1.d10))**betaDisc
              if ((modulus(cellCentre) > rInner).and.(modulus(cellCentre)<rGapInner1)) then
