@@ -3066,7 +3066,6 @@ contains
        amrGridCentreX = amrgridsize/2.
     endif
 
-    write(*,*) "amrgridsize ",amrgridsize,amrgridcentrex,amrgridcentrey,amrgridcentrez
     call getDouble("limitscalar", limitScalar, 1.d0, cLine, fLine, nLines, &
          "Scalar limit for subcell division: ","(a,1p,e9.3,1x,a)", 1000._db, ok, .false.)
 
@@ -5425,7 +5424,7 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
 
     
     call getLogical("sed_optimise", sed_optimise, cLine, fLine, nLines, &
-         "Optimise the S/N of the SED automatically: ","(a,1l,1x,a)", .true., ok, .false.)
+         "Optimise the S/N of the SED automatically: ","(a,1l,1x,a)", .false., ok, .false.)
 
     call getInteger("ninc", nInclination, cLine, fLine, nLines, &
          "Number of inclination angles: ", "(a,i3,1x,a)", 1, ok, .false.)
@@ -6650,7 +6649,7 @@ subroutine setupMultiDust(amin_multi, amax_multi, qdist_multi, nBins)
          enddo
       endif
       do i = 1, nBins
-         write(*,*) i,amin(i),amax(i)
+         if (writeoutput) write(*,*) i,amin(i),amax(i)
 !         write(message, "(a,i3,a,f6.3,a,f6.3,a,f6.3,a,f6.3,a,f6.3)") &
 !              "Grain bin ", i, ": amin=", amin(i), " amax=", amax(i), &
 !              " qdist=", qdist(i), " abundance=", abundance(i), &
@@ -6664,13 +6663,13 @@ subroutine setupMultiDust(amin_multi, amax_multi, qdist_multi, nBins)
             fracDustHeight(i) = (amax(i)/amin(i))**(-xi_dust)
             dustheight(i) = height * fracDustHeight(i)
             dustbeta(i) = betaDisc
-            write(*,*) "Dust ",i," height ",dustheight(i), height
+            if (Writeoutput) write(*,*) "Dust ",i," height ",dustheight(i), height
          enddo
          do i = 1, nDustType
             md(i) = massint(dble(amin(i)),dble(amax(i)),dble(qdist(i)))
          enddo
          grainfrac(1:nDusttype) = 0.01 * (md(1:nDustType)/sum(md(1:nDusttype)))
-         write(*,*) "grainfac ",grainfrac(1:nDusttype)
+         if (writeoutput) write(*,*) "grainfac ",grainfrac(1:nDusttype)
       endif
 
 

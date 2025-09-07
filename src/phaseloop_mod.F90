@@ -7,7 +7,7 @@ module phaseloop_mod
 
 CONTAINS
 
-subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumie, imNum, returnImage)
+subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumie,  runningImage, imNum, returnImage)
 
   use kind_mod
   use inputs_mod 
@@ -78,6 +78,8 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
   integer, intent(in) :: nmumie
   integer, optional, intent(in) :: imNum
 
+  logical :: runningImage
+  
 ! Former arguments which were hardwired to constant values
   logical :: alreadyDoneInfall = .true.
   real :: meanDustParticleMass = 0.0
@@ -347,7 +349,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      if (thisImageType(1:6) == "stokes") then 
         stokesImage=.true.
      endif
-     write(*,*) "debug ",stokesimage,thisimagetype(1:6)
+!     write(*,*) "debug ",stokesimage,thisimagetype(1:6)
      ! Images call phaseloop once per image and looping is done by doOutputs
      nInclination = 1 
      positionAngle = GetImagePA(imNum)
@@ -1120,10 +1122,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
         call normalize(xAxisImage)
         yAxisImage =  viewVec .cross. xAxisImage
         call normalize(yAxisImage)
-        write(*,*) "xAxis image ",xAxisImage
-        write(*,*) "yAxis image ",yAxisImage
-        write(*,*) "Viewvec ", viewvec
-
         imagePA = real(thisimagePA)
 
         if (writeoutput) then
@@ -1348,7 +1346,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
            else
               write(message,*) "Setting emissivity from temperature (same for gas and dust)"
               call writeInfo(message,TRIVIAL)
-              write(*,*) "iouterloop ",iouterloop
               call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot, grid%lamArray, &
                    grid%lamArray(ilambdaPhoton), iLambdaPhoton)
            endif
@@ -1431,7 +1428,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
 
 
-        if (.not.sed_optimise) then
+        if ((.not.sed_optimise).or.(runningImage)) then
            call do_one_outer_photon_loop
         else
            converged = .false.
@@ -1445,15 +1442,21 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
               runningNPhot = runningNPhot + nInnerLoop
               nsample = nsample + 1
               xsample(nsample) = yArray(iOuterloop)%i / dble(runningNPhot)
+
+#ifdef MPI
+               CALL MPI_BCAST(xsample(nsample), 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+#endif
+              
               if (nsample >= 10) then
                  mean = sum(xsample(nsample-9:nSample))/10.d0
                  sigma = sqrt(sum((xsample(nsample-9:nSample) - mean)**2)/10.d0)
                  if (sigma/mean < 0.01d0) converged = .true.
               endif
+!              write(*,*) myrankGlobal,mean,sigma,converged
            enddo
            
-           yArray(iouterloop)%i = yArray(iouterloop)%i * (1.d0/dble(runningNPhot))
-           write(*,*) "Wavelength completed using ",runningNPhot, " packets"
+           yArray(iouterloop) = yArray(iouterloop) * (1.d0/dble(runningNPhot))
+           if (writeoutput) write(*,*) " Wavelength completed using ",runningNPhot, " packets "
         endif
 
            
@@ -1678,7 +1681,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
      endif
   endif
 
-     write(*,*) "stokesimage ",stokesimage, " present ",present(returnimage)
 
      if (stokesimage.and.myrankIsZero) then
         do i1 = 1, nImageLocal
@@ -1836,7 +1838,7 @@ CONTAINS
     if (myrankGlobal == (nThreadsGlobal -1)) then
        iInner_end = nInnerLoop
     endif
-
+!    write(*,*) myrankGlobal, " entering loop ",iinner_beg,iinner_end
 
 !  ! No need to use some processors if there are more processors
 !  ! than the number of photons....
@@ -3015,7 +3017,8 @@ CONTAINS
 !$OMP END PARALLEL
 #ifdef MPI
 !     write (*,'(A,I3,A,I3,A,I3,A)') 'Process ',myRankGlobal, &
-!                      ' waiting to sync spectra... (',iOuterLoop,'/',nOuterLoop,')' 
+           !                      ' waiting to sync spectra... (',iOuterLoop,'/',nOuterLoop,')'
+!     write(*,*) myrankGlobal," waiting to sync spectra"
      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
    ! we have to syncronize the 'yArray' after each inner photon loop to

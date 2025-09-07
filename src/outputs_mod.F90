@@ -444,7 +444,7 @@ if (.false.) then
 
           fastIntegrate=.true.
           nPhotons = nPhotSpec
-          call do_phaseloop(grid, .false., 50000, miePhase, globalnsource, globalsourcearray, nmumie)
+          call do_phaseloop(grid, .false., 50000, miePhase, globalnsource, globalsourcearray, nmumie, .false.)
        end if
 
        if ((calcImage.or.calcMovie).and.(.not.calcDustCube)) then
@@ -489,7 +489,7 @@ if (.false.) then
 !                call writeVtkFile(grid, "tau.vtk",  valueTypeString=(/"tau"/))
 
                 call do_phaseloop(grid, .false., 50000, &
-                     miePhase, globalnsource, globalsourcearray, nmumie, imNum=i)
+                     miePhase, globalnsource, globalsourcearray, nmumie, .true., imNum=i)
              enddo
           endif
 
@@ -515,7 +515,7 @@ if (.false.) then
                 call setupDust(grid, xArray, nLambda, miePhase, nMumie)
                 fastIntegrate=.true.
                 call do_phaseloop(grid, .false., 50000, &
-                     miePhase, globalnsource, globalsourcearray, nmumie, imNum=i, returnImage=imageSlice)
+                     miePhase, globalnsource, globalsourcearray, nmumie,  .true., imNum=i, returnImage=imageSlice)
                 dx = imageSlice%xAxisCentre(2) - imageSlice%xAxisCentre(1)
                 allocate(tarray(1:thiscube%nx,1:thiscube%ny))
                 tarray = real(imageSlice%pixel(:,:)%i)
@@ -547,7 +547,7 @@ if (.false.) then
           call setupXarray(grid, xarray, nv, phaseloop=.true.)
           write(*,*) "nlambda after setupxarray",nlambda,nv
           nlambda = nv
-          call do_phaseloop(grid, .true., 50000, miePhase, globalnsource, globalsourcearray, nmumie) 
+          call do_phaseloop(grid, .true., 50000, miePhase, globalnsource, globalsourcearray, nmumie, .true.) 
        end if
 
        if (calcImage.or.calcMovie) then
@@ -559,7 +559,7 @@ if (.false.) then
                      wavLin=.true., numLam=1, dustRadEq=.true.)
 
                 call do_phaseloop(grid, .false., 50000, &
-                     miePhase, globalnsource, globalsourcearray, nmumie, imNum=i)
+                     miePhase, globalnsource, globalsourcearray, nmumie, .true.,  imNum=i)
              enddo
           else
              nv = 200
@@ -568,7 +568,7 @@ if (.false.) then
              write(*,*) "nlambda after setupxarray",nlambda,nv
              nlambda = nv
              do i = 1, nImage
-                call do_phaseloop(grid, .true., 50000, miePhase, globalnsource, globalsourcearray, nmumie,imnum=i) 
+                call do_phaseloop(grid, .true., 50000, miePhase, globalnsource, globalsourcearray, nmumie, .true., imnum=i ) 
              enddo
           endif
            

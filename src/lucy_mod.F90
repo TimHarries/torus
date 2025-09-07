@@ -258,8 +258,6 @@ contains
           allocate(dustMassArray(1:nDustType))
           dustMassArray = 0.d0 
           call getDustMasses(grid, dustMassArray)
-          write(*,*) "required mass ", grainFrac(1:nDusttype)*mDisc
-          write(*,*) "measured mass ",dustMassArray
           if (nDustType > 1) call normalizeDustFractions(grid, grid%octreeRoot, dustMassArray, dble(grainFrac(1:nDusttype)*mDisc))
           call reportMasses(grid)
        endif
