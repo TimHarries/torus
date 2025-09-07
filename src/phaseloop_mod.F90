@@ -1274,9 +1274,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
 
      iLambda = findIlambda(1.e5, grid%lamArray, nLambda, ok)
-     if (doTuning) call tune(6,"Calculate bias on tau")
      if (mie.and.usebias)     call setBiasOnTau(grid, iLambda)
-     if (doTuning) call tune(6,"Calculate bias on tau")
 
 !     call writeVtkFile(grid, "phaseloop.vtk", &
 !          valueTypeString=(/"rho          ", &
@@ -1383,7 +1381,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 !              call addRecombinationEmissionLine(grid, 1.d0, dble(lambdaImage))
 !           end if
 
-           if (doTuning) call tune(6,"Calculate bias on tau")
            if (usebias) call setBiasOnTau(grid, iLambdaPhoton)
 !           call writeVtkFile(grid, "bias.vtk", &
 !                valueTypeString=(/"rho          ", &
@@ -1392,7 +1389,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 !                "etacont      ", &
 !                "temperature  "/))
 
-           if (doTuning) call tune(6,"Calculate bias on tau")
 
            call computeProbDist(grid, totLineEmission, &
                 totDustContinuumEmission,lamline, .false.)
@@ -1433,7 +1429,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
         endif
 
 
-        if (doTuning) call tune(6, "One Outer Photon Loop") ! Start a stop watch
 
 
         if (.not.sed_optimise) then
@@ -1463,7 +1458,6 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
            
         
-        if (doTuning) call tune(6, "One Outer Photon Loop") ! Stop a stop watch        
 
 !        yArray(1:nLambda) = STOKESVECTOR(0.,0.,0.,0.)
         do i = 1, nLambda
