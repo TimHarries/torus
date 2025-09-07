@@ -268,7 +268,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 
   integer :: runningNphot
   real(double) :: mean, sigma, xsample(1000),  thisY
-  integer :: nsample
+  integer :: nsample, n
   logical :: converged
 
   
@@ -1447,12 +1447,14 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
                CALL MPI_BCAST(xsample(nsample), 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
 #endif
               
-              if (nsample >= 10) then
-                 mean = sum(xsample(nsample-9:nSample))/10.d0
-                 sigma = sqrt(sum((xsample(nsample-9:nSample) - mean)**2)/10.d0)
-                 if (sigma/mean < 0.01d0) converged = .true.
-              endif
-!              write(*,*) myrankGlobal,mean,sigma,converged
+               if (nsample >= 3) then
+                  n = min(nsample,5)
+                  mean = sum(xsample(nsample-(n-1):nSample))/dble(n)
+                  sigma = sqrt(sum((xsample(nsample-(n-1):nSample) - mean)**2)/dble(n))
+                  if (writeoutput) write(*,'(i6.6,5e12.3)') runningnphot,mean,sigma,sigma/mean, &
+                       xsample(nsample), abs(xsample(nsample)-xsample(nsample-1))/xsample(nsample)
+                  if (sigma/mean < 0.01d0) converged = .true.
+               endif
            enddo
            
            yArray(iouterloop) = yArray(iouterloop) * (1.d0/dble(runningNPhot))
