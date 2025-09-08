@@ -5463,7 +5463,7 @@ CONTAINS
 
 !          write(*,*) hr, height, r, betadisc
 
-          if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > thisheightSplitFac)) split = .true.
+          if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > thisheightSplitFac)) split = .true.
 
           if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
