@@ -459,7 +459,7 @@ contains
     character(len=20) :: fname
     integer :: i
     type(PHASEMATRIX), pointer :: miePhase(:,:,:) => null()
-    integer, parameter :: nMuMie = 200
+    integer, parameter :: nMuMie = 256
     integer :: nlower, nupper, sign, u
     type(GRIDTYPE) :: grid
 #ifdef MPI

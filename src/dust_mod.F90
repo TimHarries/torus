@@ -591,17 +591,32 @@ contains
     ilam_end = grid%nLambda
 #ifdef MPI
     ! Set the range of index for a photon loop used later.     
+
+
     np = nThreadsGlobal
-    n_rmdr = MOD(grid%nLambda,np)
-    m = grid%nLambda/np
-          
-    if (myRankWorldGlobal .lt. n_rmdr ) then
-       ilam_beg = (m+1)*myRankWorldGlobal + 1
-       ilam_end = ilam_beg + m
+
+    if (np <= grid%nLambda) then
+       
+       n_rmdr = MOD(grid%nLambda,np)
+       m = grid%nLambda/np
+       
+       if (myRankWorldGlobal .lt. n_rmdr ) then
+          ilam_beg = (m+1)*myRankWorldGlobal + 1
+          ilam_end = ilam_beg + m
+       else
+          ilam_beg = m*myRankWorldGlobal + 1 + n_rmdr
+          ilam_end = ilam_beg + m -1
+       end if
     else
-       ilam_beg = m*myRankWorldGlobal + 1 + n_rmdr
-       ilam_end = ilam_beg + m -1
-    end if
+       if (myrankWorldGlobal < (grid%nLambda-1)) then
+          ilam_beg = myRankWorldGlobal+1
+          ilam_end = myRankWorldGlobal+1
+       else
+          ilam_beg = -1
+          ilam_end = -1
+       endif
+    endif
+       
 #endif
 
     sigmaExt = 0.0
@@ -613,25 +628,29 @@ contains
     !$OMP SHARED(sigmaExt, sigmaAbs, sigmaSca, abundance, total_abundance) &
     !$OMP PRIVATE(i,j,sig_ext, sig_scat, sig_abs, gsca)
     !$OMP DO SCHEDULE(DYNAMIC)
-    do i = ilam_beg, ilam_end
-       do j = 1, ngrain
-          if (aMin /= aMax) then
-             call mieDistCrossSection(aMin, aMax, a0, qDist, pDist, grid%lamArray(i), &
-                  mReal2D(j,i), mImg2D(j,i), sig_ext, sig_scat, sig_abs, gsca)
-          else
-             call mieSingleCrossSection(aMin, grid%lamArray(i), &
-                  mReal2D(j,i), mImg2D(j,i), sig_ext, sig_scat, sig_abs, gsca)
-          endif
-          ! Weighting the cross section according to their abundance...            
-          sigmaExt(i) = sig_ext*abundance(j)+ sigmaExt(i)
-          sigmaAbs(i) = sig_abs*abundance(j)+ sigmaAbs(i)
-          sigmaSca(i) = sig_scat*abundance(j)+ sigmaSca(i)
+    if (ilam_beg >= 1) then
+       do i = ilam_beg, ilam_end
+          do j = 1, ngrain
+             if (aMin /= aMax) then
+                call mieDistCrossSection(aMin, aMax, a0, qDist, pDist, grid%lamArray(i), &
+                     mReal2D(j,i), mImg2D(j,i), sig_ext, sig_scat, sig_abs, gsca)
+             else
+                call mieSingleCrossSection(aMin, grid%lamArray(i), &
+                     mReal2D(j,i), mImg2D(j,i), sig_ext, sig_scat, sig_abs, gsca)
+             endif
+             ! Weighting the cross section according to their abundance...            
+             sigmaExt(i) = sig_ext*abundance(j)+ sigmaExt(i)
+             sigmaAbs(i) = sig_abs*abundance(j)+ sigmaAbs(i)
+             sigmaSca(i) = sig_scat*abundance(j)+ sigmaSca(i)
+          end do
+          sigmaExt(i) =    sigmaExt(i)/total_abundance 
+          sigmaAbs(i) =    sigmaAbs(i)/total_abundance 
+          sigmaSca(i) =    sigmaSca(i)/total_abundance 
        end do
-       sigmaExt(i) =    sigmaExt(i)/total_abundance 
-       sigmaAbs(i) =    sigmaAbs(i)/total_abundance 
-       sigmaSca(i) =    sigmaSca(i)/total_abundance 
-
-    end do
+    else
+       ilam_beg = 1
+       ilam_end = 1
+    endif
     !$OMP END DO
     !$OMP END PARALLEL
 #ifdef MPI

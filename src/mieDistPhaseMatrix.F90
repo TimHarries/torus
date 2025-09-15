@@ -122,17 +122,25 @@ contains
 #ifdef MPI
     ! Set the range of index for a photon loop used later.     
     np = nThreadsGlobal
-    n_rmdr = MOD(nMumie,np)
-
-    m = nMumie/np
-          
-    if (myRankGlobal .lt. n_rmdr ) then
-       imumie_beg = (m+1)*myRankGlobal + 1
-       imumie_end = imumie_beg + m
+    if (np >= nMuMie) then        
+       n_rmdr = MOD(nMumie,np)
+       m = nMumie/np
+       if (myRankGlobal .lt. n_rmdr ) then
+          imumie_beg = (m+1)*myRankGlobal + 1
+          imumie_end = imumie_beg + m
+       else
+          imumie_beg = m*myRankGlobal + 1 + n_rmdr
+          imumie_end = imumie_beg + m -1
+       end if
     else
-       imumie_beg = m*myRankGlobal + 1 + n_rmdr
-       imumie_end = imumie_beg + m -1
-    end if
+       if (myrankWorldGlobal < (nMuMie-1)) then
+          imumie_beg = myRankWorldGlobal+1
+          imumie_end = myRankWorldGlobal+1
+       else
+          imumie_beg = -1
+          imumie_end = -1
+       endif
+    endif
 #endif
 
     !$OMP PARALLEL DEFAULT(NONE) &
@@ -140,12 +148,17 @@ contains
     !$OMP SHARED (imumie_beg, imumie_end, nMuMie, beshTable, sphereTable, pnmllg, a, da, dist, afac) &
     !$OMP SHARED ( miePhase, j, i, max_nci, xArray, mreal, mimg) 
     !$OMP DO SCHEDULE(DYNAMIC)
-    do k = iMumie_beg, iMumie_end
-       cosTheta = -1. + 2.*real(k-1)/real(nMumie-1)
-       call mieDistPhaseMatrix(cosTheta, nDist, beshTable(j,1:nDist-1), sphereTable, &
-            pnmllg(k,1:max_nci), a, da, dist, aFac, miePhase(i,j,k), mReal(i,j), mImg(i,j), &
-            xArray(j))
-    enddo
+    if (imumie_beg >= 1) then
+       do k = iMumie_beg, iMumie_end
+          cosTheta = -1. + 2.*real(k-1)/real(nMumie-1)
+          call mieDistPhaseMatrix(cosTheta, nDist, beshTable(j,1:nDist-1), sphereTable, &
+               pnmllg(k,1:max_nci), a, da, dist, aFac, miePhase(i,j,k), mReal(i,j), mImg(i,j), &
+               xArray(j))
+       enddo
+    else
+       imumie_beg = 1
+       imumie_end = 1
+    endif
     !$OMP END DO
     !$OMP END PARALLEL
 
