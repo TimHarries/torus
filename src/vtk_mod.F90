@@ -3167,34 +3167,34 @@ end subroutine writeXMLVtkFileAMR
                   rArray(1, n) = real(thisOctal%biasLine3d(subcell))
 
                case("dust01")
-                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,1)*thisOctal%rho(subcell)))
+                  rArray(1, n) = max(1.e-30,real(real(thisOctal%dustTypeFraction(subcell,1)*thisOctal%rho(subcell))))
 
                case("dust02")
-                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,2)*thisOctal%rho(subcell)))
+                  rArray(1, n) = max(1.e-30,real(real(thisOctal%dustTypeFraction(subcell,2)*thisOctal%rho(subcell))))
 
                case("dust03")
-                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,3)*thisOctal%rho(subcell)))
+                  rArray(1, n) = max(1.e-30,real(real(thisOctal%dustTypeFraction(subcell,3)*thisOctal%rho(subcell))))
 
                case("dust04")
-                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,4)*thisOctal%rho(subcell)))
+                  rArray(1, n) = max(1.e-30,real(real(thisOctal%dustTypeFraction(subcell,4)*thisOctal%rho(subcell))))
 
                case("dust05")
-                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,5)*thisOctal%rho(subcell)))
+                  rArray(1, n) = max(1.e-30,real(real(thisOctal%dustTypeFraction(subcell,5)*thisOctal%rho(subcell))))
 
                case("dust06")
-                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,6)*thisOctal%rho(subcell)))
+                  rArray(1, n) = max(1.e-30,real(real(thisOctal%dustTypeFraction(subcell,6)*thisOctal%rho(subcell))))
 
                case("dust07")
-                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,7)*thisOctal%rho(subcell)))
+                  rArray(1, n) = max(1.e-30,real(real(thisOctal%dustTypeFraction(subcell,7)*thisOctal%rho(subcell))))
 
                case("dust08")
-                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,8)*thisOctal%rho(subcell)))
+                  rArray(1, n) = max(1.e-30,real(real(thisOctal%dustTypeFraction(subcell,8)*thisOctal%rho(subcell))))
 
                case("dust09")
-                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,9)*thisOctal%rho(subcell)))
+                  rArray(1, n) = max(1.e-30,real(real(thisOctal%dustTypeFraction(subcell,9)*thisOctal%rho(subcell))))
 
                case("dust10")
-                  rArray(1, n) = real(real(thisOctal%dustTypeFraction(subcell,10)*thisOctal%rho(subcell)))
+                  rArray(1, n) = max(1.e-30,real(real(thisOctal%dustTypeFraction(subcell,10)*thisOctal%rho(subcell))))
 
 
                case("q11")

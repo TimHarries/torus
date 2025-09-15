@@ -940,7 +940,7 @@ contains
   recursive subroutine fillDustShakara(grid, thisOctal, dustmass)
 
     use inputs_mod, only : rSublimation, nDustType, curvedInnerEdge, grainFrac, usemultidust
-    use inputs_mod, only : betaDisc, height, dustHeight, dustBeta
+    use inputs_mod, only : betaDisc, height, alphaViscosity, grainDensity, amid, grainType
     use octal_mod, only : cellVolume
     use density_mod
 
@@ -949,10 +949,12 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     type(VECTOR) :: rVec
-    real(double) :: r, z
-    real(double) :: dustMass, cellMass, thisHeight, tot
+    real(double) :: r, z, sigma
+    real(double) :: dustMass, cellMass, thisHeight
     real(double) :: fac, rhoFid, rho, thisRsub, gasheight
-    integer :: subcell, i, idust
+    real(double) :: subcellsize(10000), zAxis(10000), rhoArray(10000), f
+    real :: tArray(10000)
+    integer :: subcell, i, idust, nz
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -989,15 +991,22 @@ contains
 
           if (usemultidust) then
 
+             call getTemperatureDensityRun(grid, zAxis, subcellsize, rhoArray, tArray, real(r), 0., nz, +1.)
+             sigma = 0.d0
+             do i = 1, nz
+                sigma = sigma + rhoArray(i) * subcellsize(i) * 1.d10
+             enddo
              do iDust = 1, nDustType
-                thisHeight = dustHeight(iDust)*(r/(100.d0*autocm/1.d10))**dustBeta(iDust)
+                grainDensity(idust) = getCompositeGrainDensity(graintype(idust))
                 gasHeight =  height*(r/(100.d0*autocm/1.d10))**betaDisc
+                f = alphaViscosity * sigma / (sqrt(6.*pi) * (amid(idust)*microntocm) * grainDensity(idust))
+!                write(*,*) "f ",f, sqrt(f/(f+1.d0))
+                thisHeight = gasHeight * sqrt(f/(f+1.d0))
                 fac = exp(-0.5d0*(z/thisHeight)**2 + 0.5d0*(z/gasHeight)**2)
-                tot = tot + fac
                 thisOctal%dustTypeFraction(subcell,idust) = max(fac,1.d-30)
              enddo
-             thisOctal%dustTypeFraction(subcell,1:nDustType) = thisOctal%dustTypeFraction(subcell,1:nDustType) * &
-                  grainFrac(1:nDustType)
+             thisOctal%dustTypeFraction(subcell,1:nDustType) = max(1.d-30,thisOctal%dustTypeFraction(subcell,1:nDustType) * &
+                  grainFrac(1:nDustType))
 
           endif
              
@@ -2033,6 +2042,43 @@ end subroutine createDustCrossSectionPhaseMatrix
        endif
     enddo
   end subroutine allocateMemoryForDust
+
+  real function getCompositeGrainDensity(grainstring) result(density)
+    implicit none
+    integer :: nTypes, i
+    character(len=80) :: name(100), grainstring
+    real :: abundance(100)
+    call parseGrainType(grainString, nTypes, name, abundance)
+    density = 0.
+    do i = 1, nTypes
+       density = density + abundance(i)*getGrainDensity(name(i))
+    enddo
+  end function getCompositeGrainDensity
+  
+  real function getGrainDensity(graintype) result(density)
+    character(len=*) :: graintype
+    
+    select case(grainType)
+    case("am_olivine", "am_pyroxene")
+       density = 3.71
+    case("forsterite")
+       density = 3.33
+    case("enstatite")
+       density = 2.8
+    case("sio2")
+       density = 2.21
+    case("sil_dl")
+       density = 3.6
+    case("draine_sil")
+       density = 3.5
+    case("amc_zb")
+       density = 2.0
+    case("pinteISM")
+       density = 0.5
+    case DEFAULT
+       call writeFatal("Unknown grain type in getGrainDensity: "//trim(graintype))
+    end select
+  end function getGrainDensity
   
 real function getMeanMass2(porousFillingFactor, aMin, aMax, a0, qDist, pDist, graintype, grainDensity)  
 
@@ -2050,32 +2096,14 @@ real function getMeanMass2(porousFillingFactor, aMin, aMax, a0, qDist, pDist, gr
   real :: normFac
   character(len=*) :: grainType
   real :: grainDensity
-  real :: density
 
-  select case(grainType)
-  case("am_olivine", "am_pyroxene")
-     density = 3.71
-  case("forsterite")
-     density = 3.33
-  case("enstatite")
-     density = 2.8
-  case("sio2")
-     density = 2.21
-  case("sil_dl")
-     density = 3.6
-  case("draine_sil")
-     density = 3.5
-  case("pinteISM")
-     density = 0.5
-  case DEFAULT
-     density = grainDensity
-  end select
+  grainDensity = getGrainDensity(grainType)
 
   grainDensity = grainDensity * (1. - porousFillingFactor)
 
   if (aMin == aMax) then
      vol = real((4./3.)* pi * (aMin*microntocm)**3)
-     getMeanMass2 = vol * density 
+     getMeanMass2 = vol * graindensity 
   else
      a1 = log(aMin)
      a2 = log(aMax)
@@ -2096,7 +2124,7 @@ real function getMeanMass2(porousFillingFactor, aMin, aMax, a0, qDist, pDist, gr
      ! Finding the mean mass now.
      do i = 1, n
         vol = real((4./3.)* pi * (a(i)*microntocm)**3)
-        mass(i) = vol * density * f(i)    ! weighted by dist function
+        mass(i) = vol * graindensity * f(i)    ! weighted by dist function
      end do
      
      call PowerInt(n, 1, n, a, mass, fac)
@@ -2198,11 +2226,11 @@ subroutine getBinMassFraction(porousFillingFactor, aMin, aMax, a0, qDist, pDist,
   real(double) :: a(nBins)     ! grain sizes (log spaced)
   real(double) :: f(nBins)     ! distribution function (normalized)
   real(double) :: mass(nBins)  ! 
-  real(double) :: normFac
   character(len=*) :: grainType
   real(double) :: grainDensity
   real(double) :: density, massfrac, thismass
-
+  real :: normfrac
+  
   select case(grainType)
   case("am_olivine", "am_pyroxene")
      density = 3.71
@@ -2241,8 +2269,8 @@ subroutine getBinMassFraction(porousFillingFactor, aMin, aMax, a0, qDist, pDist,
      
      !
      ! normalize the dist function
-     call PowerInt(nBins, 1, nBins, real(a), real(f), real(normFac))
-     f(:) = f(:)/normFac
+     call PowerInt(nBins, 1, nBins, real(a), real(f), normFrac)
+     f(:) = f(:)/normFrac
      
      !
      ! Finding the mean mass now.

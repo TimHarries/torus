@@ -3324,8 +3324,11 @@ contains
           call getRealwithUnits("amax", aMax_multi, "micron", "micron", cLine, fLine, nLines, &
                   "Max grain size: ", 1000.0, ok, .true.)
 
-          call getReal("xi_dust", xi_dust, 1., cLine, fLine, nLines, &
-                  "Dust settling coefficient:  ","(a,e12.3,1x,a)", 0.2, ok, .true.)
+          call getDouble("alpha", alphaViscosity, 1.d0, cLine, fLine, nLines, &
+               "Alpha Viscosity: ","(a,f7.2,1x,a)", 0.3d0, ok, .false.)
+
+          call getString("graintype", grainType(1), cLine, fLine, nLines, &
+               "Grain type: ","(a,a,1x,a)","sil_dl", ok, .true.)
 
           
           call setupMultiDust(amin_multi, amax_multi, 3.5, 10)
@@ -6611,69 +6614,44 @@ end subroutine getIntegerArray
   end subroutine parameterDefinesRange
 
 
-subroutine setupMultiDust(amin_multi, amax_multi, qdist_multi, nBins)
-      real :: amin_multi, amax_multi, qdist_multi
-      integer :: nBins
-      integer :: i
-      real :: dloga
-      real :: abundance(maxdusttypes)
-      real :: fillingFactor(maxdusttypes)
-      real(double) :: md(100)
-      
-      nDustType = nBins
-      grainfrac = 0.01/dble(nBins)
-      
+  subroutine setupMultiDust(amin_multi, amax_multi, qdist_multi, nBins)
+    real :: amin_multi, amax_multi, qdist_multi
+    integer :: nBins
+    integer :: i
+    real(double) :: md(100)
 
-      if (nBins == 1) then
-         amin(1) = amin_multi
-         amax(1) = amax_multi
-         qdist(1) = qdist_multi
-         abundance(1) = 1.0
-         graintype(1) = "sil_dl"
-         fillingFactor(1) = 0.0
-         grainDensity(1) = 3.5
-         a0(1) = 1.e20
-         pdist(1) = 1.
-      else
-         dloga = (log10(amax_multi) - log10(amin_multi))/real(nBins)
-         do i = 1, nBins
-            amin(i) = amin_multi
-            amax(i) = 10.0**(log10(amin_multi) + dloga*real(i))
-            qdist(i) = qdist_multi
-            abundance(i) = 1.0
-            graintype(i) = "sil_dl"
-            fillingFactor(i) = 0.0
-            grainDensity(i) = 3.5
-            a0(i) = 1.e20
-            pdist(i) = 1.
-         enddo
-      endif
-      do i = 1, nBins
-         if (writeoutput) write(*,*) i,amin(i),amax(i)
-!         write(message, "(a,i3,a,f6.3,a,f6.3,a,f6.3,a,f6.3,a,f6.3)") &
-!              "Grain bin ", i, ": amin=", amin(i), " amax=", amax(i), &
-!              " qdist=", qdist(i), " abundance=", abundance(i), &
-!              " filling factor=", fillingFactor(i)
-!         call writeInfo(message, TRIVIAL)
-      enddo
+    nDustType = nBins
+    grainfrac = 0.01/dble(nBins)
+
+    do i = 1, nBins
+       amin(i) = log10(amin_multi) + dble(i-1) * (log10(amax_multi) - log10(amin_multi))/dble(nbins)
+       amax(i) = log10(amin_multi) + dble(i) * (log10(amax_multi) - log10(amin_multi))/dble(nbins)
+       amid(i) = log10(amin_multi) + (dble(i)-0.5) * (log10(amax_multi) - log10(amin_multi))/dble(nbins)
+       qdist(i) = qdist_multi
+
+       amin(i) = 10.**amin(i)
+       amax(i) = 10.**amax(i)
+       amid(i) = 10.**amid(i)
+       graintype(i) = graintype(1)
+       a0(i) = 1.e20
+       pdist(i) = 1.
+    enddo
+
+    do i = 1, nBins
+       if (writeoutput) write(*,*) i,amin(i),amax(i)
+    enddo
 
 
-      if (usemultidust) then
-         do i = 1, nDusttype
-            fracDustHeight(i) = (amax(i)/amin(i))**(-xi_dust)
-            dustheight(i) = height * fracDustHeight(i)
-            dustbeta(i) = betaDisc
-            if (Writeoutput) write(*,*) "Dust ",i," height ",dustheight(i), height
-         enddo
-         do i = 1, nDustType
-            md(i) = massint(dble(amin(i)),dble(amax(i)),dble(qdist(i)))
-         enddo
-         grainfrac(1:nDusttype) = 0.01 * (md(1:nDustType)/sum(md(1:nDusttype)))
-         if (writeoutput) write(*,*) "grainfac ",grainfrac(1:nDusttype)
-      endif
+    if (usemultidust) then
+       do i = 1, nDustType
+          md(i) = massint(dble(amin(i)),dble(amax(i)),dble(qdist(i)))
+       enddo
+       grainfrac(1:nDusttype) = 0.01 * (md(1:nDustType)/sum(md(1:nDusttype)))
+       if (writeoutput) write(*,*) "grainfac ",grainfrac(1:nDusttype)
+    endif
 
 
-     end subroutine setupMultiDust
+  end subroutine setupMultiDust
 
      function massint(amin, amax, qdist) result(mass)
        real(double) :: amin, amax, qdist

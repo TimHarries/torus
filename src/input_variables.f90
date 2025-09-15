@@ -528,6 +528,7 @@
   !   n(a) =  const * a^-q * e^((-a/a0)^p)
   real :: aMin(maxDustTypes)    !  The maximun size in microns.
   real :: aMax(maxDustTypes)    !  The minimum size in microns.
+  real :: aMid(maxDustTypes)    !  The mid-bin size in microns.
   real :: qDist(maxDustTypes)   !  q exponet in the equation above.
   real :: a0(maxDustTypes)      !  scale length in the equation above.
   real :: pDist(maxDustTypes)   !  p exponent in the equation above.

@@ -3607,7 +3607,7 @@ CONTAINS
     ! decision is made by comparing 'amrLimitScalar' to some value
     !   derived from information in the current cell
 
-    use inputs_mod, only: height, betadisc, rheight, flaringpower, rinner, router, hydrodynamics
+    use inputs_mod, only: height, betadisc, alphadisc, rheight, flaringpower, rinner, router, hydrodynamics
     use inputs_mod, only: drInner, drOuter, cavangle, erInner, erOuter, rCore, &
          ttauriRouter, sphereRadius, spherePosition, amr2d
     use inputs_mod, only: warpFracHeight, warpRadius, warpSigma, warpAngle, hOverR
@@ -3623,7 +3623,7 @@ CONTAINS
     use inputs_mod, only : cavdens, limitscalar, addDisc, flatdisc, ttauristellarwind, SW_rMax, SW_rmin
     use inputs_mod, only : discWind, planetDisc, sourceMass, sourceRadius, sourceTeff, rGapInner1, accretionFeedback
     use inputs_mod, only : nDiscModule, rOuterMod, rInnerMod, betaMod, heightMod, tiltAngleMod, rSpiral
-    use inputs_mod, only : nBlobs, blobPos, aRadius, cRadius, blobZVec
+    use inputs_mod, only : nBlobs, blobPos, aRadius, cRadius, blobZVec, alphaViscosity
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use magnetic_mod, only : accretingAreaMahdavi
@@ -3636,8 +3636,9 @@ CONTAINS
     use magnetic_mod, only : safierfits
     use biophysics_mod, only : splitSkin
 ! Currently commented out. Reinstate if required.
-    use inputs_mod, only : smoothInnerEdge, variableDustSublimation, rCut, doDiscSplit, usemultidust,dustheight, ndusttype
-!    use inputs_mod, only: ttauriwind, smoothinneredge, amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
+    use inputs_mod, only : smoothInnerEdge, variableDustSublimation, rCut, doDiscSplit, usemultidust, ndusttype, rho0
+    !    use inputs_mod, only: ttauriwind, smoothinneredge, amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
+    use inputs_mod, only : amid
     use ramses_mod, only: splitRamses
 
 #ifdef USECFITSIO
@@ -3663,7 +3664,7 @@ CONTAINS
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
     !
     LOGICAL                    :: split
-    real(double) :: massratio, d1, d2, masstol
+    real(double) :: massratio, d1, d2, masstol, f
     real(oct)  :: cellSize
     TYPE(vector)     :: searchPoint, rVec
     TYPE(vector)     :: cellCentre
@@ -3713,9 +3714,10 @@ CONTAINS
     real(double) :: chi, zeta0dash, psi, eta, zeta, a, c
     type(VECTOR) :: zVec, xAxis, cVec, thisVec
     real(double) :: dx, cornerDist(8), d, muval(8), r1, r2, v, enhancedheight, cfac
-    real(double) :: thisCellSizeLinear, thisCellSizeArc, ang, s
+    real(double) :: thisCellSizeLinear, thisCellSizeArc, ang, s, sigma
+    
 
-    integer :: j
+    integer :: j, idust
     
     splitInAzimuth = .false.
     split = .false.
@@ -5434,17 +5436,27 @@ CONTAINS
           thisHeightSplitFac = heightSplitFac
           if (r < rSublimation) thisheightSplitFac = 1.
 
-
           if (usemultidust) then
-             do i = 1, nDusttype
-                hr = dustheight(i) * (r / (100.d0*autocm/1.d10))**betadisc
+             do idust = 1, ndusttype
+                hr = height * (r / (100.d0*autocm/1.d10))**betadisc
+                sigma = rho0 * (r/rinner)**(-alphaDisc) * (hr * 1.d10) * sqrt(2.d0*pi)
+                f = alphaViscosity * sigma / (sqrt(6.*pi) * (amid(idust)*microntocm) * 3.)
+                hr  = hr * sqrt(f/(f+1.d0))
+!                if (idust==10) write(*,*) "1/(1+f) ",sqrt(f/(f+1.d0))
                 if ((abs(cellcentre%z)/hr < 4.) .and. (cellsize/hr > 0.5)) split = .true.
                 if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
              enddo
           endif
 
-
-          hr = height * (r / (100.d0*autocm/1.d10))**betadisc
+          if (usemultidust) then
+             idust = 1
+             hr = height * (r / (100.d0*autocm/1.d10))**betadisc
+             sigma = rho0 * (r/rinner)**(-alphaDisc) * (hr * 1.d10) * sqrt(2.d0*pi)
+             f = alphaViscosity * sigma / (sqrt(6.*pi) * (amid(idust)*microntocm) * 3.)
+             hr  = hr * sqrt(f/(f+1.d0))
+          else
+             hr = height * (r / (100.d0*autocm/1.d10))**betadisc
+          endif
                 
           if (grid%geometry=="HD169142") then
              hr = (10.d0*autocm/1.d10) * (r/(100.d0*autocm/1.d10))**betaDisc
@@ -21404,5 +21416,52 @@ END SUBROUTINE assignDensitiesStellarWind
   !
   !
   !
+  subroutine getTemperatureDensityRun(grid, zAxis, subcellsize, rho, temperature, xPos, yPos, nz, direction, dusttype)
+    use parallel_mod, only: torus_abort
+    integer, optional :: dustType
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    integer, intent(out) :: nz
+    real(double) :: rho(:)
+    real :: temperature(:)
+    real(double) :: zAxis(:), subcellsize(:)
+    real :: xPos, yPos
+    integer :: subcell
+    real(double) :: rhotemp
+    real :: temptemp
+    real :: direction
+    type(VECTOR) :: currentPos, temp
+    real :: halfSmallestSubcell
+    integer :: nzMax
+
+    nzMax = SIZE(temperature)
+    nz = 0
+    halfSmallestSubcell = real(grid%halfSmallestSubcell)
+
+    currentPos = VECTOR(xPos, yPos, direction*halfSmallestSubcell)
+
+    do while(abs(currentPos%z) < grid%ocTreeRoot%subcellsize)
+       call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
+            foundSubcell=subcell, rho=rhotemp, temperature=temptemp)
+       thisOctal%chiLine(subcell) = 1.e-30
+!       if (thisOctal%inFlow(subcell)) then
+          nz = nz + 1
+          if (nz>nzmax) then
+             call torus_abort("nz>nzMax in getTemperatureDensityRun. Aborting ...")
+          endif
+          temperature(nz) = temptemp
+          rho(nz) = rhotemp
+          if (present(dustType)) rho(nz) = thisOctal%rho(subcell) * thisOctal%dustTypeFraction(subcell,dustType)
+          temp = subCellCentre(thisOctal, subcell)
+          zAxis(nz) = temp%z
+          subcellsize(nz) = thisOctal%subcellsize
+!       endif
+          currentPos = VECTOR(xPos, yPos, zAxis(nz)+0.5*direction*thisOctal%subcellsize+direction*halfSmallestSubcell)
+!       else
+!          currentPos = VECTOR(xPos, yPos, grid%octreeRoot%subcellsize+halfSmallestSubcell)
+!       endif
+    end do
+    zAxis(1:nz) = abs(zAxis(1:nz)) * 1.d10  ! convert to cm
+  end subroutine getTemperatureDensityRun
 
 END MODULE amr_mod
