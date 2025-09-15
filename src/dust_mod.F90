@@ -622,13 +622,13 @@ contains
     sigmaExt = 0.0
     sigmaAbs = 0.0
     sigmaSca = 0.0
+    if (ilam_beg >= 1) then
     !$OMP PARALLEL DEFAULT(NONE) &
     !$OMP SHARED(ilam_beg, ilam_end, nGrain, amin, amax, a0, qdist, pdist, grid) &
     !$OMP SHARED(mreal2d, mimg2d) &
     !$OMP SHARED(sigmaExt, sigmaAbs, sigmaSca, abundance, total_abundance) &
     !$OMP PRIVATE(i,j,sig_ext, sig_scat, sig_abs, gsca)
     !$OMP DO SCHEDULE(DYNAMIC)
-    if (ilam_beg >= 1) then
        do i = ilam_beg, ilam_end
           do j = 1, ngrain
              if (aMin /= aMax) then
@@ -647,12 +647,12 @@ contains
           sigmaAbs(i) =    sigmaAbs(i)/total_abundance 
           sigmaSca(i) =    sigmaSca(i)/total_abundance 
        end do
+    !$OMP END DO
+    !$OMP END PARALLEL
     else
        ilam_beg = 1
        ilam_end = 1
     endif
-    !$OMP END DO
-    !$OMP END PARALLEL
 #ifdef MPI
     allocate(tempArray(1:grid%nLambda))
     tempArray = 0.

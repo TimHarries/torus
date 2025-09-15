@@ -143,24 +143,24 @@ contains
     endif
 #endif
 
+    if (imumie_beg >= 1) then
     !$OMP PARALLEL DEFAULT(NONE) &
     !$OMP PRIVATE (k, cosTheta) &
     !$OMP SHARED (imumie_beg, imumie_end, nMuMie, beshTable, sphereTable, pnmllg, a, da, dist, afac) &
     !$OMP SHARED ( miePhase, j, i, max_nci, xArray, mreal, mimg) 
     !$OMP DO SCHEDULE(DYNAMIC)
-    if (imumie_beg >= 1) then
        do k = iMumie_beg, iMumie_end
           cosTheta = -1. + 2.*real(k-1)/real(nMumie-1)
           call mieDistPhaseMatrix(cosTheta, nDist, beshTable(j,1:nDist-1), sphereTable, &
                pnmllg(k,1:max_nci), a, da, dist, aFac, miePhase(i,j,k), mReal(i,j), mImg(i,j), &
                xArray(j))
        enddo
+    !$OMP END DO
+    !$OMP END PARALLEL
     else
        imumie_beg = 1
        imumie_end = 1
     endif
-    !$OMP END DO
-    !$OMP END PARALLEL
 
 
 #ifdef MPI                
