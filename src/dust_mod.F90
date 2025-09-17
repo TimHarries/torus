@@ -608,7 +608,7 @@ contains
           ilam_end = ilam_beg + m -1
        end if
     else
-       if (myrankWorldGlobal < (grid%nLambda-1)) then
+       if (myrankWorldGlobal <= (grid%nLambda-1)) then
           ilam_beg = myRankWorldGlobal+1
           ilam_end = myRankWorldGlobal+1
        else
