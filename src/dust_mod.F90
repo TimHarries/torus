@@ -959,7 +959,7 @@ contains
   recursive subroutine fillDustShakara(grid, thisOctal, dustmass)
 
     use inputs_mod, only : rSublimation, nDustType, curvedInnerEdge, grainFrac, usemultidust
-    use inputs_mod, only : betaDisc, height, alphaViscosity, grainDensity, amid, grainType
+    use inputs_mod, only : alphaDisc, betaDisc, height, alphaViscosity, grainDensity, amid, grainType, rho0, rinner
     use octal_mod, only : cellVolume
     use density_mod
 
@@ -968,7 +968,7 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     type(VECTOR) :: rVec
-    real(double) :: r, z, sigma
+    real(double) :: r, z, sigma, hr
     real(double) :: dustMass, cellMass, thisHeight
     real(double) :: fac, rhoFid, rho, thisRsub, gasheight
     real(double) :: subcellsize(10000), zAxis(10000), rhoArray(10000), f
@@ -1010,11 +1010,8 @@ contains
 
           if (usemultidust) then
 
-             call getTemperatureDensityRun(grid, zAxis, subcellsize, rhoArray, tArray, real(r), 0., nz, +1.)
-             sigma = 0.d0
-             do i = 1, nz
-                sigma = sigma + rhoArray(i) * subcellsize(i) * 1.d10
-             enddo
+             hr =  height*(r/(100.d0*autocm/1.d10))**betaDisc
+             sigma = rho0 * (r/rinner)**(-alphaDisc) * (hr * 1.d10) * sqrt(2.d0*pi)
              do iDust = 1, nDustType
                 grainDensity(idust) = getCompositeGrainDensity(graintype(idust))
                 gasHeight =  height*(r/(100.d0*autocm/1.d10))**betaDisc

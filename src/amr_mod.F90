@@ -5443,7 +5443,7 @@ CONTAINS
                 f = alphaViscosity * sigma / (sqrt(6.*pi) * (amid(idust)*microntocm) * 3.)
                 hr  = hr * sqrt(f/(f+1.d0))
 !                if (idust==10) write(*,*) "1/(1+f) ",sqrt(f/(f+1.d0))
-                if ((abs(cellcentre%z)/hr < 4.) .and. (cellsize/hr > 0.5)) split = .true.
+                if ((abs(cellcentre%z)/hr < 2.) .and. (cellsize/hr > 1.)) split = .true.
                 if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
              enddo
           endif
