@@ -133,7 +133,7 @@ contains
           imumie_end = imumie_beg + m -1
        end if
     else
-       if (myrankWorldGlobal < (nMuMie-1)) then
+       if (myrankWorldGlobal <= (nMuMie-1)) then
           imumie_beg = myRankWorldGlobal+1
           imumie_end = myRankWorldGlobal+1
        else
