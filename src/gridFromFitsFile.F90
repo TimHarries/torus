@@ -1136,7 +1136,10 @@ npd_loop:            do n=1,npd
                if (thisoctal%temperature(subcell) < 0.d0) ok = .false.
 
               ! hardcoded to dust-to-gas ratio of 0.01, (WIND tracer ==1 in wind, ==0 in ISM)
-               thisOctal%dustTypeFraction(subcell,1) =   MAX(DBLE(0.0), 0.01 * (1.0 - (                           &
+              ! For hot stars, the ISM is dusty and wind is dust-free
+              ! For RSGs the wind is dusty, and we assume embedded in hot dust-free medium (cormac's paroject2025)
+              ! thisOctal%dustTypeFraction(subcell,1) =   MAX(DBLE(0.0), 0.01 * ((             &
+               thisOctal%dustTypeFraction(subcell,1) =   MAX(DBLE(0.0), 0.01 * (1.0 - (       &
                        tr0_double_A(thisI  ,  thisJ  ,thisK,i  ) * (1.d0-u)*(1.d0-v)*(1.d0-w) &
                     +  tr0_double_A(thisI+1,  thisJ  ,thisK,i  ) * (     u)*(1.d0-v)*(1.d0-w) &
                     +  tr0_double_A(thisI  ,  thisJ+1,thisK,i  ) * (1.d0-u)*(     v)*(1.d0-w) &
