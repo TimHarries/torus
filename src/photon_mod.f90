@@ -401,7 +401,6 @@ contains
              j = nMumie-1
              fac =1.
           endif
-          
           allocate(allsca(1:nDustType))
           call returnKappa(grid, currentOctal, currentSubcell, ilambda=i, allSca=allSca,&
                dir=thisPhoton%direction)

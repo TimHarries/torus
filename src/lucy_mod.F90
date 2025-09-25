@@ -27,9 +27,10 @@ contains
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, iHydro, finalPass)
+    use inputs_mod, only : usemultidust, grainfrac, mdisc
     use inputs_mod, only : variableDustSublimation, iterlucy, rCore, solveVerticalHydro, dustSettling, restartLucy
     use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau
-    use inputs_mod, only : object, convergeOnUndersampled, storeScattered, scatteredLightWavelength, grainfrac, mdisc
+    use inputs_mod, only : object, convergeOnUndersampled, storeScattered, scatteredLightWavelength
     use inputs_mod, only : writelucyTmpfile, discWind, mincrossings, maxiterLucy, solveDiffusionZone, quickSublimate, usePAH
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
@@ -127,7 +128,7 @@ contains
     integer :: nCellsInDiffusion
     real(double) :: fac1(nLambda), fac1dnu(nlambda)
     integer :: nVoxels, nOctals, nInFlow
-
+    real(double), allocatable :: dustMassArray(:)
     integer :: icritupper, icritlower
     real(double) :: logt, weight
     real(double) :: logNu1, logNuN, dlogNu, scaleNu
@@ -137,10 +138,10 @@ contains
     real(double) :: packetWeight, wavelengthWeight
     real(double) :: subRadius, dustMass, PAHprob
     real :: lamSmoothArray(5)
-    real(double), allocatable :: dustMassArray(:)
     logical :: thisIsFinalPass
+    real(double) :: farray(10)
     integer(bigInt) :: totMem
-    character(len=10) :: stringArray(10)
+    character(len=10) :: stringArray(20)
 #ifdef USEMKL
     integer :: oldmode
     real(oct) :: hrecip_ktarray(nlambda)
@@ -255,10 +256,14 @@ contains
           dustMass = 0.d0
           call fillDustShakara(grid, grid%octreeRoot, dustMass)
           if (dustSettling) call fillDustSettled(grid)
-          allocate(dustMassArray(1:nDustType))
-          dustMassArray = 0.d0 
-          call getDustMasses(grid, dustMassArray)
-          if (nDustType > 1) call normalizeDustFractions(grid, grid%octreeRoot, dustMassArray, dble(grainFrac(1:nDusttype)*mDisc))
+          if (usemultidust) then
+             allocate(dustMassArray(1:nDustType))
+             dustMassArray = 0.d0 
+             call getDustMasses(grid, dustMassArray)
+             farray = dble(grainFrac(1:10)*mDisc)
+             if (nDustType > 1) call normalizeDustFractions(grid, grid%octreeRoot, dustMassArray(1:10), &
+                  farray, 10)
+          endif
           call reportMasses(grid)
        endif
 

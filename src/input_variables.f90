@@ -485,7 +485,7 @@
 ! Dust parameters
 !-----------------
 
-  integer, parameter :: maxDustTypes = 10
+  integer, parameter :: maxDustTypes = 11
   logical :: useMultiDust
   character(len=80) :: grainType(maxDustTypes) ! sil_ow, sil_oc, sil_dl, amc_hn, sic_pg, gr1_dl, gr2_dl
   real :: grainFrac(maxDustTypes)
@@ -505,12 +505,12 @@
   character(len=80) :: polarFilename
   real :: polarWavelength
   real :: dusttogas
-  logical :: dustfile(10)
-  character(len=80) :: dustfilename(10)
-  character(len=80) :: kappafilename(10)
+  logical :: dustfile(maxdusttypes)
+  character(len=80) :: dustfilename(maxdusttypes)
+  character(len=80) :: kappafilename(maxdusttypes)
   logical :: variableDustSublimation
-  real(double) :: tSub(10) ! variable dust sublimation temperature factor
-  real(double) :: tSubPower(10) ! variable dust sublimation density factor
+  real(double) :: tSub(maxdusttypes) ! variable dust sublimation temperature factor
+  real(double) :: tSubPower(maxdusttypes) ! variable dust sublimation density factor
   real :: subrange
   logical :: dustSettling
   integer :: nDustType
@@ -520,7 +520,7 @@
   ! the graintype assigned is "mixed."
   integer :: ngrain
   real :: X_grain(10)    ! abundaunce
-  character(LEN=30) :: grainname(10)
+  character(LEN=30) :: grainname(20)
   !
   ! size distribution of dust grain is now assumed to have
   ! the following form:

@@ -3636,7 +3636,7 @@ CONTAINS
     use magnetic_mod, only : safierfits
     use biophysics_mod, only : splitSkin
 ! Currently commented out. Reinstate if required.
-    use inputs_mod, only : smoothInnerEdge, variableDustSublimation, rCut, doDiscSplit, usemultidust, ndusttype, rho0
+    use inputs_mod, only : smoothInnerEdge, variableDustSublimation, rCut, doDiscSplit, usemultidust,  rho0
     !    use inputs_mod, only: ttauriwind, smoothinneredge, amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
     use inputs_mod, only : amid
     use ramses_mod, only: splitRamses
@@ -5437,7 +5437,7 @@ CONTAINS
           if (r < rSublimation) thisheightSplitFac = 1.
 
           if (usemultidust) then
-             do idust = 1, ndusttype
+             do idust = 1, 10
                 hr = height * (r / (100.d0*autocm/1.d10))**betadisc
                 sigma = rho0 * (r/rinner)**(-alphaDisc) * (hr * 1.d10) * sqrt(2.d0*pi)
                 f = alphaViscosity * sigma / (sqrt(6.*pi) * (amid(idust)*microntocm) * 3.)

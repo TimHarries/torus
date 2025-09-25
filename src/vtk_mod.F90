@@ -1561,6 +1561,7 @@ contains
     use inputs_mod, only : iModel
     use utils_mod, only : findMultiFilename
 
+
 #ifdef MPI
     use mpi
 #endif
@@ -3195,6 +3196,9 @@ end subroutine writeXMLVtkFileAMR
 
                case("dust10")
                   rArray(1, n) = max(1.e-30,real(real(thisOctal%dustTypeFraction(subcell,10)*thisOctal%rho(subcell))))
+
+               case("dust11")
+                  rArray(1, n) = max(1.e-30,real(real(thisOctal%dustTypeFraction(subcell,11)*thisOctal%rho(subcell))))
 
 
                case("q11")

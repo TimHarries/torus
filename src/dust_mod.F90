@@ -958,7 +958,7 @@ contains
 
   recursive subroutine fillDustShakara(grid, thisOctal, dustmass)
 
-    use inputs_mod, only : rSublimation, nDustType, curvedInnerEdge, grainFrac, usemultidust
+    use inputs_mod, only : rSublimation, nDustType, curvedInnerEdge, grainFrac, usemultidust, router
     use inputs_mod, only : alphaDisc, betaDisc, height, alphaViscosity, grainDensity, amid, grainType, rho0, rinner
     use octal_mod, only : cellVolume
     use density_mod
@@ -971,9 +971,8 @@ contains
     real(double) :: r, z, sigma, hr
     real(double) :: dustMass, cellMass, thisHeight
     real(double) :: fac, rhoFid, rho, thisRsub, gasheight
-    real(double) :: subcellsize(10000), zAxis(10000), rhoArray(10000), f
-    real :: tArray(10000)
-    integer :: subcell, i, idust, nz
+    real(double) ::  f
+    integer :: subcell, i, idust
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -1010,20 +1009,28 @@ contains
 
           if (usemultidust) then
 
-             hr =  height*(r/(100.d0*autocm/1.d10))**betaDisc
-             sigma = rho0 * (r/rinner)**(-alphaDisc) * (hr * 1.d10) * sqrt(2.d0*pi)
-             do iDust = 1, nDustType
-                grainDensity(idust) = getCompositeGrainDensity(graintype(idust))
-                gasHeight =  height*(r/(100.d0*autocm/1.d10))**betaDisc
-                f = alphaViscosity * sigma / (sqrt(6.*pi) * (amid(idust)*microntocm) * grainDensity(idust))
-!                write(*,*) "f ",f, sqrt(f/(f+1.d0))
-                thisHeight = gasHeight * sqrt(f/(f+1.d0))
-                fac = exp(-0.5d0*(z/thisHeight)**2 + 0.5d0*(z/gasHeight)**2)
-                thisOctal%dustTypeFraction(subcell,idust) = max(fac,1.d-30)
-             enddo
-             thisOctal%dustTypeFraction(subcell,1:nDustType) = max(1.d-30,thisOctal%dustTypeFraction(subcell,1:nDustType) * &
-                  grainFrac(1:nDustType))
-
+             thisOctal%dustTypeFraction(subcell,:) = 1.e-30
+             thisOctal%dustTypeFraction(subcell,nDustType) = 1.e-2
+             
+             if ((r > rinner).and.(r < router)) then
+             
+                hr =  height*(r/(100.d0*autocm/1.d10))**betaDisc
+                if (abs(z/hr) < 7.0) then
+                   thisOctal%dustTypeFraction(subcell,nDustType) = 1.e-30
+                   sigma = rho0 * (r/rinner)**(-alphaDisc) * (hr * 1.d10) * sqrt(2.d0*pi)
+                   do iDust = 1, 10
+                      grainDensity(idust) = getCompositeGrainDensity(graintype(idust))
+                      gasHeight =  height*(r/(100.d0*autocm/1.d10))**betaDisc
+                      f = alphaViscosity * sigma / (sqrt(6.*pi) * (amid(idust)*microntocm) * grainDensity(idust))
+                      !                write(*,*) "f ",f, sqrt(f/(f+1.d0))
+                      thisHeight = gasHeight * sqrt(f/(f+1.d0))
+                      fac = exp(-0.5d0*(z/thisHeight)**2 + 0.5d0*(z/gasHeight)**2)
+                      thisOctal%dustTypeFraction(subcell,idust) = max(fac,1.d-30)
+                   enddo
+                endif
+                thisOctal%dustTypeFraction(subcell,1:10) = max(1.d-30,thisOctal%dustTypeFraction(subcell,1:10) * &
+                  grainFrac(1:10))
+             endif
           endif
              
           cellMass = cellVolume(thisOctal, subcell) * 1.d30 * thisOctal%rho(subcell)
@@ -1163,10 +1170,10 @@ contains
 
   end subroutine findDustMass
 
-  recursive subroutine normalizeDustFractions(grid, thisOctal, thisDustMass, requiredDustMass)
+  recursive subroutine normalizeDustFractions(grid, thisOctal, thisDustMass, requiredDustMass, nDust)
 
-    use inputs_mod, only : nDustType
     type(gridtype) :: grid
+    integer :: ndust
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     real(double) :: thisDustMass(:), requiredDustMass(:)
@@ -1178,13 +1185,13 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call normalizeDustFractions(grid, child, thisDustMass, requiredDustMass)
+                call normalizeDustFractions(grid, child, thisDustMass, requiredDustMass, ndust)
                 exit
              end if
           end do
        else
-          thisOctal%dustTypeFraction(subcell,1:nDustType) = thisOctal%dustTypeFraction(subcell,1:nDustType) * &
-               requiredDustMass(1:nDusttype) / thisDustMass(1:nDustType)
+          thisOctal%dustTypeFraction(subcell,1:nDust) = thisOctal%dustTypeFraction(subcell,1:nDust) * &
+               requiredDustMass(1:nDust) / thisDustMass(1:nDust)
        end if
     end do
 

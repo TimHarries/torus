@@ -189,7 +189,7 @@ contains
 #endif
     call getLogical("parallelvtu", parallelVTUfiles, cLine, fLine, nLines, &
          "Use parallel VTU files: ","(a,1l,1x,a)", .false., ok, .false.)
-
+    write(*,*) "parallelvtufiles on input ",parallelvtufiles
 ! the grid setup. Either we read the grid in or set it up from scratch
 
     call writeBanner("Grid setup parameters","*",TRIVIAL)
@@ -3330,7 +3330,7 @@ contains
           call getString("graintype", grainType(1), cLine, fLine, nLines, &
                "Grain type: ","(a,a,1x,a)","sil_dl", ok, .true.)
 
-          
+          nDustType = 11
           call setupMultiDust(amin_multi, amax_multi, 3.5, 10)
 
           goto 555
@@ -6620,9 +6620,7 @@ end subroutine getIntegerArray
     integer :: i
     real(double) :: md(100)
 
-    nDustType = nBins
     grainfrac = 0.01/dble(nBins)
-
     do i = 1, nBins
        amin(i) = log10(amin_multi) + dble(i-1) * (log10(amax_multi) - log10(amin_multi))/dble(nbins)
        amax(i) = log10(amin_multi) + dble(i) * (log10(amax_multi) - log10(amin_multi))/dble(nbins)
@@ -6637,17 +6635,26 @@ end subroutine getIntegerArray
        pdist(i) = 1.
     enddo
 
+    nDustType = 11
+    amin(nDusttype) = 0.001
+    amax(nDusttype) = 0.1
+    qdist(nDusttype) = 3.5
+    a0(ndusttype) = 1.e20
+    pdist(ndusttype) = 1.
+    grainfrac(nDusttype) = 0.01
+    graintype(ndusttype) = graintype(1)
+
     do i = 1, nBins
        if (writeoutput) write(*,*) i,amin(i),amax(i)
     enddo
 
 
     if (usemultidust) then
-       do i = 1, nDustType
+       do i = 1, nBins
           md(i) = massint(dble(amin(i)),dble(amax(i)),dble(qdist(i)))
        enddo
-       grainfrac(1:nDusttype) = 0.01 * (md(1:nDustType)/sum(md(1:nDusttype)))
-       if (writeoutput) write(*,*) "grainfac ",grainfrac(1:nDusttype)
+       grainfrac(1:nBins) = 0.01 * (md(1:nBins)/sum(md(1:nBins)))
+       if (writeoutput) write(*,*) "grainfac ",grainfrac(1:nBins)
     endif
 
 

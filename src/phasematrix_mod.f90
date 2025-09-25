@@ -338,7 +338,7 @@ contains
     real(double) :: theta, phi
     real(double) :: r
     real, intent(in) :: lamArray(:)
-    real(double) :: allSca(10)
+    real(double) :: allSca(20)
     type(VECTOR) :: tVec, perpVec, newVec
     type(PHASEMATRIX) :: miePhase(:,:,:)
     real(double), allocatable :: prob(:)
