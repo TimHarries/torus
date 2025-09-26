@@ -490,6 +490,7 @@
   character(len=80) :: grainType(maxDustTypes) ! sil_ow, sil_oc, sil_dl, amc_hn, sic_pg, gr1_dl, gr2_dl
   real :: grainFrac(maxDustTypes)
   real :: grainDensity(maxDustTypes)
+  real(double) :: xidust
   logical :: mie
   logical :: storescattered
   real :: scatteredLightWavelength

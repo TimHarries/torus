@@ -958,8 +958,8 @@ contains
 
   recursive subroutine fillDustShakara(grid, thisOctal, dustmass)
 
-    use inputs_mod, only : rSublimation, nDustType, curvedInnerEdge, grainFrac, usemultidust, router
-    use inputs_mod, only : alphaDisc, betaDisc, height, alphaViscosity, grainDensity, amid, grainType, rho0, rinner
+    use inputs_mod, only : rSublimation, nDustType, curvedInnerEdge, grainFrac, usemultidust, router, xidust, amin
+    use inputs_mod, only : betaDisc, height, rinner
     use octal_mod, only : cellVolume
     use density_mod
 
@@ -968,10 +968,9 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     type(VECTOR) :: rVec
-    real(double) :: r, z, sigma, hr
+    real(double) :: r, z, hr
     real(double) :: dustMass, cellMass, thisHeight
     real(double) :: fac, rhoFid, rho, thisRsub, gasheight
-    real(double) ::  f
     integer :: subcell, i, idust
 
     do subcell = 1, thisOctal%maxChildren
@@ -1017,13 +1016,13 @@ contains
                 hr =  height*(r/(100.d0*autocm/1.d10))**betaDisc
                 if (abs(z/hr) < 7.0) then
                    thisOctal%dustTypeFraction(subcell,nDustType) = 1.e-30
-                   sigma = rho0 * (r/rinner)**(-alphaDisc) * (hr * 1.d10) * sqrt(2.d0*pi)
+!                   sigma = rho0 * (r/rinner)**(-alphaDisc) * (hr * 1.d10) * sqrt(2.d0*pi)
                    do iDust = 1, 10
-                      grainDensity(idust) = getCompositeGrainDensity(graintype(idust))
+!                      grainDensity(idust) = getCompositeGrainDensity(graintype(idust))
                       gasHeight =  height*(r/(100.d0*autocm/1.d10))**betaDisc
-                      f = alphaViscosity * sigma / (sqrt(6.*pi) * (amid(idust)*microntocm) * grainDensity(idust))
-                      !                write(*,*) "f ",f, sqrt(f/(f+1.d0))
-                      thisHeight = gasHeight * sqrt(f/(f+1.d0))
+!                      f = alphaViscosity * sigma / (sqrt(6.*pi) * (amid(idust)*microntocm) * grainDensity(idust))
+!                      !                write(*,*) "f ",f, sqrt(f/(f+1.d0))
+                      thisHeight = gasHeight * (amin(idust)/amin(1))**(-xidust)
                       fac = exp(-0.5d0*(z/thisHeight)**2 + 0.5d0*(z/gasHeight)**2)
                       thisOctal%dustTypeFraction(subcell,idust) = max(fac,1.d-30)
                    enddo

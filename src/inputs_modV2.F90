@@ -3324,8 +3324,8 @@ contains
           call getRealwithUnits("amax", aMax_multi, "micron", "micron", cLine, fLine, nLines, &
                   "Max grain size: ", 1000.0, ok, .true.)
 
-          call getDouble("alpha", alphaViscosity, 1.d0, cLine, fLine, nLines, &
-               "Alpha Viscosity: ","(a,f7.2,1x,a)", 0.3d0, ok, .false.)
+          call getDouble("xidust", xidust, 1.d0, cLine, fLine, nLines, &
+               "xidust: ","(a,f7.2,1x,a)", 0.d0, ok, .true.)
 
           call getString("graintype", grainType(1), cLine, fLine, nLines, &
                "Grain type: ","(a,a,1x,a)","sil_dl", ok, .true.)

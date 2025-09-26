@@ -3607,7 +3607,7 @@ CONTAINS
     ! decision is made by comparing 'amrLimitScalar' to some value
     !   derived from information in the current cell
 
-    use inputs_mod, only: height, betadisc, alphadisc, rheight, flaringpower, rinner, router, hydrodynamics
+    use inputs_mod, only: height, betadisc, rheight, flaringpower, rinner, router, hydrodynamics
     use inputs_mod, only: drInner, drOuter, cavangle, erInner, erOuter, rCore, &
          ttauriRouter, sphereRadius, spherePosition, amr2d
     use inputs_mod, only: warpFracHeight, warpRadius, warpSigma, warpAngle, hOverR
@@ -3623,7 +3623,7 @@ CONTAINS
     use inputs_mod, only : cavdens, limitscalar, addDisc, flatdisc, ttauristellarwind, SW_rMax, SW_rmin
     use inputs_mod, only : discWind, planetDisc, sourceMass, sourceRadius, sourceTeff, rGapInner1, accretionFeedback
     use inputs_mod, only : nDiscModule, rOuterMod, rInnerMod, betaMod, heightMod, tiltAngleMod, rSpiral
-    use inputs_mod, only : nBlobs, blobPos, aRadius, cRadius, blobZVec, alphaViscosity
+    use inputs_mod, only : nBlobs, blobPos, aRadius, cRadius, blobZVec
     use luc_cir3d_class, only: get_dble_param, cir3d_data
     use cmfgen_class,    only: get_cmfgen_data_array, get_cmfgen_nd, get_cmfgen_Rmin
     use magnetic_mod, only : accretingAreaMahdavi
@@ -3636,9 +3636,8 @@ CONTAINS
     use magnetic_mod, only : safierfits
     use biophysics_mod, only : splitSkin
 ! Currently commented out. Reinstate if required.
-    use inputs_mod, only : smoothInnerEdge, variableDustSublimation, rCut, doDiscSplit, usemultidust,  rho0
+    use inputs_mod, only : smoothInnerEdge, variableDustSublimation, rCut, doDiscSplit, usemultidust,  xidust, amin
     !    use inputs_mod, only: ttauriwind, smoothinneredge, amrgridsize, amrgridcentrex, amrgridcentrey, amrgridcentrez
-    use inputs_mod, only : amid
     use ramses_mod, only: splitRamses
 
 #ifdef USECFITSIO
@@ -3664,7 +3663,7 @@ CONTAINS
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
     !
     LOGICAL                    :: split
-    real(double) :: massratio, d1, d2, masstol, f
+    real(double) :: massratio, d1, d2, masstol
     real(oct)  :: cellSize
     TYPE(vector)     :: searchPoint, rVec
     TYPE(vector)     :: cellCentre
@@ -3714,7 +3713,7 @@ CONTAINS
     real(double) :: chi, zeta0dash, psi, eta, zeta, a, c
     type(VECTOR) :: zVec, xAxis, cVec, thisVec
     real(double) :: dx, cornerDist(8), d, muval(8), r1, r2, v, enhancedheight, cfac
-    real(double) :: thisCellSizeLinear, thisCellSizeArc, ang, s, sigma
+    real(double) :: thisCellSizeLinear, thisCellSizeArc, ang, s
     
 
     integer :: j, idust
@@ -5439,24 +5438,19 @@ CONTAINS
           if (usemultidust) then
              do idust = 1, 10
                 hr = height * (r / (100.d0*autocm/1.d10))**betadisc
-                sigma = rho0 * (r/rinner)**(-alphaDisc) * (hr * 1.d10) * sqrt(2.d0*pi)
-                f = alphaViscosity * sigma / (sqrt(6.*pi) * (amid(idust)*microntocm) * 3.)
-                hr  = hr * sqrt(f/(f+1.d0))
-!                if (idust==10) write(*,*) "1/(1+f) ",sqrt(f/(f+1.d0))
+                hr = hr * (amin(idust)/amin(1))**(-xidust)
+
+!                sigma = rho0 * (r/rinner)**(-alphaDisc) * (hr * 1.d10) * sqrt(2.d0*pi)
+!                f = alphaViscosity * sigma / (sqrt(6.*pi) * (amid(idust)*microntocm) * 3.)
+!                hr  = hr * sqrt(f/(f+1.d0))
+                !                if (idust==10) write(*,*) "1/(1+f) ",sqrt(f/(f+1.d0))
+                
                 if ((abs(cellcentre%z)/hr < 2.) .and. (cellsize/hr > 1.)) split = .true.
                 if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
              enddo
           endif
 
-          if (usemultidust) then
-             idust = 1
-             hr = height * (r / (100.d0*autocm/1.d10))**betadisc
-             sigma = rho0 * (r/rinner)**(-alphaDisc) * (hr * 1.d10) * sqrt(2.d0*pi)
-             f = alphaViscosity * sigma / (sqrt(6.*pi) * (amid(idust)*microntocm) * 3.)
-             hr  = hr * sqrt(f/(f+1.d0))
-          else
-             hr = height * (r / (100.d0*autocm/1.d10))**betadisc
-          endif
+          hr = height * (r / (100.d0*autocm/1.d10))**betadisc
                 
           if (grid%geometry=="HD169142") then
              hr = (10.d0*autocm/1.d10) * (r/(100.d0*autocm/1.d10))**betaDisc
