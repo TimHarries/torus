@@ -4854,7 +4854,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
           out = oldout
           return
        endif
-
+       
        if(molebench) then
           Out = Molebenchvelocity(Position) 
        elseif(molcluster) then
@@ -5945,8 +5945,8 @@ endif
         nPoints = nPoints + 1
         distArray(nPoints) = distArray(nPoints-1) + tVal / 2.
         rhoArray(nPoints) = thisOctal%rho(subcell)
-        velArray(nPoints) = thisOctal%velocity(subcell).dot.direction
-
+!        velArray(nPoints) = thisOctal%velocity(subcell).dot.direction
+       velArray(nPoints) = Velocity(position, grid, startoctal = thisoctal, subcell = subcell).dot.direction
 
         dv = velArray(nPoints) - deltaV
          

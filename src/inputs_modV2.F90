@@ -3330,7 +3330,7 @@ contains
           call getString("graintype", grainType(1), cLine, fLine, nLines, &
                "Grain type: ","(a,a,1x,a)","sil_dl", ok, .true.)
 
-          nDustType = 11
+          nDustType = 10
           call setupMultiDust(amin_multi, amax_multi, 3.5, 10)
 
           goto 555
@@ -6635,14 +6635,6 @@ end subroutine getIntegerArray
        pdist(i) = 1.
     enddo
 
-    nDustType = 11
-    amin(nDusttype) = 0.005
-    amax(nDusttype) = 0.1
-    qdist(nDusttype) = 3.5
-    a0(ndusttype) = 1.e20
-    pdist(ndusttype) = 1.
-    grainfrac(nDusttype) = 0.01
-    graintype(ndusttype) = graintype(1)
 
     do i = 1, nBins
        if (writeoutput) write(*,*) i,amin(i),amax(i)

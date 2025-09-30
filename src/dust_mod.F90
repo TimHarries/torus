@@ -1009,7 +1009,6 @@ contains
           if (usemultidust) then
 
              thisOctal%dustTypeFraction(subcell,:) = 1.e-30
-             thisOctal%dustTypeFraction(subcell,nDustType) = 1.e-2
              
              if ((r > rinner).and.(r < router)) then
              

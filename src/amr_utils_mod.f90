@@ -106,6 +106,7 @@ module amr_utils_mod
     logical :: linear
     logical, save :: firstTime = .true.
 
+
     writedebug = .false.
     hydrovelocities = .false.
     if (present(debug)) writedebug = debug
@@ -152,6 +153,7 @@ module amr_utils_mod
 
    END IF
 
+   
    if (Hydrovelocities) then
       if (cylindrical) then
          centre = subcellCentre(resultOctal,subcell)

@@ -12966,7 +12966,7 @@ end function readparameterfrom2dmap
     TYPE(gridtype), INTENT(IN) :: grid
     real(double) :: r, h, rd, ethermal, rhoFid, thisRSub,fac, rho, sinTheta,v, rhoEnv, mu, mu_0, z, dr
     TYPE(vector) :: rVec
-    real(double) :: cfac, discDens
+    real(double) :: cfac, discDens, xi
     type(VECTOR),save :: velocitysum
     logical,save :: firsttime = .true.
 
@@ -12984,7 +12984,7 @@ end function readparameterfrom2dmap
     thisOctal%temperature(subcell) = 100.
     rd = rOuter / 2.
 
-    if (associated(thisOctal%dustTypeFraction)) thisOctal%dustTypeFraction(subcell,:) = 1.d-20
+    if (associated(thisOctal%dustTypeFraction)) thisOctal%dustTypeFraction(subcell,:) = 1.d-30
 
     thisOctal%rho(subcell) = 1.d-30
     if (associated(thisOctal%nh)) &
@@ -13075,7 +13075,7 @@ end function readparameterfrom2dmap
        rVec = VECTOR(rSublimation*1.001d0, 0.d0, 0.d0)
        rhoFid = shakaraSunyaevDisc(rVec, grid)
 
-       thisOctal%DustTypeFraction(subcell,:) = 1.d-10
+       thisOctal%DustTypeFraction(subcell,:) = 1.d-20
        rVec = subcellCentre(thisOctal, subcell)
        rho = shakaraSunyaevDisc(rVec, grid)
        thisRsub = 1.01d0 * rSublimation * max(1.d0,(1.d0/(rho/rhoFid)**0.0195)**2)
@@ -13098,11 +13098,12 @@ end function readparameterfrom2dmap
     if ((r > erInner).and.(r < erOuter)) then
        mu = (rvec%z*1.e10) /r
 
-       a(1) = cmplx(-mu * (r/erinner),0.d0, kind=double)
-       a(2) = cmplx((r/erinner-1.d0), 0.d0, kind=double)
-       a(3) = 0.d0
-       call ccubsolv(a,za)
-       mu_0 = real(za(1))
+       xi = erinner/r
+       a(1) = CMPLX(-mu/xi,0.d0,kind=DOUBLE)
+       a(2) = CMPLX((1.d0-xi)/xi, 0.d0,kind=DOUBLE)
+       a(3) = CMPLX(0.d0, 0.d0,kind=DOUBLE)
+       CALL ccubsolv(a,za)
+       mu_0 = REAL(za(1))
 
  ! equation 1 for Whitney 2003 ApJ 591 1049 has a mistake in it
 ! this is from Momose et al. 1998 ApJ 504 314

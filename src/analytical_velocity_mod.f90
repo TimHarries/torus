@@ -22,7 +22,7 @@ CONTAINS
     CASE(1) ! disc wind
        analyticalVelocity =  discwind_velocity(globalDiscWind, point)
     CASE(2) ! ttauri keplerian
-       analyticalVelocity =   TTauriKeplerianVelocity(point)
+       analyticalVelocity =   TTauriKeplerianVelocity(point)       
     CASE(3) ! ttauri stellar wind
        analyticalVelocity = TTauriStellarWindVelocity(point)
     CASE(4) ! whitney
@@ -35,6 +35,7 @@ CONTAINS
     CASE DEFAULT
        CALL writeFatal("Error in logic in amrGridVelocity")
     END SELECT
+
   END FUNCTION analyticalVelocity
 
   TYPE(VECTOR) FUNCTION ulrichVelocity(point)
@@ -44,7 +45,7 @@ CONTAINS
     TYPE(VECTOR) :: point
     REAL(DOUBLE) :: vr, vt, vp, mu, r, mu_0
     REAL(DOUBLE) :: costheta, sintheta, sinphi, cosphi, sintheta0
-    REAL(DOUBLE) :: vx, vy, vz, v
+    REAL(DOUBLE) :: vx, vy, vz, v, xi
     COMPLEX(DOUBLE) :: a(3),z(3)
     r = modulus(point)*1.d10
 
@@ -52,9 +53,16 @@ CONTAINS
     mu = (point%z*1.e10) /r
     IF ((r > erInner).AND.(r < erOuter)) THEN
 
-       a(1) = CMPLX(-mu * (r/erinner),0.d0,kind=DOUBLE)
-       a(2) = CMPLX((r/erinner-1.d0), 0.d0,kind=DOUBLE)
-       a(3) = 0.d0
+!     Description: The CCUBSOLV(A,Z) routine solves the cubic polynomial
+!
+!                        z^3+c[2]*z^2+c[1]*z+c[0]=0
+
+! Mori et al. 2024
+!The Astrophysical Journal, 961:31 (17pp), 2024 January 20 
+       xi = erinner/r
+       a(1) = CMPLX(-mu/xi,0.d0,kind=DOUBLE)
+       a(2) = CMPLX((1.d0-xi)/xi, 0.d0,kind=DOUBLE)
+       a(3) = CMPLX(0.d0, 0.d0,kind=DOUBLE)
        CALL ccubsolv(a,z)
        mu_0 = REAL(z(1))
        IF ((imag(z(1)) /= 0.d0).OR.(imag(z(2))==0.d0).OR.(imag(z(3))==0.d0)) THEN
@@ -70,7 +78,7 @@ CONTAINS
        v = SQRT(bigG * mcore/r)/cSpeed
 
        vr = -v * SQRT(1.d0 + costheta/mu_0)
-       vt = v * (mu_0 - costheta) * SQRT(ABS((mu_0+costheta)/(mu_0*costheta)))
+       vt = v * ((mu_0 - costheta)/sintheta) * SQRT(ABS(1.d0+(costheta/mu_0)))
        vp = v * (sintheta0/sintheta) * SQRT(MAX(0.d0,1.d0-costheta/mu_0))
 
        vx = vr * cosphi * sintheta + vt * cosphi * costheta - vp * sinphi
