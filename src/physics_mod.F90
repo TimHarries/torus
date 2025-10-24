@@ -567,6 +567,7 @@ contains
            call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, xArray, &
                 globalsourcearray, globalnSource, nLucy, massEnvelope, lucy_undersampled, iHydro, finalPass=.true.)
         endif
+        call reportDustMassWeightedTemperature(grid)
      endif
 
 #ifdef CHEMISTRY
