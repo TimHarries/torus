@@ -856,15 +856,12 @@ module image_mod
           endif
        endif
 
-       write(*,*) "type ",type, array(75,75)
 
        ! Add keywords for bitpix=16 and bitpix=8 
        call addScalingKeywords(maxval(array), minval(array), unit, bitpix)
        write(*,*) "Scaling keywords added"
 
-       write(*,*) "calling ftppre ",nelements
        call ftppre(unit,group,fpixel,nelements,array,status)
-       write(*,*) "ftppre complete"
        !
        !  Write another optional keyword to the header.
        !

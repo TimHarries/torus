@@ -1737,10 +1737,10 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
                       getFluxUnits(imNum), getAxisUnits(imNum))
                  write(specFile,'(a,a)') trim(header)//"_q.fits"
                  call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "stokesq", &
-                      getFluxUnits(imNum), getAxisUnits(imNum))
+                      getFluxUnits(imNum), getAxisUnits(imNum), real(lambda_eff))
                  write(specFile,'(a,a)') trim(header)//"_u.fits"
                  call writeFitsImage(obsImageSet(i1), trim(specfile), objectDistance, "stokesu", &
-                      getFluxUnits(imNum), getAxisUnits(imNum))
+                      getFluxUnits(imNum), getAxisUnits(imNum), real(lambda_eff))
               endif
            else
               returnImage%pixel(:,:)%i = obsImageSet(i1)%pixel(:,:)%i
