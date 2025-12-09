@@ -5,6 +5,9 @@
 
 module gridFromFitsFile
 
+
+!! #define CORMAC2025
+
 #ifdef USECFITSIO
   use kind_mod 
   use messages_mod
@@ -47,10 +50,10 @@ module gridFromFitsFile
 
 ! Values
   real(single), private, save, allocatable :: density(:,:,:), temperature(:,:,:)
-  real(double), private, save, allocatable :: density_double(:,:,:), temperature_double(:,:,:), ionfrac_double(:,:,:), & 
-       tr1_double(:,:,:)
+  real(double), private, save, allocatable :: density_double(:,:,:), temperature_double(:,:,:)
+  real(double), private, save, allocatable :: tr0_double(:,:,:), tr1_double(:,:,:)
   real(double), private, save, allocatable :: density_double_A(:,:,:,:), temperature_double_A(:,:,:,:)
-  real(double), private, save, allocatable :: ionfrac_double_A(:,:,:,:), tr1_double_A(:,:,:,:), tr0_double_A(:,:,:,:)
+  real(double), private, save, allocatable :: tr0_double_A(:,:,:,:), tr1_double_A(:,:,:,:)
 
 ! If true use the ideal gas EOS to calculate temperature
   logical, parameter, private :: idealGas=.false.
@@ -257,9 +260,6 @@ module gridFromFitsFile
 !          print *, "temperature double"
           allocate(temperature_double_A (axis_size_A(1,i), axis_size_A(2,i), & 
                  axis_size_A(3,i), numFitsFiles))
-!         print *, "ionfrac double"
-          allocate(ionfrac_double_A (axis_size_A(1,i), axis_size_A(2,i), &
-                 axis_size_A(3,i), numFitsFiles))
 !        print *, "tr1 double"
           allocate(tr1_double_A (axis_size_A(1,i), axis_size_A(2,i), &
                  axis_size_A(3,i), numFitsFiles))
@@ -366,15 +366,8 @@ module gridFromFitsFile
         call ftgpvd(unit,group,1,npixels,nullvall,density_double_A(:,:,:,i),anynull,status)         
          
         ! PION: READ DUST TRACER
-        ! For 3D sims this is TR0, for the 2D sims it is TR6 unfortunately not yet standardised
-        if (amr2d) then
-          call FTMNHD(unit, 0, "TR6", 0, status)
-        else if (amr3d) then
-          call FTMNHD(unit, 0, "TR0", 0, status)
-        else 
-          call writeFatal("Bad setting in read DUST variable")
-        endif
-
+        ! Read in tracer 0 - should be WIND usually.
+        call FTMNHD(unit, 0, "TR0", 0, status)
         call ftgkys(unit,"EXTNAME",record,comment,status)
         if (status==0) then
           write(message,*) "Reading wind mass fraction from field with EXTNAME= ", trim(record)
@@ -386,7 +379,20 @@ module gridFromFitsFile
         endif
         ! Read in the data.
         call ftgpvd(unit,group,1,npixels,nullvall,tr0_double_A(:,:,:,i),anynull,status)
-
+        
+        ! Read in Tracer 1 - should be X_D
+        call FTMNHD(unit, 0, "TR1", 0, status)
+        call ftgkys(unit,"EXTNAME",record,comment,status)
+        if (status==0) then
+          write(message,*) "Reading dust mass fraction from field with EXTNAME= ", trim(record)
+          call writeInfo(message,TRIVIAL)
+        else
+          print *, "record was ", trim(record)
+          call writeFatal("Could not find wind mass fraction HDU")
+          stop
+        endif
+        ! Read in the data.
+        call ftgpvd(unit,group,1,npixels,nullvall,tr1_double_A(:,:,:,i),anynull,status)
       
         ! PION: READ GAS TEMPERATURE
         call FTMNHD(unit, 0, "Temp", 0, status)
@@ -400,7 +406,6 @@ module gridFromFitsFile
         endif
         ! Read in the data for gas temperature
         call ftgpvd(unit,group,1,npixels,nullvall,temperature_double_A(:,:,:,i),anynull,status)
-
 
         ! Close the file and free the LUN
         call ftclos(unit, status)
@@ -618,7 +623,7 @@ npd_loop:            do n=1,npd
 
       allocate(density_double     (axis_size(1), axis_size(2), axis_size(3)) )
       allocate(temperature_double (axis_size(1), axis_size(2), axis_size(3)) )
-      allocate(ionfrac_double (axis_size(1), axis_size(2), axis_size(3)) )
+      allocate(tr0_double (axis_size(1), axis_size(2), axis_size(3)) )
       allocate(tr1_double (axis_size(1), axis_size(2), axis_size(3)) )
 
       call ftgkye(unit,"XMIN0",xmin0,comment,status)
@@ -675,15 +680,15 @@ npd_loop:            do n=1,npd
       call FTMNHD(unit, 0, "TR0", 0, status)
       call ftgkys(unit,"EXTNAME",record,comment,status)
       if (status==0) then
-         write(message,*) "Reading ionization fraction from field with EXTNAME= ", trim(record)
+         write(message,*) "Reading tracer TR0 from field with EXTNAME= ", trim(record)
          call writeInfo(message,TRIVIAL)
       else
-         call writeFatal("Could not find ionization fraction HDU")
+         call writeFatal("Could not find tracer TR0 HDU")
          stop
       endif
 
 ! Read in the data.
-      call ftgpvd(unit,group,1,npixels,nullvall,ionfrac_double(:,:,:),anynull,status)
+      call ftgpvd(unit,group,1,npixels,nullvall,tr0_double(:,:,:),anynull,status)
 
 
       call FTMNHD(unit, 0, "TR1", 0, status)
@@ -1139,6 +1144,17 @@ npd_loop:            do n=1,npd
               ! For hot stars, the ISM is dusty and wind is dust-free
               ! For RSGs the wind is dusty, and we assume embedded in hot dust-free medium (cormac's paroject2025)
               ! thisOctal%dustTypeFraction(subcell,1) =   MAX(DBLE(0.0), 0.01 * ((             &
+#ifdef CORMAC2025
+               thisOctal%dustTypeFraction(subcell,1) =   MAX(DBLE(0.0), (       &
+                       tr1_double_A(thisI  ,  thisJ  ,thisK,i  ) * (1.d0-u)*(1.d0-v)*(1.d0-w) &
+                    +  tr1_double_A(thisI+1,  thisJ  ,thisK,i  ) * (     u)*(1.d0-v)*(1.d0-w) &
+                    +  tr1_double_A(thisI  ,  thisJ+1,thisK,i  ) * (1.d0-u)*(     v)*(1.d0-w) &
+                    +  tr1_double_A(thisI+1,  thisJ+1,thisK,i  ) * (     u)*(     v)*(1.d0-w) &
+                    +  tr1_double_A(thisI  ,  thisJ  ,thisK+1,i) * (1.d0-u)*(1.d0-v)*(     w) &
+                    +  tr1_double_A(thisI+1,  thisJ  ,thisK+1,i) * (     u)*(1.d0-v)*(     w) &
+                    +  tr1_double_A(thisI  ,  thisJ+1,thisK+1,i) * (1.d0-u)*(     v)*(     w) &
+                    +  tr1_double_A(thisI+1,  thisJ+1,thisK+1,i) * (     u)*(     v)*(     w)  ))
+#else
                thisOctal%dustTypeFraction(subcell,1) =   MAX(DBLE(0.0), 0.01 * (1.0 - (       &
                        tr0_double_A(thisI  ,  thisJ  ,thisK,i  ) * (1.d0-u)*(1.d0-v)*(1.d0-w) &
                     +  tr0_double_A(thisI+1,  thisJ  ,thisK,i  ) * (     u)*(1.d0-v)*(1.d0-w) &
@@ -1148,7 +1164,7 @@ npd_loop:            do n=1,npd
                     +  tr0_double_A(thisI+1,  thisJ  ,thisK+1,i) * (     u)*(1.d0-v)*(     w) &
                     +  tr0_double_A(thisI  ,  thisJ+1,thisK+1,i) * (1.d0-u)*(     v)*(     w) &
                     +  tr0_double_A(thisI+1,  thisJ+1,thisK+1,i) * (     u)*(     v)*(     w)  )))
-
+#endif
                if (thisoctal%dustTypeFraction(subcell,1) <= 0.d0) then 
                   thisoctal%dustTypeFraction(subcell,1) = 1.d-30
                endif
@@ -1176,12 +1192,19 @@ npd_loop:            do n=1,npd
                if (.not.associated(thisOctal%dustTypeFraction)) then
                   allocate(thisOctal%dustTypeFraction(1:thisOctal%maxChildren,1))
                endif
-               ! For the 2D sims, there is a dust tracer with units of gas-mass fraction
+#ifdef CORMAC2025
                thisOctal%dustTypeFraction(subcell,1) =  MAX(DBLE(0.0), (   &
+                       tr1_double_A(thisI,thisJ,1,i) * (1.d0-u)*(1.d0-v) &
+                    +  tr1_double_A(thisI+1,thisJ,1,i) * (     u)*(1.d0-v) &
+                    +  tr1_double_A(thisI, thisJ+1,1,i) * (1.d0-u)*(     v) &
+                    +  tr1_double_A(thisI+1,thisJ+1,1,i)* (     u)*(     v) ))
+#else
+               thisOctal%dustTypeFraction(subcell,1) =  MAX(DBLE(0.0), 0.01 * (1.0 - (   &
                        tr0_double_A(thisI,thisJ,1,i) * (1.d0-u)*(1.d0-v) &
                     +  tr0_double_A(thisI+1,thisJ,1,i) * (     u)*(1.d0-v) &
                     +  tr0_double_A(thisI, thisJ+1,1,i) * (1.d0-u)*(     v) &
-                    +  tr0_double_A(thisI+1,thisJ+1,1,i)* (     u)*(     v) ))
+                    +  tr0_double_A(thisI+1,thisJ+1,1,i)* (     u)*(     v) )))
+#endif
 
                if (thisOctal%temperature(subcell) > 1.d6) thisOctal%dustTypeFraction(subcell,1) = 0.d0               
                
@@ -1250,15 +1273,6 @@ npd_loop:            do n=1,npd
                                     +  temperature_double(thisI+1,  thisJ  ,thisK+1) * (     u)*(1.d0-v)*(     w) &
                                     +  temperature_double(thisI  ,  thisJ+1,thisK+1) * (1.d0-u)*(     v)*(     w) &
                                     +  temperature_double(thisI+1,  thisJ+1,thisK+1) * (     u)*(     v)*(     w)  )
-!            thisOctal%ionfrac(subcell,2) =   ionfrac_double(thisI  ,  thisJ  ,thisK  ) * (1.d0-u)*(1.d0-v)*(1.d0-w) &
-!                                    +  ionfrac_double(thisI+1,  thisJ  ,thisK  ) * (     u)*(1.d0-v)*(1.d0-w) &
-!                                    +  ionfrac_double(thisI  ,  thisJ+1,thisK  ) * (1.d0-u)*(     v)*(1.d0-w) &
-!                                    +  ionfrac_double(thisI+1,  thisJ+1,thisK  ) * (     u)*(     v)*(1.d0-w) &
-!                                    +  ionfrac_double(thisI  ,  thisJ  ,thisK+1) * (1.d0-u)*(1.d0-v)*(     w) &
-!                                    +  ionfrac_double(thisI+1,  thisJ  ,thisK+1) * (     u)*(1.d0-v)*(     w) &
-!                                    +  ionfrac_double(thisI  ,  thisJ+1,thisK+1) * (1.d0-u)*(     v)*(     w) &
-!                                    +  ionfrac_double(thisI+1,  thisJ+1,thisK+1) * (     u)*(     v)*(     w)  
-!            thisOctal%ionFrac(subcell,1) = 1.d0 - thisOctal%ionFrac(subcell,2)
          else if (amr2d) then
             call locate(xAxis, axis_size(1), rVec%z, thisI)
             call locate(yAxis, axis_size(2), rVec%x, thisJ)
@@ -1276,10 +1290,18 @@ npd_loop:            do n=1,npd
             if (.not.associated(thisOctal%dustTypeFraction)) then
                allocate(thisOctal%dustTypeFraction(1:thisOctal%maxChildren,1))
             endif
-            thisOctal%dustTypeFraction(subcell,1) =  0.01d0 * (1.d0-(   tr1_double(thisI,thisJ,1) * (1.d0-u)*(1.d0-v) &
-                                    +  tr1_double(thisI+1,thisJ,1) * (     u)*(1.d0-v) &
+#ifdef CORMAC2025
+            thisOctal%dustTypeFraction(subcell,1) =  (   tr1_double(thisI,thisJ,1) * (1.d0-u)*(1.d0-v) &
+                                   +  tr1_double(thisI+1,thisJ,1) * (     u)*(1.d0-v) &
                                    +  tr1_double(thisI, thisJ+1,1) * (1.d0-u)*(     v) &
-                                   +  tr1_double(thisI+1,thisJ+1,1)* (     u)*(     v) ))
+                                   +  tr1_double(thisI+1,thisJ+1,1)* (     u)*(     v) )
+#else
+            thisOctal%dustTypeFraction(subcell,1) =  0.01d0 * (1.d0-(   tr0_double(thisI,thisJ,1) * (1.d0-u)*(1.d0-v) &
+                                   +  tr0_double(thisI+1,thisJ,1) * (     u)*(1.d0-v) &
+                                   +  tr0_double(thisI, thisJ+1,1) * (1.d0-u)*(     v) &
+                                   +  tr0_double(thisI+1,thisJ+1,1)* (     u)*(     v) ))
+#endif
+
             if (thisOctal%temperature(subcell) > 1.d6) thisOctal%dustTypeFraction(subcell,1) = 0.d0
 
 
@@ -1320,12 +1342,12 @@ npd_loop:            do n=1,npd
 
       if (allocated (density_double))     deallocate(density_double)
       if (allocated (temperature_double))     deallocate(temperature_double)
-      if (allocated (ionfrac_double))     deallocate(ionfrac_double)
+      if (allocated (tr0_double))     deallocate(tr0_double)
       if (allocated (tr1_double))     deallocate(tr1_double)
 
       if (allocated (density_double_A))     deallocate(density_double_A)
       if (allocated (temperature_double_A))     deallocate(temperature_double_A)
-      if (allocated (ionfrac_double_A))     deallocate(ionfrac_double_A)
+      if (allocated (tr0_double_A))     deallocate(tr0_double_A)
       if (allocated (tr1_double_A))     deallocate(tr1_double_A)
 
 

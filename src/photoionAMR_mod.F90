@@ -3779,7 +3779,7 @@ end subroutine radiationHydro
 
     if (loadbalancing) call  setLoadBalancingThreadsByCells(grid)
 
-    maxBalanceIter = 20
+    maxBalanceIter = 2
     nNotConverged = 0
     if (myRankGlobal /= 0) then
 
