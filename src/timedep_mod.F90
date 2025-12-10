@@ -332,8 +332,12 @@ contains
        endif
 
        call writeVtkFile(grid, "thisstep.vtk", &
-            valueTypeString=(/"rho        ", "temperature", "edens_g    ", "edens_s    ", &
-            "crossings  ", &
+            valueTypeString=(/ &
+            "rho         ", &
+            "temperature ", &
+            "edens_g     ", &
+            "edens_s     ", &
+            "crossings   ", &
             "dust01      "/))
 
        if (dumpNow) then
@@ -344,8 +348,8 @@ contains
              write(vtkFilename, '(a,i4.4,a)') "output",idump,".vtk"
              write(*,*) "vtkfilename ",trim(vtkfilename)
              call writeVtkFile(grid, vtkfilename, &
-                  valueTypeString=(/"rho        ", "temperature", "edens_g    ", "edens_s    ", &
-                  "crossings  ", &
+                  valueTypeString=(/"rho         ", "temperature ", "edens_g     ", "edens_s     ", &
+                  "crossing s  ", &
                   "dust01      "/))
              write(vtkFilename, '(a,i4.4,a)') "radial",idump,".dat"
              call writeValues(vtkFilename, grid, currentTime)
