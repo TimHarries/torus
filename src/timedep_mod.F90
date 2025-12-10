@@ -334,7 +334,7 @@ contains
        call writeVtkFile(grid, "thisstep.vtk", &
             valueTypeString=(/"rho        ", "temperature", "edens_g    ", "edens_s    ", &
             "crossings  ", &
-            "dust1      "/))
+            "dust01      "/))
 
        if (dumpNow) then
           nextDumpTime = nextDumpTime + tDump
@@ -346,7 +346,7 @@ contains
              call writeVtkFile(grid, vtkfilename, &
                   valueTypeString=(/"rho        ", "temperature", "edens_g    ", "edens_s    ", &
                   "crossings  ", &
-                  "dust1      "/))
+                  "dust01      "/))
              write(vtkFilename, '(a,i4.4,a)') "radial",idump,".dat"
              call writeValues(vtkFilename, grid, currentTime)
 

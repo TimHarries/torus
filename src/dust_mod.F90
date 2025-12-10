@@ -819,7 +819,7 @@ contains
        enddo
        do npts = 1066,1,-1
           read(20,*) tlam(npts),albedo(npts),tgfac(npts),rjunk,kappa(npts)
-          if (writeoutput) write(*,*) tlam(npts),albedo(npts),tgfac(npts),rjunk,kappa(npts)
+!          if (writeoutput) write(*,*) tlam(npts),albedo(npts),tgfac(npts),rjunk,kappa(npts)
        enddo
        close(20)
        npts = 1066
@@ -885,7 +885,7 @@ contains
 !       kappaSca(i) = 1.d10*(tsca(j) + (lambda(i) - tlam(j)) * (tsca(j+1) - tsca(j))/ ( tlam(j+1) - tlam(j)))
        
        gfac(i) = tgfac(j) + (lambda(i)-tlam(j)) * (tgfac(j+1)-tgfac(j)) / (tlam(j+1)-tlam(j))
-       if (writeoutput) write(*,*) lambda(i), kappaAbs(i)+ kappaSca(i), kappaAbs(i), kappaSca(i)
+!       if (writeoutput) write(*,*) lambda(i), kappaAbs(i)+ kappaSca(i), kappaAbs(i), kappaSca(i)
     enddo
 
   end subroutine dustPropertiesfromFile

@@ -189,7 +189,6 @@ contains
 #endif
     call getLogical("parallelvtu", parallelVTUfiles, cLine, fLine, nLines, &
          "Use parallel VTU files: ","(a,1l,1x,a)", .false., ok, .false.)
-    write(*,*) "parallelvtufiles on input ",parallelvtufiles
 ! the grid setup. Either we read the grid in or set it up from scratch
 
     call writeBanner("Grid setup parameters","*",TRIVIAL)

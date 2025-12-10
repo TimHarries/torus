@@ -3398,7 +3398,7 @@ end subroutine fillVelocityCornersFromCentresCylindrical
 
 
 recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, facArray, converged)
-  use inputs_mod, only : heightSplitFac, rOuter, minDepthAMR, maxDepthAMR
+  use inputs_mod, only : heightSplitFac, rOuter, minDepthAMR, maxDepthAMR, minPhiResolution
   integer :: nr
   logical :: converged, aziSplit, debug
   real(double) :: rArray(:), facArray(:)
@@ -3505,7 +3505,9 @@ recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, fac
 !              converged = .false.
 !           endif
 !        endif
-              
+           if (thisOctal%dphi>minphiresolution) then
+              aziSplit = .true.
+           endif
            if (aziSplit) thisOctal%adot(subcell) = thisOctal%adot(subcell) * 2.
            if (debug) write(*,*) thisOctal%nDepth,thisOctal%adot(subcell), &
                 thisOctal%rho(subcell),thisrho,abs(thisZ/thisH),thisZ,thisH
