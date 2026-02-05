@@ -413,7 +413,7 @@ contains
        np = SIZE(thisOctal%gas_particle_list)
        
        ! Units of length
-       udist = get_udist()   ! [10^10cm]
+       udist = get_udist()/1.d10   ! [10^10cm]
        
        k=0
 !       !$OMP PARALLEL DEFAULT(NONE) &
@@ -492,7 +492,7 @@ contains
     if (first_time) then       
        ! units of sphData
        umass = get_umass()  ! [g]
-       udist = get_udist()  ! [cm]
+       udist = get_udist()/1.d10  ! [TORUS units]
        udent = umass/(udist*1.d10)**3
 
        ! convert units
@@ -532,7 +532,7 @@ contains
           ! quick check to see if this gas particle is
           ! belongs to this cell.
 
-!          write(*,*) "part here ",j,x,y,z
+!          write(*,*) 'sphNG: x,y,z,udist ',x,y,z,udist
 
           ! For 2D octals x is cylindrical polar r
           if (node%twoD) x = sqrt(x**2 + y**2)
@@ -588,7 +588,6 @@ contains
     if (n>0) then
        rho_ave = rho_ave/dble(n)
 
-!       write(*,*) "rho_ave ",rho_ave,udent
        rho_ave = rho_ave*udent  ! [g/cm^3]
        if ( present(rho_min) ) rho_min = rho_min * udent
        if ( present(rho_max) ) rho_max = rho_max * udent
