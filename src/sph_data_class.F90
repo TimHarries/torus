@@ -76,6 +76,7 @@ module sph_data_class
      real(double), pointer, dimension(:) :: rhon
      ! Dust fraction
      real(double), pointer, dimension(:) :: dustfrac
+     real(double), pointer, dimension(:,:) :: dustfracs
      ! Density of H2
      real(double), pointer, dimension(:) :: rhoH2 => null()
      ! Density of CO
@@ -1974,6 +1975,8 @@ end subroutine read_sph_data_clumpfind
 
 ! Read in SPH data from an SPH-NG MPI dump file
 ! D. Acreman, June 2012
+! M.R. Bate, November 2025
+!
   subroutine read_sph_data_mpi(filename)
     use inputs_mod, only: amrgridcentrex, amrgridcentrey, amrgridcentrez, amrgridsize, splitovermpi, discardSinks,&
          convertrhotohi, sphWithChem
@@ -1998,14 +2001,22 @@ end subroutine read_sph_data_clumpfind
     INTEGER(kind=4)  :: int1, int2, i1, int1o
     integer(kind=4)  :: number,n1,n2,nreassign,naccrete,nkilltot,nblocks,nkill
     integer(kind=4)  :: nblocktypes
+    integer(kind=4)  :: iyr,idum,iplanetesimals,irotpot,idragscheme,HY09_ndust_bins,idustFluid,ndusttypes
+    integer(kind=8)  :: iuniquemax
     REAL(kind=8)     :: r1
     REAL(kind=4)     :: r4
     integer(kind=8)  :: blocknpart, blocknptmass, blocknradtrans, blocknmhd, blocksum_npart
     integer  :: blocksum_nptmass, i_pt_mass
     CHARACTER(len=100) ::  fileident
+    integer(kind=4), parameter  :: nmaxtags = 128
+    CHARACTER(len=16)  ::  tagsreal(nmaxtags),tagi
+    integer(kind=4)  :: rheader(nmaxtags)
+    logical(kind=4)  :: tagged
 
     integer(kind=1), parameter  :: LUIN = 10 ! logical unit # of the data file
-
+    integer(kind=4), parameter  :: NTAB = 32
+    integer(kind=4)  :: iv(NTAB)
+    
     integer(kind=1), allocatable :: iphase(:)
     integer, allocatable         :: isteps(:)
     real(kind=8), allocatable    :: xyzmh(:,:)
@@ -2014,6 +2025,7 @@ end subroutine read_sph_data_clumpfind
     real(kind=4), allocatable    :: rho(:)
     real(kind=8), allocatable    :: h2ratio(:)
     real(kind=8), allocatable    :: COfrac(:)
+    real(kind=8), allocatable    :: dustfracs(:,:)
 
     integer,allocatable :: listpm(:)
     real(kind=8),allocatable    :: spinx(:)
@@ -2065,8 +2077,10 @@ end subroutine read_sph_data_clumpfind
     if (i1==690706) then
        write(message,*) "Version 1 dump opened OK"
        call writeinfo(message, TRIVIAL)
-    else if (i1==1.or.i1==2) then
-       call writeFatal("Version 2 dumps not supported yet. Convert to ASCII.")
+    else if (i1==1) then
+       write(message,*) "Version 2 dump: ",int1,r1,int2,i1,int1o
+!       call writeFatal("Version 2 dumps not supported yet. Convert to ASCII.")
+       call writeinfo(message, TRIVIAL)
     else
        write(message,*) "Unrecognised version number", i1
        call writeWarning(message)
@@ -2075,14 +2089,18 @@ end subroutine read_sph_data_clumpfind
     read(LUIN) fileident
     write(message,*) "fileident=", fileident
     call writeinfo(message, TRIVIAL)
-    
+    if (fileident(2:2).EQ.'T') then
+         tagged = .true.
+    endif
+
     read(LUIN) number
-    IF (number==6) THEN
-       READ (LUIN) npart,n1,n2,nreassign,naccrete,nkill
-       nblocks = 1
-    ELSE
-       read(LUIN) npart, n1, n2, nreassign, naccrete, nkilltot, nblocks
-    ENDIF       
+    if (number==15+NTAB) then
+       read(LUIN)  ! Skip tags
+       read(LUIN) npart,n1,n2,nreassign,naccrete,nkill,nblocks,iyr,idum,(iv(i),i=1,NTAB),iplanetesimals,irotpot,idragscheme,HY09_ndust_bins,idustFluid,ndusttypes
+    else
+       write(message,*) "Unexpected length of header info ",number
+       call writeFatal("Fatal: Unexpected length of header info")
+    endif
     write(message,*) "Total number of particles= ", npart
     print*,"Total number of particles= ", npart
     call writeInfo(message,TRIVIAL)
@@ -2097,6 +2115,7 @@ end subroutine read_sph_data_clumpfind
     allocate( vxyzu(4,npart))
     allocate( uoverTarray(npart))
     allocate( rho(npart)    )
+    allocate( dustfracs(ndusttypes,npart) )
     if (ConvertRhoToHI .or. sphWithChem) then
        write (message,'(a)') "Will read H2 fraction"
        call writeInfo(message,TRIVIAL)
@@ -2108,18 +2127,35 @@ end subroutine read_sph_data_clumpfind
        allocate ( COfrac(npart) )
     endif
 
-    do i=1,6
+    do i=1,3
        read(LUIN)
     end do
+    read(LUIN) number
+    write(message,*) "number int8 ", number
+    call writeInfo(message,TRIVIAL)
+    if (number.eq.1) then
+       read(LUIN)
+       read(LUIN) iuniquemax
+       write(message,*) "iuniquemax = ", iuniquemax
+       call writeInfo(message,TRIVIAL)
+    endif
+    read(LUIN) number
+    write(message,*) "number default real = ", number
+    call writeInfo(message,TRIVIAL)
 
-    read(LUIN) time 
+    read(LUIN) tagsreal(1:MIN(number,nmaxtags))
+    read(LUIN) (rheader(i),i=1,min(number,nmaxtags))
+    time = rheader(1)
     write(message,*) "Dump time=", time
     call writeInfo(message,TRIVIAL)
 
-    read(LUIN)
-    read(LUIN)
+    write(message,*) tagsreal(40)," ",rheader(40) ! HY09_size_min
+
+    read(LUIN) ! Skip number of REAL*4
+    read(LUIN) ! Skip number of REAL*8
+    read(LUIN) ! Skip tags for units
     read(LUIN) udist, umass, utime
-    read(LUIN) number
+    read(LUIN) number ! This is the number of blocks*nblocktypes
 
     nblocktypes = number/nblocks
 
@@ -2167,11 +2203,19 @@ end subroutine read_sph_data_clumpfind
           call writeInfo(message,TRIVIAL)
        endif
 
+       READ (LUIN) ! Skip tags
        READ (LUIN) (isteps(i), i=iiigas+1, iiigas+blocknpart)
 
        do j=1,nums(1)-1
+          READ (LUIN) ! Skip tags
           READ (LUIN) (nlistinactive, listinactive(i), i=1,1)
        END DO
+       
+       READ (LUIN) tagi ! Skip tag: iphase
+       IF (TRIM(tagi).NE.'iphase') THEN
+          write (message,*) "Expected tag: iphase ",tagi
+          call writeFatal(message)
+       ENDIF
        READ (LUIN) (iphase(i), i=iiigas+1, iiigas+blocknpart)
 
        thisNumGas = 0
@@ -2181,76 +2225,146 @@ end subroutine read_sph_data_clumpfind
        write (message,*) "There are ", thisNumGas, " active gas particles"
        call writeInfo(message,TRIVIAL)
 
+       read(LUIN) ! Skip tag: iunique
        read(LUIN) 
 
        do j=1,5
+          read(LUIN) ! Skip tags: x,y,z,m,h
           read(LUIN) ( xyzmh(j,i), i=iiigas+1,iiigas+blocknpart)
        end do
 
        do j=1,4
+          read(LUIN) ! Skip tags: vx, vy, vz, u
           read(LUIN) ( vxyzu(j,i), i=iiigas+1,iiigas+blocknpart)
        end do
 
 ! Read H2 fraction and CO abundance if required
-       if ( ConvertRhoToHI .or. sphWithChem ) then 
+       if ( ConvertRhoToHI .or. sphWithChem ) then
+          read(LUIN) ! Skip tags: h2ratio
           READ (LUIN) ( h2ratio(i), i=iiigas+1,iiigas+blocknpart)
-          do j=1,3 
+          do j=1,3
+             read(LUIN) ! Skip tags
              READ (LUIN)
           end do
           if (sphWithChem) then
+             read(LUIN) ! Skip tags
              READ (LUIN) ( COfrac(i), i=iiigas+1,iiigas+blocknpart)
           else
+             read(LUIN) ! Skip tags
              READ (LUIN)
           end if
           do j=1,nums(6)-15
+             read(LUIN) ! Skip tags
              READ (LUIN)
           end do
-       else
-          do j=1,nums(6)-10
-             READ (LUIN)
-          end do
-       end if
-
-       READ (LUIN)
-
-       read(LUIN) ( rho(i), i=iiigas+1,iiigas+blocknpart) 
-
-       do j=1,nums(7)-2
+       endif
+100    do j=1,nums(6)-10
+          read(LUIN) tagi ! Read tags
+          if (TRIM(tagi(1:8)).EQ.'dustfrac') GOTO 200
+          if (TRIM(tagi(1:5)).EQ.'Dust:') GOTO 200
           READ (LUIN)
        end do
-       read (LUIN) (r4, i=iiigas+1,iiigas+blocknpart)
+       GOTO 500
+
+! Read one-fluid dust, including multigran
+200    write(message,*) "Found dustfrac, ndusttypes=",ndusttypes,tagi(1:10)
+       call writeInfo(message,TRIVIAL)
+       if (TRIM(tagi(1:5)).NE.'Dust:') read (LUIN)
+
+       do j = 1, ndusttypes
+          if (TRIM(tagi(1:5)).NE.'Dust:') then
+             read (LUIN) tagi
+             if ('dustfrac'.NE.TRIM(tagi)) then
+                write(message,*) "ERROR - expected dustfracs ",tagi
+                call writeFatal(message)
+             endif
+          endif
+          read (LUIN) (dustfracs(j,i), i=iiigas+1,iiigas+blocknpart)
+       end do
+
+500    do j=1,nums(6)
+          read(LUIN) tagi ! Read tags
+          if (TRIM(tagi).EQ.'rho') GOTO 600
+          READ (LUIN)
+       end do
+
+       write (message,*) "Could not find tag: rho ",tagi
+       call writeFatal(message)
+
+600    read(LUIN) ( rho(i), i=iiigas+1,iiigas+blocknpart) 
+
+       do j=1,nums(7)-1
+          READ (LUIN) tagi
+          write(message,*) "Skipping ", tagi
+          call writeInfo(message,TRIVIAL)
+          READ (LUIN)
+       end do
+!       read (LUIN) (r4, i=iiigas+1,iiigas+blocknpart)
 
        allocate(listpm(blocknptmass), spinx(blocknptmass))
+       READ (LUIN) tagi
+       IF (TRIM(tagi).NE.'listpm') THEN
+          write(message,*) "ERROR - expected listpm ",tagi
+          call writeFatal(message)
+       ENDIF
        READ (LUIN) (listpm(i),i=1,blocknptmass)
+       READ (LUIN) ! Skip tags
        READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) ! Skip tags
        READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) ! Skip tags
        READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) ! Skip tags
        READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) ! Skip tags
        READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) ! Skip tags
        READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) ! Skip tags
        READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) ! Skip tags
        READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) ! Skip tags
        READ (LUIN) (spinx(i),i=1,blocknptmass)
        deallocate(listpm, spinx)
 
-       DO i = 1, numssink(6)-9
+       DO i = 1, numssink(6)-10
+          READ (LUIN) ! Skip tags
           READ (LUIN)
        END DO
        DO i = 1, numssink(8)
+          READ (LUIN) ! Skip tags
           READ (LUIN)
        END DO
 
        if (nblocktypes.GE.3) then
           call writeInfo ("Reading RT data")
           do j=1,2
+             READ (LUIN) tagi
+             write(message,*) "Skipping ", tagi
+             call writeInfo(message,TRIVIAL)
              READ (LUIN)
           end do
 
+          READ (LUIN) tagi
+          write(message,*) "Reading ", tagi
+          call writeInfo(message,TRIVIAL)
           READ (LUIN) (uoverTarray(i),i=iiigas+1,iiigas+blocknpart)
 
           do j = 1, numsrt(6)-3
+             READ (LUIN) tagi
+             write(message,*) "Skipping ", tagi
+             call writeInfo(message,TRIVIAL)
              READ (LUIN)
           end do
+
+          do j = 1, numsrt(7)
+             READ (LUIN) tagi
+             write(message,*) "Skipping ", tagi
+             call writeInfo(message,TRIVIAL)
+             READ (LUIN)
+          end do
+
           call writeInfo ("Read RT data")
        endif
 
@@ -2258,6 +2372,7 @@ end subroutine read_sph_data_clumpfind
           call writeInfo ("Reading MHD data")
           do i=1,8
              do j=1,nums(i)
+                READ (LUIN) ! Skip tags
                 READ (LUIN)
              end do
           end do
@@ -3467,9 +3582,10 @@ contains
     udist = get_udist()
     utime = get_utime()
     umass = get_umass()
-    codeLengthtoTORUS =  udist
+    codeLengthtoTORUS =  udist/1.d10
     codeVelocitytoTORUS = sphdata%codeVelocitytoTORUS
-    codeDensitytoTORUS = umass / ((udist*1.d10) ** 3)
+!    codeDensitytoTORUS = umass / ((udist/1.d10) ** 3)
+    codeDensitytoTORUS = umass / ((udist) ** 3)
     write(*,*) "code length to torus ",codeLengthToTorus
     write(*,*) "code vel to torus ",codeVelocityToTorus
     write(*,*) "code density to torus ",codeDensityToTorus
@@ -3561,7 +3677,7 @@ contains
     else
        call writeInfo("Assuming eta=1.2 in smoothing length calculation")
     endif
- 
+
     write(message, *) "Critical smoothing Length in code units", hcrit
     call writeinfo(message, TRIVIAL)
     write(message, *) "Maximum smoothing Length in code units", hmax
