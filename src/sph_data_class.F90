@@ -2096,7 +2096,9 @@ end subroutine read_sph_data_clumpfind
     read(LUIN) number
     if (number==15+NTAB) then
        read(LUIN)  ! Skip tags
-       read(LUIN) npart,n1,n2,nreassign,naccrete,nkill,nblocks,iyr,idum,(iv(i),i=1,NTAB),iplanetesimals,irotpot,idragscheme,HY09_ndust_bins,idustFluid,ndusttypes
+       read(LUIN) npart,n1,n2,nreassign,naccrete,nkill,nblocks,iyr,idum,&
+            (iv(i),i=1,NTAB),iplanetesimals,irotpot,idragscheme,&
+            HY09_ndust_bins,idustFluid,ndusttypes
     else
        write(message,*) "Unexpected length of header info ",number
        call writeFatal("Fatal: Unexpected length of header info")
@@ -2258,7 +2260,7 @@ end subroutine read_sph_data_clumpfind
              READ (LUIN)
           end do
        endif
-100    do j=1,nums(6)-10
+       do j=1,nums(6)-10
           read(LUIN) tagi ! Read tags
           if (TRIM(tagi(1:8)).EQ.'dustfrac') GOTO 200
           if (TRIM(tagi(1:5)).EQ.'Dust:') GOTO 200
