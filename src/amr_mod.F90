@@ -5542,6 +5542,20 @@ CONTAINS
              if (thisOctal%nDepth < minDepthAMR) split = .true.
           endif
 
+          if ( (modulus(cellCentre) > (erouter/1.d10-thisOctal%subcellsize)).and. &
+               (modulus(cellCentre) < (erouter/1.d10+thisOctal%subcellsize)).and. &
+               (thisOctal%subcellsize > 0.01*erouter/1.d10) ) split = .True.
+          
+          if ((modulus(cellCentre)>erinner/1.d10).and.(modulus(cellCentre)<erOuter/1.d10)) then
+             do i = 1, 100
+                rgrid(i) = log10(erinner/1.d10) + dble(i-1)/99.*(log10(erouter/1.d10)-log10(erinner/1.d10))
+             enddo
+             rgrid = 10.d0**rgrid
+             call locate(rgrid,100,modulus(cellcentre),i)
+             if (thisOctal%subcellSize > rgrid(i+1)-rgrid(i)) split = .True.
+             if (thisOctal%subcellSize > 0.01*erOuter/1.d10) split = .True.
+          endif
+          
           !      if ((r > grid%rinner).and.(r < 1.001d0*grid%rinner)) then
           !         if ((abs(cellcentre%z)/hr < 2.)) then
           !            split = .true.

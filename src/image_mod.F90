@@ -890,6 +890,7 @@ module image_mod
        ! write keywords and set values which depend on the axis units
        select case (axisUnits)
        case ("arcsec")
+
           dx = ((dx * 1.d10)/objectDistance)*radtodeg
           dy = ((dy * 1.d10)/objectDistance)*radtodeg
           refValX = (( image%xAxisCentre(1) * 1.d10)/objectDistance)*radiansToArcsec
@@ -933,7 +934,7 @@ module image_mod
        end select
 
        if (axisUnits == "arcsec") then 
-          !       if (.false.) then
+          if (.false.) then
           ! write x-axis keywords
           call ftpkys(unit,'CTYPE1',"RA---SIN","x axis", status)
           call ftpkyd(unit,'CRPIX1',dble(image%nx/2.d0),-3,'reference pixel',status)
@@ -947,13 +948,14 @@ module image_mod
           call ftpkyd(unit,'CDELT2',dy,10 ,' ',status)
           call ftpkyd(unit,'CROTA2',0.d0,10,' ',status)
           call ftpkyd(unit,'CRVAL2',refValY,-5,'coordinate value at reference point',status)
+          endif
 
-          !          call ftpkyd(unit,'CD1_1',dx,10,' ',status)
-          !          call ftpkyd(unit,'CD1_2',0.d0,10,' ',status)
-          !          call ftpkyd(unit,'CD2_1',0.d0,10,' ',status)
-          !          call ftpkyd(unit,'CD2_2',dy,10,' ',status)
-
-       else
+          dx = image%xAxisCentre(2) - image%xAxisCentre(1)
+          dy = image%xAxisCentre(2) - image%xAxisCentre(1)
+          dx = ((dx * 1.d10)/objectDistance)*radiansToArcsec
+          dy = ((dy * 1.d10)/objectDistance)*radiansToArcsec
+          refValX = (( image%xAxisCentre(1) * 1.d10)/objectDistance)*radiansToArcsec
+          refValY = (( image%yAxisCentre(1) * 1.d10)/objectDistance)*radiansToArcsec
           ! write x-axis keywords
           call ftpkys(unit,'CTYPE1'," X","x axis", status)
           call ftpkyd(unit,'CRPIX1',0.5_db,-3,'reference pixel',status)
@@ -965,8 +967,8 @@ module image_mod
           call ftpkyd(unit,'CRPIX2',0.5_db,-3,'reference pixel',status)
           call ftpkyd(unit,'CDELT2',dy,10 ,' ',status)
           call ftpkyd(unit,'CRVAL2',refValY,-3,'coordinate value at reference point',status)
-
        endif
+!       endif
 
        !
        !  Close the file and free the unit number.

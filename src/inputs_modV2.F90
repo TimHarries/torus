@@ -2546,7 +2546,7 @@ contains
             "Cavity angle (deg): ","(a,f5.2,a)", 40.d0, ok, .false.)
 
        call getDouble("cavdens", cavDens, 1.d0, cLine, fLine, nLines, &
-            "Cavity density (g/cc): ","(a,e12.2,a)", 1d-30, ok, .false.)
+           "Cavity density (g/cc): ","(a,e12.2,a)", 1d-30, ok, .false.)
 
 
        call getLogical("discwind", discWind, cLine, fLine, nLines, &
