@@ -309,12 +309,15 @@ contains
     INTEGER :: subcell
     type(vector) :: point, clusterparam
     logical, save :: firstTime=.true.
-    real(double) :: rho, rhoH2, rhoCO, temp, dustfrac, r
+    real(double) :: rho, rhoH2, rhoCO, temp, r
+    real(double), pointer, dimension(:) :: dustfrac
     character(len=80) :: message
     
     
 ! Critical density if we are not using SPH temperature
 !    real(double), parameter :: density_crit = 1d13
+
+    allocate ( dustfrac(sphData%ndusttypes) )
 
     point = subcellcentre(thisOctal, subcell)
 
@@ -372,9 +375,10 @@ contains
 
 
 ! If sphData%rhoCO is in use then assume we want to use CO from SPH particles for abundance
+
     if ( associated (sphData%dustfrac) ) then 
        if (firstTime) call writeInfo("Setting dust fraction from particle dust fraction values")
-       thisOctal%dustTypeFraction(subcell,1) = dustfrac
+       thisOctal%dustTypeFraction(subcell,:) = dustfrac(:)
     end if
 
 

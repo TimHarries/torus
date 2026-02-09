@@ -62,6 +62,7 @@ module sph_data_class
      real(double) :: codeEnergytoTemperature    ! Conversion from SPH code velocity units to Torus units
      !                                          ! (umass is M_sol, udist=0.1 pc)
      integer      :: npart                  ! Total number of gas particles (field+disc)
+     integer      :: ndusttypes             ! Number of dust types
      real(double) :: time                   ! Time of sph data dump (in units of utime)
      integer          :: nptmass                ! Number of stars/brown dwarfs
      real(double), pointer, dimension(:) :: gasmass            ! Mass of each gas particle ! DAR changed to allow variable mass
@@ -74,9 +75,8 @@ module sph_data_class
      real(double), pointer, dimension(:) :: hn                 ! Smoothing length
      ! Density of the gas particles
      real(double), pointer, dimension(:) :: rhon
-     ! Dust fraction
-     real(double), pointer, dimension(:) :: dustfrac
-     real(double), pointer, dimension(:,:) :: dustfracs
+     ! Dust fractions
+     real(double), pointer, dimension(:,:) :: dustfrac
      ! Density of H2
      real(double), pointer, dimension(:) :: rhoH2 => null()
      ! Density of CO
@@ -111,7 +111,7 @@ module sph_data_class
     
   real(double), allocatable :: PositionArray(:,:), OneOverHsquared(:), &
                                RhoArray(:), TemArray(:), VelocityArray(:,:), &
-                               RhoH2Array(:), rhoCOarray(:), dustfrac(:)
+                               RhoH2Array(:), rhoCOarray(:), dustfracArray(:,:)
 
   type(sph_data), save :: sphdata
   integer, save :: npart
@@ -419,7 +419,7 @@ contains
     integer :: ix, iy, iz, ivx, ivy, ivz, irho, iu, iitype, ih, imass, iUoverT, ipType, iDustTemperature
     logical :: haveUandUoverT, haveDustTemperature
     integer :: iDustfrac
-    real(double) :: dustfrac
+    real(double), allocatable :: dustfrac(:,:)
     integer, allocatable :: pNumArray(:) ! Array of particle numbers read from header
 
 !
@@ -782,7 +782,8 @@ contains
     end if
 
     if (idustfrac/=0) then
-       ALLOCATE(sphdata%dustfrac(sphdata%npart))
+       sphdata%ndusttypes=1
+       ALLOCATE(sphdata%dustfrac(sphdata%ndusttypes,sphdata%npart))
     endif
 
     
@@ -810,7 +811,7 @@ part_loop: do ipart=1, nlines
 
        dustfrac = 0.1
        if (idustFrac /= 0) then
-          dustfrac = junkArray(idustfrac,ipart)
+          dustfrac = junkArray(sphdata%ndusttypes,ipart)
        endif
 
        if ( iitype == 0 ) then
@@ -1979,7 +1980,7 @@ end subroutine read_sph_data_clumpfind
 !
   subroutine read_sph_data_mpi(filename)
     use inputs_mod, only: amrgridcentrex, amrgridcentrey, amrgridcentrez, amrgridsize, splitovermpi, discardSinks,&
-         convertrhotohi, sphWithChem
+         convertrhotohi, sphWithChem, nDustType
     use angularImage_utils, only:  internalView, galaxyPositionAngle, galaxyInclination
 #ifdef MPI
     use mpi
@@ -2025,7 +2026,7 @@ end subroutine read_sph_data_clumpfind
     real(kind=4), allocatable    :: rho(:)
     real(kind=8), allocatable    :: h2ratio(:)
     real(kind=8), allocatable    :: COfrac(:)
-    real(kind=8), allocatable    :: dustfracs(:,:)
+    real(kind=8), allocatable    :: dustfrac(:,:)
 
     integer,allocatable :: listpm(:)
     real(kind=8),allocatable    :: spinx(:)
@@ -2117,7 +2118,7 @@ end subroutine read_sph_data_clumpfind
     allocate( vxyzu(4,npart))
     allocate( uoverTarray(npart))
     allocate( rho(npart)    )
-    allocate( dustfracs(ndusttypes,npart) )
+    if (ndusttypes.GE.1) allocate( dustfrac(ndusttypes,npart) )
     if (ConvertRhoToHI .or. sphWithChem) then
        write (message,'(a)') "Will read H2 fraction"
        call writeInfo(message,TRIVIAL)
@@ -2277,12 +2278,13 @@ end subroutine read_sph_data_clumpfind
           if (TRIM(tagi(1:5)).NE.'Dust:') then
              read (LUIN) tagi
              if ('dustfrac'.NE.TRIM(tagi)) then
-                write(message,*) "ERROR - expected dustfracs ",tagi
+                write(message,*) "ERROR - expected dustfrac ",tagi
                 call writeFatal(message)
              endif
           endif
-          read (LUIN) (dustfracs(j,i), i=iiigas+1,iiigas+blocknpart)
+          read (LUIN) (dustfrac(j,i), i=iiigas+1,iiigas+blocknpart)
        end do
+       write (*,*) 'sphNG read dustfrac1 = ',dustfrac(1,iiigas+1),iiigas+1
 
 500    do j=1,nums(6)
           read(LUIN) tagi ! Read tags
@@ -2463,6 +2465,14 @@ hydroThreads: do iThread = 1, loopIndex
        allocate ( sphData%rhoH2(npart) )
     endif
 
+    sphData%ndusttypes = ndusttypes
+    nDustType = ndusttypes
+    if (ndusttypes.GE.1) then
+       allocate ( sphData%dustfrac(sphData%ndusttypes,npart) )
+    endif
+
+    write(*,*) "Allocated sphData%dustfrac array for ndusttypes=",ndusttypes,npart
+
     if (nblocktypes.GE.3) then
        sphdata%codeEnergytoTemperature = 1.0
     else if (convertRhoToHI) then
@@ -2507,6 +2517,10 @@ hydroThreads: do iThread = 1, loopIndex
              sphdata%vyn(iiigas)         = vxyzu(2,i)
              sphdata%vzn(iiigas)         = vxyzu(3,i)
              sphData%temperature(iiigas) = vxyzu(4,i)
+
+             if (sphdata%ndusttypes.GE.1) then
+                sphdata%dustfrac(1:sphdata%ndusttypes,iiigas) = dustfrac(1:sphdata%ndusttypes,i)
+             endif
 
 ! If the radiative transfer block exists, set temperatures as u / (u/T)
              if (nblocktypes.GE.3) then
@@ -3363,7 +3377,7 @@ contains
   end subroutine FindCriticalValue
 
   TYPE(vector)  function Clusterparameter(point, thisoctal, subcell, rho_out, rhoH2_out, rhoCO_out, temp_out, dustfrac_out)
-    USE inputs_mod, only: sph_norm_limit, convertRhoToHI, sphToGridSimple
+    USE inputs_mod, only: sph_norm_limit, convertRhoToHI, sphToGridSimple, nDustType
     USE constants_mod, only: tcbr
     use octal_mod, only: OCTAL
 
@@ -3377,7 +3391,7 @@ contains
     real(double), optional, intent(out) :: rhoH2_out
     real(double), optional, intent(out) :: rhoCO_out
     real(double), optional, intent(out) :: temp_out
-    real(double), optional, intent(out) :: dustfrac_out
+    real(double), optional, dimension(:), intent(out) :: dustfrac_out
     real(double) :: rhoH2_local
 
     real(double) :: r
@@ -3387,7 +3401,7 @@ contains
     real(double) :: vx, vy, vz
     real(double) :: h2ratio
 
-    integer :: i
+    integer :: i, j
 
     integer :: nparticles
     integer :: indexArray(npart)
@@ -3401,7 +3415,7 @@ contains
     if (present(rhoH2_out))    rhoH2_out=1d-37
     if (present(rhoCO_out))    rhoCO_out=1d-99
     if (present(temp_out))     temp_out=tcbr
-    if (present(dustfrac_out)) dustfrac_out=1d-99
+    if (present(dustfrac_out)) dustfrac_out(:)=1d-99
     rhoH2_local=1d-30
 
 ! If there are no particles then there is nothing to do so just return. 
@@ -3410,7 +3424,7 @@ contains
           Clusterparameter = VECTOR(0.d0,0.d0,0.d0)
        return
     endif
-              
+
     d = min(thisoctal%h(subcell), rmax)! using the placeholder h from splitgrid
 
 !   d = thisoctal%subcellsize ! the splitgrid routine effectively picks the grid size based on smoothing length (mass condition)
@@ -3549,12 +3563,14 @@ contains
        end if
 
        ! dust fraction
-       if (present(dustfrac_out).and.allocated(dustfrac)) then
-          dustfrac_out = 0.0
+       if (present(dustfrac_out).and.allocated(dustfracArray)) then
+          dustfrac_out(:) = 0.0
           do i = 1, nparticles
-             dustfrac_out = dustfrac_out + partArray(i) * dustfrac(indexArray(i)) 
+             do j = 1, nDustType
+                dustfrac_out(j) = dustfrac_out(j) + partArray(i) * dustfracArray(j,indexArray(i))
+             enddo
           enddo
-          dustfrac_out=dustfrac_out * fac
+          dustfrac_out(:)=dustfrac_out(:) * fac
        end if
 
     else
@@ -3599,7 +3615,7 @@ contains
     allocate(RhoH2Array(npart))
     allocate(OneOverHsquared(npart))
     if (associated(sphData%rhoCO)) allocate (rhoCOarray(npart))
-    if (associated(sphData%dustfrac)) allocate (dustfrac(npart))
+    if (associated(sphData%dustfrac)) allocate (dustfracArray(sphData%ndusttypes,npart))
           
     PositionArray = 0.d0; hArray = 0.d0; ind = 0
     if (.not.associated(sphdata%xn)) then
@@ -3703,8 +3719,8 @@ contains
     if (allocated (rhoCOarray) .and. associated(sphdata%rhoCO) ) then 
        rhoCOarray(:) = sphdata%rhoCO(ind(:)) * codeDensityToTorus
     end if
-    if (allocated (dustfrac) .and. associated(sphdata%dustfrac) ) then 
-       dustfrac(:) = sphdata%dustfrac(ind(:)) 
+    if (allocated (dustfracArray) .and. associated(sphdata%dustfrac) ) then 
+       dustfracArray(:,:) = sphdata%dustfrac(:,ind(:)) 
     end if
           
     hcrit = hcrit * codeLengthtoTORUS          
@@ -3734,7 +3750,7 @@ contains
     if (allocated(OneOverHsquared)) deallocate(OneOverHsquared)
     if (allocated(etaarray))        deallocate(etaarray)
     if (allocated(rhoCOarray))      deallocate(rhoCOarray)
-    if (allocated(dustfrac))        deallocate(dustfrac)
+    if (allocated(dustfracArray))   deallocate(dustfracArray)
     if (allocated(VelocityArray))   deallocate (VelocityArray)
 
   end subroutine deallocate_clusterparameter_arrays
