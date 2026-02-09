@@ -13840,12 +13840,12 @@ end function readparameterfrom2dmap
     enddo
   end subroutine scaleVelocityAMR
 
-  recursive subroutine findTotalMass(thisOctal, totalMass, totalMassTrap, totalMassMol, minRho, maxRho)
+  recursive subroutine findTotalMass(thisOctal, totalMass, totalMassTrap, totalMassMol, minRho, maxRho, totalDustMass)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child
   real(double), intent(inout) :: totalMass
   real(double),optional, intent(inout) :: totalMassTrap, totalMassMol
-  real(double),optional, intent(inout) :: minRho, maxRho
+  real(double),optional, intent(inout) :: minRho, maxRho, totalDustMass
   real(double) :: dv, rhoMol
   integer :: subcell, i
 
@@ -13856,9 +13856,9 @@ end function readparameterfrom2dmap
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
                 if (present(totalMassMol)) then
-                   call findtotalMass(child, totalMass, totalmasstrap, totalMassMol=totalMassMol, minRho=minRho, maxRho=maxRho)
+                   call findtotalMass(child, totalMass, totalmasstrap, totalMassMol=totalMassMol, minRho=minRho, maxRho=maxRho, totalDustMass=totalDustMass)
                 else
-                   call findtotalMass(child, totalMass, totalmasstrap, minRho, maxRho)
+                   call findtotalMass(child, totalMass, totalmasstrap, minRho, maxRho, totalDustMass)
                 endif
                 exit
              end if
@@ -13882,6 +13882,7 @@ end function readparameterfrom2dmap
              endif
           endif
           if (PRESENT(maxRho)) maxRho = max(dble(thisOctal%rho(subcell)), maxRho)
+          if (PRESENT(totalDustMass).and.associated(thisOctal%dustTypeFraction)) totalDustMass = totalDustMass + (1.d30)*thisOctal%rho(subcell) * dv*SUM(thisOctal%dustTypeFraction(subcell,:))
        endif
     enddo
   end subroutine findTotalMass

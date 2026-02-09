@@ -276,10 +276,18 @@ contains
        
 
        if (nDustType >= 1) then
-          do i = 1, nDustType
-             write(stringArray(i),'(a,i2.2)') "dust",i
-          enddo
-          call writeVTKfile(grid,"dust.vtk",valueTypeString=stringArray(1:nDustType))
+! Lots of dust types signifies using sphNG dump file with multigrain
+          if (nDustType >= 12) then
+             do i = 1, nDustType
+                write(stringArray(i),'(a,i2.2)') "dustN",i
+             enddo
+             call writeVTKfile(grid,"dust.vtk",valueTypeString=stringArray(1:nDustType))
+          else
+             do i = 1, nDustType
+                write(stringArray(i),'(a,i2.2)') "dust",i
+             enddo
+             call writeVTKfile(grid,"dust.vtk",valueTypeString=stringArray(1:nDustType))
+          endif
        endif
 
 

@@ -1721,7 +1721,7 @@ end subroutine assignMgAsciiValues
     integer(kind=bigInt) :: i
 #ifdef SPH
     character(len=80) :: message
-    real(double) :: minRho, maxRho, totalmasstrap, totalmass, totalMassMol
+    real(double) :: minRho, maxRho, totalmasstrap, totalmass, totalMassMol, totalDustMass
 #endif
 #ifdef MPI
 #ifdef USECFITSIO
@@ -1746,13 +1746,15 @@ end subroutine assignMgAsciiValues
 
 #ifdef SPH
     case("molcluster", "theGalaxy", "cluster","sphfile", "dale")
-       totalmasstrap = 0.0; maxrho=0.0; minrho=1.0e30; totalmass=0.0; totalmassMol=0.0
+       totalmasstrap = 0.0; maxrho=0.0; minrho=1.0e30; totalmass=0.0; totalmassMol=0.0; totalDustMass = 0.0
        call findTotalMass(grid%octreeRoot, totalMass, totalmasstrap = totalmasstrap, totalmassMol=totalmassMol, &
-            maxrho=maxrho, minrho=minrho)
+            maxrho=maxrho, minrho=minrho, totalDustMass=totalDustMass)
 ! This write statement is checked by the test suite so update checkSphToGrid.pl if it changes.
        write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
        call writeInfo(message, TRIVIAL)
        write(message,*) "Mass of envelope (TRAP): ",totalMasstrap/mSol, " solar masses"
+       call writeInfo(message, TRIVIAL)
+       write(message,*) "Mass of dust: ",totalDustMass/mSol, " solar masses"
        call writeInfo(message, TRIVIAL)
        if (sphwithchem) then
           write(message,*) "Molecular mass of envelope: ",totalMassMol/mSol, " solar masses"

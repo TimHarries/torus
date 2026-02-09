@@ -62,6 +62,8 @@ module sph_data_class
      real(double) :: codeEnergytoTemperature    ! Conversion from SPH code velocity units to Torus units
      !                                          ! (umass is M_sol, udist=0.1 pc)
      integer      :: npart                  ! Total number of gas particles (field+disc)
+     integer      :: ndusttypes             ! Number of dust types
+     real(double) :: dustsizemin,dustsizemax,dustsizeslope,dustdensity ! Dust grain properties
      real(double) :: time                   ! Time of sph data dump (in units of utime)
      integer          :: nptmass                ! Number of stars/brown dwarfs
      real(double), pointer, dimension(:) :: gasmass            ! Mass of each gas particle ! DAR changed to allow variable mass
@@ -74,8 +76,8 @@ module sph_data_class
      real(double), pointer, dimension(:) :: hn                 ! Smoothing length
      ! Density of the gas particles
      real(double), pointer, dimension(:) :: rhon
-     ! Dust fraction
-     real(double), pointer, dimension(:) :: dustfrac
+     ! Dust fractions
+     real(double), pointer, dimension(:,:) :: dustfrac
      ! Density of H2
      real(double), pointer, dimension(:) :: rhoH2 => null()
      ! Density of CO
@@ -110,7 +112,7 @@ module sph_data_class
     
   real(double), allocatable :: PositionArray(:,:), OneOverHsquared(:), &
                                RhoArray(:), TemArray(:), VelocityArray(:,:), &
-                               RhoH2Array(:), rhoCOarray(:), dustfrac(:)
+                               RhoH2Array(:), rhoCOarray(:), dustfracArray(:,:)
 
   type(sph_data), save :: sphdata
   integer, save :: npart
@@ -418,7 +420,7 @@ contains
     integer :: ix, iy, iz, ivx, ivy, ivz, irho, iu, iitype, ih, imass, iUoverT, ipType, iDustTemperature
     logical :: haveUandUoverT, haveDustTemperature
     integer :: iDustfrac
-    real(double) :: dustfrac
+    real(double), allocatable :: dustfrac(:,:)
     integer, allocatable :: pNumArray(:) ! Array of particle numbers read from header
 
 !
@@ -781,7 +783,8 @@ contains
     end if
 
     if (idustfrac/=0) then
-       ALLOCATE(sphdata%dustfrac(sphdata%npart))
+       sphdata%ndusttypes=1
+       ALLOCATE(sphdata%dustfrac(sphdata%ndusttypes,sphdata%npart))
     endif
 
     
@@ -809,7 +812,7 @@ part_loop: do ipart=1, nlines
 
        dustfrac = 0.1
        if (idustFrac /= 0) then
-          dustfrac = junkArray(idustfrac,ipart)
+          dustfrac = junkArray(sphdata%ndusttypes,ipart)
        endif
 
        if ( iitype == 0 ) then
@@ -1974,9 +1977,11 @@ end subroutine read_sph_data_clumpfind
 
 ! Read in SPH data from an SPH-NG MPI dump file
 ! D. Acreman, June 2012
+! M.R. Bate, November 2025
+!
   subroutine read_sph_data_mpi(filename)
     use inputs_mod, only: amrgridcentrex, amrgridcentrey, amrgridcentrez, amrgridsize, splitovermpi, discardSinks,&
-         convertrhotohi, sphWithChem
+         convertrhotohi, sphWithChem, nDustType
     use angularImage_utils, only:  internalView, galaxyPositionAngle, galaxyInclination
 #ifdef MPI
     use mpi
@@ -1996,16 +2001,24 @@ end subroutine read_sph_data_clumpfind
     integer, parameter :: nptmass=0
 
     INTEGER(kind=4)  :: int1, int2, i1, int1o
-    integer(kind=4)  :: number,n1,n2,nreassign,naccrete,nkilltot,nblocks,nkill
+    integer(kind=4)  :: number,n1,n2,nreassign,naccrete,nblocks,nkill
     integer(kind=4)  :: nblocktypes
+    integer(kind=4)  :: iyr,idum,iplanetesimals,irotpot,idragscheme,HY09_ndust_bins,idustFluid,ndusttypes
+    real(kind=8)     :: dustsizemin,dustsizemax,dustsizeslope,dustdensity
+    integer(kind=8)  :: iuniquemax
     REAL(kind=8)     :: r1
-    REAL(kind=4)     :: r4
     integer(kind=8)  :: blocknpart, blocknptmass, blocknradtrans, blocknmhd, blocksum_npart
     integer  :: blocksum_nptmass, i_pt_mass
     CHARACTER(len=100) ::  fileident
+    integer(kind=4), parameter  :: nmaxtags = 128
+    CHARACTER(len=16)  ::  tagsreal(nmaxtags),tagi
+    real(kind=8)     :: rheader(nmaxtags)
+    logical(kind=4)  :: tagged
 
     integer(kind=1), parameter  :: LUIN = 10 ! logical unit # of the data file
-
+    integer(kind=4), parameter  :: NTAB = 32
+    integer(kind=4)  :: iv(NTAB)
+    
     integer(kind=1), allocatable :: iphase(:)
     integer, allocatable         :: isteps(:)
     real(kind=8), allocatable    :: xyzmh(:,:)
@@ -2014,6 +2027,7 @@ end subroutine read_sph_data_clumpfind
     real(kind=4), allocatable    :: rho(:)
     real(kind=8), allocatable    :: h2ratio(:)
     real(kind=8), allocatable    :: COfrac(:)
+    real(kind=8), allocatable    :: dustfrac(:,:)
 
     integer,allocatable :: listpm(:)
     real(kind=8),allocatable    :: spinx(:)
@@ -2065,8 +2079,10 @@ end subroutine read_sph_data_clumpfind
     if (i1==690706) then
        write(message,*) "Version 1 dump opened OK"
        call writeinfo(message, TRIVIAL)
-    else if (i1==1.or.i1==2) then
-       call writeFatal("Version 2 dumps not supported yet. Convert to ASCII.")
+    else if (i1==1) then
+       write(message,*) "Version 2 dump: ",int1,r1,int2,i1,int1o
+!       call writeFatal("Version 2 dumps not supported yet. Convert to ASCII.")
+       call writeinfo(message, TRIVIAL)
     else
        write(message,*) "Unrecognised version number", i1
        call writeWarning(message)
@@ -2075,14 +2091,20 @@ end subroutine read_sph_data_clumpfind
     read(LUIN) fileident
     write(message,*) "fileident=", fileident
     call writeinfo(message, TRIVIAL)
-    
+    if (fileident(2:2).EQ.'T') then
+         tagged = .true.
+    endif
+
     read(LUIN) number
-    IF (number==6) THEN
-       READ (LUIN) npart,n1,n2,nreassign,naccrete,nkill
-       nblocks = 1
-    ELSE
-       read(LUIN) npart, n1, n2, nreassign, naccrete, nkilltot, nblocks
-    ENDIF       
+    if (number==15+NTAB) then
+       read(LUIN)  ! Skip tags
+       read(LUIN) npart,n1,n2,nreassign,naccrete,nkill,nblocks,iyr,idum,&
+            (iv(i),i=1,NTAB),iplanetesimals,irotpot,idragscheme,&
+            HY09_ndust_bins,idustFluid,ndusttypes
+    else
+       write(message,*) "Unexpected length of header info ",number
+       call writeFatal("Fatal: Unexpected length of header info")
+    endif
     write(message,*) "Total number of particles= ", npart
     print*,"Total number of particles= ", npart
     call writeInfo(message,TRIVIAL)
@@ -2097,6 +2119,7 @@ end subroutine read_sph_data_clumpfind
     allocate( vxyzu(4,npart))
     allocate( uoverTarray(npart))
     allocate( rho(npart)    )
+    if (ndusttypes.GE.1) allocate( dustfrac(ndusttypes,npart) )
     if (ConvertRhoToHI .or. sphWithChem) then
        write (message,'(a)') "Will read H2 fraction"
        call writeInfo(message,TRIVIAL)
@@ -2108,18 +2131,52 @@ end subroutine read_sph_data_clumpfind
        allocate ( COfrac(npart) )
     endif
 
-    do i=1,6
+    do i=1,3
        read(LUIN)
     end do
-
-    read(LUIN) time 
-    write(message,*) "Dump time=", time
+    read(LUIN) number
+    write(message,*) "number int8 ", number
+    call writeInfo(message,TRIVIAL)
+    if (number.eq.1) then
+       read(LUIN)
+       read(LUIN) iuniquemax
+       write(message,*) "iuniquemax = ", iuniquemax
+       call writeInfo(message,TRIVIAL)
+    endif
+    read(LUIN) number
+    write(message,*) "number default real = ", number
     call writeInfo(message,TRIVIAL)
 
-    read(LUIN)
-    read(LUIN)
+    read(LUIN) tagsreal(1:MIN(number,nmaxtags))
+    read(LUIN) (rheader(i),i=1,min(number,nmaxtags))
+    time = rheader(1)
+    write(message,*) "Dump time=", time, " [code units]"
+    call writeInfo(message,TRIVIAL)
+
+    ! Inforsmation on dust grain distribution, if specified by sphNG dump file
+    tagi = tagsreal(40)
+    if (tagi(1:13)=="HY09_size_min") then
+       write(message,*) tagsreal(40)," ",rheader(40)," [cm]" ! HY09_size_min
+       call writeInfo(message,TRIVIAL)
+       dustsizemin = rheader(40)
+       write(message,*) tagsreal(41)," ",rheader(41)," [cm]" ! HY09_size_max
+       call writeInfo(message,TRIVIAL)
+       dustsizemax = rheader(41)
+       write(message,*) tagsreal(43)," ",rheader(43) ! HY09_slope
+       call writeInfo(message,TRIVIAL)
+       dustsizeslope = rheader(43)
+       write(message,*) tagsreal(44)," ",rheader(44)," [g/cm^3]" ! HY09_dustdensity
+       call writeInfo(message,TRIVIAL)
+       dustdensity = rheader(44)
+    else
+       call writeFatal("Fatal error reading sphNG file: tag(40) not HY09_size_min")
+    endif
+
+    read(LUIN) ! Skip number of REAL*4
+    read(LUIN) ! Skip number of REAL*8
+    read(LUIN) ! Skip tags for units
     read(LUIN) udist, umass, utime
-    read(LUIN) number
+    read(LUIN) number ! This is the number of blocks*nblocktypes
 
     nblocktypes = number/nblocks
 
@@ -2167,11 +2224,19 @@ end subroutine read_sph_data_clumpfind
           call writeInfo(message,TRIVIAL)
        endif
 
+       READ (LUIN) ! Skip tags
        READ (LUIN) (isteps(i), i=iiigas+1, iiigas+blocknpart)
 
        do j=1,nums(1)-1
+          READ (LUIN) ! Skip tags
           READ (LUIN) (nlistinactive, listinactive(i), i=1,1)
        END DO
+       
+       READ (LUIN) tagi ! Skip tag: iphase
+       IF (TRIM(tagi).NE.'iphase') THEN
+          write (message,*) "Expected tag: iphase ",tagi
+          call writeFatal(message)
+       ENDIF
        READ (LUIN) (iphase(i), i=iiigas+1, iiigas+blocknpart)
 
        thisNumGas = 0
@@ -2181,76 +2246,146 @@ end subroutine read_sph_data_clumpfind
        write (message,*) "There are ", thisNumGas, " active gas particles"
        call writeInfo(message,TRIVIAL)
 
+       read(LUIN) ! Skip tag: iunique
        read(LUIN) 
 
        do j=1,5
+          read(LUIN) ! Skip tags: x,y,z,m,h
           read(LUIN) ( xyzmh(j,i), i=iiigas+1,iiigas+blocknpart)
        end do
 
        do j=1,4
+          read(LUIN) ! Skip tags: vx, vy, vz, u
           read(LUIN) ( vxyzu(j,i), i=iiigas+1,iiigas+blocknpart)
        end do
 
 ! Read H2 fraction and CO abundance if required
-       if ( ConvertRhoToHI .or. sphWithChem ) then 
+       if ( ConvertRhoToHI .or. sphWithChem ) then
+          read(LUIN) ! Skip tags: h2ratio
           READ (LUIN) ( h2ratio(i), i=iiigas+1,iiigas+blocknpart)
-          do j=1,3 
+          do j=1,3
+             read(LUIN) ! Skip tags
              READ (LUIN)
           end do
           if (sphWithChem) then
+             read(LUIN) ! Skip tags
              READ (LUIN) ( COfrac(i), i=iiigas+1,iiigas+blocknpart)
           else
+             read(LUIN) ! Skip tags
              READ (LUIN)
           end if
           do j=1,nums(6)-15
+             read(LUIN) ! Skip tags
              READ (LUIN)
           end do
-       else
-          do j=1,nums(6)-10
-             READ (LUIN)
-          end do
-       end if
-
-       READ (LUIN)
-
-       read(LUIN) ( rho(i), i=iiigas+1,iiigas+blocknpart) 
-
-       do j=1,nums(7)-2
+       endif
+       do j=1,nums(6)-10
+          read(LUIN) tagi ! Read tags
+          if (TRIM(tagi(1:8)).EQ.'dustfrac') GOTO 200
+          if (TRIM(tagi(1:5)).EQ.'Dust:') GOTO 200
           READ (LUIN)
        end do
-       read (LUIN) (r4, i=iiigas+1,iiigas+blocknpart)
+       GOTO 500
+
+! Read one-fluid dust, including multigran
+200    write(message,*) "Found dustfrac, ndusttypes=",ndusttypes,tagi(1:10)
+       call writeInfo(message,TRIVIAL)
+       if (TRIM(tagi(1:5)).NE.'Dust:') read (LUIN)
+
+       do j = 1, ndusttypes
+          if (TRIM(tagi(1:5)).NE.'Dust:') then
+             read (LUIN) tagi
+             if ('dustfrac'.NE.TRIM(tagi)) then
+                write(message,*) "ERROR - expected dustfrac ",tagi
+                call writeFatal(message)
+             endif
+          endif
+          read (LUIN) (dustfrac(j,i), i=iiigas+1,iiigas+blocknpart)
+       end do
+       write (*,*) 'sphNG read dustfrac1 = ',dustfrac(1,iiigas+1),iiigas+1
+
+500    do j=1,nums(6)
+          read(LUIN) tagi ! Read tags
+          if (TRIM(tagi).EQ.'rho') GOTO 600
+          READ (LUIN)
+       end do
+
+       write (message,*) "Could not find tag: rho ",tagi
+       call writeFatal(message)
+
+600    read(LUIN) ( rho(i), i=iiigas+1,iiigas+blocknpart) 
+
+       do j=1,nums(7)-1
+          READ (LUIN) tagi
+          write(message,*) "Skipping ", tagi
+          call writeInfo(message,TRIVIAL)
+          READ (LUIN)
+       end do
 
        allocate(listpm(blocknptmass), spinx(blocknptmass))
+       READ (LUIN) tagi
+       IF (TRIM(tagi).NE.'listpm') THEN
+          write(message,*) "ERROR - expected listpm ",tagi
+          call writeFatal(message)
+       ENDIF
        READ (LUIN) (listpm(i),i=1,blocknptmass)
+       READ (LUIN) ! Skip tags
        READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) ! Skip tags
        READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) ! Skip tags
        READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) ! Skip tags
        READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) ! Skip tags
        READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) ! Skip tags
        READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) ! Skip tags
        READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) ! Skip tags
        READ (LUIN) (spinx(i),i=1,blocknptmass)
+       READ (LUIN) ! Skip tags
        READ (LUIN) (spinx(i),i=1,blocknptmass)
        deallocate(listpm, spinx)
 
-       DO i = 1, numssink(6)-9
+       DO i = 1, numssink(6)-10
+          READ (LUIN) ! Skip tags
           READ (LUIN)
        END DO
        DO i = 1, numssink(8)
+          READ (LUIN) ! Skip tags
           READ (LUIN)
        END DO
 
        if (nblocktypes.GE.3) then
           call writeInfo ("Reading RT data")
           do j=1,2
+             READ (LUIN) tagi
+             write(message,*) "Skipping ", tagi
+             call writeInfo(message,TRIVIAL)
              READ (LUIN)
           end do
 
+          READ (LUIN) tagi
+          write(message,*) "Reading ", tagi
+          call writeInfo(message,TRIVIAL)
           READ (LUIN) (uoverTarray(i),i=iiigas+1,iiigas+blocknpart)
 
           do j = 1, numsrt(6)-3
+             READ (LUIN) tagi
+             write(message,*) "Skipping ", tagi
+             call writeInfo(message,TRIVIAL)
              READ (LUIN)
           end do
+
+          do j = 1, numsrt(7)
+             READ (LUIN) tagi
+             write(message,*) "Skipping ", tagi
+             call writeInfo(message,TRIVIAL)
+             READ (LUIN)
+          end do
+
           call writeInfo ("Read RT data")
        endif
 
@@ -2258,6 +2393,7 @@ end subroutine read_sph_data_clumpfind
           call writeInfo ("Reading MHD data")
           do i=1,8
              do j=1,nums(i)
+                READ (LUIN) ! Skip tags
                 READ (LUIN)
              end do
           end do
@@ -2346,6 +2482,20 @@ hydroThreads: do iThread = 1, loopIndex
        allocate ( sphData%rhoH2(npart) )
     endif
 
+    ! Set number of dust grain types, and the properties of the dust grains
+    sphData%ndusttypes = ndusttypes
+    sphData%dustsizemin = dustsizemin
+    sphData%dustsizemax = dustsizemax
+    sphData%dustsizeslope = dustsizeslope
+    sphData%dustdensity = dustdensity
+
+    nDustType = ndusttypes
+    if (ndusttypes.GE.1) then
+       allocate ( sphData%dustfrac(sphData%ndusttypes,npart) )
+    endif
+
+    write(*,*) "Allocated sphData%dustfrac array for ndusttypes=",ndusttypes,npart
+
     if (nblocktypes.GE.3) then
        sphdata%codeEnergytoTemperature = 1.0
     else if (convertRhoToHI) then
@@ -2390,6 +2540,10 @@ hydroThreads: do iThread = 1, loopIndex
              sphdata%vyn(iiigas)         = vxyzu(2,i)
              sphdata%vzn(iiigas)         = vxyzu(3,i)
              sphData%temperature(iiigas) = vxyzu(4,i)
+
+             if (sphdata%ndusttypes.GE.1) then
+                sphdata%dustfrac(1:sphdata%ndusttypes,iiigas) = dustfrac(1:sphdata%ndusttypes,i)
+             endif
 
 ! If the radiative transfer block exists, set temperatures as u / (u/T)
              if (nblocktypes.GE.3) then
@@ -3246,7 +3400,7 @@ contains
   end subroutine FindCriticalValue
 
   TYPE(vector)  function Clusterparameter(point, thisoctal, subcell, rho_out, rhoH2_out, rhoCO_out, temp_out, dustfrac_out)
-    USE inputs_mod, only: sph_norm_limit, convertRhoToHI, sphToGridSimple
+    USE inputs_mod, only: sph_norm_limit, convertRhoToHI, sphToGridSimple, nDustType
     USE constants_mod, only: tcbr
     use octal_mod, only: OCTAL
 
@@ -3260,7 +3414,7 @@ contains
     real(double), optional, intent(out) :: rhoH2_out
     real(double), optional, intent(out) :: rhoCO_out
     real(double), optional, intent(out) :: temp_out
-    real(double), optional, intent(out) :: dustfrac_out
+    real(double), optional, dimension(:), intent(out) :: dustfrac_out
     real(double) :: rhoH2_local
 
     real(double) :: r
@@ -3270,7 +3424,7 @@ contains
     real(double) :: vx, vy, vz
     real(double) :: h2ratio
 
-    integer :: i
+    integer :: i, j
 
     integer :: nparticles
     integer :: indexArray(npart)
@@ -3284,7 +3438,7 @@ contains
     if (present(rhoH2_out))    rhoH2_out=1d-37
     if (present(rhoCO_out))    rhoCO_out=1d-99
     if (present(temp_out))     temp_out=tcbr
-    if (present(dustfrac_out)) dustfrac_out=1d-99
+    if (present(dustfrac_out)) dustfrac_out(:)=1d-99
     rhoH2_local=1d-30
 
 ! If there are no particles then there is nothing to do so just return. 
@@ -3293,7 +3447,7 @@ contains
           Clusterparameter = VECTOR(0.d0,0.d0,0.d0)
        return
     endif
-              
+
     d = min(thisoctal%h(subcell), rmax)! using the placeholder h from splitgrid
 
 !   d = thisoctal%subcellsize ! the splitgrid routine effectively picks the grid size based on smoothing length (mass condition)
@@ -3432,12 +3586,14 @@ contains
        end if
 
        ! dust fraction
-       if (present(dustfrac_out).and.allocated(dustfrac)) then
-          dustfrac_out = 0.0
+       if (present(dustfrac_out).and.allocated(dustfracArray)) then
+          dustfrac_out(:) = 0.0
           do i = 1, nparticles
-             dustfrac_out = dustfrac_out + partArray(i) * dustfrac(indexArray(i)) 
+             do j = 1, nDustType
+                dustfrac_out(j) = dustfrac_out(j) + partArray(i) * dustfracArray(j,indexArray(i))
+             enddo
           enddo
-          dustfrac_out=dustfrac_out * fac
+          dustfrac_out(:)=dustfrac_out(:) * fac
        end if
 
     else
@@ -3467,9 +3623,10 @@ contains
     udist = get_udist()
     utime = get_utime()
     umass = get_umass()
-    codeLengthtoTORUS =  udist
+    codeLengthtoTORUS =  udist/1.d10
     codeVelocitytoTORUS = sphdata%codeVelocitytoTORUS
-    codeDensitytoTORUS = umass / ((udist*1.d10) ** 3)
+!    codeDensitytoTORUS = umass / ((udist/1.d10) ** 3)
+    codeDensitytoTORUS = umass / ((udist) ** 3)
     write(*,*) "code length to torus ",codeLengthToTorus
     write(*,*) "code vel to torus ",codeVelocityToTorus
     write(*,*) "code density to torus ",codeDensityToTorus
@@ -3481,7 +3638,7 @@ contains
     allocate(RhoH2Array(npart))
     allocate(OneOverHsquared(npart))
     if (associated(sphData%rhoCO)) allocate (rhoCOarray(npart))
-    if (associated(sphData%dustfrac)) allocate (dustfrac(npart))
+    if (associated(sphData%dustfrac)) allocate (dustfracArray(sphData%ndusttypes,npart))
           
     PositionArray = 0.d0; hArray = 0.d0; ind = 0
     if (.not.associated(sphdata%xn)) then
@@ -3561,7 +3718,7 @@ contains
     else
        call writeInfo("Assuming eta=1.2 in smoothing length calculation")
     endif
- 
+
     write(message, *) "Critical smoothing Length in code units", hcrit
     call writeinfo(message, TRIVIAL)
     write(message, *) "Maximum smoothing Length in code units", hmax
@@ -3585,8 +3742,8 @@ contains
     if (allocated (rhoCOarray) .and. associated(sphdata%rhoCO) ) then 
        rhoCOarray(:) = sphdata%rhoCO(ind(:)) * codeDensityToTorus
     end if
-    if (allocated (dustfrac) .and. associated(sphdata%dustfrac) ) then 
-       dustfrac(:) = sphdata%dustfrac(ind(:)) 
+    if (allocated (dustfracArray) .and. associated(sphdata%dustfrac) ) then 
+       dustfracArray(:,:) = sphdata%dustfrac(:,ind(:)) 
     end if
           
     hcrit = hcrit * codeLengthtoTORUS          
@@ -3616,7 +3773,7 @@ contains
     if (allocated(OneOverHsquared)) deallocate(OneOverHsquared)
     if (allocated(etaarray))        deallocate(etaarray)
     if (allocated(rhoCOarray))      deallocate(rhoCOarray)
-    if (allocated(dustfrac))        deallocate(dustfrac)
+    if (allocated(dustfracArray))   deallocate(dustfracArray)
     if (allocated(VelocityArray))   deallocate (VelocityArray)
 
   end subroutine deallocate_clusterparameter_arrays
