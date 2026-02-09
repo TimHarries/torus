@@ -63,6 +63,7 @@ module sph_data_class
      !                                          ! (umass is M_sol, udist=0.1 pc)
      integer      :: npart                  ! Total number of gas particles (field+disc)
      integer      :: ndusttypes             ! Number of dust types
+     real(double) :: dustsizemin,dustsizemax,dustsizeslope,dustdensity ! Dust grain properties
      real(double) :: time                   ! Time of sph data dump (in units of utime)
      integer          :: nptmass                ! Number of stars/brown dwarfs
      real(double), pointer, dimension(:) :: gasmass            ! Mass of each gas particle ! DAR changed to allow variable mass
@@ -2000,18 +2001,18 @@ end subroutine read_sph_data_clumpfind
     integer, parameter :: nptmass=0
 
     INTEGER(kind=4)  :: int1, int2, i1, int1o
-    integer(kind=4)  :: number,n1,n2,nreassign,naccrete,nkilltot,nblocks,nkill
+    integer(kind=4)  :: number,n1,n2,nreassign,naccrete,nblocks,nkill
     integer(kind=4)  :: nblocktypes
     integer(kind=4)  :: iyr,idum,iplanetesimals,irotpot,idragscheme,HY09_ndust_bins,idustFluid,ndusttypes
+    real(kind=8)     :: dustsizemin,dustsizemax,dustsizeslope,dustdensity
     integer(kind=8)  :: iuniquemax
     REAL(kind=8)     :: r1
-    REAL(kind=4)     :: r4
     integer(kind=8)  :: blocknpart, blocknptmass, blocknradtrans, blocknmhd, blocksum_npart
     integer  :: blocksum_nptmass, i_pt_mass
     CHARACTER(len=100) ::  fileident
     integer(kind=4), parameter  :: nmaxtags = 128
     CHARACTER(len=16)  ::  tagsreal(nmaxtags),tagi
-    integer(kind=4)  :: rheader(nmaxtags)
+    real(kind=8)     :: rheader(nmaxtags)
     logical(kind=4)  :: tagged
 
     integer(kind=1), parameter  :: LUIN = 10 ! logical unit # of the data file
@@ -2149,10 +2150,27 @@ end subroutine read_sph_data_clumpfind
     read(LUIN) tagsreal(1:MIN(number,nmaxtags))
     read(LUIN) (rheader(i),i=1,min(number,nmaxtags))
     time = rheader(1)
-    write(message,*) "Dump time=", time
+    write(message,*) "Dump time=", time, " [code units]"
     call writeInfo(message,TRIVIAL)
 
-    write(message,*) tagsreal(40)," ",rheader(40) ! HY09_size_min
+    ! Inforsmation on dust grain distribution, if specified by sphNG dump file
+    tagi = tagsreal(40)
+    if (tagi(1:13)=="HY09_size_min") then
+       write(message,*) tagsreal(40)," ",rheader(40)," [cm]" ! HY09_size_min
+       call writeInfo(message,TRIVIAL)
+       dustsizemin = rheader(40)
+       write(message,*) tagsreal(41)," ",rheader(41)," [cm]" ! HY09_size_max
+       call writeInfo(message,TRIVIAL)
+       dustsizemax = rheader(41)
+       write(message,*) tagsreal(43)," ",rheader(43) ! HY09_slope
+       call writeInfo(message,TRIVIAL)
+       dustsizeslope = rheader(43)
+       write(message,*) tagsreal(44)," ",rheader(44)," [g/cm^3]" ! HY09_dustdensity
+       call writeInfo(message,TRIVIAL)
+       dustdensity = rheader(44)
+    else
+       call writeFatal("Fatal error reading sphNG file: tag(40) not HY09_size_min")
+    endif
 
     read(LUIN) ! Skip number of REAL*4
     read(LUIN) ! Skip number of REAL*8
@@ -2303,7 +2321,6 @@ end subroutine read_sph_data_clumpfind
           call writeInfo(message,TRIVIAL)
           READ (LUIN)
        end do
-!       read (LUIN) (r4, i=iiigas+1,iiigas+blocknpart)
 
        allocate(listpm(blocknptmass), spinx(blocknptmass))
        READ (LUIN) tagi
@@ -2465,7 +2482,13 @@ hydroThreads: do iThread = 1, loopIndex
        allocate ( sphData%rhoH2(npart) )
     endif
 
+    ! Set number of dust grain types, and the properties of the dust grains
     sphData%ndusttypes = ndusttypes
+    sphData%dustsizemin = dustsizemin
+    sphData%dustsizemax = dustsizemax
+    sphData%dustsizeslope = dustsizeslope
+    sphData%dustdensity = dustdensity
+
     nDustType = ndusttypes
     if (ndusttypes.GE.1) then
        allocate ( sphData%dustfrac(sphData%ndusttypes,npart) )
