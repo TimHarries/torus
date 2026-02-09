@@ -4047,7 +4047,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
    complex(double), intent(out) :: roots(3)
    integer, intent(out)  :: n_real
 
-   real(double) :: p, q, disc, delta, r, phi
+   real(double) :: p, q, disc, r, phi
    real(double) :: u, v, m, n
 
    ! 1. Normalize to monic: x^3 + Ax^2 + Bx + C = 0

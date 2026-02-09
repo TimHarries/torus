@@ -13856,7 +13856,8 @@ end function readparameterfrom2dmap
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
                 if (present(totalMassMol)) then
-                   call findtotalMass(child, totalMass, totalmasstrap, totalMassMol=totalMassMol, minRho=minRho, maxRho=maxRho, totalDustMass=totalDustMass)
+                   call findtotalMass(child, totalMass, totalmasstrap, totalMassMol=totalMassMol, &
+                        minRho=minRho, maxRho=maxRho, totalDustMass=totalDustMass)
                 else
                    call findtotalMass(child, totalMass, totalmasstrap, minRho, maxRho, totalDustMass)
                 endif
@@ -13882,7 +13883,8 @@ end function readparameterfrom2dmap
              endif
           endif
           if (PRESENT(maxRho)) maxRho = max(dble(thisOctal%rho(subcell)), maxRho)
-          if (PRESENT(totalDustMass).and.associated(thisOctal%dustTypeFraction)) totalDustMass = totalDustMass + (1.d30)*thisOctal%rho(subcell) * dv*SUM(thisOctal%dustTypeFraction(subcell,:))
+          if (PRESENT(totalDustMass).and.associated(thisOctal%dustTypeFraction)) totalDustMass = &
+               totalDustMass + (1.d30)*thisOctal%rho(subcell) * dv*SUM(thisOctal%dustTypeFraction(subcell,:))
        endif
     enddo
   end subroutine findTotalMass
