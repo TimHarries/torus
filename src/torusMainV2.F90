@@ -130,7 +130,6 @@ program torus
   if (doTuning) call tune(6, "Torus Main") ! start a stopwatch  
 
   call inputs()
-
   call setUpBibcodesOnParametersFile()
 !  if (storeScattered) call initHealpix(1)
 
@@ -179,7 +178,6 @@ program torus
      if (doSetupAMRgrid) then
 
         call  setupamrgrid(grid)
-
 
 
 !        call sanityCheckGrid(grid)

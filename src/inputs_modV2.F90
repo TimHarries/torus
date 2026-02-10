@@ -1723,6 +1723,10 @@ contains
           call getLogical("sphwithchem", sphwithchem, cLine, fLine, nLines, &
                "SPH has chemistry information:", "(a,1l,1x,a)", .false., ok, .false.)
 
+          call getLogical("sphwithdust", sphwithdust, cLine, fLine, nLines, &
+            "SPH has dust information:", "(a,1l,1x,a)", .false., ok, .false.)
+
+          
 ! If the dump format is ASCII then we can specify which columns to read H2 and molecular abundance from
           if (inputFileFormat=="ascii" .or. inputFileFormat=="ascii-gadget") then
              ! Keep ih2frac for backwards compatibility
@@ -3288,6 +3292,17 @@ contains
 
        call writeBanner("NOTE THAT DUST TO GAS RATIO INFORMATION SHOULD BE PLACED IN GRAINFRAC. ","!",TRIVIAL)
        call writeBanner("DUSTTOGAS IS NOW USED TO DENOTE THE TOTAL DUST MASS IN THE SYSTEM.","!",TRIVIAL)
+
+       if (sphwithdust) then
+          call getString("graintype", grainType(1), cLine, fLine, nLines, &
+               "Grain type: ","(a,a,1x,a)","sil_dl", ok, .true.)
+          call getLogical("iso_scatter", isotropicScattering, cLine, fLine, nLines, &
+               "Isotropic scattering: ","(a,1l,1x,a)", .false., ok, .false.)
+          grainfrac = 0.01
+          goto 555
+       endif
+
+          
 
        call getReal("dusttogas", dusttoGas, 1., cLine, fLine, nLines, &
             "Dust to gas ratio: ","(a,f5.3,a)",0.01,ok,.false.)

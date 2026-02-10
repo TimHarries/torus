@@ -3023,7 +3023,9 @@ end subroutine writeXMLVtkFileAMR
 !               if (valueType(1:6) == 'dustN0') then
 !                  read(valueType,'("dustN0",i3.3)') idustvalue
 !               else
-                  read(valueType,'("dustN",i3.3)') idustvalue
+!               write(*,*) valuetype
+!               read(valueType,'("dustN",i3.3)') idustvalue
+               read(valueType(6:),'(i3)') idustvalue
 !               endif
                rArray(1, n) = max(1.e-30,real(real(thisOctal%dustTypeFraction(subcell,idustvalue))))
 

@@ -16,6 +16,11 @@ module sph_data_class
   public:: &
        kill, &
        info_sph, &
+       get_ndusttypes, &
+       get_dustsizemin, &
+       get_dustsizemax, &
+       get_dustsizeslope, &
+       get_dustdensity, &
        get_udist, &
        get_umass, &
        get_utime, &
@@ -2849,6 +2854,39 @@ contains
   !
   ! accessors
   !
+  ! returns program
+  function get_ndusttypes() RESULT(out)
+    implicit none
+    integer :: out
+    out = sphdata%ndusttypes
+  end function get_ndusttypes
+
+  
+  function get_dustsizemin() RESULT(out)
+    implicit none
+    real(double) :: out
+    out = sphdata%dustsizemin
+  end function get_dustsizemin
+
+  function get_dustsizemax() RESULT(out)
+    implicit none
+    real(double) :: out
+    out = sphdata%dustsizemax
+  end function get_dustsizemax
+
+  function get_dustsizeslope() RESULT(out)
+    implicit none
+    real(double) :: out
+    out = sphdata%dustsizeslope
+  end function get_dustsizeslope
+
+  function get_dustdensity() RESULT(out)
+    implicit none
+    real(double) :: out
+    out = sphdata%dustdensity
+  end function get_dustdensity
+
+
   
   ! returns program units of distance in cm 
   Function get_udist() RESULT(out)
@@ -3129,6 +3167,11 @@ contains
     if ( associated (sphData%rhoCO) ) then 
        deallocate(sphData%rhoCO)
        nullify(sphData%rhoCO)
+    end if
+
+    if ( associated (sphData%dustfrac) ) then 
+       deallocate(sphData%dustfrac)
+       nullify(sphData%dustfrac)
     end if
 
     sphdata%inUse = .false.

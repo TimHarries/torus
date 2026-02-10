@@ -28,7 +28,7 @@ contains
     use grid_mod
     use turbulence_mod
     use inputs_mod, only : readgrid, gridinputfilename, geometry!, mdot
-    use inputs_mod, only : amrGridCentreX, amrGridCentreY, amrGridCentreZ, flatdisc
+    use inputs_mod, only : amrGridCentreX, amrGridCentreY, amrGridCentreZ, flatdisc, dustPhysics
     use inputs_mod, only : amr1d, amr2d, amr3d, splitOverMPI, atomicPhysics, molecularPhysics, variableDustSublimation
     use inputs_mod, only : amrGridSize, doSmoothGrid, ttauriMagnetosphere, discWind
     use inputs_mod, only : ttauriRstar, mDotparameter1, ttauriWind, ttauriDisc, ttauriWarp, ttauriStellarWind
@@ -48,7 +48,8 @@ contains
 #endif
 #ifdef SPH
     use cluster_class
-    use sph_data_class, only: read_sph_data_wrapper
+    use sph_data_class, only: read_sph_data_wrapper, get_ndusttypes, &
+         get_dustsizemin, get_dustsizemax, get_dustsizeslope, get_dustdensity
 #endif
 #ifdef MPI
     use mpi_amr_mod
@@ -309,7 +310,9 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
-
+          if (dustPhysics.and.get_ndusttypes().gt.0) then
+             call setupDustDistribution()
+          endif
        case("Gareth")
           call rd_gas
           call writeInfo("Initialising adaptive grid...", TRIVIAL)
@@ -3617,4 +3620,32 @@ end subroutine fillGridKatie
     enddo
   end subroutine splitTaggedRho
 
+
+  subroutine setupDustDistribution()
+    use sph_data_class, only: get_ndusttypes, &
+         get_dustsizemin, get_dustsizemax
+    use inputs_mod, only : amin, amax, qdist, ndusttype, graintype, pdist, a0
+    real(double), allocatable :: binbounds(:)
+    real(double) :: delta
+    integer :: i
+
+    allocate(binbounds(0:nDusttype))
+    
+    delta = exp(log(get_dustsizemax()/get_dustsizemin())/dble(get_ndusttypes()))
+
+    binbounds(0) = get_dustsizemin()
+    do i = 1,nDusttype
+       binbounds(i) = binbounds(i-1)*delta
+    enddo
+    do i = 1,nDusttype
+       amin(i) = binbounds(i-1)*1.e4
+       amax(i) = binbounds(i)*1.e4
+       qdist(i) = 0.0001
+       a0(i) = 1.e20
+       pdist(i) = 0.
+    enddo
+    graintype(1:ndusttype) = "sil_dl:0.67:amc_zb:0.33"
+  end subroutine setupDustDistribution
+       
+  
 end module setupamr_mod
