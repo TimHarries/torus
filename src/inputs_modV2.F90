@@ -67,7 +67,7 @@ contains
     filter_set_name = "natural"
     noscattering = .false.
     forceFirstScat = .false.
-    usebias = .true.
+    usebias = .false.
     tthresh = 0.
     intProFilename = "none"
     nBlobs = 0
@@ -293,7 +293,7 @@ contains
     endif
 
     call getLogical("usebias", usebias, cLine, fLine, nLines, &
-         "Use tau biasing: ","(a,1l,1x,a)", .true., ok, .false.)
+         "Use tau biasing: ","(a,1l,1x,a)", .false., ok, .false.)
 
 
     call readGeometrySpecificParameters(cLine, fLine, nLines)
