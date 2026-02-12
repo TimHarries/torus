@@ -6,7 +6,7 @@
 # Updated: October 2012
 # Updated: Added Isca, November 2016
 # Updated: check for and build cfitio library, August 2018
-
+#
 # Error codes: 1 - problem with toolchain
 #              2 - build failure
 
