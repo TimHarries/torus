@@ -683,8 +683,8 @@ contains
          "Inter-cell maximum ratio before smooth: ","(a,f6.1,1x,a)", 3., ok, .false.)
 
     call getBigInteger("maxmemory", maxMemoryAvailable, cLine, fLine, nLines, &
-         "Maximum memory available (Mb): ","(a,i12,a)", 10000_bigInt, ok, .false.)
-    maxMemoryAvailable = maxMemoryAvailable * 1000000
+         "Maximum memory available (Gb): ","(a,i12,a)", 10000_bigInt, ok, .false.)
+    maxMemoryAvailable = maxMemoryAvailable * 1000000000
 
     if (statisticalEquilibrium.and.molecularPhysics) call readMolecularLoopParameters(cLine, fLine, nLines)
     if (statisticalEquilibrium.and.atomicPhysics) call readAtomicLoopParameters(cLine, fLine, nLines)

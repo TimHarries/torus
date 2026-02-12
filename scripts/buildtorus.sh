@@ -169,9 +169,9 @@ fi
 # Check that we can link with cfitsio  #
 ########################################
 
-if [[ -e ${base_dir}/lib/cfitsio/libcfitsio.a ]]; then
+if [[ -e ${base_dir}/lib/cfitsio/.libs/libcfitsio.a ]]; then
     echo "Found ${base_dir}/lib/cfitsio/libcfitsio.a"
-    export LIBRARY_PATH=${LIBRARY_PATH}:/opt/homebrew/lib:${base_dir}/lib/cfitsio
+    export LIBRARY_PATH=${LIBRARY_PATH}:/opt/homebrew/lib:${base_dir}/lib/cfitsio/.libs
     make_args="${make_args} curlflag=yes"
 else
     echo "Checking that we can link with a cfitsio library"
@@ -185,7 +185,7 @@ else
     ln -s ../../benchmarks/disc/check_disc_image.f90
 
     # Set up link flags for specific SYSTEMS
-    link_flags="-lcfitsio"
+    link_flags=" -L${base_dir}/lib/cfitsio -lcfitsio"
     if [[ $SYSTEM == gfortran || $SYSTEM == ifort ]]; then
 	if [[ -d ${HOME}/cfitsio/lib ]]; then
 	    link_flags="${link_flags} -L${HOME}/cfitsio/lib"

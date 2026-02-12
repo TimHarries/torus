@@ -40,7 +40,7 @@ fi
 
 if [[ -e ./configure ]]; then
     echo "Configuring ..."
-    ./configure
+    ./configure --enable-static=yes --enable-shared=no
 else
     echo "Error: configure not found"
     exit 1
