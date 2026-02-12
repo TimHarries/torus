@@ -185,7 +185,7 @@ else
     ln -s ../../benchmarks/disc/check_disc_image.f90
 
     # Set up link flags for specific SYSTEMS
-    link_flags=" -L${base_dir}/lib/cfitsio -lcfitsio"
+    link_flags=" -L${base_dir}/lib/cfitsio/.libs -lcfitsio"
     if [[ $SYSTEM == gfortran || $SYSTEM == ifort ]]; then
 	if [[ -d ${HOME}/cfitsio/lib ]]; then
 	    link_flags="${link_flags} -L${HOME}/cfitsio/lib"
