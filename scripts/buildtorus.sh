@@ -214,7 +214,7 @@ else
 	    fi
 	    cd lib
 	    ../scripts/buildcfitsio.sh
-	    export LIBRARY_PATH=${LIBRARY_PATH}:${base_dir}/lib/cfitsio
+	    export LIBRARY_PATH=${LIBRARY_PATH}:${base_dir}/lib/cfitsio/.libs
 	    make_args="${make_args} curlflag=yes"
 	fi
     fi
