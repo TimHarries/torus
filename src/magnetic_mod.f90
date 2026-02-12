@@ -379,7 +379,7 @@ END FUNCTION velocityMahdavi
     type(VECTOR), parameter :: zAxis = VECTOR(0.d0, 0.d0, 1.d0)
 
     rVec = VECTOR(point%x, point%y, 0.d0)
-    vVec = rVec .cross. zAxis
+    vVec = ((-1.d0)*rVec) .cross. zAxis
     call normalize(vVec)
     v = 0.d0
     if (modulus(rVec) /= 0.d0) then

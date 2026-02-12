@@ -485,7 +485,7 @@
 ! Dust parameters
 !-----------------
 
-  integer, parameter :: maxDustTypes = 11
+  integer, parameter :: maxDustTypes = 100
   logical :: useMultiDust
   character(len=80) :: grainType(maxDustTypes) ! sil_ow, sil_oc, sil_dl, amc_hn, sic_pg, gr1_dl, gr2_dl
   real :: grainFrac(maxDustTypes)
@@ -1034,6 +1034,7 @@
   integer, protected :: sphh2col       ! column of SPH file which contains H2 fraction
   integer, protected :: sphmolcol      ! column of SPH file from which molecular abundances will be read
   logical, protected :: sphwithchem    ! SPH has chemistry data which needs to be read
+  logical, protected :: sphwithdust    ! SPH has dust data which needs to be read
   logical, protected :: discardSinks   ! Don't store sink particles
   logical :: guessNe                   !guess the electron number density based on temperature
 

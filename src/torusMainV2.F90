@@ -67,6 +67,8 @@ program torus
   character(len=80) :: message, dataDirectory
 !  character(len=10) :: stringArray(10)
 !  type(PAHtabletype) :: PAHtable
+  integer :: i
+  character(len=10) :: stringArray(1024)
   type(GRIDTYPE) :: grid
   !  type(VECTOR) :: box(64,64,64)
 #ifdef MPI
@@ -128,7 +130,6 @@ program torus
   if (doTuning) call tune(6, "Torus Main") ! start a stopwatch  
 
   call inputs()
-
   call setUpBibcodesOnParametersFile()
 !  if (storeScattered) call initHealpix(1)
 
@@ -179,7 +180,6 @@ program torus
         call  setupamrgrid(grid)
 
 
-
 !        call sanityCheckGrid(grid)
 
      !  call checkAMRgrid(grid, .false.)
@@ -197,11 +197,22 @@ program torus
 
        if (dustPhysics) then
           if (nDustType >= 1) then
+             call writeInfo("Preparing to write dust")
+             if (nDustType >= 12) then
+                write(message,'(a,i3)') "Found dust types >=12: ", nDustType
+                call writeInfo(message)
+                if (nDustType.GT.1024) call writeFatal("Too many dust types")
+                do i = 1, nDustType
+                   write(stringArray(i),'(a,i3.3)') "dustN",i
+                enddo
+                call writeVTKfile(grid,"dust.vtk",valueTypeString=stringArray(1:nDustType))
+             else
 !             do i = 1, nDustType
 !                write(stringArray(i),'(a,i1.1)') "dust",i
 !             enddo
 !             call writeVTKfile(grid,"dust.vtk",valueTypeString=stringArray(1:nDustType))
-             call writeVTKfile(grid, "dust.vtk",valueTypestring=(/"dust"/))
+                call writeVTKfile(grid, "dust.vtk",valueTypestring=(/"dust"/))
+             endif
           endif
        endif
 

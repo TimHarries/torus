@@ -2970,7 +2970,7 @@ end subroutine writeXMLVtkFileAMR
       type(GRIDTYPE) :: grid
       character(len=*) :: valueType
       real :: rArray(:,:)
-      integer :: i, subcell, n, iVal, nVal
+      integer :: i, subcell, n, iVal, nVal, idustvalue
       integer, save ::  iLambda
       real(double) :: ksca, kabs, value, v, r
 #ifdef CHEMISTRY
@@ -3018,7 +3018,18 @@ end subroutine writeXMLVtkFileAMR
 
             found = .true.
 
-            if (chemIndex == 0) then
+! For very large numbers of dust types from sphNG, need to treat outside of select case statment
+            if (valueType(1:5) == 'dustN') then
+!               if (valueType(1:6) == 'dustN0') then
+!                  read(valueType,'("dustN0",i3.3)') idustvalue
+!               else
+!               write(*,*) valuetype
+!               read(valueType,'("dustN",i3.3)') idustvalue
+               read(valueType(6:),'(i3)') idustvalue
+!               endif
+               rArray(1, n) = max(1.e-30,real(real(thisOctal%dustTypeFraction(subcell,idustvalue))))
+
+            else if (chemIndex == 0) then
             select case (valueType)
                case("rho")
 

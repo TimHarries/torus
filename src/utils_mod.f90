@@ -3934,11 +3934,11 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
     integer k
 
     pi=3.14159265358979323846d0
-    onethird=1.0/3.0
-    twothird=2.0/3.0
+    onethird=1.d0/3.d0
+    twothird=2.d0/3.d0
     p=a(2)-onethird*(a(3)**2)
-    q=2.0*(onethird*a(3))**3-onethird*a(2)*a(3)+a(1)
-    rr=-0.5*q
+    q=2.0d0*(onethird*a(3))**3-onethird*a(2)*a(3)+a(1)
+    rr=-0.5d0*q
     qq=onethird*p
 
     !     *********************************************************************
@@ -3961,6 +3961,7 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
     !     form the solutions z(k) from the three obtained roots.
     !     *********************************************************************
     cc=cc**onethird
+
     do k=0,2
        phi=k*twothird*pi
        w=cc*cmplx(cos(phi),sin(phi), kind=double)
@@ -4039,5 +4040,67 @@ subroutine ngStep(out, qorig, rorig, sorig, torig, weight, doubleweight, length)
    t = (r - prob(i))/(prob(i+1)-prob(i))
    xOut = xArray(i) + t * (xArray(i+1)-xArray(i))
  end function randomValueGaussian
+
+
+ subroutine solve_cubic(a, b, c, d, roots, n_real)
+   real(double), intent(in)  :: a, b, c, d
+   complex(double), intent(out) :: roots(3)
+   integer, intent(out)  :: n_real
+
+   real(double) :: p, q, disc, r, phi
+   real(double) :: u, v, m, n
+
+   ! 1. Normalize to monic: x^3 + Ax^2 + Bx + C = 0
+   m = b / a
+   n = c / a
+   p = (3.0_dp * n - m**2) / 3.0_dp
+   q = (2.0_dp * m**3 - 9.0_dp * m * n + 27.0_dp * (d/a)) / 27.0_dp
+
+   ! 2. Calculate the Discriminant
+   ! Delta = (q/2)^2 + (p/3)^3
+   disc = (q/2.0_dp)**2 + (p/3.0_dp)**3
+
+   if (disc <= 0.0_dp) then
+      ! Three real roots (Trigonometric solution)
+      n_real = 3
+      r = sqrt(-(p/3.0_dp)**3)
+      phi = acos(-q / (2.0_dp * r))
+
+      roots(1) = cmplx(2.0_dp * r**(1.0_dp/3.0_dp) * cos(phi/3.0_dp) - m/3.0_dp, 0.0_dp, dp)
+      roots(2) = cmplx(2.0_dp * r**(1.0_dp/3.0_dp) * cos((phi + 2.0_dp*PI)/3.0_dp) - m/3.0_dp, 0.0_dp, dp)
+      roots(3) = cmplx(2.0_dp * r**(1.0_dp/3.0_dp) * cos((phi + 4.0_dp*PI)/3.0_dp) - m/3.0_dp, 0.0_dp, dp)
+   else
+      ! One real root, two complex (Cardano's solution)
+      n_real = 1
+      u = -q/2.0_dp + sqrt(disc)
+      v = -q/2.0_dp - sqrt(disc)
+
+      u = sign(abs(u)**(1.0_dp/3.0_dp), u)
+      v = sign(abs(v)**(1.0_dp/3.0_dp), v)
+
+      roots(1) = cmplx(u + v - m/3.0_dp, 0.0_dp, dp)
+      roots(2) = cmplx(-0.5_dp*(u + v) - m/3.0_dp, (u - v)*sqrt(3.0_dp)/2.0_dp, dp)
+      roots(3) = conjg(roots(2))
+   end if
+
+   call refine_roots(a, b, c, d, roots)
+ end subroutine solve_cubic
+
+ subroutine refine_roots(a, b, c, d, roots)
+   ! Single Newton-Raphson step to polish roots
+   real(double), intent(in) :: a, b, c, d
+   complex(double), intent(inout) :: roots(3)
+   complex(double) :: f, df
+   integer :: i
+
+   do i = 1, 3
+      f = a*roots(i)**3 + b*roots(i)**2 + c*roots(i) + d
+      df = 3.0_dp*a*roots(i)**2 + 2.0_dp*b*roots(i) + c
+      if (abs(df) > epsilon(1.0_dp)) then
+         roots(i) = roots(i) - f/df
+      end if
+   end do
+ end subroutine refine_roots
+
 
 end module utils_mod

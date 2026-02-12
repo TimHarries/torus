@@ -309,12 +309,15 @@ contains
     INTEGER :: subcell
     type(vector) :: point, clusterparam
     logical, save :: firstTime=.true.
-    real(double) :: rho, rhoH2, rhoCO, temp, dustfrac, r
+    real(double) :: rho, rhoH2, rhoCO, temp, r
+    real(double), pointer, dimension(:) :: dustfrac
     character(len=80) :: message
     
     
 ! Critical density if we are not using SPH temperature
 !    real(double), parameter :: density_crit = 1d13
+
+    allocate ( dustfrac(sphData%ndusttypes) )
 
     point = subcellcentre(thisOctal, subcell)
 
@@ -372,9 +375,10 @@ contains
 
 
 ! If sphData%rhoCO is in use then assume we want to use CO from SPH particles for abundance
+
     if ( associated (sphData%dustfrac) ) then 
        if (firstTime) call writeInfo("Setting dust fraction from particle dust fraction values")
-       thisOctal%dustTypeFraction(subcell,1) = dustfrac
+       thisOctal%dustTypeFraction(subcell,:) = dustfrac(:)
     end if
 
 
@@ -413,7 +417,7 @@ contains
        np = SIZE(thisOctal%gas_particle_list)
        
        ! Units of length
-       udist = get_udist()   ! [10^10cm]
+       udist = get_udist()/1.d10   ! [10^10cm]
        
        k=0
 !       !$OMP PARALLEL DEFAULT(NONE) &
@@ -492,7 +496,7 @@ contains
     if (first_time) then       
        ! units of sphData
        umass = get_umass()  ! [g]
-       udist = get_udist()  ! [cm]
+       udist = get_udist()/1.d10  ! [TORUS units]
        udent = umass/(udist*1.d10)**3
 
        ! convert units
@@ -532,7 +536,7 @@ contains
           ! quick check to see if this gas particle is
           ! belongs to this cell.
 
-!          write(*,*) "part here ",j,x,y,z
+!          write(*,*) 'sphNG: x,y,z,udist ',x,y,z,udist
 
           ! For 2D octals x is cylindrical polar r
           if (node%twoD) x = sqrt(x**2 + y**2)
@@ -588,7 +592,6 @@ contains
     if (n>0) then
        rho_ave = rho_ave/dble(n)
 
-!       write(*,*) "rho_ave ",rho_ave,udent
        rho_ave = rho_ave*udent  ! [g/cm^3]
        if ( present(rho_min) ) rho_min = rho_min * udent
        if ( present(rho_max) ) rho_max = rho_max * udent

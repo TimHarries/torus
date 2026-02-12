@@ -67,7 +67,7 @@ contains
     filter_set_name = "natural"
     noscattering = .false.
     forceFirstScat = .false.
-    usebias = .true.
+    usebias = .false.
     tthresh = 0.
     intProFilename = "none"
     nBlobs = 0
@@ -189,7 +189,6 @@ contains
 #endif
     call getLogical("parallelvtu", parallelVTUfiles, cLine, fLine, nLines, &
          "Use parallel VTU files: ","(a,1l,1x,a)", .false., ok, .false.)
-    write(*,*) "parallelvtufiles on input ",parallelvtufiles
 ! the grid setup. Either we read the grid in or set it up from scratch
 
     call writeBanner("Grid setup parameters","*",TRIVIAL)
@@ -294,7 +293,7 @@ contains
     endif
 
     call getLogical("usebias", usebias, cLine, fLine, nLines, &
-         "Use tau biasing: ","(a,1l,1x,a)", .true., ok, .false.)
+         "Use tau biasing: ","(a,1l,1x,a)", .false., ok, .false.)
 
 
     call readGeometrySpecificParameters(cLine, fLine, nLines)
@@ -1724,6 +1723,10 @@ contains
           call getLogical("sphwithchem", sphwithchem, cLine, fLine, nLines, &
                "SPH has chemistry information:", "(a,1l,1x,a)", .false., ok, .false.)
 
+          call getLogical("sphwithdust", sphwithdust, cLine, fLine, nLines, &
+            "SPH has dust information:", "(a,1l,1x,a)", .false., ok, .false.)
+
+          
 ! If the dump format is ASCII then we can specify which columns to read H2 and molecular abundance from
           if (inputFileFormat=="ascii" .or. inputFileFormat=="ascii-gadget") then
              ! Keep ih2frac for backwards compatibility
@@ -2547,7 +2550,7 @@ contains
             "Cavity angle (deg): ","(a,f5.2,a)", 40.d0, ok, .false.)
 
        call getDouble("cavdens", cavDens, 1.d0, cLine, fLine, nLines, &
-            "Cavity density (g/cc): ","(a,e12.2,a)", 1d-30, ok, .false.)
+           "Cavity density (g/cc): ","(a,e12.2,a)", 1d-30, ok, .false.)
 
 
        call getLogical("discwind", discWind, cLine, fLine, nLines, &
@@ -3289,6 +3292,17 @@ contains
 
        call writeBanner("NOTE THAT DUST TO GAS RATIO INFORMATION SHOULD BE PLACED IN GRAINFRAC. ","!",TRIVIAL)
        call writeBanner("DUSTTOGAS IS NOW USED TO DENOTE THE TOTAL DUST MASS IN THE SYSTEM.","!",TRIVIAL)
+
+       if (sphwithdust) then
+          call getString("graintype", grainType(1), cLine, fLine, nLines, &
+               "Grain type: ","(a,a,1x,a)","sil_dl", ok, .true.)
+          call getLogical("iso_scatter", isotropicScattering, cLine, fLine, nLines, &
+               "Isotropic scattering: ","(a,1l,1x,a)", .false., ok, .false.)
+          grainfrac = 0.01
+          goto 555
+       endif
+
+          
 
        call getReal("dusttogas", dusttoGas, 1., cLine, fLine, nLines, &
             "Dust to gas ratio: ","(a,f5.3,a)",0.01,ok,.false.)

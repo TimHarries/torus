@@ -39,14 +39,16 @@ CONTAINS
   END FUNCTION analyticalVelocity
 
   TYPE(VECTOR) FUNCTION ulrichVelocity(point)
-    USE utils_mod, ONLY : ccubsolv
+    USE utils_mod, ONLY : solve_cubic
     USE inputs_mod, ONLY : erinner, erouter
     USE inputs_mod, ONLY : mcore
     TYPE(VECTOR) :: point
     REAL(DOUBLE) :: vr, vt, vp, mu, r, mu_0
     REAL(DOUBLE) :: costheta, sintheta, sinphi, cosphi, sintheta0
     REAL(DOUBLE) :: vx, vy, vz, v, xi
-    COMPLEX(DOUBLE) :: a(3),z(3)
+    integer :: n_real
+    complex(double) :: roots(3)
+    
     r = modulus(point)*1.d10
 
     ulrichVelocity = VECTOR(0.d0, 0.d0, 0.d0)
@@ -60,15 +62,9 @@ CONTAINS
 ! Mori et al. 2024
 !The Astrophysical Journal, 961:31 (17pp), 2024 January 20 
        xi = erinner/r
-       a(1) = CMPLX(-mu/xi,0.d0,kind=DOUBLE)
-       a(2) = CMPLX((1.d0-xi)/xi, 0.d0,kind=DOUBLE)
-       a(3) = CMPLX(0.d0, 0.d0,kind=DOUBLE)
-       CALL ccubsolv(a,z)
-       mu_0 = REAL(z(1))
-       IF ((imag(z(1)) /= 0.d0).OR.(imag(z(2))==0.d0).OR.(imag(z(3))==0.d0)) THEN
-          WRITE(*,*)"problem with cubic solver"
-       ENDIF
-       mu_0 = min(mu_0,1.d0)
+       call solve_cubic(xi, 0.d0,  1.d0-xi, -mu, roots, n_real)
+       
+       mu_0 = dble(roots(1))
        sintheta0 = SQRT(1.d0 - mu_0**2)
        costheta = point%z*1.d10/r
        sintheta = SQRT(1.d0- costheta**2)
@@ -81,6 +77,9 @@ CONTAINS
        vt = v * ((mu_0 - costheta)/sintheta) * SQRT(ABS(1.d0+(costheta/mu_0)))
        vp = v * (sintheta0/sintheta) * SQRT(MAX(0.d0,1.d0-costheta/mu_0))
 
+
+!       vp = 0.
+       
        vx = vr * cosphi * sintheta + vt * cosphi * costheta - vp * sinphi
        vy = vr * sinphi * sintheta + vt * sinphi * costheta + vp * cosphi
        vz = vr * costheta - vt  * sintheta

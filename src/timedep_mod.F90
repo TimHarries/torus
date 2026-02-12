@@ -102,7 +102,7 @@ contains
     seedRun = .false.
     inc = thisinclination
     observerDistance = gridDistance
-    observerDirection = VECTOR(sin(inc), 0.d0, cos(inc))
+    observerDirection = VECTOR(0.d0, sin(inc), cos(inc))
     observerPosition = observerDistance * observerDirection
     if (writeoutput) write(*,*) "Inclination ",inc*radtodeg
     initialRadius = source(1)%radius
@@ -332,9 +332,13 @@ contains
        endif
 
        call writeVtkFile(grid, "thisstep.vtk", &
-            valueTypeString=(/"rho        ", "temperature", "edens_g    ", "edens_s    ", &
-            "crossings  ", &
-            "dust1      "/))
+            valueTypeString=(/ &
+            "rho         ", &
+            "temperature ", &
+            "edens_g     ", &
+            "edens_s     ", &
+            "crossings   ", &
+            "dust01      "/))
 
        if (dumpNow) then
           nextDumpTime = nextDumpTime + tDump
@@ -344,9 +348,9 @@ contains
              write(vtkFilename, '(a,i4.4,a)') "output",idump,".vtk"
              write(*,*) "vtkfilename ",trim(vtkfilename)
              call writeVtkFile(grid, vtkfilename, &
-                  valueTypeString=(/"rho        ", "temperature", "edens_g    ", "edens_s    ", &
-                  "crossings  ", &
-                  "dust1      "/))
+                  valueTypeString=(/"rho         ", "temperature ", "edens_g     ", "edens_s     ", &
+                  "crossing s  ", &
+                  "dust01      "/))
              write(vtkFilename, '(a,i4.4,a)') "radial",idump,".dat"
              call writeValues(vtkFilename, grid, currentTime)
 
@@ -459,7 +463,7 @@ contains
 #ifdef MPI
     use mpi
 #endif
-    use inputs_mod, only : quickSublimate, timedepImage
+    use inputs_mod, only : quickSublimate, timedepImage, thisInclination
     type(GRIDTYPE) :: grid
     integer :: nSource
     integer :: nSedRadius
@@ -535,13 +539,15 @@ contains
     treal= real(dumpfromnow)
     firstObserverTime = sedTime(1)
     lastObserverTime = sedTime(nTime)
-    
-    xAxis = VECTOR(1.d0,0.d0,0.d0)
-    yAxis = observerDirection.cross.xAxis
+
+    if (thisinclination /= 0.) then
+       xAxis = VECTOR(0.d0, 0.d0, 1.d0).cross.observerDirection
+    else
+       xAxis = VECTOR(1.d0, 0.d0, 0.d0)
+    endif
+    call normalize(xAxis)
+    yAxis =  observerDirection .cross. xAxis
     call normalize(yAxis)
-
-    
-
     
 
     useFileForStack = .true.

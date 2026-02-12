@@ -5542,6 +5542,20 @@ CONTAINS
              if (thisOctal%nDepth < minDepthAMR) split = .true.
           endif
 
+          if ( (modulus(cellCentre) > (erouter/1.d10-thisOctal%subcellsize)).and. &
+               (modulus(cellCentre) < (erouter/1.d10+thisOctal%subcellsize)).and. &
+               (thisOctal%subcellsize > 0.01*erouter/1.d10) ) split = .True.
+          
+          if ((modulus(cellCentre)>erinner/1.d10).and.(modulus(cellCentre)<erOuter/1.d10)) then
+             do i = 1, 100
+                rgrid(i) = log10(erinner/1.d10) + dble(i-1)/99.*(log10(erouter/1.d10)-log10(erinner/1.d10))
+             enddo
+             rgrid = 10.d0**rgrid
+             call locate(rgrid,100,modulus(cellcentre),i)
+             if (thisOctal%subcellSize > rgrid(i+1)-rgrid(i)) split = .True.
+             if (thisOctal%subcellSize > 0.01*erOuter/1.d10) split = .True.
+          endif
+          
           !      if ((r > grid%rinner).and.(r < 1.001d0*grid%rinner)) then
           !         if ((abs(cellcentre%z)/hr < 2.)) then
           !            split = .true.
@@ -13826,12 +13840,12 @@ end function readparameterfrom2dmap
     enddo
   end subroutine scaleVelocityAMR
 
-  recursive subroutine findTotalMass(thisOctal, totalMass, totalMassTrap, totalMassMol, minRho, maxRho)
+  recursive subroutine findTotalMass(thisOctal, totalMass, totalMassTrap, totalMassMol, minRho, maxRho, totalDustMass)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child
   real(double), intent(inout) :: totalMass
   real(double),optional, intent(inout) :: totalMassTrap, totalMassMol
-  real(double),optional, intent(inout) :: minRho, maxRho
+  real(double),optional, intent(inout) :: minRho, maxRho, totalDustMass
   real(double) :: dv, rhoMol
   integer :: subcell, i
 
@@ -13842,9 +13856,10 @@ end function readparameterfrom2dmap
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
                 if (present(totalMassMol)) then
-                   call findtotalMass(child, totalMass, totalmasstrap, totalMassMol=totalMassMol, minRho=minRho, maxRho=maxRho)
+                   call findtotalMass(child, totalMass, totalmasstrap, totalMassMol=totalMassMol, &
+                        minRho=minRho, maxRho=maxRho, totalDustMass=totalDustMass)
                 else
-                   call findtotalMass(child, totalMass, totalmasstrap, minRho, maxRho)
+                   call findtotalMass(child, totalMass, totalmasstrap, minRho, maxRho, totalDustMass)
                 endif
                 exit
              end if
@@ -13868,6 +13883,8 @@ end function readparameterfrom2dmap
              endif
           endif
           if (PRESENT(maxRho)) maxRho = max(dble(thisOctal%rho(subcell)), maxRho)
+          if (PRESENT(totalDustMass).and.associated(thisOctal%dustTypeFraction)) totalDustMass = &
+               totalDustMass + (1.d30)*thisOctal%rho(subcell) * dv*SUM(thisOctal%dustTypeFraction(subcell,:))
        endif
     enddo
   end subroutine findTotalMass

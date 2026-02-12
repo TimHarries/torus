@@ -898,7 +898,8 @@ module molecular_mod
               endif
 ! Fill cells with molecular level populations - LTE or small
 
-              if (associated(thisOctal%molecularLevel)) deallocate(thisOctal%molecularLevel)
+              if ((subcell == 1).and.associated(thisOctal%molecularLevel)) &
+                   deallocate(thisOctal%molecularLevel)
               
               if (.not. associated(thisOctal%molecularLevel)) &
                    allocate(thisOctal%molecularLevel(1:maxlevel,1:thisOctal%maxChildren))
@@ -931,7 +932,7 @@ module molecular_mod
                  thisOctal%molecularLevel(1:maxlevel,subcell) = levelpops(1:maxlevel)
 
 !!!!!
-              if (associated(thisOctal%bnu)) deallocate(thisOctal%bnu)
+              if ((subcell==1).and.(associated(thisOctal%bnu))) deallocate(thisOctal%bnu)
 
 
                  if (.not.associated(thisOctal%bnu)) &
@@ -941,7 +942,7 @@ module molecular_mod
               enddo
 
 ! Get jnu from this cell
-              if (associated(thisOctal%jnu)) deallocate(thisOctal%jnu)
+              if ((subcell==1).and.(associated(thisOctal%jnu))) deallocate(thisOctal%jnu)
 
               if (.not.associated(thisOctal%jnu)) &
                  allocate(thisOctal%jnu(1:maxtrans,1:thisOctal%maxChildren))
@@ -976,8 +977,12 @@ module molecular_mod
            thisOctal%molmicroturb(subcell) = 1.d0 / thisOctal%microturb(subcell)
 
            deptharray(thisoctal%ndepth + 1) = deptharray(thisoctal%ndepth + 1) + 1
+!           if (thisOctal%rho(subcell) > 1.e-30) then
+!              write(*,*) "subcell ",subcell
+!              write(*,*) "level ",thisOctal%molecularlevel(1,1:4)
+!           endif
         endif ! if haschild
-        
+       
      enddo ! do over all children
 
    end subroutine allocateMolecularLevels
@@ -1362,7 +1367,6 @@ module molecular_mod
 ! Write grid  with LTE populations if initialised to LTE     
      if(isinlte .and. .not. restart) then
         write(molgridltefilename,*) trim(thismolecule%molecule),"_lte.grid"
-
 !        call writeAMRgrid(molgridltefilename,.false.,grid)
         if (setupMolecularLteOnly) goto 666
      endif
@@ -3065,7 +3069,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
 ! Write VTK file
       call writeinfo('Writing VTK', TRIVIAL)
-      call writeVTKfile(grid, "molResults.vtk", valueTypeString=(/ "molabundance", "J=0         ",&
+      call writeVTKfile(grid, "molResults2.vtk", valueTypeString=(/ "molabundance", "J=0         ",&
            "J=1         ", "J=2         ", "J=3         ", "J=4         ", & 
            "J=5         ", "rho         "/))
       call writeinfo('Done', TRIVIAL)
@@ -3234,10 +3238,11 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 !            if(present(sink)) then
             if (.not.grid%splitOverMPI) then
                if(isinlte) then
-!                  call lteintensityalongray2(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0, &
-!                                             tau = opticaldepth, ncol = ncol)
-                  call intensityalongraynew(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0, &
+                  call intensityalongray2(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0, &
                                              tau = opticaldepth, ncol = ncol)
+!                  call intensityalongraynew(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0, &
+                  !
+!                  tau = opticaldepth, ncol = ncol)
                else
                   call intensityalongray2(rayposition,viewvec,grid,thisMolecule,itrans,deltaV,i0, &
                                           tau = opticaldepth, ncol = ncol)
@@ -5897,7 +5902,7 @@ endif
    type(VECTOR) :: position, direction, obsPoint
    real(double) :: deps, distToGrid, tval, deltaV,dv, nmol, phiProfVal
    real(double) :: distArray(:), rhoArray(:), velArray(:), alphaDust(:), jnuDust(:)
-   real(double) :: alphaLine(:), jnuLine(:)
+   real(double) :: alphaLine(:), jnuLine(:), lastDv
    type(OCTAL), pointer :: thisOctal
    integer :: subcell
    character(len=80) :: message
@@ -5936,6 +5941,7 @@ endif
      velArray(1) = thisOctal%velocity(subcell).dot.direction
      alphaDust(1) = tiny(alphaDust(1))
      jnuDust(1) = tiny(jnuDust(1))
+     lastdv = -deltaV
 
      alphaLine(1) = 1.d-30
      jnuLine(1) = 1.d-30
@@ -5949,7 +5955,8 @@ endif
        velArray(nPoints) = Velocity(position, grid, startoctal = thisoctal, subcell = subcell).dot.direction
 
         dv = velArray(nPoints) - deltaV
-         
+
+        
         phiProfval = phiProf(dv, thisOctal%molmicroturb(subcell))
 
         nmol = thisoctal%molcellparam(1,subcell)
@@ -5963,6 +5970,7 @@ endif
         jnuDust(nPoints) = thisOctal%molcellparam(8,subcell)
 
         position = position + (tval + deps) * direction
+        lastdv = dv
      enddo
      nPoints = nPoints + 1
      distArray(nPoints) = distArray(nPoints-1) + tval/2.
@@ -6468,7 +6476,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
 
            if(useDust) then
               jnu = jnu + dustjnu
-              write(*,*) "dustjnu ",dustjnu
+!              write(*,*) "dustjnu ",dustjnu
            endif
 
            if (alpha .ne. 0.d0) then
@@ -6532,7 +6540,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
            endif
         
            currentPosition = currentPosition + (tval + origdeps) * direction
-     enddo
+        enddo
          
 666  continue
 
@@ -6753,6 +6761,7 @@ subroutine intensityAlongRayNew(position, direction, grid, thisMolecule, iTrans,
      real(double) :: alphanu, jnu
      integer :: nPoints
 
+!     write(*,*) "doing intensityalongraynew"
      i = itrans
      i = thisMolecule%ntrans
      if (present(i0max)) x = i0max
@@ -6772,6 +6781,11 @@ subroutine intensityAlongRayNew(position, direction, grid, thisMolecule, iTrans,
         alphanu = alphaDust(i) + alphaLine(i)
         jnu = jnuDust(i) + jnuLine(i)
         dTau = alphanu * ds * 1.d10
+
+        if (velArray(i)*velArray(i-1) < 0.) then
+           write(*,*) "resonance found ",velArray(i-1)*cspeed/1.e5,velArray(i)*cspeed/1.e5,ds
+        endif
+           
         
         snu = jnu/alphanu
 
@@ -6782,6 +6796,7 @@ subroutine intensityAlongRayNew(position, direction, grid, thisMolecule, iTrans,
         
         dI = opticaldepth * dI
         i0 = i0 + dI
+!        write(*,*) i,tau,velarray(i)
      enddo
 666 continue     
 end subroutine intensityAlongRayNew
