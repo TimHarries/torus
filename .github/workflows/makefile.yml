@@ -12,21 +12,21 @@ jobs:
     name: Build and Test
 
 
-steps:
-  - name: Checkout code
-    uses: actions/checkout@v3
-
-  
-  - name: Install Dependencies Ubuntu
-    run: |
-      sudo apt-get update
-      sudo apt install -y gfortran
-      sudo update-alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran 100
-
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
     
-  - name: Build and Test Linux
-    run: |
-        which gfortran
-        gfortran --version
-        ./buildtorus debug=yes
+      
+      - name: Install Dependencies Ubuntu
+        run: |
+          sudo apt-get update
+          sudo apt install -y gfortran
+          sudo update-alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran 100
+    
+        
+      - name: Build and Test Linux
+        run: |
+            which gfortran
+            gfortran --version
+            ./buildtorus debug=yes
         
