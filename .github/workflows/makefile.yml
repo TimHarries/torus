@@ -21,8 +21,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt install -y gfortran
-          sudo update-alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran 100
-    
         
       - name: Build and Test Linux
         run: |
