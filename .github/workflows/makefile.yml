@@ -21,6 +21,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt install -y gfortran
+          sudo apt install -y curl
         
       - name: Build and Test Linux
         run: |
