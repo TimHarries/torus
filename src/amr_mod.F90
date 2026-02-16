@@ -13060,7 +13060,7 @@ end function readparameterfrom2dmap
     endif
 
     if (molecularPhysics) then
-       thisOctal%microturb(subcell) = sqrt((2.d0*kErg*thisOctal%temperature(subcell))/(29.0 * amu))/cspeed
+!       thisOctal%microturb(subcell) = sqrt((2.d0*kErg*thisOctal%temperature(subcell))/(29.0 * amu))/cspeed
        thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.*mhydrogen)
     endif
 
