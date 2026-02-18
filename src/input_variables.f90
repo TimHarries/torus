@@ -516,7 +516,7 @@
   logical :: dustSettling
   integer :: nDustType
   logical :: readDustFromFile, writeDustToFile
-  logical :: useDust
+  logical :: useDust, useDustMolecular
   ! abundances of different types of dust grains. These will be used when
   ! the graintype assigned is "mixed."
   integer :: ngrain
