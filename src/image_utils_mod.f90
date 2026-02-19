@@ -38,8 +38,8 @@ module image_utils_mod
   integer, save :: numImages = 0 
 
 ! Parameters shared by all images
-  character(len=10), save :: myAxisUnits(20)
-  character(len=12), save :: myFluxUnits(20)
+  character(len=10), save :: myAxisUnits(100)
+  character(len=12), save :: myFluxUnits(100)
 
 contains 
 
