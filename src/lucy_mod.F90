@@ -944,18 +944,38 @@ contains
        if (variableDustSublimation) then
           totFrac = 0.
           nFrac = 0
-
-             if (iIter_grand == 3) then
-                tauMax = 1.e-3
-                call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
-             endif
-
-             if ((iIter_grand >= 4).and.(iIter_grand <= 5)) then
+          if ((iIter_grand > 3).and.(iIter_grand <=5)) then
+             taumax = 10.**(-10. + 10.*dble(iIter_grand-4))
+             call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+          endif
+          
+             if ((iIter_grand == 6).and.(iIter_grand <= 7))  then
                 tauMax = 1.e30
-!                if (dustSettling) call fillDustSettled(grid)
-!                call setupOrigDustFraction(grid%octreeRoot)
                 call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
              endif
+!
+!             if (iIter_grand == 6) then
+!                tauMax = 1.e-3
+!                call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+!             endif
+!
+!             if (iIter_grand == 9) then
+!                tauMax = 1.e-2
+!                call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+!             endif
+!
+!             if (iIter_grand == 12) then
+!                tauMax = 1.e-1
+!                call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+!             endif
+!
+!             
+!             if (iIter_grand > 15) then
+!                tauMax = 1.e30
+!!                if (dustSettling) call fillDustSettled(grid)
+!!                call setupOrigDustFraction(grid%octreeRoot)
+!                call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+!             endif
 
              if ((iiter_grand == 7).and.doSmoothGridTau) then
                 call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
@@ -1056,9 +1076,6 @@ contains
        endif
 !       if (variableDustSublimation.and.(iIter_grand == 7)) converged = .true.
 
-       if (variableDustSublimation.and.(iIter_grand > 7).and. &
-            (percent_undersampled < percent_undersampled_min)) converged = .true.
-
 
        if ((grid%geometry == "shakara").and.variableDustSublimation) then
           call getSublimationRadius(grid, subRadius)
@@ -1073,7 +1090,7 @@ contains
 
 
        if (iIter_grand < iterlucy) converged = .false.
-
+       if (variableDustSublimation.and.(iIter_grand < 8)) converged = .false.
 
        if (iIter_grand >= maxiterLucy) then
           write(message,'(a)') "Lucy loop exceeded max iterations. Forcing convergence"
@@ -1089,7 +1106,7 @@ contains
        if (multiLucyFiles) then
           write(tfilename, '(a,i3.3,i3.3,i3.3,a)') "lucy_",iHydro,iIter_grand,imultiplier,".vtk"
        else
-          tfilename = "lucy.vtk"
+          write(tfilename,'(a,i3.3,a)') "lucy_",iIter_grand,".vtk"
        endif
 
 

@@ -1342,7 +1342,6 @@ contains
              end if
           end do
        else
-
           do j = 1, nDustType
              if (decoupleGasDustTemperature) then
                 temperature = real(thisOctal%tDust(subcell))
@@ -1406,6 +1405,7 @@ contains
           
           thisOctal%oldFrac(subcell) = real(frac)
        endif
+777    continue
     end do
 
   end subroutine sublimateDust
