@@ -624,7 +624,7 @@ module molecular_mod
      use grid_mod, only: freeGrid
      use inputs_mod, only : vturb, restart, isinLTE, &
           setmaxlevel, doCOchemistry, x_d, x_0, removeHotMolecular, sphWithChem, &
-          molAbundance, usedust, getdepartcoeffs, constantAbundance, photoionPhysics !, addnewmoldata
+          molAbundance, usedustmolecular, getdepartcoeffs, constantAbundance, photoionPhysics !, addnewmoldata
 #ifdef MPI
 #ifdef HYDRO
      use inputs_mod, only: zeroghosts
@@ -739,7 +739,7 @@ module molecular_mod
                  firsttime2 = .false.
               endif
 
-              if(usedust) then
+              if(usedustmolecular) then
                  if (.not.associated(thisOctal%bnu)) then
                     allocate(thisOctal%bnu(1:maxlevel, 1:thisOctal%maxChildren))
                     
@@ -958,7 +958,7 @@ module molecular_mod
                    thisoctal%bnu(1:maxtrans,subcell) * alphanuBase(1:maxtrans)
               
 ! deallocate bnu if not using dust. It takes up a lot of space.
-              if((.not. usedust).and.(.not.isinLTE)) deallocate(thisoctal%bnu)
+              if((.not. usedustmolecular).and.(.not.isinLTE)) deallocate(thisoctal%bnu)
               
            endif ! if(restart) - these things are common to all allocations
 
@@ -1172,7 +1172,7 @@ module molecular_mod
    subroutine molecularLoop(grid, thisMolecule)
 
      use inputs_mod, only : blockhandout, tolerance, &
-          usedust, amr1d, amr3d, plotlevels, &
+          usedustmolecular, amr1d, amr3d, plotlevels, &
           debug, restart, isinlte, quasi, dongstep, initnray, outputconvergence, dotune, &
           forceIniRay, setupMolecularLteOnly, renewinputrays, molRestartTest
      use dust_mod
@@ -1259,7 +1259,7 @@ module molecular_mod
      call writeinfo("molecular_mod 20100428.1400",TRIVIAL)
 
 #ifdef PHOTOION
-     if(usedust) then
+     if(usedustmolecular) then
 !        if () call quickSublimate(grid%octreeRoot, 0.01) ! do dust sublimation  
 
         write(mpiFilename,'(a, i4.4, a)') "quickDump.vtk"
@@ -1277,7 +1277,7 @@ module molecular_mod
      if(grid%geometry(1:5)  .eq. 'ggtau') ggtau = .true.
      if(grid%geometry(1:7)  .eq. 'agbstar') agbstar = .true.
      if(grid%geometry(1:9)  .eq. 'h2obench2') hhobench = .true.
-!     usedust = .false.
+!     usedustmolecular = .false.
      debug=.false.
 
 ! get pairs of radiative transitions stored in thismolecule. Re-assign for readability     
@@ -1395,7 +1395,7 @@ module molecular_mod
 ! also tau and levelconvergence and convergence etc.
       call allocateother(grid, grid%octreeroot)
 ! set up lambda array if using dust
-      if(usedust) then
+      if(usedustmolecular) then
          call allocateMemoryForDust(grid%octreeRoot)
          allocate(lamarray(size(grid%lamarray)))
          allocate(lambda(maxtrans))
@@ -1932,7 +1932,7 @@ end subroutine molecularLoop
         warned_neg_dtau, tostar)
 !   subroutine getRay(grid, fromOctal, fromSubcell, position, direction, thisMolecule, fixedrays)
 
-     use inputs_mod, only : useDust, realdust, quasi, sourcePos, sourceRadius, sourceTeff, smallestCellSize
+     use inputs_mod, only : usedustmolecular, realdust, quasi, sourcePos, sourceRadius, sourceTeff, smallestCellSize
 
 
      type(MOLECULETYPE), intent(in) :: thisMolecule
@@ -2168,7 +2168,7 @@ end subroutine molecularLoop
         dist = 0.d0
                                         
 ! Calculate absorption from (various types of) dust             
-        if(useDust) then     
+        if(usedustmolecular) then     
            if(realdust) then
               do itrans = 1, maxtrans               
                  call locate(grid%lamArray, size(grid%lamArray), real(lambda(itrans)), ilambda)
@@ -2225,8 +2225,8 @@ end subroutine molecularLoop
 ! Get velocity difference and weighting
            dv = deltaV - (thisVel .dot. direction)
            PhiProfVal = phiProf(dv, thisOctal%molmicroturb(subcell))
-! Get weighted gas absorption (+dust if req). If usedust then update jnu and snu            
-           if(usedust) then
+! Get weighted gas absorption (+dust if req). If usedustmolecular then update jnu and snu            
+           if(usedustmolecular) then
               alphanu(1:maxtrans,1) = phiprofval * balance(1:maxtrans) 
               alpha(1:maxtrans) = alphanu(1:maxtrans,1) + alphanu(1:maxtrans,2)
               jnu(1:maxtrans) = spontaneous(1:maxtrans) * phiProfVal + &
@@ -2310,7 +2310,7 @@ end subroutine molecularLoop
 ! This subroutine calculates the average local radiation field in a cell, Jbar. So the SE can be worked out
    subroutine calculateJbar(nr, grid, thisOctal, subcell, thisMolecule, tempds, tempphi, i0, nPops, jbar, dirweight)
 
-     use inputs_mod, only : useDust, realdust, debug
+     use inputs_mod, only : usedustmolecular, realdust, debug
 
      type(GRIDTYPE) :: grid
      type(OCTAL), pointer :: thisOctal
@@ -2363,7 +2363,7 @@ end subroutine molecularLoop
      alphanu(:,2) = 0.d0
      jnudust(:) = 0.d0
 
-     if(useDust) then
+     if(usedustmolecular) then
         do itrans = 1, maxtrans
            call locate(grid%lamArray, size(grid%lamArray), real(lambda(itrans)), ilambda)
 
@@ -3320,7 +3320,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
    subroutine createimage(cube, grid, viewvec, observerVec, thisMolecule, iTrans, nSubpixels, imagebasis, revVel)
 
      use inputs_mod, only : gridDistance, beamsize, nv, imageside, &
-          maxVel, minVel, usedust, lineimage, lamline, plotlevels, debug, wanttau, dotune, ALMA
+          maxVel, minVel, usedustmolecular, lineimage, lamline, plotlevels, debug, wanttau, dotune, ALMA
 #ifdef USECFITSIO
     use inputs_mod, only : writetempfits
     use fits_utils_mod
@@ -3456,7 +3456,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
               call writeinfo("Done.",TRIVIAL)
            endif
 
-           if(usedust) call adddusttoOctalParams(grid, grid%OctreeRoot, thisMolecule)
+           if(usedustmolecular) call adddusttoOctalParams(grid, grid%OctreeRoot, thisMolecule)
 
            temp = 0.d0
 
@@ -3679,7 +3679,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
  subroutine intensityAlongRay(position, direction, grid, thisMolecule, iTrans, deltaV,i0, &
                               tau,tautest,rhomax, i0max, nCol, observerVelocity)
 
-   use inputs_mod, only : useDust, densitysubsample
+   use inputs_mod, only : usedustmolecular, densitysubsample
      type(VECTOR) :: position, direction, dsvector
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -3819,7 +3819,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
 !Calculate absorption from dust if reqd.
 
-        if(usedust) then
+        if(usedustmolecular) then
 !THAW
 !           alphanu2 = nmol * thisOctal%molcellparam(7,subcell)
 !           dustjnu = nmol * thisOctal%molcellparam(8,subcell
@@ -3906,13 +3906,14 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
               nmol = thisoctal%molabundance(subcell) * (interpolated_Density(thisposition, grid) / &
                      (2.d0 * mhydrogen))
 
-              if(usedust) then
+              if(usedustmolecular) then
 !                 alphanu2 = nmol * thisOctal%molcellparam(7,subcell)
 !                 dustjnu =  nmol * thisOctal%molcellparam(8,subcell)
                  alphanu2 = thisOctal%molcellparam(7,subcell)
                  dustjnu = thisOctal%molcellparam(8,subcell)
               else
                  alphanu2 = 0.0
+                 dustjnu = 0.0
               endif
 
               etaline = nmol * thisOctal%molcellparam(5,subcell)
@@ -3938,7 +3939,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
            
 
-           if(useDust) jnu = jnu + dustjnu
+           if(usedustmolecular) jnu = jnu + dustjnu
 
 !Determine local source function
            if (alpha .ne. 0.d0) then
@@ -4941,7 +4942,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
 
   function calculatetau(grid, thisoctal, subcell, thismolecule, phi, ds) result(tauavg)
 
-    use inputs_mod, only : usedust, realdust
+    use inputs_mod, only : usedustmolecular, realdust
     TYPE(gridtype) :: grid
     TYPE(OCTAL), pointer :: thisoctal
     type(MOLECULETYPE) :: thismolecule
@@ -4961,7 +4962,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
         
     do itrans = 1, mintrans
        ! assume change in lambda is small... if this isn't true then perhaps molecular_mod isn't for you?!
-       if(useDust) then
+       if(usedustmolecular) then
           if(realdust) then
              call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, lambda = real(lambda(itrans)), &
                               kappaAbs = kappaAbs)
@@ -5242,7 +5243,7 @@ END SUBROUTINE sobseq
  subroutine make_h21cm_image(grid)
    
    use inputs_mod, only : nsubpixels, itrans, lineImage, maxRhoCalc
-   use inputs_mod, only : useDust, isInLte, lowmemory, datacubeaxisunits, ALMA
+   use inputs_mod, only : usedustmolecular, isInLte, lowmemory, datacubeaxisunits, ALMA
    use h21cm_mod, only : h21cm_lambda
 
 #ifdef USECFITSIO
@@ -5260,7 +5261,7 @@ END SUBROUTINE sobseq
    itrans           = 1
    lineImage        = .true.
    maxRhoCalc       = .false. 
-   usedust          = .false. 
+   usedustmolecular          = .false. 
    isInLte          = .false.
    lowmemory        = .false.
 
@@ -5508,7 +5509,7 @@ end subroutine compare_molbench
 subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans, deltaV,i0, &
      tau,tautest,rhomax, i0max, nCol, observerVelocity, startI0, startTau, lengthOfRay)
 
-     use inputs_mod, only : useDust, densitysubsample, lowmemory
+     use inputs_mod, only : usedustmolecular, densitysubsample, lowmemory
      type(VECTOR) :: position, direction, dsvector
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -5691,13 +5692,14 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
            etaline = nmol * thisOctal%molcellparam(5,subcell)
         endif
 
-        if(usedust) then
+        if(usedustmolecular) then
 !           alphanu2 = nmol * thisOctal%molcellparam(7,subcell)
 !           dustjnu = nmol * thisOctal%molcellparam(8,subcell)
            alphanu2 = thisOctal%molcellparam(7,subcell)
            dustjnu = thisOctal%molcellparam(8,subcell)
         else
            alphanu2 =  0.0
+           dustjnu  = 0.0
         endif
 
 
@@ -5762,7 +5764,7 @@ subroutine lteintensityAlongRay2(position, direction, grid, thisMolecule, iTrans
 
               if(lowmemory) then
                  alphanu1 = nmol * hcgsOverFourPi * balance * phiprofval
-                 if(usedust) then
+                 if(usedustmolecular) then
                     call writeinfo("Must turn off lowmemory for dust")
                     stop
                  else
@@ -6146,7 +6148,7 @@ endif
 subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, deltaV,i0, &
      tau,tautest,rhomax, i0max, nCol, observerVelocity)
 
-     use inputs_mod, only : useDust, densitysubsample, lowmemory
+     use inputs_mod, only : usedustmolecular, densitysubsample, lowmemory
      type(VECTOR) :: position, direction, dsvector
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -6326,13 +6328,14 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
            etaline = nmol * thisOctal%molcellparam(5,subcell)
         endif
 
-        if(usedust) then
+        if(usedustmolecular) then
 !           alphanu2 = nmol * thisOctal%molcellparam(7,subcell)
 !           dustjnu = nmol * thisOctal%molcellparam(8,subcell)
            alphanu2 = thisOctal%molcellparam(7,subcell)
            dustjnu = thisOctal%molcellparam(8,subcell)
         else
            alphanu2 =  0.0
+           dustjnu = 0.0
         endif
 
         thisPosition = currentPosition
@@ -6426,7 +6429,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
               if(lowmemory) then
                  etaline = nmol * etaline
                  alphanu1 = nmol * hcgsOverFourPi * balance * phiprofval
-                 if(usedust) then
+                 if(usedustmolecular) then
                     call writeinfo("Must turn off lowmemory for dust")
                     stop
                  else
@@ -6436,13 +6439,14 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
                  etaline = nmol * thisOctal%molcellparam(5,subcell)
                  alphanu1 = nmol * thisOctal%molcellparam(6,subcell) * phiprofval
                  
-                 if(usedust) then
+                 if(usedustmolecular) then
                     alphanu2 = thisOctal%molcellparam(7,subcell)
                     dustjnu = thisOctal%molcellparam(8,subcell)
 !                    alphanu2 = nmol * thisOctal%molcellparam(7,subcell)
 !                    dustjnu =  nmol * thisOctal%molcellparam(8,subcell)
                  else
                     alphanu2 = 0.0
+                    dustjnu = 0.0
                  endif
               endif
 
@@ -6474,7 +6478,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
          
            jnu = etaLine * phiProfVal
 
-           if(useDust) then
+           if(usedustmolecular) then
               jnu = jnu + dustjnu
 !              write(*,*) "dustjnu ",dustjnu
            endif
@@ -6496,8 +6500,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
            dI = opticaldepth * dI
 
 !           if(dI .gt. i0 * 1d-10 .and. tau .lt. 100) then
-              i0 = i0 + dI
-
+           i0 = i0 + dI
 !           if(thisoctal%rho(subcell) / (amu * 2.) .gt. 1e3 .and. thisoctal%rho(subcell) / (amu * 2.) .lt. 1e4) &
 !                lowi0 = lowi0 + dI
 !           if(thisoctal%rho(subcell) / (amu * 2.) .gt. 1e4 .and. thisoctal%rho(subcell) / (amu * 2.) .lt. 1e5) &
@@ -6727,7 +6730,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
 
 subroutine intensityAlongRayNew(position, direction, grid, thisMolecule, iTrans, deltaV,i0, &
      tau,tautest,rhomax, i0max, nCol, observerVelocity)
-!     use inputs_mod, only : useDust, densitysubsample, lowmemory
+!     use inputs_mod, only : usedustmolecular, densitysubsample, lowmemory
      type(VECTOR) :: position, direction
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule

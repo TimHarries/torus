@@ -3857,7 +3857,7 @@ contains
        call getLogical("doCOchemistry", doCOchemistry, cLine, fLine, nLines, &
             "Use drop profile to model CO depletion: ", "(a,1l,1x,a)", .false., ok, .false.)
 
-       call getLogical("useDust", useDust, cLine, fLine, nLines, &
+       call getLogical("useDustMolecular", useDustMolecular, cLine, fLine, nLines, &
             "Calculate continuum emission from dust:", "(a,1l,1x,a)", .false., ok, .false.)
 
        if (useDust.and.(.not.dustPhysics)) then
