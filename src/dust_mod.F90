@@ -1405,7 +1405,6 @@ contains
           
           thisOctal%oldFrac(subcell) = real(frac)
        endif
-777    continue
     end do
 
   end subroutine sublimateDust
