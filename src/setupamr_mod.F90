@@ -89,6 +89,7 @@ contains
 !    integer :: nUnrefine
     real :: scalefac
     integer :: nGrid
+    character(len=20) :: fname
     real(double) :: gpe, ke, requiredKE, vScalefac
     real, pointer :: xVel(:,:,:) => null()
     real, pointer :: yVel(:,:,:) => null()
@@ -3426,56 +3427,59 @@ recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, fac
            end if
         end do
      else
+        testVec = vector(6.e3,0.d0,0.0)
+        !           testVec = vector(83.d0,357.d0,1.d-3)
+        debug = .false.
+        if (inSubcell(thisOctal,subcell,testVec)) debug = .true.
+
+
+        rVec = subcellCentre(thisOctal,subcell)
+
+
+        thisRho = 0.d0
+        thisH = 1.d30
+        thisZ  = 0.
+        thisR = 0.
+        aziSplit = .false.
+        !!           !$OMP PARALLEL DEFAULT(none) &
+        !!           !$OMP PRIVATE (j,  rho, h, z, r) &
+        !!           !$OMP SHARED (thisZ, thisR, thisH, thisRho, fac, facArray, aziSplit) &
+        !!           !$OMP SHARED (lArray, rArray, rOuter, nr, rVec) 
+        !!           !$OMP DO SCHEDULE(DYNAMIC)
+        do j = 1, nr
+           if (j < nr) then
+              call katieRho(rVec, lArray(j),rArray(j),rArray(j+1), rho, h, z, r)
+           else
+              call katieRho(rVec, lArray(j),rArray(j),dble(rOuter), rho, h, z, r)
+           endif
+           if (rho > thisRho) then
+              thisH = h
+              thisZ = z
+              thisR = r
+              thisRho = rho
+              fac = facArray(j)
+              if (lArray(j)%z < 1.d0) aziSplit = .true.
+           endif
+        enddo
+
+        thisOctal%rho(subcell) = max(thisRho*fac,1.d-30)
+        if (debug) write(*,*) "rho ",thisOctal%rho(subcell),fac
+
+
+        !!          !$OMP ENDDO
+        !!          !$OMP END PARALLEL
+        if (debug) write(*,*) thisZ/thisH
+
         if (thisOctal%nDepth < maxDepthAMR) then
-           testVec = vector(-400.d0,0.d0,1.d-6)
-!           testVec = vector(83.d0,357.d0,1.d-3)
-           debug = .false.
-!           if (inSubcell(thisOctal,subcell,testVec)) debug = .true.
-
-
-           rVec = subcellCentre(thisOctal,subcell)
-
-        
-           thisRho = 0.d0
-           thisH = 1.d30
-           thisZ  = 0.
-           thisR = 0.
-           aziSplit = .false.
-           !!        !$OMP PARALLEL DEFAULT(none) &
-           !!        !$OMP PRIVATE (j,  rho, h, z, r) &
-           !!        !$OMP SHARED (thisZ, thisR, thisH, thisRho, fac, facArray, aziSplit) &
-           !!        !$OMP SHARED (lArray, rArray, rOuter, nr, rVec) 
-           !!        !$OMP DO SCHEDULE(DYNAMIC)
-           do j = 1, nr
-              if (j < nr) then
-                 call katieRho(rVec, lArray(j),rArray(j),rArray(j+1), rho, h, z, r)
-              else
-                 call katieRho(rVec, lArray(j),rArray(j),dble(rOuter), rho, h, z, r)
-              endif
-              if (rho > thisRho) then
-                 thisH = h
-                 thisZ = z
-                 thisR = r
-                 thisRho = rho
-                 fac = facArray(j)
-                 if (lArray(j)%z < 1.d0) aziSplit = .true.
-              endif
-           enddo
-        
-           !!        !$OMP ENDDO
-           !!        !$OMP END PARALLEL
-                   if (debug) write(*,*) thisZ/thisH
 
            if (thisOctal%nDepth < minDepthAMR) then
-              thisOctal%adot(subcell) = -1.d0
+              thisOctal%adot(subcell) = -2.d0
               aziSplit = .true.
               converged = .false.
            endif
 
 
-        
-           thisOctal%rho(subcell) = max(thisRho*fac,1.d-30)
-           
+
            if ((abs(thisZ/thisH)< 100.).and.abs(thisOctal%subcellSize/thisH)>5.) then
               thisOctal%adot(subcell) = -1.
               converged = .false.
@@ -3488,34 +3492,42 @@ recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, fac
               converged = .false.
            endif
 
-!        if (aziSplit.and.(thisOctal%dphi>minphiresolution)) thisOctal%adot(subcell) = -1.d0
+           !        if (aziSplit.and.(thisOctal%dphi>minphiresolution)) thisOctal%adot(subcell) = -1.d0
 
-        
-!        if ((abs(thisZ/thisH) < 10.).and.(thisOctal%subcellSize > abs(thisZ/2.))) then
-!           thisOctal%adot(subcell) = -1.
-!           converged = .false.
-!        endif
-           
 
-        
-!        if ( ((modulus(rVec)/thisOctal%subcellSize) < 1.).and.(thisOctal%subcellSize/rInner > 0.1)) then
-!           thisOctal%adot(subcell) = -1.
-!           converged = .false.
-!           aziSplit = .true.
-!        endif
-        
-!        if (abs(thisZ/thisOctal%subcellSize)<1.) then
-!           if (abs(thisZ)/thisH > 0.1) then
-!              thisOctal%adot(subcell) = -1.
-!              converged = .false.
-!           endif
-!        endif
+           !        if ((abs(thisZ/thisH) < 10.).and.(thisOctal%subcellSize > abs(thisZ/2.))) then
+           !           thisOctal%adot(subcell) = -1.
+           !           converged = .false.
+           !        endif
+
+
+
+           !        if ( ((modulus(rVec)/thisOctal%subcellSize) < 1.).and.(thisOctal%subcellSize/rInner > 0.1)) then
+           !           thisOctal%adot(subcell) = -1.
+           !           converged = .false.
+           !           aziSplit = .true.
+           !        endif
+
+           !        if (abs(thisZ/thisOctal%subcellSize)<1.) then
+           !           if (abs(thisZ)/thisH > 0.1) then
+           !              thisOctal%adot(subcell) = -1.
+           !              converged = .false.
+           !           endif
+           !        endif
+
+           if (thisOctal%nDepth < minDepthAMR) then
+              thisOctal%adot(subcell) = -2.d0
+              aziSplit = .true.
+              converged = .false.
+           endif
+
+
            if (thisOctal%dphi>minphiresolution) then
               aziSplit = .true.
            endif
            if (aziSplit) thisOctal%adot(subcell) = thisOctal%adot(subcell) * 2.
-           if (debug) write(*,*) thisOctal%nDepth,thisOctal%adot(subcell), &
-                thisOctal%rho(subcell),thisrho,abs(thisZ/thisH),thisZ,thisH
+           !           write(*,*) thisOctal%nDepth,thisOctal%adot(subcell), &
+           !                thisOctal%rho(subcell),thisrho,abs(thisZ/thisH),thisZ,thisH,thisOctal%dphi*radtodeg,minphiresolution*radtodeg
         endif
 
      endif
