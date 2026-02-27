@@ -1238,6 +1238,11 @@ CONTAINS
       thisOctal%temperature = 10.
       thisOctal%velocity= VECTOR(0.d0, 0.d0, 0.d0)
 
+   CASE("athena")
+      thisOctal%rho = 1d-30
+      thisOctal%temperature = 10.
+      thisOctal%velocity= VECTOR(0.d0, 0.d0, 0.d0)
+
     CASE ("magstream")
 
 !      thisOctal%rho(subcell) = 1.d-30

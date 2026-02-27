@@ -7,10 +7,10 @@ module chemistry_mod
   use messages_mod
   implicit none
 
-!  real(double) :: phl(krome_nPhotoBins)
-!  real(double) :: phr(krome_nPhotoBins)
-!  real(double) :: phm(krome_nPhotoBins)
-!  real(double) :: phJ(krome_nPhotoBins)
+  real(double) :: phl(krome_nPhotoBins)
+  real(double) :: phr(krome_nPhotoBins)
+  real(double) :: phm(krome_nPhotoBins)
+  real(double) :: phJ(krome_nPhotoBins)
 
 contains
 
@@ -36,13 +36,13 @@ recursive subroutine  pathlengthToIntensity(thisOctal, epsOverDt)
         end do
      else
 
-!        do i = 1, krome_nPhotoBins
-!           v = cellVolume(thisOctal, subcell) * 1.d30
-!           dfreq  = (phr(i)/ergtoev)/hcgs - (phl(i)/ergtoev)/hcgs
+        do i = 1, krome_nPhotoBins
+           v = cellVolume(thisOctal, subcell) * 1.d30
+           dfreq  = (phr(i)/ergtoev)/hcgs - (phl(i)/ergtoev)/hcgs
 
-!           thisOctal%kromeintensity(subcell, i) = ((1.d0/v) * epsOverDt * &
-!                thisOctal%kromeintensity(subcell, i) / fourPi)*ergtoEv / dFreq
-!        enddo
+           thisOctal%kromeintensity(subcell, i) = ((1.d0/v) * epsOverDt * &
+                thisOctal%kromeintensity(subcell, i) / fourPi)*ergtoEv / dFreq
+        enddo
      end if
   end do
 end subroutine pathLengthToIntensity
@@ -155,16 +155,16 @@ recursive subroutine  initializeChemistry(thisOctal)
 end subroutine initializeChemistry
 
 recursive subroutine doChemistryTimestepOctal(thisOctal, dt)
-  use inputs_mod, only : amin, amax, qdist, dustPhysics, nDustType
+  use inputs_mod, only : dustPhysics, ndusttype
   use krome_main
   use krome_user
   use krome_user_commons
 
-  TYPE(OCTAL),pointer :: thisOctal, child
+  TYPE(OCTAL),pointer :: thisOctal
   real(double) :: dt, tgas
   real(double) :: thisX(krome_nmols)
   real(double), allocatable :: intensity(:)
-  integer :: subcell,i
+  integer :: subcell
   
   do subcell = 1, thisOctal%maxChildren
 
@@ -188,18 +188,18 @@ recursive subroutine doChemistryTimestepOctal(thisOctal, dt)
               if (ndustType > 1) then
                  call writeFatal("KROME cannot deal with more than one species of dust. Using the 1st dust type size distribution")
               endif
-              !           call krome_init_dust_distribution(thisX, thisOctal%dustTypeFraction(subcell,1), alow_arg=dble(amin(1))*micronToCm, &
-              !                aup_arg=dble(amax(1))*microntocm, &
-              !                phi_arg=(-1.d0*dble(qdist(1))))
-              !           call krome_set_Tdust(dble(thisOctal%temperature(subcell)))
+!              call krome_init_dust_distribution(thisX, thisOctal%dustTypeFraction(subcell,1), alow_arg=dble(amin(1))*micronToCm, &
+!                   aup_arg=dble(amax(1))*microntocm, &
+!                   phi_arg=(-1.d0*dble(qdist(1))))
+ !             call krome_set_Tdust(dble(thisOctal%temperature(subcell)))
            endif
-           !        allocate(intensity(1:krome_nPhotoBins))
-           !        intensity = tiny(intensity)
-           !        intensity = intensity + thisOctal%kromeIntensity(subcell,1:krome_nPhotobins)
+           allocate(intensity(1:krome_nPhotoBins))
+           intensity = tiny(intensity)
+           intensity = intensity + thisOctal%kromeIntensity(subcell,1:krome_nPhotobins)
            
-           !        call krome_set_PhotoBinJ(intensity)
+           call krome_set_PhotoBinJ(intensity)
            
-           !        deallocate(intensity)
+           deallocate(intensity)
            if (dt > 0.d0) then
               call krome(thisX,  tgas, dt)
            endif
@@ -506,17 +506,17 @@ subroutine initializeKrome()
 
   call krome_init() !init krome (mandatory)
 
-!  call krome_set_photoBin_J21log(5.d0, 13.6d0)
-!  phl(:) = krome_get_photoBinE_left() !returns left bin points
-!  phr(:) = krome_get_photoBinE_right() !returns right bin points
-!  phm(:) = krome_get_photoBinE_mid() !returns left middle points
-!  phJ(:) = krome_get_photoBinJ() !returns bin intensities
-!  if (writeoutput) then
-!     call writeBanner("Krome photo bins (left, mid, right) ev, intensity","+")
-!     do i=1,krome_nPhotoBins
-!        print '(I5,1p,4E10.2)',i,phl(i),phm(i),phr(i),phJ(i)
-!     end do
-!  endif
+  call krome_set_photoBin_J21log(5.d0, 13.6d0)
+  phl(:) = krome_get_photoBinE_left() !returns left bin points
+  phr(:) = krome_get_photoBinE_right() !returns right bin points
+  phm(:) = krome_get_photoBinE_mid() !returns left middle points
+  phJ(:) = krome_get_photoBinJ() !returns bin intensities
+  if (writeoutput) then
+     call writeBanner("Krome photo bins (left, mid, right) ev, intensity","+")
+     do i=1,krome_nPhotoBins
+        print '(I5,1p,4E10.2)',i,phl(i),phm(i),phr(i),phJ(i)
+     end do
+  endif
 
   call reportKromeSpecies()
 
@@ -527,17 +527,15 @@ subroutine storePathlength(thisOctal, subcell, frequency, pathlength)
   integer :: subcell
   real(double) :: pathlength, frequency, energy
   integer :: i
-
   energy = frequency * hCgs * ergtoev
-
-!  if ((energy >= phl(1)).and.(energy <= phr(krome_nPhotoBins))) then
-!     do i = 1, krome_nPhotoBins
-!        if ((energy >= phl(i)).and.(energy <= phr(i))) then
-!           thisOctal%kromeIntensity(subcell,i) = thisOctal%kromeintensity(subcell,i) + pathLength
-!           exit
-!        endif
-!     enddo
-!  endif
+  if ((energy >= phl(1)).and.(energy <= phr(krome_nPhotoBins))) then
+     do i = 1, krome_nPhotoBins
+        if ((energy >= phl(i)).and.(energy <= phr(i))) then
+           thisOctal%kromeIntensity(subcell,i) = thisOctal%kromeintensity(subcell,i) + pathLength
+           exit
+        endif
+     enddo
+  endif
 
 end subroutine storePathlength
 
@@ -550,8 +548,6 @@ subroutine doChem(grid, dt)
   use vtk_mod
   implicit none
   type(GRIDTYPE) :: grid
-  integer :: i, subcell
-  type(OCTAL), pointer :: thisOctal
 !  character(len=16) :: species(krome_nmols)
   character(len=80) :: vtkFilename
   real(double) :: dt,totaltime
@@ -719,14 +715,14 @@ recursive subroutine calculateAVOctal(grid, thisOctal, ilambda,ndir,dir)
   use amr_mod, only : tauAlongPathFast
   use gridtype_mod
   type(GRIDTYPE) :: grid
-  type(OCTAL), pointer :: thisOctal, child
+  type(OCTAL), pointer :: thisOctal
   integer :: iDir
-  integer :: index, ilambda
+  integer :: ilambda
   integer :: ndir
   type(VECTOR) :: dir(:), cellCentre
   real(double), allocatable :: tau(:), Av(:), expMinusAv(:)
 
-  integer :: i, subcell
+  integer :: subcell
   
   allocate(tau(1:nDir), av(1:nDir), expMinusAv(1:nDir))
 

@@ -14,6 +14,7 @@ module setupamr_mod
   use gridtype_mod, only:   gridtype
   USE parallel_mod, ONLY:   torus_abort, torus_mpi_barrier
   use mpi_global_mod
+  use readathena_mod, only: readAthena
   use TTauri_mod, only: TTauri_accretion_mass
 
   implicit none
@@ -216,6 +217,11 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
        case("jaehan2d")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
           call readJaehan2d(grid)
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+
+      case("athena")
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
+          call readAthena(grid)
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
        case("skin")
