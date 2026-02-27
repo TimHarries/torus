@@ -90,7 +90,6 @@ contains
 !    integer :: nUnrefine
     real :: scalefac
     integer :: nGrid
-    character(len=20) :: fname
     real(double) :: gpe, ke, requiredKE, vScalefac
     real, pointer :: xVel(:,:,:) => null()
     real, pointer :: yVel(:,:,:) => null()
