@@ -1083,6 +1083,7 @@
   logical           :: noVtkGrid        ! Don't write out VTK files of the grid
   logical           :: noAMRGrid        ! Don't write out AMR files of the grid
   logical           :: vtkIncludeGhosts ! include ghosts in VTK output
+  character(len=10) :: vtkDistanceUnits
   logical           :: parallelVTUFiles
   character(len=80) :: absolutePath
   integer(bigInt)   :: maxMemoryAvailable

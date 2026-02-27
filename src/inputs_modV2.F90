@@ -172,7 +172,8 @@ contains
     call getLogical("binaryxml", useBinaryXMLVTKfiles, cLine, fLine, nLines, &
          "Use binary XML VTK files: ","(a,1l,1x,a)", .true., ok, .false.)
 
-
+     call getString("vtkdistanceunit", vtkDistanceUnits, cLine, fLine, nLines, &
+                  "VTK distance units: ","(a,a,1x,a)","au", ok, .false.)
 
     call getLogical("novtkgrid", noVtkGrid, cLine, fLine, nLines, &
          "Suppress VTK grid files: ","(a,1l,1x,a)", .false., ok, .false.)

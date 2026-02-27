@@ -576,6 +576,7 @@ contains
           call setupXarray(grid, xarray, nLambda,dustRadeq=.true.)
           call setupDust(grid, xArray, nLambda, miePhase, nMumie)
        endif
+       write(*,*) "Calling doChem..."
        call doChem(grid, timeChemistry)
     endif
 #endif

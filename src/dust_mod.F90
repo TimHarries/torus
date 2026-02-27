@@ -1342,7 +1342,6 @@ contains
              end if
           end do
        else
-
           do j = 1, nDustType
              if (decoupleGasDustTemperature) then
                 temperature = real(thisOctal%tDust(subcell))

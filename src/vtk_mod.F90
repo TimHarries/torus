@@ -43,6 +43,28 @@ module vtk_mod
 contains
 
 
+subroutine convertVTKdistance(float32)
+   use inputs_mod, only : vtkDistanceUnits
+   real :: float32(:)
+   real :: scaleFactor
+   scaleFactor = 1.
+   select case (vtkDistanceUnits)
+      case("au","AU")
+         scaleFactor = 1.e10/auToCm
+      case("pc","PC")
+         scaleFactor = 1.e10/pcToCm
+      case("cm")
+         scalefactor = 1.e10
+      case("rsol")
+         scaleFactor = 1.e10/rSol
+      case("codeunits")
+         scaleFactor = 1.
+      case DEFAULT
+         call writeInfo("Unknown distance unit for VTK output: "//vtkDistanceUnits)
+         scaleFactor = 1.e10/auToCm
+   end select
+   float32 = float32 * scaleFactor
+   end subroutine convertVTKdistance
 
   subroutine writePoints(grid, vtkFilename, nPoints, ncells,  xml)
     type(GRIDTYPE) :: grid
@@ -2669,11 +2691,15 @@ subroutine writeXMLVtkFileAMR(grid, vtkFilename, valueTypeFilename, valueTypeStr
   endif
 
 
+
   if (writeheader.and.(.not.grid%splitoverMPI)) then
      allocate(points(1:3,1:nPoints))
      call getPoints(grid, nPoints, points, vtkincludeGhosts)
      allocate(float32(1:(nPointsGlobal*3)))
      float32 = RESHAPE(points, (/SIZE(float32)/))
+
+      call convertVTKdistance(float32)
+
 !     call base64encode(writeheader, pstring, nString, float32=float32)
 
 
