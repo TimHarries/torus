@@ -1349,7 +1349,7 @@ contains
     real(double) :: kappaSca, kappaAbs, newtau, oldtau, fmax
     integer :: subcell, i, j
 
-    underCorrect = 0.8
+    underCorrect = 0.1
 
     kappaSca = 0.d0; kappaAbs = 0.d0
     if (present(minLevel)) then
@@ -1389,11 +1389,7 @@ contains
              if (temperature < sublimationTemp) newFrac = 1.
 
              
-             if (temperature >= sublimationTemp) then
-                newfrac = 0.5d0 * exp(-dble((temperature-sublimationtemp)/subRange))
-             else
-                newfrac = 1.d0 - 0.5d0 * exp(dble((temperature-sublimationtemp)/subRange))
-             endif
+             newfrac = 1.d0 / (1.d0 + exp((temperature-sublimationTemp)/subrange))
 
              call locate(grid%lamArray, grid%nLambda, 5500., iLambda)
              newfrac = max(newfrac,smallVal)
@@ -1406,12 +1402,12 @@ contains
              
              deltaFrac = newFrac - oldFrac
              
-             if (deltaFrac > 0.) then
-                  underCorrect = 0.1
-               else
-                  underCorrect = 1.d0
-             endif 
-
+             if (deltaFrac < 0.) then
+                underCorrect = 0.9
+             else
+                underCorrect = 0.1
+             endif
+             
              frac = oldFrac + underCorrect * deltaFrac
              
              frac = max(frac, smallVal)
@@ -1429,10 +1425,10 @@ contains
              call returnKappa(grid, thisOctal, subcell, ilambda=iLambda, kappaSca=kappaSca, kappaAbs=kappaAbs, idust=j)
              newtau = (kappaAbs+kappaSca)*thisOctal%subcellSize
 
-             if (newtau - oldtau > 1) then
-                write(*,*) "Warning: large change in optical depth for subcell ",subcell," dust type ",j, &
-                     " old tau ",oldtau," new tau ",newtau
-             endif
+            !  if (newtau - oldtau > 1) then
+            !     write(*,*) "Warning: large change in optical depth for subcell ",subcell," dust type ",j, &
+            !          " old tau ",oldtau," new tau ",newtau
+            !  endif
 
 
 

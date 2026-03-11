@@ -5474,7 +5474,7 @@ CONTAINS
 
 !          write(*,*) hr, height, r, betadisc
 
-          if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > thisheightSplitFac)) split = .true.
+          if ((abs(cellcentre%z)/hr < 6.) .and. (cellsize/hr > thisheightSplitFac)) split = .true.
 
           if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
@@ -15900,7 +15900,8 @@ end function readparameterfrom2dmap
   END SUBROUTINE amrUpdateGrid
 
   subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, allSca, &
-     rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, debug, reset_kappa, dir, idust)
+       rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, debug, reset_kappa, &
+       dir, idust)
     use inputs_mod, only: nDustType, mie, includeGasOpacity, lineEmission, dustPhysics, dustonly, decoupleGasDustTemperature
     use atom_mod, only: bnu
     use gas_opacity_mod, only: returnGasKappaValue

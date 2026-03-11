@@ -431,7 +431,7 @@ contains
              if (.not.variableDustSublimation) then
                 nMonte = nVoxels * 10
              else
-                nMonte = nVoxels * 100
+                nMonte = nVoxels * 50
              endif
           endif
           nMonte = nMonte * iMultiplier
@@ -950,12 +950,13 @@ contains
           totFrac = 0.
           nFrac = 0
           
-          if ((iIter_grand > 3).and.(iIter_grand <=12)) then
-             taumax = max(1.e-5,0.1*dble(iIter_grand-4))
+          if ((iIter_grand > 3).and.(iIter_grand <12)) then
+            taumax = 0.1
              call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+            
           endif
           
-             if (iIter_grand >= 13)  then
+             if (iIter_grand == 12)  then
                 tauMax = 1.e30
                 call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
              endif
@@ -2782,8 +2783,8 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
   end subroutine update_octal_MPI
 
 
-  subroutine updateGridMPI(grid)
-    use inputs_mod, only : usePAH
+   subroutine updateGridMPI(grid)
+      use inputs_mod, only : usePAH, nDustType
     use mpi
     implicit none
 
@@ -2792,9 +2793,10 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     real(double), allocatable :: nCrossings(:)
     real, allocatable :: tempRealArray(:)
     real(double), allocatable :: distanceGrid(:),adotPAH(:), tempDoubleArray(:), meanIntensity(:)
+   real(double), allocatable :: tempStorage(:,:), tempStorageReduced(:,:)
     real, allocatable :: nDiffusion(:)
     integer, parameter :: nTheta = 11, nPhi = 10
-    integer :: ierr, nIndex, nIndexScattered
+   integer :: ierr, nIndex, nIndexScattered, nTempStorage, nTempStorageAlloc
 
     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
     nOctals = 0
@@ -2807,10 +2809,15 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     allocate(meanIntensity(1:nVoxels))
 
     nIndex = 0
-    nIndexScattered = 0 
+    nIndexScattered = 0
+    nTempStorage = 2*nDustType
+    nTempStorageAlloc = max(1, nTempStorage)
     adotPAH = 0.d0
+    allocate(tempStorage(nVoxels, nTempStorageAlloc))
+    allocate(tempStorageReduced(nVoxels, nTempStorageAlloc))
+    tempStorage = 0.d0
     call packValues(grid%octreeRoot,nIndex,nIndexScattered, &
-         distanceGrid,adotPAH,nCrossings,ndiffusion, meanIntensity)
+          distanceGrid,adotPAH,nCrossings,ndiffusion, meanIntensity, tempStorage, nTempStorage)
 
 
 
@@ -2855,17 +2862,26 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     call MPI_ALLREDUCE(nDiffusion,tempRealArray,nVoxels,MPI_REAL,&
          MPI_SUM,MPI_COMM_WORLD,ierr)
     nDiffusion = tempRealArray 
+
+    if (nTempStorage > 0) then
+       tempStorageReduced = 0.d0
+       ! tempStorage is 2D; reduce across all contiguous elements.
+       call MPI_ALLREDUCE(tempStorage,tempStorageReduced,nVoxels*nTempStorage,MPI_DOUBLE_PRECISION,&
+            MPI_SUM,MPI_COMM_WORLD,ierr)
+       tempStorage = tempStorageReduced
+    endif
     
-    deallocate(tempRealArray, tempDoubleArray)
+      deallocate(tempRealArray, tempDoubleArray)
      
     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
     
     nIndex = 0
     nIndexScattered = 0
     call unpackValues(grid%octreeRoot,nIndex,nIndexScattered, &
-         distanceGrid,adotPAH,nCrossings,nDiffusion, meanIntensity)
+          distanceGrid,adotPAH,nCrossings,nDiffusion, meanIntensity, tempStorage, nTempStorage)
 
     deallocate(nCrossings, nDiffusion, distanceGrid, adotPAH, meanIntensity)
+      deallocate(tempStorage, tempStorageReduced)
 
   end subroutine updateGridMPI
 #endif
@@ -3075,7 +3091,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
   end subroutine calculateEtaCont
 
   recursive subroutine packvalues(thisOctal,nIndex, nIndexScattered,&
-       distanceGrid,adotPAH,nCrossings, nDiffusion, meanIntensity)
+     distanceGrid,adotPAH,nCrossings, nDiffusion, meanIntensity, tempStorage, nTempStorage)
     use inputs_mod, only : usePAH
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
@@ -3083,8 +3099,10 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
   real(double) :: aDotPAH(:)
   real(double) :: meanIntensity(:)
   real(double) :: nCrossings(:)
+  real(double) :: tempStorage(:,:)
   real :: nDiffusion(:)
   integer :: nIndex, nIndexScattered
+  integer :: nTempStorage
   integer :: subcell, i !, j , k
 !  integer, parameter :: nTheta = 10, nPhi = 10
   
@@ -3094,7 +3112,8 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call packvalues(child,nIndex,nIndexScattered,distanceGrid,adotPAH, nCrossings,nDiffusion, meanIntensity)
+                call packvalues(child,nIndex,nIndexScattered,distanceGrid,adotPAH, nCrossings,nDiffusion, &
+                     meanIntensity, tempStorage, nTempStorage)
                 exit
              end if
           end do
@@ -3105,6 +3124,13 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           meanIntensity(nIndex) = thisOctal%meanIntensity(subcell)
           nCrossings(nIndex) = dble(thisOctal%nCrossings(subcell))
           nDiffusion(nIndex) = thisOctal%nDiffusion(subcell)
+          if (nTempStorage > 0) then
+             if (associated(thisOctal%tempStorage).and.(size(thisOctal%tempStorage,2) >= nTempStorage)) then
+                tempStorage(nIndex,1:nTempStorage) = thisOctal%tempStorage(subcell,1:nTempStorage)
+             else
+                tempStorage(nIndex,1:nTempStorage) = 0.d0
+             endif
+          endif
 !          if (storeScattered) then
 !             do j = 1, nTheta
 !                do k = 1, nPhi
@@ -3118,16 +3144,19 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     enddo
   end subroutine packvalues
 
-  recursive subroutine unpackvalues(thisOctal,nIndex,nIndexScattered,distanceGrid,adotPAH,nCrossings, nDiffusion, meanIntensity)
+   recursive subroutine unpackvalues(thisOctal,nIndex,nIndexScattered,distanceGrid,adotPAH,nCrossings, nDiffusion, meanIntensity, &
+          tempStorage, nTempStorage)
     use inputs_mod, only : usePAH
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: distanceGrid(:), adotPAH(:), meanIntensity(:)
   real(double) :: ncrossings(:)
+   real(double) :: tempStorage(:,:)
   real :: ndiffusion(:)
   integer :: nIndex
   integer :: subcell, i !, j, k
   integer :: nIndexScattered
+   integer :: nTempStorage
 !  integer, parameter :: nTheta = 10, nPhi = 10
   
   do subcell = 1, thisOctal%maxChildren
@@ -3137,7 +3166,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
                 call unpackvalues(child,nIndex,nIndexScattered,distanceGrid,adotPAH,nCrossings, &
-                     nDiffusion, meanIntensity)
+                   nDiffusion, meanIntensity, tempStorage, nTempStorage)
                 exit
              end if
           end do
@@ -3148,6 +3177,14 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           thisOctal%meanIntensity(subcell) = meanIntensity(nIndex)
           thisOctal%nCrossings(subcell) = int(nCrossings(nIndex), kind=bigint)
           thisOctal%nDiffusion(subcell) = nDiffusion(nIndex)
+          if (nTempStorage > 0) then
+             if ((.not.associated(thisOctal%tempStorage)).or.(size(thisOctal%tempStorage,2) < nTempStorage)) then
+                if (associated(thisOctal%tempStorage)) deallocate(thisOctal%tempStorage)
+                allocate(thisOctal%tempStorage(1:thisOctal%maxChildren, 1:nTempStorage))
+                thisOctal%tempStorage = 0.d0
+             endif
+             thisOctal%tempStorage(subcell,1:nTempStorage) = tempStorage(nIndex,1:nTempStorage)
+          endif
 !          if (storescattered) then
 !             do j = 1, nTheta
 !                do k = 1, nPhi
