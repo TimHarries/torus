@@ -25,7 +25,7 @@ dimensionality_mod.o: kind_mod.o messages_mod.o
 disc_class.o: constants_mod.o gridtype_mod.o kind_mod.o octal_mod.o \
 	vector_mod.o
 disc_hydro_mod.o: amr_mod.o amr_utils_mod.o constants_mod.o density_mod.o \
-	dust_mod.o gridtype_mod.o inputs_modV2.o kind_mod.o lucy_mod.o \
+	dust_mod.o gridtype_mod.o inputs_modV2.o kind_mod.o lucy_new_mod.o \
 	messages_mod.o octal_mod.o parallel_mod.o phasematrix_mod.o \
 	source_mod.o utils_mod.o vector_mod.o vtk_mod.o
 discwind_class.o: constants_mod.o gridtype_mod.o inputs_modV2.o kind_mod.o \
@@ -191,6 +191,12 @@ lucy_mod.o: amr_mod.o atom_mod.o chemistry_mod.o constants_mod.o \
 	mpi_global_mod.o octal_mod.o pah_mod.o phasematrix_mod.o random_mod.o \
 	source_mod.o spectrum_mod.o timing.o utils_mod.o vector_mod.o \
 	vtk_mod.o
+lucy_new_mod.o: amr_mod.o atom_mod.o chemistry_mod.o constants_mod.o \
+	diffusion_mod.o dust_mod.o gas_opacity_mod.o grid_mod.o gridio_mod.o \
+	gridtype_mod.o inputs_modV2.o memory_mod.o messages_mod.o \
+	mpi_global_mod.o octal_mod.o pah_mod.o phasematrix_mod.o random_mod.o \
+	source_mod.o spectrum_mod.o timing.o utils_mod.o vector_mod.o \
+	vtk_mod.o
 memory_mod.o: gridtype_mod.o kind_mod.o messages_mod.o octal_mod.o \
 	vector_mod.o
 mieDistPhaseMatrix.o: constants_mod.o inputs_modV2.o phasematrix_mod.o
@@ -219,7 +225,7 @@ outputs_mod.o: angularImage_mod.o angularImage_utils.o blob_mod.o cmf_mod.o \
 	datacube_mod.o disc_class.o dust_mod.o formal_solutions.o \
 	gas_opacity_mod.o gridanalysis_mod.o gridio_mod.o h21cm_mod.o \
 	hydrodynamics_mod.o image_mod.o image_utils_mod.o inputs_modV2.o \
-	lucy_mod.o modelatom_mod.o molecular_mod.o mpi_global_mod.o \
+	lucy_new_mod.o modelatom_mod.o molecular_mod.o mpi_global_mod.o \
 	phaseloop_mod.o phasematrix_mod.o photoionAMR_mod.o photoion_mod.o \
 	photoion_utils_mod.o physics_mod.o sed_mod.o setupamr_mod.o \
 	source_mod.o surface_mod.o vtk_mod.o
@@ -239,7 +245,7 @@ phaseloop_mod.o: TTauri_mod.o amr_mod.o blob_mod.o constants_mod.o \
 	disc_class.o distortion_mod.o dust_mod.o fillGridRayleigh.o \
 	fillGridThomson.o fillGridTio.o filter_set_class.o formal_solutions.o \
 	grid_mod.o gridio_mod.o gridtype_mod.o image_mod.o image_utils_mod.o \
-	inputs_modV2.o integratePath.o kind_mod.o lucy_mod.o math_mod.o \
+	inputs_modV2.o integratePath.o kind_mod.o lucy_new_mod.o math_mod.o \
 	messages_mod.o mpi_global_mod.o parallel_mod.o phasematrix_mod.o \
 	photoion_utils_mod.o photon_mod.o physics_mod.o random_mod.o \
 	sed_mod.o source_mod.o spectrum_mod.o stateq_mod.o surface_mod.o \
@@ -251,9 +257,9 @@ photoion_mod.o: amr_mod.o atom_mod.o constants_mod.o diffusion_mod.o \
 	spectrum_mod.o timing.o unix_mod.o utils_mod.o vector_mod.o vtk_mod.o
 photoion_utils_mod.o: amr_mod.o atom_mod.o constants_mod.o diffusion_mod.o \
 	dust_mod.o grid_mod.o gridio_mod.o image_mod.o inputs_modV2.o \
-	ion_mod.o lucy_mod.o messages_mod.o mpi_amr_mod.o mpi_global_mod.o \
-	phasematrix_mod.o phfit2.o photon_mod.o source_mod.o stateq_mod.o \
-	timing.o utils_mod.o
+	ion_mod.o lucy_new_mod.o messages_mod.o mpi_amr_mod.o \
+	mpi_global_mod.o phasematrix_mod.o phfit2.o photon_mod.o source_mod.o \
+	stateq_mod.o timing.o utils_mod.o
 photoionAMR_mod.o: amr_mod.o atom_mod.o constants_mod.o diffusion_mod.o \
 	dimensionality_mod.o dust_mod.o gas_opacity_mod.o grid_mod.o \
 	gridio_mod.o gridtype_mod.o hydrodynamics_mod.o image_mod.o \
@@ -265,22 +271,24 @@ photoionAMR_mod.o: amr_mod.o atom_mod.o constants_mod.o diffusion_mod.o \
 	vtk_mod.o xray_mod.o
 physics_mod.o: amr_mod.o biophysics_mod.o chemistry_mod.o cmf_mod.o \
 	constants_mod.o disc_hydro_mod.o dust_mod.o gas_opacity_mod.o \
-	grid_mod.o hydrodynamics_mod.o inputs_modV2.o ion_mod.o lucy_mod.o \
-	messages_mod.o modelatom_mod.o molecular_mod.o mpi_global_mod.o \
-	nbody_mod.o pah_mod.o parallel_mod.o pdr_mod.o phasematrix_mod.o \
-	photoionAMR_mod.o photoion_mod.o photoion_utils_mod.o random_mod.o \
-	setupamr_mod.o source_mod.o spectrum_mod.o sph_data_class.o \
-	starburst_mod.o stateq_mod.o surface_mod.o timedep_mod.o timing.o \
-	utils_mod.o vector_mod.o vtk_mod.o
+	grid_mod.o hydrodynamics_mod.o inputs_modV2.o ion_mod.o \
+	lucy_new_mod.o messages_mod.o modelatom_mod.o molecular_mod.o \
+	mpi_global_mod.o nbody_mod.o pah_mod.o parallel_mod.o pdr_mod.o \
+	phasematrix_mod.o photoionAMR_mod.o photoion_mod.o \
+	photoion_utils_mod.o random_mod.o setupamr_mod.o source_mod.o \
+	spectrum_mod.o sph_data_class.o starburst_mod.o stateq_mod.o \
+	surface_mod.o timedep_mod.o timing.o utils_mod.o vector_mod.o \
+	vtk_mod.o
 random_mod.o: kind_mod.o messages_mod.o mpi_global_mod.o
 setupamr_mod.o: TTauri_mod.o amr_mod.o biophysics_mod.o cluster_class.o \
 	cmf_mod.o cmfgen_class.o constants_mod.o disc_class.o \
 	discwind_class.o dust_mod.o gridFromFitsFile.o gridFromFlash.o \
 	grid_mod.o gridio_mod.o gridtype_mod.o image_mod.o inputs_modV2.o \
-	lucy_mod.o magnetic_mod.o memory_mod.o messages_mod.o mpi_amr_mod.o \
-	mpi_global_mod.o octal_mod.o parallel_mod.o photoionAMR_mod.o \
-	ramses_mod.o readathena_mod.o sph_data_class.o stateq_mod.o \
-	turbulence_mod.o utils_mod.o vector_mod.o vh1_mod.o vtk_mod.o
+	lucy_new_mod.o magnetic_mod.o memory_mod.o messages_mod.o \
+	mpi_amr_mod.o mpi_global_mod.o octal_mod.o parallel_mod.o \
+	photoionAMR_mod.o ramses_mod.o readathena_mod.o sph_data_class.o \
+	stateq_mod.o turbulence_mod.o utils_mod.o vector_mod.o vh1_mod.o \
+	vtk_mod.o
 setuppdr_mod.o: grid_mod.o healpix_modules.o inputs_modV2.o octal_mod.o \
 	unix_mod.o
 sph_data_class.o: amr_utils_mod.o angularImage_utils.o constants_mod.o \
@@ -291,7 +299,7 @@ stateq_mod.o: amr_mod.o cmfgen_class.o constants_mod.o grid_mod.o \
 	math_mod2.o messages_mod.o octal_mod.o parallel_mod.o source_mod.o \
 	surface_mod.o utils_mod.o vector_mod.o
 timedep_mod.o: amr_mod.o constants_mod.o fits_utils_mod.o grid_mod.o \
-	gridio_mod.o image_mod.o inputs_modV2.o kind_mod.o lucy_mod.o \
+	gridio_mod.o image_mod.o inputs_modV2.o kind_mod.o lucy_new_mod.o \
 	math_mod.o octal_mod.o sed_mod.o source_mod.o timing.o utils_mod.o \
 	vector_mod.o vtk_mod.o
 torusMainV2.o: biophysics_mod.o chemistry_mod.o citations_mod.o \

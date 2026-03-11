@@ -10,11 +10,11 @@ module timedep_mod
   use amr_mod
   use source_mod
   use vtk_mod
-  use lucy_mod, only : setbiasontau
+   use lucy_new_mod, only : setbiasontau
   use math_mod
   use gridio_mod
   use timing, only: tune
-  use lucy_mod, only : quickSublimateLucy
+   use lucy_new_mod, only : quickSublimateLucy
   implicit none
 
 

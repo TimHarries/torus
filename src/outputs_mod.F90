@@ -54,7 +54,7 @@ contains
     use blob_mod, only : blobtype
     use dust_mod, only : readLambdaFile, dumpPolarizability
     use setupamr_mod, only : writegridkengo, writeFogel
-    use lucy_mod, only : getSublimationRadius
+   use lucy_new_mod, only : getSublimationRadius
     use inputs_mod, only : fastIntegrate, geometry, intextfilename, outtextfilename, sourceHistoryFilename, lambdatau, itrans
     use inputs_mod, only : lambdaFilename, polarWavelength, polarFilename, nPhotSpec, nPhotImage, nPhotons
     use inputs_mod, only : nDataCubeInclinations, datacubeInclinations, nLamLine, lamLineArray !, rgapinner1

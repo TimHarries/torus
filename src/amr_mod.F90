@@ -15900,7 +15900,7 @@ end function readparameterfrom2dmap
   END SUBROUTINE amrUpdateGrid
 
   subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, allSca, &
-       rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, debug, reset_kappa, dir)
+     rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas, debug, reset_kappa, dir, idust)
     use inputs_mod, only: nDustType, mie, includeGasOpacity, lineEmission, dustPhysics, dustonly, decoupleGasDustTemperature
     use atom_mod, only: bnu
     use gas_opacity_mod, only: returnGasKappaValue
@@ -15911,32 +15911,34 @@ end function readparameterfrom2dmap
     implicit none
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
-    integer :: subcell
-    integer, optional :: ilambda
-    real, optional :: lambda
+   integer, intent(in) :: subcell
+   integer, optional, intent(in) :: ilambda
+   real, optional, intent(in) :: lambda
     real(double), optional :: allSca(:)
     real(double), intent(out), optional :: kappaSca, kappaAbs
     real(double), optional, intent(out) :: kappaAbsArray(:), kappaScaArray(:)
     real(double), optional, intent(out) :: rosselandKappa
     real(double), optional, intent(out) :: kappaAbsDust, kappaScaDust, kappaAbsGas, kappaScaGas
-    logical, optional :: debug
+   logical, optional, intent(in) :: debug
     real(double), optional, intent(out) :: kappap
-    real, optional :: atthistemperature
+   real, optional, intent(in) :: atthistemperature
     logical, optional, intent(in) :: reset_kappa
     type(VECTOR), optional, intent(in) :: dir
+   integer, optional, intent(in) :: idust
     real :: temperature
     real :: frac
     real :: tlambda
 !    real, parameter :: sublimationTemp = 1500., subRange = 100.
     real(double) :: tArray(1000), tempDouble
     real(double) :: freq, dfreq, norm !,  bnutot
-    integer :: i,j,m,itemp
+   integer :: i,j,m,itemp, dustLo, dustHi
     real :: fac
     real(double), allocatable, save :: tgasArray(:)
     real(double), allocatable, save :: oneKappaAbsT(:,:)
     real(double), allocatable, save :: oneKappaScaT(:,:)
 
     logical,save :: firsttime = .true.
+   logical :: useSingleDust
     integer(double),save :: nlambda
     real(double) :: tgas, tdust
 
@@ -15976,6 +15978,13 @@ end function readparameterfrom2dmap
 !    frac = max(1.e-20,frac)
 
     frac = 1.
+    useSingleDust = present(idust)
+    dustLo = 1
+    dustHi = nDustType
+    if (useSingleDust) then
+       dustLo = idust
+       dustHi = idust
+    endif
 
     if (allocated(oneKappaAbsT)) then
        if  ((SIZE(oneKappaAbsT,1) /= SIZE(grid%oneKappaAbs,2)).or. &
@@ -16011,28 +16020,24 @@ end function readparameterfrom2dmap
     endif
 
     if (PRESENT(allSca)) then
-       allSca(1:nDustType) = thisOctal%rho(subcell) * oneKappaAbsT(ilambda,1:nDustType) &
-                 * thisOctal%dustTypeFraction(subcell,1:nDustType)
+       allSca(1:nDustType) = 0.d0
+       allSca(dustLo:dustHi) = thisOctal%rho(subcell) * oneKappaAbsT(ilambda,dustLo:dustHi) &
+                 * thisOctal%dustTypeFraction(subcell,dustLo:dustHi)
     endif
 
     if (PRESENT(kappaAbsArray)) then
 
       if(grid%onekappa) then
 
-         if (nDustType .eq. 1) then
-            kappaAbsArray(1:nLambda) = thisOctal%rho(subcell) * oneKappaAbsT(1:nlambda,1) &
-                 * thisOctal%dustTypeFraction(subcell,1)
-         else
-            kappaAbsArray(1:grid%nLambda) = 0.
-            do i = 1, nDustType
-               kappaAbsArray(1:nLambda) = kappaAbsArray(1:nLambda) + thisOctal%dustTypeFraction(subcell, i) * &
-                    oneKappaAbsT(1:nLambda,i)*thisOctal%rho(subcell) * frac
-            enddo
-         endif
+         kappaAbsArray(1:grid%nLambda) = 0.
+         do i = dustLo, dustHi
+            kappaAbsArray(1:nLambda) = kappaAbsArray(1:nLambda) + thisOctal%dustTypeFraction(subcell, i) * &
+                 oneKappaAbsT(1:nLambda,i)*thisOctal%rho(subcell) * frac
+         enddo
       else
          kappaAbsArray(1:nlambda) = thisOctal%kappaAbs(subcell,:)
       endif
-       if (includeGasOpacity) then
+       if (includeGasOpacity.and.(.not.useSingleDust)) then
           call returnGasKappaValue(grid,thisOctal%temperature(subcell), thisOctal%rho(subcell),  kappaAbsArray=tarray)
           kappaAbsArray(1:grid%nLambda) = kappaAbsArray(1:grid%nLambda) + tarray(1:grid%nLambda)*thisOctal%rho(subcell)
        endif
@@ -16043,20 +16048,17 @@ end function readparameterfrom2dmap
     if (PRESENT(kappaScaArray)) then
        if(grid%onekappa) then
 
-          if (nDustType .eq. 1) then
-             kappaScaArray(1:nLambda) = thisOctal%rho(subcell) * oneKappaScaT(1:nlambda,1) * &
-                  thisOctal%dustTypeFraction(subcell,1)
-          else
-             kappaScaArray(1:grid%nLambda) = 0.
-             do i = 1, nDustType
-                kappaScaArray(1:nLambda) = kappaScaArray(1:nLambda) + thisOctal%dustTypeFraction(subcell, i) * &
-                     oneKappaScaT(1:nLambda,i)*thisOctal%rho(subcell) * frac
-             enddo
-          endif
+          kappaScaArray(1:grid%nLambda) = 0.
+          do i = dustLo, dustHi
+             kappaScaArray(1:nLambda) = kappaScaArray(1:nLambda) + thisOctal%dustTypeFraction(subcell, i) * &
+                  oneKappaScaT(1:nLambda,i)*thisOctal%rho(subcell) * frac
+          enddo
        else
           kappaScaArray(1:nlambda) = thisOctal%kappaSca(subcell,:)
        endif
-       if (includeGasOpacity) then
+       if (includeGasOpacity.and.(.not.useSingleDust)) then
+          temperature = thisOctal%temperature(subcell)
+          if (PRESENT(atthistemperature)) temperature = atthistemperature
           call returnGasKappaValue(grid, temperature, thisOctal%rho(subcell),  kappaScaArray=tarray)
           kappaScaArray(1:grid%nLambda) = kappaScaArray(1:grid%nLambda) + tarray(1:grid%nLambda) !*thisOctal%rho(subcell)
        endif
@@ -16070,19 +16072,13 @@ end function readparameterfrom2dmap
              if (grid%oneKappa) then
                 kappaSca = 0.
 
-                if(ndusttype .eq. 1) then
-                   kappaSca = OneKappaScaT(iLambda,1) * thisOctal%rho(subcell)  * thisOctal%dustTypeFraction(subcell, 1)
-                   if (present(debug)) write(*,*) "kappasca1 ",kappaSca, oneKappaScaT(ilambda,1), &
-                        thisOctal%rho(subcell), thisOctal%dusttypeFraction(subcell,1)
-                else
-                   do i = 1, nDustType
-                      kappaSca = kappaSca + thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaSca(i,iLambda) * &
-                           thisOctal%rho(subcell)
-                      if (present(debug)) write(*,*) "kappasca2 ",kappaSca, grid%oneKappaSca(i,ilambda), &
-                           thisOctal%rho(subcell), thisOctal%dusttypeFraction(subcell,i)
+                do i = dustLo, dustHi
+                   kappaSca = kappaSca + thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaSca(i,iLambda) * &
+                        thisOctal%rho(subcell)
+                   if (present(debug)) write(*,*) "kappasca2 ",kappaSca, grid%oneKappaSca(i,ilambda), &
+                        thisOctal%rho(subcell), thisOctal%dusttypeFraction(subcell,i)
 
-                   enddo
-                endif
+                enddo
              else
                 ! For line computation (without dust).
                 ! Needs modification for a model which include gas and dust here.
@@ -16097,7 +16093,7 @@ end function readparameterfrom2dmap
              kappaSca = 0.
              itemp = ilambda
              if (ilambda == grid%nLambda) itemp = itemp - 1
-             do i = 1, nDustType
+             do i = dustLo, dustHi
                 if (grid%nLambda == 1) then
                    kappaSca = kappaSca +  thisOctal%dustTypeFraction(subcell, i) * &
                         grid%oneKappaSca(i,1) * thisOctal%rho(subcell)
@@ -16130,13 +16126,9 @@ end function readparameterfrom2dmap
        IF (.NOT.PRESENT(lambda)) THEN
           if (grid%oneKappa.and.DustPhysics) then
              kappaAbs = 0.
-             if(ndustType .eq. 1) then
-                kappaAbs = oneKappaAbsT(iLambda,1)*thisOctal%rho(subcell) * thisOctal%dustTypeFraction(subcell, 1)
-             else
-                do i = 1, nDustType
-                   kappaAbs = kappaAbs + thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaAbs(i,iLambda)*thisOctal%rho(subcell)
-                enddo
-             endif
+             do i = dustLo, dustHi
+                kappaAbs = kappaAbs + thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaAbs(i,iLambda)*thisOctal%rho(subcell)
+             enddo
           else
              ! For line computation (without dust).
              ! Needs modification for a model which include gas and dust here.
@@ -16152,41 +16144,20 @@ end function readparameterfrom2dmap
           itemp = ilambda
           if (ilambda == grid%nLambda) itemp = itemp - 1
           if (dustPhysics) then
-             if (ndusttype .eq. 1) then
+             itemp = ilambda
+             if (ilambda == grid%nLambda) itemp = itemp - 1
+             do i = dustLo, dustHi
                 if (grid%nLambda == 1) then
-                   kappaAbs = thisOctal%dustTypeFraction(subcell, 1) *  &
-                        grid%oneKappaAbs(1,1) * thisOctal%rho(subcell)
+                   kappaAbs = kappaAbs + thisOctal%dustTypeFraction(subcell, i) * &
+                        grid%oneKappaAbs(i,1)*thisOctal%rho(subcell)
+
                 else
-                   kappaAbs = thisOctal%dustTypeFraction(subcell, 1) *  &
+                   kappaAbs = kappaAbs + thisOctal%dustTypeFraction(subcell, i) * &
                         logint(dble(lambda), dble(grid%lamArray(itemp)), dble(grid%lamArray(itemp+1)), &
-                        oneKappaAbsT(itemp,1)*thisoctal%rho(subcell), &
-                        oneKappaAbsT(itemp+1,1)*thisoctal%rho(subcell))
+                        grid%oneKappaAbs(i,itemp)*thisOctal%rho(subcell), &
+                        grid%oneKappaAbs(i,itemp)*thisOctal%rho(subcell))
                 endif
-
-             else
-                itemp = ilambda
-                if (ilambda == grid%nLambda) itemp = itemp - 1
-                do i = 1, nDustType
-                   !write(*,*) grid%oneKappaAbs(i,iLambda),grid%oneKappaAbs(i,iLambda+1),thisOctal%rho(subcell), &
-                   !     dble(grid%lamArray(ilambda)), dble(grid%lamArray(ilambda+1)), ilambda, dble(lambda)
-                   !write(*,*) logint(dble(lambda), dble(grid%lamArray(ilambda)), dble(grid%lamArray(ilambda+1)), &
-                   !     grid%oneKappaAbs(i,iLambda)*thisOctal%rho(subcell), &
-                   !     grid%oneKappaAbs(i,iLambda+1)*thisOctal%rho(subcell))
-                   !write(*,*) i, subcell
-                   !write(*,*) nDusttype,kappaAbs
-                   !write(*,*) thisOctal%dustTypeFraction(subcell, i)
-                   if (grid%nLambda == 1) then
-                      kappaAbs = kappaAbs + thisOctal%dustTypeFraction(subcell, i) * &
-                           grid%oneKappaAbs(i,1)*thisOctal%rho(subcell)
-
-                   else
-                      kappaAbs = kappaAbs + thisOctal%dustTypeFraction(subcell, i) * &
-                           logint(dble(lambda), dble(grid%lamArray(itemp)), dble(grid%lamArray(itemp+1)), &
-                           grid%oneKappaAbs(i,itemp)*thisOctal%rho(subcell), &
-                           grid%oneKappaAbs(i,itemp)*thisOctal%rho(subcell))
-                   endif
-                enddo
-             endif
+             enddo
           endif
        endif
 !       write(*,*) nDustType,thisOctal%dusttypeFraction(subcell,1), grid%oneKappaAbs(1,1:grid%nLambda)
@@ -16197,7 +16168,7 @@ end function readparameterfrom2dmap
    if (PRESENT(kappaAbsDust)) kappaAbsDust = kappaAbs
 
 
-   if (includeGasOpacity.and.(.not.PRESENT(rosselandkappa))) then
+   if (includeGasOpacity.and.(.not.PRESENT(rosselandkappa)).and.(.not.useSingleDust)) then
 
       if (PRESENT(kappaAbs)) then
          temperature = thisOctal%temperature(subcell)
@@ -16245,7 +16216,7 @@ end function readparameterfrom2dmap
       endif
       rosselandKappa = 0.
 
-      do i = 1, nDustType
+      do i = dustLo, dustHi
          rosselandKappa = rosselandKappa + (grid%kappaRossArray(i, m) + &
               fac*(grid%kappaRossArray(i,m+1)-grid%kappaRossArray(i,m))) * &
               max(1.d-30,thisOctal%dustTypeFraction(subcell, i))
@@ -16261,6 +16232,13 @@ end function readparameterfrom2dmap
       else
          tdust = temperature
       endif
+      if (useSingleDust) then
+         if (associated(thisOctal%tempStorage)) then
+            if (size(thisOctal%tempStorage,2) >= 2*nDustType) then
+               tdust = thisOctal%tempStorage(subcell, nDustType + idust)
+            endif
+         endif
+      endif
 
       if (PRESENT(atthistemperature)) then
          temperature = atthistemperature
@@ -16269,18 +16247,18 @@ end function readparameterfrom2dmap
       kappaP = 0.d0
       norm = 0.d0
       tempDouble = dble(temperature)
-      if (includeGasOpacity) then
+      if (includeGasOpacity.and.(.not.useSingleDust)) then
          call returnGasKappaValue(grid,temperature, thisOctal%rho(subcell),  kappaAbsArray=tarray)
       endif
       do i = 2, grid%nLambda
          freq = cSpeed / (grid%lamArray(i)*1.d-8)
          dfreq = cSpeed / (grid%lamArray(i-1)*1.d-8) - cSpeed / (grid%lamArray(i)*1.d-8)
-         do j = 1, nDustType
+         do j = dustLo, dustHi
             kappaP = kappaP + thisOctal%dustTypeFraction(subcell, j) * dble(grid%oneKappaAbs(j,i)) * &
                  thisOctal%rho(subcell) *&
                  bnu(freq,tdust)  * dfreq
 
-            if (includeGasOpacity) then
+            if (includeGasOpacity.and.(.not.useSingleDust)) then
                kappaP = kappaP + tarray(i)*thisOctal%rho(subcell) * dble(bnu(freq,tdust))  * dfreq
             endif
 
@@ -16296,7 +16274,7 @@ end function readparameterfrom2dmap
 
 #ifdef PHOTOION
    if (photoionization.and.(.not.dustonly)) then
-      if (PRESENT(kappaAbs)) then
+      if (PRESENT(kappaAbs).and.(.not.useSingleDust)) then
          if (present(lambda)) then
             e = real((hCgs * (cSpeed / (lambda * 1.e-8))) * ergtoev)
          else
@@ -16328,9 +16306,9 @@ end function readparameterfrom2dmap
          if (present(debug)) write(*,*) "kappasca3 ",kappasca, thisOctal%ne(subcell) * sigmaE * 1.e10, thisOctal%ne(subcell),&
               thisOctal%rho(subcell)/mHydrogen,thisOctal%nh(subcell)
          kappaScaGas = kappaScaGas + thisOctal%ne(subcell) * sigmaE * 1.e10 *(1+tempDouble)
-      else if (PRESENT(kappaSca)) then
+      else if (PRESENT(kappaSca).and.(.not.useSingleDust)) then
          kappaSca = kappaSca + thisOctal%ne(subcell) * sigmaE * 1.e10 *(1+tempDouble)
-      else if (PRESENT(kappaScaArray)) then
+      else if (PRESENT(kappaScaArray).and.(.not.useSingleDust)) then
          kappaScaArray = kappaScaArray + thisOctal%ne(subcell) * sigmaE * 1.e10 *(1+tempDouble)
 
       elseif (PRESENT(kappaScaGas)) then

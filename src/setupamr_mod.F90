@@ -25,7 +25,7 @@ contains
 
     use gridio_mod
     use amr_mod
-    use lucy_mod
+   use lucy_new_mod
     use grid_mod
     use turbulence_mod
     use inputs_mod, only : readgrid, gridinputfilename, geometry!, mdot
@@ -906,7 +906,7 @@ end subroutine assignMgAsciiValues
     use inputs_mod, only: doSmoothGridTau, dustPhysics, lambdaSmooth!, cylindrical
     use inputs_mod, only: dosmoothgrid, smoothfactor !,  photoionPhysics, variableDustSublimation,
     use utils_mod, only: locate
-    use lucy_mod, only: putTau
+   use lucy_new_mod, only: putTau
     use grid_mod, only: grid_info
 
     implicit none

@@ -1374,7 +1374,7 @@ end subroutine addRecombinationEmissionLine
 
 ! ??07 Imaging
 subroutine setupGridForImage(grid, outputimageType, lambdaImage, iLambdaPhoton, nsource, source, lcore)
-  use lucy_mod, only: calcContinuumEmissivityLucyMonoAtDustTemp
+   use lucy_new_mod, only: calcContinuumEmissivityLucyMonoAtDustTemp
 
   implicit none
   

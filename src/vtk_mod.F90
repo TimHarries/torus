@@ -756,7 +756,7 @@ subroutine convertVTKdistance(float32)
       type(GRIDTYPE), intent(in) :: grid
       type(VECTOR) :: rVec, vel
       integer :: lunit = 69
-      integer :: subcell, i, j, nVal
+      integer :: subcell, i, j, nVal, idustvalue, ios, nDustLocal
       integer, save :: iLambda
       real :: value
       real(double) :: kAbs, kSca
@@ -789,6 +789,26 @@ subroutine convertVTKdistance(float32)
 
 
             do j = 1, nVal
+
+            if ((len_trim(valueType) >= 8).and.(valueType(1:8) == 'dusttemp')) then
+               idustvalue = 0
+               if (len_trim(valueType) > 8) then
+                  read(valueType(9:len_trim(valueType)),*, iostat=ios) idustvalue
+               else
+                  ios = 1
+               endif
+
+               nDustLocal = 0
+               if (associated(thisOctal%dustTypeFraction)) nDustLocal = size(thisOctal%dustTypeFraction, 2)
+               if ((ios == 0).and.(idustvalue >= 1).and.(idustvalue <= nDustLocal).and.&
+                    associated(thisOctal%tempStorage).and.&
+                    (size(thisOctal%tempStorage,2) >= (nDustLocal + idustvalue))) then
+                  write(lunit, *) real(thisOctal%tempStorage(subcell, nDustLocal + idustvalue))
+               else
+                  write(lunit, *) real(thisOctal%tDust(subcell))
+               endif
+
+            else
             select case (valueType)
 
                case("sourceCont")
@@ -1278,6 +1298,7 @@ subroutine convertVTKdistance(float32)
                case DEFAULT
                   write(*,*) "Cannot write ascii vtk type ",trim(valueType)
              end select
+             endif
           enddo
 
 
@@ -2996,7 +3017,7 @@ end subroutine writeXMLVtkFileAMR
       type(GRIDTYPE) :: grid
       character(len=*) :: valueType
       real :: rArray(:,:)
-      integer :: i, subcell, n, iVal, nVal, idustvalue
+      integer :: i, subcell, n, iVal, nVal, idustvalue, nDustLocal
       integer, save ::  iLambda
       real(double) :: ksca, kabs, value, v, r
 #ifdef CHEMISTRY
@@ -3054,6 +3075,24 @@ end subroutine writeXMLVtkFileAMR
                read(valueType(6:),'(i3)') idustvalue
 !               endif
                rArray(1, n) = max(1.e-30,real(real(thisOctal%dustTypeFraction(subcell,idustvalue))))
+
+            else if ((len_trim(valueType) >= 8).and.(valueType(1:8) == 'dusttemp')) then
+               idustvalue = 0
+               if (len_trim(valueType) > 8) then
+                  read(valueType(9:len_trim(valueType)),*, iostat=i) idustvalue
+               else
+                  i = 1
+               endif
+
+               nDustLocal = 0
+               if (associated(thisOctal%dustTypeFraction)) nDustLocal = size(thisOctal%dustTypeFraction,2)
+               if ((i == 0).and.(idustvalue >= 1).and.(idustvalue <= nDustLocal).and.&
+                    associated(thisOctal%tempStorage).and.&
+                    (size(thisOctal%tempStorage,2) >= nDustLocal + idustvalue)) then
+                  rArray(1, n) = real(thisOctal%tempStorage(subcell, nDustLocal + idustvalue))
+               else
+                  rArray(1, n) = real(thisOctal%tDust(subcell))
+               endif
 
             else if (chemIndex == 0) then
             select case (valueType)

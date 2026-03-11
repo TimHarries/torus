@@ -16,7 +16,7 @@ module disc_hydro_mod
        height, rheight, geometry,lambdasmooth,lucy_undersampled, rinner, betadisc,dustsettling
   use gridtype_mod, only: GRIDTYPE
   use octal_mod, only: OCTAL, subcellCentre
-  use lucy_mod, only: lucyRadiativeEquilibriumAMR
+   use lucy_new_mod, only: lucyRadiativeEquilibriumAMR
   use dust_mod, only : fillDustSettled
   implicit none
 
@@ -375,7 +375,7 @@ contains
     use parallel_mod, only: torus_mpi_barrier
     use source_mod, only: SOURCETYPE
     use phasematrix_mod, only: PHASEMATRIX
-    use lucy_mod, only: refineDiscGrid, getSublimationRadius, putTau, unrefineBack
+   use lucy_new_mod, only: refineDiscGrid, getSublimationRadius, putTau, unrefineBack
     use vtk_mod, only: writeVtkFile
     use amr_mod, only: myScaleSmooth, myTauSmooth, findTotalMass, checkAMRgrid
     use utils_mod, only: locate

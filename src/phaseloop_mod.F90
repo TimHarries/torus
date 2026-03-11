@@ -45,7 +45,7 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
 #endif
   use TTauri_mod
   use blob_mod, only: blobtype, distortgridwithblobs, readblobs
-  use lucy_mod, only: calccontinuumemissivitylucy, calccontinuumemissivitylucymono, setbiasontau, & 
+   use lucy_new_mod, only: calccontinuumemissivitylucy, calccontinuumemissivitylucymono, setbiasontau, & 
        addDustContinuumLucyMono, calcContinuumEmissivityLucyMonoAtDustTemp, setDustTemperatureIfZero
   use timing, only: tune
   use formal_solutions, only: compute_obs_line_flux

@@ -1304,9 +1304,36 @@ contains
     end do
   end subroutine sublimateDustWR104
 
+  recursive subroutine setupDustFracOriginal(thisOctal, nDustType)
+    
+    type(OCTAL), pointer :: thisOctal, child
+    integer :: subcell, i, j, nDustType
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call setupDustFracOriginal(child, ndusttype)
+                exit
+             end if
+          end do
+       else
+         if (.not.associated(thisOctal%origDustTypeFraction)) then
+            allocate(thisOctal%origDustTypeFraction(1:thisOctal%maxChildren,1:nDustType))
+         endif
+         do j = 1, thisOctal%maxChildren
+            thisOctal%origDustTypeFraction(j,1:nDustType) = thisOctal%dustTypeFraction(j,1:nDustType)
+         enddo
+      endif
+    end do
+  end subroutine setupDustFracOriginal
+
+
   recursive subroutine sublimateDust(grid, thisOctal, totFrac, nFrac, tauMax, subTemp, minLevel)
 
-    use inputs_mod, only : grainFrac, nDustType, tThresh, tSub, decoupleGasDustTemperature, tsubpower, subrange
+   use inputs_mod, only : grainFrac, nDustType, tThresh, tSub, tsubpower, subrange
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -1315,14 +1342,14 @@ contains
     real(double), optional :: subTemp, minLevel
     real(double) :: smallVal
     integer :: nFrac
-    real(double) :: frac, newFrac, deltaFrac, thistau
+    real(double) :: frac, oldfrac, newFrac, deltaFrac, thistau
     real ::  temperature, sublimationTemp
     real :: underCorrect 
     integer :: ilambda
-    real(double) :: kappaSca, kappaAbs
+    real(double) :: kappaSca, kappaAbs, newtau, oldtau, fmax
     integer :: subcell, i, j
 
-    underCorrect = 1.
+    underCorrect = 0.8
 
     kappaSca = 0.d0; kappaAbs = 0.d0
     if (present(minLevel)) then
@@ -1343,8 +1370,12 @@ contains
           end do
        else
           do j = 1, nDustType
-             if (decoupleGasDustTemperature) then
-                temperature = real(thisOctal%tDust(subcell))
+             if (associated(thisOctal%tempStorage)) then
+                if (size(thisOctal%tempStorage,2) >= 2*nDustType) then
+                   temperature = real(thisOctal%tempStorage(subcell,nDustType+j))
+                else
+                   temperature = thisOctal%temperature(subcell)
+                endif
              else
                 temperature = thisOctal%temperature(subcell)
              endif
@@ -1364,28 +1395,46 @@ contains
                 newfrac = 1.d0 - 0.5d0 * exp(dble((temperature-sublimationtemp)/subRange))
              endif
 
-
+             call locate(grid%lamArray, grid%nLambda, 5500., iLambda)
              newfrac = max(newfrac,smallVal)
+
+             oldFrac = thisOctal%dusttypeFraction(subcell,j) 
+             call returnKappa(grid, thisOctal, subcell, ilambda=iLambda, kappaSca=kappaSca, kappaAbs=kappaAbs, idust=j)
+             oldtau = (kappaAbs+kappaSca)*thisOctal%subcellSize
+
              
-             deltaFrac = newFrac - thisOctal%oldFrac(subcell)
              
-             frac = thisOctal%oldFrac(subcell) + underCorrect * deltaFrac
+             deltaFrac = newFrac - oldFrac
+             
+             if (deltaFrac > 0.) then
+                  underCorrect = 0.1
+               else
+                  underCorrect = 1.d0
+             endif 
+
+             frac = oldFrac + underCorrect * deltaFrac
              
              frac = max(frac, smallVal)
 
+            thisOCtal%dustTypeFraction(subcell,j) = thisOctal%origdustTypeFraction(subcell,j) * frac
 
-             if (.not.associated(thisOctal%origDustTypeFraction)) then
-                allocate(thisOctal%origDustTypeFraction(1:thisOctal%maxChildren,1:nDustType))
-                do i = 1, thisOctal%maxChildren
-                   thisOctal%origDustTypeFraction(i,1:nDustType) = grainFrac(1:nDustType)
-                enddo
+
+            call returnKappa(grid, thisOctal, subcell, ilambda=iLambda, kappaSca=kappaSca, kappaAbs=kappaAbs, idust=j)
+             newtau = (kappaAbs+kappaSca)*thisOctal%subcellSize
+
+            !  fmax = oldfrac*(oldtau+0.5)/oldtau
+            !  frac = min(frac, fmax)
+
+             thisOCtal%dustTypeFraction(subcell,j) = thisOctal%origdustTypeFraction(subcell,j) * frac
+             call returnKappa(grid, thisOctal, subcell, ilambda=iLambda, kappaSca=kappaSca, kappaAbs=kappaAbs, idust=j)
+             newtau = (kappaAbs+kappaSca)*thisOctal%subcellSize
+
+             if (newtau - oldtau > 1) then
+                write(*,*) "Warning: large change in optical depth for subcell ",subcell," dust type ",j, &
+                     " old tau ",oldtau," new tau ",newtau
              endif
-             thisOctal%dustTypeFraction(subcell,j) = thisOctal%origDustTypeFraction(subcell,j) * frac
 
 
-
-             call locate(grid%lamArray, grid%nLambda, 5500., iLambda)
-             call returnKappa(grid, thisOctal, subcell, ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
 
              thisTau = (kappaAbs+kappaSca)*thisOctal%subcellSize
              if (thisTau > tauMax) then

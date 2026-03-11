@@ -404,7 +404,7 @@ contains
     use nbody_mod, only : donBodyonly
 #endif
     use source_mod, only : globalNsource, globalSourceArray, randomSource
-    use lucy_mod, only : lucyRadiativeEquilibriumAMR, setFixedtemperatureOnTau
+   use lucy_new_mod, only : lucyRadiativeEquilibriumAMR, setFixedtemperatureOnTau
     use setupamr_mod, only: doSmoothOnTau
     use disc_hydro_mod, only: verticalHydrostatic
 
