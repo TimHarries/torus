@@ -1331,9 +1331,10 @@ contains
   end subroutine setupDustFracOriginal
 
 
-  recursive subroutine sublimateDust(grid, thisOctal, totFrac, nFrac, tauMax, subTemp, minLevel)
+  recursive subroutine sublimateDust(grid, thisOctal, totFrac, nFrac, tauMax, subTemp, minLevel, undercorrectopt)
 
-   use inputs_mod, only : grainFrac, nDustType, tThresh, tSub, tsubpower, subrange
+    use inputs_mod, only : nDustType, tThresh, tSub, tsubpower, subrange
+    real(double), optional :: undercorrectopt
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -1346,10 +1347,9 @@ contains
     real ::  temperature, sublimationTemp
     real :: underCorrect 
     integer :: ilambda
-    real(double) :: kappaSca, kappaAbs, newtau, oldtau, fmax
+    real(double) :: kappaSca, kappaAbs, newtau, oldtau
     integer :: subcell, i, j
 
-    underCorrect = 0.1
 
     kappaSca = 0.d0; kappaAbs = 0.d0
     if (present(minLevel)) then
@@ -1369,6 +1369,7 @@ contains
              end if
           end do
        else
+          if (thisOctal%rho(subcell) < 1.e-29) continue
           do j = 1, nDustType
              if (associated(thisOctal%tempStorage)) then
                 if (size(thisOctal%tempStorage,2) >= 2*nDustType) then
@@ -1379,7 +1380,9 @@ contains
              else
                 temperature = thisOctal%temperature(subcell)
              endif
-             if (present(subTemp)) then
+         
+               
+            if (present(subTemp)) then 
                 sublimationTemp = real(subTemp)
              else
                 sublimationTemp = real(max(700.d0,tSub(j) * thisOctal%rho(subcell)**(tsubpower(j))))
@@ -1401,11 +1404,12 @@ contains
              
              
              deltaFrac = newFrac - oldFrac
+
+             undercorrect = 0.1
+             if (present(undercorrectopt)) undercorrect = undercorrectopt
              
              if (deltaFrac < 0.) then
-                underCorrect = 0.9
-             else
-                underCorrect = 0.1
+                underCorrect = 1.
              endif
              
              frac = oldFrac + underCorrect * deltaFrac
@@ -1437,7 +1441,7 @@ contains
                 frac = tauMax / thisTau 
                 thisOctal%dustTypeFraction(subcell,j) = thisOctal%dustTypeFraction(subcell,j) * frac
              endif
-
+             thisOctal%dustTypeFraction(subcell, j) = max(1.d-30,thisOctal%dustTypeFraction(subcell,j))
           enddo
 !          where (thisOctal%dustTypeFraction(subcell,1:nDustType) < 1.d-25) 
 !             thisOctal%dustTypeFraction(subcell,1:nDustType) = 1.d-25

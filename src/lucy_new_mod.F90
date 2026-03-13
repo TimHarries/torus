@@ -950,16 +950,17 @@ contains
           totFrac = 0.
           nFrac = 0
           
-          if ((iIter_grand > 3).and.(iIter_grand <12)) then
-            taumax = 0.1
-             call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
-            
+
+          if (iiter_grand == 3) then
+             taumax = 1.e30
+             call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, taumax, undercorrectopt=1.d0)
           endif
+          if ((iIter_grand > 3).and.(iIter_grand <12)) then
+            taumax = 1.e30
+            if (mod(iIter_grand-4,2)==0) call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax, undercorrectopt=0.1d0)
+         endif
+         if (iiter_grand==12) call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax, undercorrectopt=1.d0)
           
-             if (iIter_grand == 12)  then
-                tauMax = 1.e30
-                call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
-             endif
 !
 !             if (iIter_grand == 6) then
 !                tauMax = 1.e-3
