@@ -24,10 +24,36 @@ module lucy_new_mod
 
 contains
 
+   function relative_q(source, grid,tstar, tdust) result(q)
+      use source_mod, only: SOURCETYPE
+      use utils_mod, only: loginterp_dble
+      use spectrum_mod, only: fillSpectrumBB, SPECTRUMTYPE, normalizedSpectrum
+      type(SOURCETYPE) :: source(:)
+      type(SPECTRUMTYPE) :: bbSpectrum
+      type(GRIDTYPE) :: grid
+      real(double) :: tstar, tdust
+      real(double) :: q, qstar, qdust, flux, lam, dlam
+      integer :: i
+      qstar = 0.d0
+      qdust = 0.d0
+      call fillSpectrumBB(bbSpectrum, tdust, 0.d0, 0.d0, grid%nLambda, grid%lamArray)
+      call normalizedSpectrum(bbSpectrum)
+      do i = 1, grid%nLambda-1
+         dlam = grid%lamArray(i+1) - grid%lamArray(i)
+         lam = grid%lamArray(i)
+         flux = loginterp_dble(source(1)%spectrum%normflux, source(1)%spectrum%nlambda, source(1)%spectrum%lambda, lam)
+         
+         qstar = qstar + flux * grid%oneKappaAbs(1,i)* dlam
+         qdust = qdust + grid%oneKappaAbs(1,i)*bbSpectrum%normflux(i)*dlam
+         q = qstar / qdust
+      enddo
+      end function
+
+
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, iHydro, finalPass)
-    use inputs_mod, only : usemultidust, grainfrac, mdisc
+    use inputs_mod, only : usemultidust, grainfrac, mdisc, tsub
     use inputs_mod, only : variableDustSublimation, iterlucy, rCore, solveVerticalHydro, dustSettling, restartLucy
     use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau
     use inputs_mod, only : object, convergeOnUndersampled, storeScattered, scatteredLightWavelength
@@ -133,10 +159,11 @@ contains
     real(double) :: logt, weight
     real(double) :: logNu1, logNuN, dlogNu, scaleNu
     real(double) :: loglam1, loglamN, scalelam
+    real(double) :: q
     real(double) :: logNucritUpper, logNucritLower
     real(double) :: this_bnu(nlambda), fac2(nlambda), hNuOverkT(nlambda)
     real(double) :: packetWeight, wavelengthWeight
-    real(double) :: subRadius, dustMass, PAHprob
+    real(double) :: subRadius, dustMass, PAHprob, subradius_monnier
     real :: lamSmoothArray(5)
     logical :: thisIsFinalPass
     real(double) :: farray(10)
@@ -236,6 +263,10 @@ contains
 
     write(message,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
     call writeInfo(message, TRIVIAL)
+
+    ! sublimation radius from equation 1 of Monnier & Millan-Gabet 2002
+   q = relative_q(source, grid,source(1)%teff, 1500.d0) 
+   subradius_monnier = 1.1d0 *sqrt(q) *  sqrt(source(1)%luminosity/(1000.d0*lSol))*(1500./tsub(1))**2
 
 
     if (.not.restartLucy) then
@@ -952,11 +983,15 @@ contains
           
 
           if (iiter_grand == 3) then
-             taumax = 1.e30
-             call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, taumax, undercorrectopt=1.d0)
+             taumax = 0.1
+             call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, taumax, undercorrectopt=1d0)
           endif
-          if ((iIter_grand > 3).and.(iIter_grand <12)) then
-            taumax = 1.e30
+          if ((iIter_grand > 3).and.(iIter_grand <=10)) then
+            if (iIter_grand <= 6) then
+               taumax = 0.1
+            else  
+               taumax = 1.e30
+            endif
             if (mod(iIter_grand-4,2)==0) call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax, undercorrectopt=0.1d0)
          endif
          if (iiter_grand==12) call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax, undercorrectopt=1.d0)
@@ -1086,21 +1121,25 @@ contains
 
        if ((grid%geometry == "shakara").and.variableDustSublimation) then
           call getSublimationRadius(grid, subRadius)
-          write(message, '(a, i3, a, f8.1,a )') "End of lucy iteration ",iIter_grand,&
-               ": Dust Sublimation radius is: ",(1.d10*subRadius/rSol), " solar radii"
+          write(message, '(a, i3, a, f8.2,a )') "End of lucy iteration ",iIter_grand,&
+               ": Dust Sublimation radius is: ",(1.d10*subRadius/autocm)," au"
           call writeInfo(message, FORINFO)
-          write(message, '(a, i3, a, f8.1,a )') "End of lucy iteration ",iIter_grand,&
-               ": Dust Sublimation radius is: ",(subRadius/rCore), " core radii"
+          
+          
+          write(message, '(a, i3, a, f8.2,a )') "End of lucy iteration ",iIter_grand,&
+               ": Theoretical Dust Sublimation radius is: ",(subRadius_monnier), " au"
           call writeInfo(message, FORINFO)
+
       endif
 
 
 
        if (iIter_grand < iterlucy) converged = .false.
-       if (variableDustSublimation.and.(iIter_grand < 14)) converged = .false.
+       if (variableDustSublimation.and.(iIter_grand < 11)) converged = .false.
 
        if (iIter_grand >= maxiterLucy) then
           write(message,'(a)') "Lucy loop exceeded max iterations. Forcing convergence"
+          call writeInfo(message, IMPORTANT)
           converged = .true.
        endif
 
@@ -1184,12 +1223,10 @@ contains
 
 
     if (grid%geometry == "shakara") then
-       call getSublimationRadius(grid, subRadius)
-       write(message, '(a, f8.3,a )') "End of lucy loop: Dust Sublimation radius is: ",(1.d10*subRadius/rSol), " solar radii"
+       
+       write(message, '(a, f8.2,a )') "End of lucy loop: Dust Sublimation radius is: ",(subRadius*1.e10/autocm), " au"
        call writeInfo(message, FORINFO)
-       write(message, '(a, f7.3,a )') "End of lucy loop: Dust Sublimation radius is: ",(subRadius/rCore), " core radii"
-       call writeInfo(message, FORINFO)
-       write(message, '(a,f7.1,a)') "Dust sublimation radius is ",subRadius/rcore, " stellar radii"
+       write(message, '(a,f8.2,a)') "Theoretical dust sublimation radius is ",subRadius_monnier, " au"
        call writeInfo(message,TRIVIAL)
     endif
 
@@ -2009,7 +2046,7 @@ contains
     integer :: nUndersampled
     integer, save  :: nwarning = 0
     integer, parameter :: nmaxwarning = 20
-    real, parameter :: underCorrect = 0.8
+    real, parameter :: underCorrect = 0.9
    integer :: iDust
    real(oct) :: fracDust, fracNorm
    real(oct) :: aDotDust, kappaPDust, normDust, newTDust, etaDust

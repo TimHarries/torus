@@ -4162,7 +4162,7 @@ contains
 
     call getInteger("iterLucy", iterLucy, cline, fLine, nlines, "Minimum number of Lucy iterations: ", "(a,i3,a)",3,ok,.false.)
 
-    call getInteger("maxiter", maxIterLucy, cline, fLine, nlines, "Maximum number of Lucy iterations: ", "(a,i3,a)",20,ok,.false.)
+    call getInteger("maxiter", maxIterLucy, cline, fLine, nlines, "Maximum number of Lucy iterations: ", "(a,i3,a)",200,ok,.false.)
 
     call getInteger("maxgaussiter", maxGaussIter, cline, fLine, nlines, "Maximum number of G-S iterations: ", "(a,i3,a)", &
          10000,ok,.false.)

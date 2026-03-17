@@ -1333,11 +1333,12 @@ contains
 
   recursive subroutine sublimateDust(grid, thisOctal, totFrac, nFrac, tauMax, subTemp, minLevel, undercorrectopt)
 
-    use inputs_mod, only : nDustType, tThresh, tSub, tsubpower, subrange
+    use inputs_mod, only : nDustType, tThresh, tSub, tsubpower, subrange, height, betaDisc
     real(double), optional :: undercorrectopt
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
+    type(VECTOR) :: cellCentre
     real :: totFrac
     real :: tauMax
     real(double), optional :: subTemp, minLevel
@@ -1346,6 +1347,7 @@ contains
     real(double) :: frac, oldfrac, newFrac, deltaFrac, thistau
     real ::  temperature, sublimationTemp
     real :: underCorrect 
+    real(double) :: r, h, z
     integer :: ilambda
     real(double) :: kappaSca, kappaAbs, newtau, oldtau
     integer :: subcell, i, j
@@ -1387,6 +1389,14 @@ contains
              else
                 sublimationTemp = real(max(700.d0,tSub(j) * thisOctal%rho(subcell)**(tsubpower(j))))
              endif
+
+             if (tsubpower(j) <= 0.) then
+               cellCentre = subcellCentre(thisOctal, subcell)
+               r = sqrt(cellCentre%x**2 + cellCentre%y**2)
+               z = cellCentre%z
+               h = height*(r/(100.d0*autocm/1.d10))**betaDisc
+               sublimationTemp = tsub(j) * exp(-0.5*(z/h)**2)**(1.95e-2)
+             endif   
 
              if (tThresh /= 0.) sublimationTemp = tThresh
              if (temperature < sublimationTemp) newFrac = 1.
