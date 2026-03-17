@@ -24,14 +24,14 @@ module lucy_new_mod
 
 contains
 
-   function relative_q(source, grid,tstar, tdust) result(q)
+   function relative_q(source, grid,tdust) result(q)
       use source_mod, only: SOURCETYPE
       use utils_mod, only: loginterp_dble
       use spectrum_mod, only: fillSpectrumBB, SPECTRUMTYPE, normalizedSpectrum
       type(SOURCETYPE) :: source(:)
       type(SPECTRUMTYPE) :: bbSpectrum
       type(GRIDTYPE) :: grid
-      real(double) :: tstar, tdust
+      real(double) ::  tdust
       real(double) :: q, qstar, qdust, flux, lam, dlam
       integer :: i
       qstar = 0.d0
@@ -54,7 +54,7 @@ contains
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, iHydro, finalPass)
     use inputs_mod, only : usemultidust, grainfrac, mdisc, tsub
-    use inputs_mod, only : variableDustSublimation, iterlucy, rCore, solveVerticalHydro, dustSettling, restartLucy
+    use inputs_mod, only : variableDustSublimation, iterlucy, solveVerticalHydro, dustSettling, restartLucy
     use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau
     use inputs_mod, only : object, convergeOnUndersampled, storeScattered, scatteredLightWavelength
     use inputs_mod, only : writelucyTmpfile, discWind, mincrossings, maxiterLucy, solveDiffusionZone, quickSublimate, usePAH
@@ -265,7 +265,7 @@ contains
     call writeInfo(message, TRIVIAL)
 
     ! sublimation radius from equation 1 of Monnier & Millan-Gabet 2002
-   q = relative_q(source, grid,source(1)%teff, 1500.d0) 
+   q = relative_q(source, grid, tsub(1)) 
    subradius_monnier = 1.1d0 *sqrt(q) *  sqrt(source(1)%luminosity/(1000.d0*lSol))*(1500./tsub(1))**2
 
 
