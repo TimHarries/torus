@@ -687,7 +687,7 @@
       call randomSource(source, nSource, isource, weight=packetWeight, lamArray=lamArray, nLambda=nLambda, &
           initialize = .true.)
     n = 1000000
-    totlum = sum(source%luminosity)
+    totlum = sum(source(1:nsource)%luminosity)
     eps = totLum / dble(n)
     
     tot = 0.d0
