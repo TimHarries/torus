@@ -3,13 +3,15 @@ module readathena_mod
     use constants_mod
     use utils_mod
     use grid_mod, only: gridtype
+    use inputs_mod, only : athenaFilename
     implicit none   
     contains
 
     subroutine readAthena(grid)
-        use amr_mod, only : myScaleSmooth
+        use amr_mod, only : myScaleSmooth, findTotalMass
         type(gridtype), intent(inout) :: grid
         integer :: nblocks, nr, ntheta
+        real(double) :: totalMass
         real(double), allocatable :: rarray(:,:), thetaarray(:,:), rhoarray(:,:,:,:)
         logical :: converged, gridConverged
         
@@ -17,7 +19,7 @@ module readathena_mod
         call writeInfo("Reading Athena++ output...", TRIVIAL)
        
 
-        call read_athena("athena_output.dat", nblocks, nr, ntheta, rarray, thetaarray, rhoarray)
+        call read_athena(athenaFilename, nblocks, nr, ntheta, rarray, thetaarray, rhoarray)
        
         ! Here you would typically use the read arrays to initialize your grid structure
         ! For example:
@@ -42,6 +44,9 @@ module readathena_mod
              ! If converged, set co
 
         call fillGridAthena(grid%octreeRoot, nr, ntheta, nblocks, rarray, thetaarray, rhoarray)
+        totalMass = 0.d0
+        call findTotalMass(grid%octreeRoot, totalMass)
+        write(*,*) "Total mass on athena grid",totalmass/msol, " solar masses"
 
          ! Deallocate arrays after use
         deallocate(rarray)
@@ -116,9 +121,9 @@ module readathena_mod
                 theta = acos(rVec%z/modulus(rvec))
                 call return_rho_size(r, theta, nblock, nr, ntheta, rarray, thetaarray, rhoarray, rhocell, cellsize, found)
                 if (found) then
-                    thisOctal%rho(subcell) = rhocell
+                    thisOctal%rho(subcell) = max(rhocell,1.d-30)
                 else
-                    thisOctal%rho(subcell) = 0.0d0  ! or some default value
+                    thisOctal%rho(subcell) = 1.0d-30  ! or some default value
                 endif   
             endif
         enddo
@@ -214,6 +219,7 @@ module readathena_mod
         real(double), intent(out) :: rho_value, cellsize
         integer :: block, k, j, i
         logical :: found
+        logical, save :: firstTime = .true.
         real(double) :: dr, dtheta, r_size, theta_size
 
         rho_value = 0.0d0
@@ -255,7 +261,10 @@ module readathena_mod
         end do
 
         if (.not. found) then
-            print *, 'ERROR: Point (r, theta) = (', r, ',', theta, ') not found in any block'
+           if (firstTime) then
+              print *, 'ERROR: Point (r, theta) = (', r, ',', theta, ') not found in any block'
+              firstTime = .false.
+           endif
         end if
 
     end subroutine return_rho_size

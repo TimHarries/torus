@@ -94,6 +94,7 @@
   logical :: dowriteRadialFile
   character(len=200) :: radialFilename
   character(len=80) :: columnImageFilename
+  character(len=80) :: athenaFilename
   type(VECTOR) :: columnImageDirection
   character(len=10) :: columnAxisUnits
   character(len=10) :: columnDataUnits

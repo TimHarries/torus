@@ -910,6 +910,11 @@ contains
 
     select case(geometry)
 
+       case("athena")
+          call getString("athenafilename", athenaFilename, cLine, fLine, nLines, &
+               "Athena text format filename: ","(a,a,1x,a)","none", ok, .true.)
+
+       
        case("WB2014")
           call getLogical("WBvel", WBvel, cLine, fLine, nLines, &
                "Just use cell centered velocity ","(a,1l,1x,a)", .false., ok, .false.)
