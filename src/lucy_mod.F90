@@ -53,7 +53,7 @@ contains
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, iHydro, finalPass)
     use inputs_mod, only : usemultidust, grainfrac, mdisc
-    use inputs_mod, only : variableDustSublimation, iterlucy, rCore, solveVerticalHydro, dustSettling, restartLucy
+    use inputs_mod, only : variableDustSublimation, iterlucy, solveVerticalHydro, dustSettling, restartLucy
     use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau
     use inputs_mod, only : object, convergeOnUndersampled, storeScattered, scatteredLightWavelength
     use inputs_mod, only : writelucyTmpfile, discWind, mincrossings, maxiterLucy, solveDiffusionZone, quickSublimate, usePAH, tsub

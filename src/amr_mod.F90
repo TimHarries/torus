@@ -18730,12 +18730,11 @@ END SUBROUTINE assignDensitiesStellarWind
   subroutine temperatureAlongPath(grid, rVec, direction, nr, rArray, tArray)
     type(GRIDTYPE) :: grid
     real(double) :: tArray(:),rArray(:)
-    integer :: nr,i
-    type(VECTOR) :: rVec, direction, currentPosition, beforeVec, afterVec
+    integer :: nr
+    type(VECTOR) :: rVec, direction, currentPosition
     real(double) :: distToNextCell
     type(OCTAL), pointer :: thisOctal, sOctal
     real(double) :: fudgeFac = 1.d-3
-    real(double) :: kappaSca, kappaAbs, kappaExt
     integer :: subcell
     currentPosition = rVec
     nr = 1

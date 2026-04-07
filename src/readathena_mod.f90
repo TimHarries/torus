@@ -125,9 +125,9 @@ module readathena_mod
                 theta = acos(rVec%z/modulus(rvec))
                 call return_rho_size(r, theta, nblock, nr, ntheta, rarray, thetaarray, rhoarray, rhocell, cellsize, found)
                 if (found) then
-                    thisOctal%rho(subcell) = max(rhocell,1.d-30)
+                    thisOctal%rho(subcell) = max(rhocell,1.d-25)
                 else
-                    thisOctal%rho(subcell) = 1.0d-30  ! or some default value
+                    thisOctal%rho(subcell) = 1.0d-25  ! or some default value
                 endif   
             endif
         enddo
