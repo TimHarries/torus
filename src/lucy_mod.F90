@@ -24,6 +24,31 @@ module lucy_mod
 
 contains
 
+  function relative_q(source, grid,tdust) result(q)
+    use source_mod, only: SOURCETYPE
+    use utils_mod, only: loginterp_dble
+    use spectrum_mod, only: fillSpectrumBB, SPECTRUMTYPE, normalizedSpectrum
+    type(SOURCETYPE) :: source(:)
+    type(SPECTRUMTYPE) :: bbSpectrum
+    type(GRIDTYPE) :: grid
+    real(double) ::  tdust
+    real(double) :: q, qstar, qdust, flux, lam, dlam
+    integer :: i
+    qstar = 0.d0
+    qdust = 0.d0
+    call fillSpectrumBB(bbSpectrum, tdust, 0.d0, 0.d0, grid%nLambda, grid%lamArray)
+    call normalizedSpectrum(bbSpectrum)
+    do i = 1, grid%nLambda-1
+       dlam = grid%lamArray(i+1) - grid%lamArray(i)
+       lam = grid%lamArray(i)
+       flux = loginterp_dble(source(1)%spectrum%normflux, source(1)%spectrum%nlambda, source(1)%spectrum%lambda, lam)
+
+       qstar = qstar + flux * grid%oneKappaAbs(1,i)* dlam
+       qdust = qdust + grid%oneKappaAbs(1,i)*bbSpectrum%normflux(i)*dlam
+       q = qstar / qdust
+    enddo
+  end function relative_q
+
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, iHydro, finalPass)
@@ -31,13 +56,13 @@ contains
     use inputs_mod, only : variableDustSublimation, iterlucy, rCore, solveVerticalHydro, dustSettling, restartLucy
     use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau
     use inputs_mod, only : object, convergeOnUndersampled, storeScattered, scatteredLightWavelength
-    use inputs_mod, only : writelucyTmpfile, discWind, mincrossings, maxiterLucy, solveDiffusionZone, quickSublimate, usePAH
+    use inputs_mod, only : writelucyTmpfile, discWind, mincrossings, maxiterLucy, solveDiffusionZone, quickSublimate, usePAH, tsub
     use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
     use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled, randomwalk, &
          unsetDiffusion
     use amr_mod, only: myScaleSmooth, myTauSmooth, findtotalmass, scaledensityamr
-!    use intensity_storage_mod
+    !    use intensity_storage_mod
     use dust_mod, only: filldustuniform, stripdustaway, sublimatedust, sublimatedustwr104, fillDustShakara, &
          normalizeDustFractions, findDustMass, setupOrigDustFraction, reportMasses, fillDustSettled, &
          getDustMasses
@@ -107,7 +132,7 @@ contains
     real(oct)::  dT_max ! [kelvins]  the maximum change of temperature
     real(oct)::  dT_over_T_max ! [kelvins]  the maximum fractional change of temperature
     character(len=80) :: tfilename
-    character(len=80) :: message
+    character(len=100) :: message
     logical, save :: first_time_to_open_file = .true.
     real :: totFrac
     integer :: nFrac
@@ -137,11 +162,12 @@ contains
     real(double) :: this_bnu(nlambda), fac2(nlambda), hNuOverkT(nlambda)
     real(double) :: packetWeight, wavelengthWeight
     real(double) :: subRadius, dustMass, PAHprob
-    real :: lamSmoothArray(5)
+    real :: lamSmoothArray(5),thisTsub
     logical :: thisIsFinalPass
     real(double) :: farray(10)
     integer(bigInt) :: totMem
     character(len=10) :: stringArray(20)
+    real(double) :: q, subradius_monnier
 #ifdef USEMKL
     integer :: oldmode
     real(oct) :: hrecip_ktarray(nlambda)
@@ -162,9 +188,9 @@ contains
     if (myRankIsZero) then
        writeoutput = .true.
 
-!       print *, ' '
-!       print *, 'Lucy radiative equilibrium routine computed by ', nThreadsGlobal, ' processors.'
-!       print *, ' '
+       !       print *, ' '
+       !       print *, 'Lucy radiative equilibrium routine computed by ', nThreadsGlobal, ' processors.'
+       !       print *, ' '
     endif
 
     ! ============================================================================
@@ -186,7 +212,7 @@ contains
        lognu1 = log10(1200.d0) + real(i-1)*(log10(1e7)-log10(1200.))/999.
        lognu1 = 10.d0**lognu1
        logt = atomhydrogenRayXsection(lognu1)
-!       if (myrankglobal == 1) write(105,*) lognu1, logt/sigmaE
+       !       if (myrankglobal == 1) write(105,*) lognu1, logt/sigmaE
     enddo
 
     lamSmoothArray = (/5500., 1.e4, 2.e4, 5.e4, 10.e4/)
@@ -235,6 +261,11 @@ contains
     write(message,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
     call writeInfo(message, TRIVIAL)
 
+    ! sublimation radius from equation 1 of Monnier & Millan-Gabet 2002
+    q = relative_q(source, grid, tsub(1))
+    thisTsub = 1500.
+    subradius_monnier = 1.1d0 *sqrt(q) *  sqrt(source(1)%luminosity/(1000.d0*lSol))*(1500./thisTsub)**2
+
 
     if (.not.restartLucy) then
        if (grid%geometry.eq."wr104") then
@@ -248,7 +279,7 @@ contains
        call unsetDiffusion(grid%octreeRoot)
 
        !    call setupFreqProb(temperature, freq, dnu, nFreq, ProbDistPlanck)
-       
+
        call writeInfo("Computing lucy radiative equilibrium in AMR...",TRIVIAL)
 
 
@@ -268,15 +299,15 @@ contains
        endif
 
 
-       
+
        if (object == "ab_aur") then
           call writeInfo("Filling dust with large dust in midplane", FORINFO)
           call fillDustUniform(grid, grid%octreeRoot)
        endif
-       
+
 
        if (nDustType >= 1) then
-! Lots of dust types signifies using sphNG dump file with multigrain
+          ! Lots of dust types signifies using sphNG dump file with multigrain
           if (nDustType >= 12) then
              do i = 1, nDustType
                 write(stringArray(i),'(a,i2.2)') "dustN",i
@@ -298,7 +329,7 @@ contains
 
        if (variableDustSublimation.or.quicksublimate) then
           call setupOrigDustFraction(grid%octreeRoot)
-          tauMax = 1.e-20
+          tauMax = 1.e-30
           call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
        endif
 
@@ -438,295 +469,295 @@ contains
           imonte_beg=1; imonte_end=nMonte  ! default value
 
 #ifdef MPI
-                 ! Set the range of index for a photon loop used later.     
-                 np = nThreadsGlobal
-                 n_rmdr = MOD(nMonte,np)
-                 m = nMonte/np
-          
-                 if (myRankGlobal .lt. n_rmdr ) then
-                    imonte_beg = (m+1)*myRankGlobal + 1
-                    imonte_end = imonte_beg + m
-                 else
-                    imonte_beg = m*myRankGlobal + 1 + n_rmdr
-                    imonte_end = imonte_beg + m -1
-                 end if
-             !    print *, ' '
-             !    print *, 'imonte_beg = ', imonte_beg
-             !    print *, 'imonte_end = ', imonte_end
-            
-                
-                 !  Just for safety.
-                 if (imonte_end .gt. nMonte .or. imonte_beg < 1) then
-                    print *, 'Index out of range: i_beg and i_end must be ' 
-                    print *, ' 0< index < ', nMonte , '    ... [lucy_mod::lucyRadiativeEquilibriumAMR]'
-                    print *, 'imonte_beg = ', imonte_beg
-                    print *, 'imonte_end = ', imonte_end
-                    stop
-                 end if
+          ! Set the range of index for a photon loop used later.     
+          np = nThreadsGlobal
+          n_rmdr = MOD(nMonte,np)
+          m = nMonte/np
+
+          if (myRankGlobal .lt. n_rmdr ) then
+             imonte_beg = (m+1)*myRankGlobal + 1
+             imonte_end = imonte_beg + m
+          else
+             imonte_beg = m*myRankGlobal + 1 + n_rmdr
+             imonte_end = imonte_beg + m -1
+          end if
+          !    print *, ' '
+          !    print *, 'imonte_beg = ', imonte_beg
+          !    print *, 'imonte_end = ', imonte_end
+
+
+          !  Just for safety.
+          if (imonte_end .gt. nMonte .or. imonte_beg < 1) then
+             print *, 'Index out of range: i_beg and i_end must be ' 
+             print *, ' 0< index < ', nMonte , '    ... [lucy_mod::lucyRadiativeEquilibriumAMR]'
+             print *, 'imonte_beg = ', imonte_beg
+             print *, 'imonte_end = ', imonte_end
+             stop
+          end if
 
 
 
 #endif    
 
-                 if (.not. TorusSerial) call test_random_hybrid()
+          if (.not. TorusSerial) call test_random_hybrid()
 
-                 if (doTuning) call tune(6, "Photon loop")
+          if (doTuning) call tune(6, "Photon loop")
 
-                !$OMP PARALLEL DEFAULT(NONE) &
-                !$OMP PRIVATE(iMonte, iSource, rVec, uHat, rHat) &
-                !$OMP PRIVATE(escaped, wavelength, thisFreq, thisLam, iLam, octVec) &
-                !$OMP PRIVATE(thisOctal, albedo, r) &
-                !$OMP PRIVATE(vec_tmp, uNew, Treal, subcell, probDistJnu) &
-                !$OMP PRIVATE(i, j, T1) &
-                !$OMP PRIVATE(thisPhotonAbs, thisPhotonSca) &
-                !$OMP PRIVATE( photonInDiffusionZone, leftHandBoundary, directPhoton) &
-                !$OMP PRIVATE(diffusionZoneTemp, kappaAbsdb, sOctal, kappaScadb, kappaAbsPAH, kappaScaPAH, kAbsArray) &
-                !$OMP PRIVATE(oldUHat, packetWeight, wavelengthWeight) &
-                !$OMP PRIVATE(tempOctal, tempSubCell, temp, ok) &
-                !$OMP PRIVATE(foundOctal, foundSubcell, hrecip_kt, logt, logNucritUpper, logNucritLower) &
-                !$OMP PRIVATE(icritupper, icritlower,  kAbsArray2, hNuOverkT, fac2, this_bnu ) &
-                !$OMP PRIVATE(thermalPhoton, scatteredPhoton, weight, PAHprob) &
-                !$OMP SHARED(logNu1, fac1dnu, loglam1, scalelam, scalenu)  &
-                !$OMP SHARED(grid, nLambda, lamArray,miePhase, nMuMie, nDustType) &
-                !$OMP SHARED(imonte_beg, imonte_end, source, nsource, usePAH) &
-                !$OMP SHARED(dnu, nFreq, freq, nMonte, epsOverDeltaT) &
-                !$OMP REDUCTION (+: nAbs, nScat, nInf, totalLumInPackets, nDiffusion, nKilled) 
+          !$OMP PARALLEL DEFAULT(NONE) &
+          !$OMP PRIVATE(iMonte, iSource, rVec, uHat, rHat) &
+          !$OMP PRIVATE(escaped, wavelength, thisFreq, thisLam, iLam, octVec) &
+          !$OMP PRIVATE(thisOctal, albedo, r) &
+          !$OMP PRIVATE(vec_tmp, uNew, Treal, subcell, probDistJnu) &
+          !$OMP PRIVATE(i, j, T1) &
+          !$OMP PRIVATE(thisPhotonAbs, thisPhotonSca) &
+          !$OMP PRIVATE( photonInDiffusionZone, leftHandBoundary, directPhoton) &
+          !$OMP PRIVATE(diffusionZoneTemp, kappaAbsdb, sOctal, kappaScadb, kappaAbsPAH, kappaScaPAH, kAbsArray) &
+          !$OMP PRIVATE(oldUHat, packetWeight, wavelengthWeight) &
+          !$OMP PRIVATE(tempOctal, tempSubCell, temp, ok) &
+          !$OMP PRIVATE(foundOctal, foundSubcell, hrecip_kt, logt, logNucritUpper, logNucritLower) &
+          !$OMP PRIVATE(icritupper, icritlower,  kAbsArray2, hNuOverkT, fac2, this_bnu ) &
+          !$OMP PRIVATE(thermalPhoton, scatteredPhoton, weight, PAHprob) &
+          !$OMP SHARED(logNu1, fac1dnu, loglam1, scalelam, scalenu)  &
+          !$OMP SHARED(grid, nLambda, lamArray,miePhase, nMuMie, nDustType) &
+          !$OMP SHARED(imonte_beg, imonte_end, source, nsource, usePAH) &
+          !$OMP SHARED(dnu, nFreq, freq, nMonte, epsOverDeltaT) &
+          !$OMP REDUCTION (+: nAbs, nScat, nInf, totalLumInPackets, nDiffusion, nKilled) 
 
-                 call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
+          call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
 
-                 if (nSource > 0) then
-                    call randomSource(source, nSource, &
-                         i, packetWeight, grid%lamArray, grid%nLambda, initialize=.true.)  
-                 endif
+          if (nSource > 0) then
+             call randomSource(source, nSource, &
+                  i, packetWeight, grid%lamArray, grid%nLambda, initialize=.true.)  
+          endif
 
 
-                !$OMP DO SCHEDULE(DYNAMIC,10)
-                photonloop: do iMonte = imonte_beg, imonte_end
-!                    if (mod(iMonte,imonte_end/10) == 0) write(*,*) "imonte ",imonte
+          !$OMP DO SCHEDULE(DYNAMIC,10)
+          photonloop: do iMonte = imonte_beg, imonte_end
+             !                    if (mod(iMonte,imonte_end/10) == 0) write(*,*) "imonte ",imonte
 #ifdef MPI
-                   !  if (MOD(i,nThreadsGlobal) /= myRankGlobal) cycle photonLoop
+             !  if (MOD(i,nThreadsGlobal) /= myRankGlobal) cycle photonLoop
 #endif
-                   
 
-                   thisPhotonAbs = 0
-                   thisPhotonSca = 0
-                   call randomSource(source, nSource, iSource, packetWeight)
-                   call getPhotonPositionDirection(Source(isource), rVec, uHat, rHat,grid, weight=weight)
-                   packetWeight = packetWeight * weight
-!                   write(*,*) isource, rVec%x*1.d10/rsol, rVec%y*1.d10/rsol, rvec%z*1.d10/rsol,packetweight
-!                   write(*,*) "pos ",rVec,packetweight
-                   thermalphoton = .true.
-                   directPhoton = .true.
-                   call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
-                        foundSubcell=tempsubcell)
-                   thisOctal => tempOctal
-                   subcell = tempSubcell
 
-                   if (tempOctal%diffusionApprox(tempsubcell)) then
+             thisPhotonAbs = 0
+             thisPhotonSca = 0
+             call randomSource(source, nSource, iSource, packetWeight)
+             call getPhotonPositionDirection(Source(isource), rVec, uHat, rHat,grid, weight=weight)
+             packetWeight = packetWeight * weight
+             !                   write(*,*) isource, rVec%x*1.d10/rsol, rVec%y*1.d10/rsol, rvec%z*1.d10/rsol,packetweight
+             !                   write(*,*) "pos ",rVec,packetweight
+             thermalphoton = .true.
+             directPhoton = .true.
+             call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
+                  foundSubcell=tempsubcell)
+             thisOctal => tempOctal
+             subcell = tempSubcell
 
-                      call randomWalk(grid, tempOctal, tempSubcell, thisOctal, Subcell, temp, ok)
-                      if (.not.ok) cycle photonLoop ! abort photon if random walk has failed
-                      directPhoton = .false.
-                      rVec = subcellCentre(thisOctal, subcell)
-                   endif
+             if (tempOctal%diffusionApprox(tempsubcell)) then
+
+                call randomWalk(grid, tempOctal, tempSubcell, thisOctal, Subcell, temp, ok)
+                if (.not.ok) cycle photonLoop ! abort photon if random walk has failed
+                directPhoton = .false.
+                rVec = subcellCentre(thisOctal, subcell)
+             endif
+             sOctal => thisOctal
+
+             escaped = .false.
+             call getWavelength(source(isource)%spectrum, wavelength, wavelengthWeight)
+             packetWeight = packetWeight * wavelengthWeight
+
+             thisFreq = cSpeed/(wavelength / 1.e8)
+             thislam = wavelength
+
+
+             do while(.not.escaped)
+
+
+                ilam = min(floor((log(thislam) - loglam1) * scalelam) + 1, nfreq)
+                ilam = max(ilam, 1)
+
+                call toNextEventAMR(grid, rVec, uHat, packetWeight, escaped, thisFreq, nLambda, lamArray,  &
+                     photonInDiffusionZone, diffusionZoneTemp,  &
+                     directPhoton, scatteredPhoton,  &
+                     sOctal, foundOctal, foundSubcell, iLamIn=ilam, kappaAbsOut = kappaAbsdb, kappaScaOut = kappaScadb ,&
+                     kappaAbsPAHout = kappaAbsPAH, kappaScaPAHout = kappaScaPAH)
+
+                If (escaped) then
+                   !$OMP ATOMIC
+                   nInf = nInf + 1
+                   totalLumInPackets = totalLumInPackets + packetWeight*epsOverDeltaT
+                endif
+
+                if (photonInDiffusionZone) then
+                   nDiffusion = nDiffusion + 1
+                   cycle photonloop
+                endif
+
+                if (.not. escaped) then
+
+                   thisOctal => foundOctal
+                   subcell = foundSubcell
+                   !                thisLam = (cSpeed / thisFreq) * 1.e8
+                   !                call locate(lamArray, nLambda, real(thisLam), iLam)
+                   octVec = rVec 
+
+                   ! This call is dead because kappaabs and kappasca come from tonextevent amr
+
+                   !                call amrGridValues(grid%octreeRoot, octVec, startOctal=thisOctal, actualsubcell=subcell,iLambda=iLam, &
+                   !                     kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
                    sOctal => thisOctal
 
-                   escaped = .false.
-                   call getWavelength(source(isource)%spectrum, wavelength, wavelengthWeight)
-                   packetWeight = packetWeight * wavelengthWeight
+                   !                         if (thisOctal%diffusionApprox(subcell)) then
+                   !                            write(*,*) "photon in diffusion zone",photonindiffusionzone
+                   !                         endif
 
-                   thisFreq = cSpeed/(wavelength / 1.e8)
-                   thislam = wavelength
+                   if (kappaScadb+kappaAbsdb /= 0.0d0) then
+                      albedo = (kappaScadb + kappaScaPAH) / (kappaScadb + kappaAbsdb + kappaAbsPAH)
+                   else
+                      albedo = 0.5
+                   end if
 
+                   directPhoton = .false.
 
-                   do while(.not.escaped)
+                   ! photon is always absorbed/reprocessed if it has come from diffusion zone
 
+                   if (PhotonInDiffusionZone) albedo = 0. 
 
-                      ilam = min(floor((log(thislam) - loglam1) * scalelam) + 1, nfreq)
-                      ilam = max(ilam, 1)
+                   albedo = min(albedo,0.9999d0)
 
-                      call toNextEventAMR(grid, rVec, uHat, packetWeight, escaped, thisFreq, nLambda, lamArray,  &
-                           photonInDiffusionZone, diffusionZoneTemp,  &
-                           directPhoton, scatteredPhoton,  &
-                           sOctal, foundOctal, foundSubcell, iLamIn=ilam, kappaAbsOut = kappaAbsdb, kappaScaOut = kappaScadb ,&
-                           kappaAbsPAHout = kappaAbsPAH, kappaScaPAHout = kappaScaPAH)
+                   call randomNumberGenerator(getDouble=r)
 
-                      If (escaped) then
-                         !$OMP ATOMIC
-                         nInf = nInf + 1
-                         totalLumInPackets = totalLumInPackets + packetWeight*epsOverDeltaT
+                   ! scattering case
+                   if (r < albedo) then 
+
+                      thermalPhoton = .false.
+                      scatteredPhoton = .true.
+                      vec_tmp = uhat
+                      uNew = newDirectionMie(grid, thisOctal, subcell, vec_tmp, real(thisLam), lamArray, nLambda, miePhase, &
+                           nDustType, nMuMie)
+
+                      nScat = nScat + 1
+                      thisPhotonSca = thisPhotonSca + 1
+                      if (thisPhotonSca > 50000) then
+                         nKilled = nKilled + 1
+                         cycle photonLoop
+                      endif
+                      uHat = uNew
+
+                   else
+
+                      nAbs = nAbs + 1
+                      thisPhotonAbs = thisPhotonAbs + 1
+                      if (thisPhotonAbs > 50000) then
+                         nKilled = nKilled + 1
+                         cycle photonLoop
                       endif
 
-                      if (photonInDiffusionZone) then
-                         nDiffusion = nDiffusion + 1
-                         cycle photonloop
+                      if (usepah) then
+                         PAHprob = kappaAbsPAH / (kappaAbsdb + kappaAbsPAH)
+                      else
+                         PAHprob = 0.d0
                       endif
-
-                      if (.not. escaped) then
-
-                         thisOctal => foundOctal
-                         subcell = foundSubcell
-                         !                thisLam = (cSpeed / thisFreq) * 1.e8
-                         !                call locate(lamArray, nLambda, real(thisLam), iLam)
-                         octVec = rVec 
-
-                         ! This call is dead because kappaabs and kappasca come from tonextevent amr
-
-                         !                call amrGridValues(grid%octreeRoot, octVec, startOctal=thisOctal, actualsubcell=subcell,iLambda=iLam, &
-                         !                     kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
-                         sOctal => thisOctal
-
-!                         if (thisOctal%diffusionApprox(subcell)) then
-!                            write(*,*) "photon in diffusion zone",photonindiffusionzone
-!                         endif
-
-                         if (kappaScadb+kappaAbsdb /= 0.0d0) then
-                            albedo = (kappaScadb + kappaScaPAH) / (kappaScadb + kappaAbsdb + kappaAbsPAH)
-                         else
-                            albedo = 0.5
-                         end if
-
-                         directPhoton = .false.
-
-                         ! photon is always absorbed/reprocessed if it has come from diffusion zone
-
-                         if (PhotonInDiffusionZone) albedo = 0. 
-
-                         albedo = min(albedo,0.9999d0)
-
-                         call randomNumberGenerator(getDouble=r)
-
-                         ! scattering case
-                         if (r < albedo) then 
-
-                            thermalPhoton = .false.
-                            scatteredPhoton = .true.
-                            vec_tmp = uhat
-                            uNew = newDirectionMie(grid, thisOctal, subcell, vec_tmp, real(thisLam), lamArray, nLambda, miePhase, &
-                                 nDustType, nMuMie)
-
-                            nScat = nScat + 1
-                            thisPhotonSca = thisPhotonSca + 1
-                            if (thisPhotonSca > 50000) then
-                               nKilled = nKilled + 1
-                               cycle photonLoop
-                            endif
-                            uHat = uNew
-
-                         else
-
-                            nAbs = nAbs + 1
-                            thisPhotonAbs = thisPhotonAbs + 1
-                            if (thisPhotonAbs > 50000) then
-                               nKilled = nKilled + 1
-                               cycle photonLoop
-                            endif
-
-                            if (usepah) then
-                               PAHprob = kappaAbsPAH / (kappaAbsdb + kappaAbsPAH)
-                            else
-                               PAHprob = 0.d0
-                            endif
-                            call randomNumberGenerator(getDouble=r)
-                            if (r < PAHprob) then
-                               thisFreq = getPAHfreqFromAdot(thisOctal%adot(subcell))
-                               thisLam = (cSpeed / thisFreq) * 1.e8
-                            else
-                                  
+                      call randomNumberGenerator(getDouble=r)
+                      if (r < PAHprob) then
+                         thisFreq = getPAHfreqFromAdot(thisOctal%adot(subcell))
+                         thisLam = (cSpeed / thisFreq) * 1.e8
+                      else
 
 
-                               call amrGridValues(grid%octreeRoot, octVec, startOctal=thisOctal, &
-                                    actualSubcell=subcell, temperature=treal,grid=grid, kappaAbsArray=kAbsArray)
-                               t1 = dble(treal)
-                               
-                               ! if the photon has come from the diffusion zone then it has to be
-                               ! reprocessed using the appropriate temperature
 
-                               if (photonInDiffusionZone) then
-                                  t1 = dble(diffusionZoneTemp)
-                               endif
-                               
-                               hrecip_kt = hcgs / (kErg * t1 )
-                               
-                               logt = log(t1)
-                               logNucritUpper = 27.9500d0 + logt ! 23.76 is log(k) - log(h) ! 66.0
-                               logNucritLower = 26.0626d0 + logt ! 23.76 is log(k) - log(h) ! 10.0
-                               icritupper = min( floor((logNucritUpper - logNu1) * scalenu) + 1, nfreq        )
-                               icritLower = min( floor((logNucritLower - logNu1) * scalenu) + 1, icritupper-1 )
-                               !			    write(*,*) "icrit upper,lower", icritupper,icritlower,nfreq,t1
-                               
-                               do i = 1, icritupper
-                                  iLam = nfreq - i + 1
-                                  kAbsArray2(i) = kabsArray(ilam)
-                               enddo
-                               
-                               !                  do i = 1, icritupper
-                               !                     iLam = nfreq - i + 1
-                               !                     write(*,*) kabsarray2(i), kabsarray(ilam)
-                               !                  enddo
-                               !stop
-                               probDistJnu(1)  = 1.d-50
-#ifdef USEMKL
-                               hrecip_ktarray(1:icritupper) = hrecip_kt
-                               
-                               call vdmul(icritupper, freq(1:icritupper), hrecip_ktarray(1:icritupper) , hNuOverkT(1:icritupper)) ! start from second frequency 
-                               call vdexp(icritlower, hNuOverkT(1:icritlower), hNuOverKt(1:icritlower)) ! hnuoverkt now e^hv/kT
-                               call vdsub(icritlower, hnuoverkt(1:icritlower), OneArray(1:icritlower), hNuOverKt(1:icritlower))! hnuoverkt now e^nv/KT - 1
-                               call vdinv(icritlower, hnuoverkt(1:icritlower), fac2(1:icritlower))
-                               
-                               call vdexp(icritupper - icritlower, -hNuOverkT(icritlower + 1 : icritupper), fac2(icritlower+1 : icritupper))
-                               
-                               call vdmul(icritupper, fac1dnu(1:icritupper), fac2(1:icritupper), hNuOverkT(1:icritupper)) ! hnuoverkt is temp array now
-                               call vdmul(icritupper, hnuoverkt(1:icritupper), kabsarray2(1:icritupper), this_bnu(1:icritupper))
-#else             
-                               hNuOverkT(1:icritupper) = freq(1:icritupper) * hrecip_kt
-                               
-                               fac2(1:icritlower) = 1.d0 / (exp(hNuOverkT(1:icritlower)) - 1.d0)
-                               fac2(icritlower+1:icritupper) = exp(-hNuOverkT(icritlower+1:icritupper))
-                               
-                               this_bnu(1:icritupper) = fac1dnu(1:icritupper) * fac2(1:icritupper) * kabsarray2(1:icritupper) 
-                               !this_bnu here is actually bnu * dnu * kabs
-#endif
-                               
-                               do i = 2, icritupper
-                                  probDistJnu(i) = probDistJnu(i-1) + this_bnu(i) ! should be this_bnu(i-1)?
-                               enddo
-                               
-                               if (probDistJnu(icritupper) /= 0.d0) then
-                                  call randomNumberGenerator(getDouble=r)
-                                  r = r * probdistjnu(icritupper) ! this is equivalent to dividing probdist (normalising)
-                                  call locate(probDistJnu(1:icritupper), icritupper, r, j)
-                                  if (j == nFreq) j = nFreq -1
-                                  thisFreq = freq(j) + (freq(j+1) - freq(j))* &
-                                       (r - probDistJnu(j))/(probDistJnu(j+1)-probDistJnu(j))
-                                  ! note that probdistjnu(nfreq) cancels here so it's fine
-                                  thisLam = (cSpeed / thisFreq) * 1.e8
-                                  !                      write(*,*) cSpeed/thisFreq/angstromtocm
-                               endif
-                            endif
-                            oldUhat = uHat
-                            uHat = randomUnitVector()
-                            thermalPhoton = .true.
-                            scatteredPhoton = .false.
-                            ! make sure diffused photon is moving out of diffusion zone
-                               
-                            if (photonInDiffusionZone) then
-                               if ((oldUhat.dot.uHat)  > 0.) then
-                                  uHat = (-1.d0) * uHat
-                               endif
-                            endif
+                         call amrGridValues(grid%octreeRoot, octVec, startOctal=thisOctal, &
+                              actualSubcell=subcell, temperature=treal,grid=grid, kappaAbsArray=kAbsArray)
+                         t1 = dble(treal)
 
+                         ! if the photon has come from the diffusion zone then it has to be
+                         ! reprocessed using the appropriate temperature
+
+                         if (photonInDiffusionZone) then
+                            t1 = dble(diffusionZoneTemp)
                          endif
 
-                      endif
-                   enddo
+                         hrecip_kt = hcgs / (kErg * t1 )
 
-                enddo photonLoop
-                !$OMP END DO
+                         logt = log(t1)
+                         logNucritUpper = 27.9500d0 + logt ! 23.76 is log(k) - log(h) ! 66.0
+                         logNucritLower = 26.0626d0 + logt ! 23.76 is log(k) - log(h) ! 10.0
+                         icritupper = min( floor((logNucritUpper - logNu1) * scalenu) + 1, nfreq        )
+                         icritLower = min( floor((logNucritLower - logNu1) * scalenu) + 1, icritupper-1 )
+                         !			    write(*,*) "icrit upper,lower", icritupper,icritlower,nfreq,t1
+
+                         do i = 1, icritupper
+                            iLam = nfreq - i + 1
+                            kAbsArray2(i) = kabsArray(ilam)
+                         enddo
+
+                         !                  do i = 1, icritupper
+                         !                     iLam = nfreq - i + 1
+                         !                     write(*,*) kabsarray2(i), kabsarray(ilam)
+                         !                  enddo
+                         !stop
+                         probDistJnu(1)  = 1.d-50
+#ifdef USEMKL
+                         hrecip_ktarray(1:icritupper) = hrecip_kt
+
+                         call vdmul(icritupper, freq(1:icritupper), hrecip_ktarray(1:icritupper) , hNuOverkT(1:icritupper)) ! start from second frequency 
+                         call vdexp(icritlower, hNuOverkT(1:icritlower), hNuOverKt(1:icritlower)) ! hnuoverkt now e^hv/kT
+                         call vdsub(icritlower, hnuoverkt(1:icritlower), OneArray(1:icritlower), hNuOverKt(1:icritlower))! hnuoverkt now e^nv/KT - 1
+                         call vdinv(icritlower, hnuoverkt(1:icritlower), fac2(1:icritlower))
+
+                         call vdexp(icritupper - icritlower, -hNuOverkT(icritlower + 1 : icritupper), fac2(icritlower+1 : icritupper))
+
+                         call vdmul(icritupper, fac1dnu(1:icritupper), fac2(1:icritupper), hNuOverkT(1:icritupper)) ! hnuoverkt is temp array now
+                         call vdmul(icritupper, hnuoverkt(1:icritupper), kabsarray2(1:icritupper), this_bnu(1:icritupper))
+#else             
+                         hNuOverkT(1:icritupper) = freq(1:icritupper) * hrecip_kt
+
+                         fac2(1:icritlower) = 1.d0 / (exp(hNuOverkT(1:icritlower)) - 1.d0)
+                         fac2(icritlower+1:icritupper) = exp(-hNuOverkT(icritlower+1:icritupper))
+
+                         this_bnu(1:icritupper) = fac1dnu(1:icritupper) * fac2(1:icritupper) * kabsarray2(1:icritupper) 
+                         !this_bnu here is actually bnu * dnu * kabs
+#endif
+
+                         do i = 2, icritupper
+                            probDistJnu(i) = probDistJnu(i-1) + this_bnu(i) ! should be this_bnu(i-1)?
+                         enddo
+
+                         if (probDistJnu(icritupper) /= 0.d0) then
+                            call randomNumberGenerator(getDouble=r)
+                            r = r * probdistjnu(icritupper) ! this is equivalent to dividing probdist (normalising)
+                            call locate(probDistJnu(1:icritupper), icritupper, r, j)
+                            if (j == nFreq) j = nFreq -1
+                            thisFreq = freq(j) + (freq(j+1) - freq(j))* &
+                                 (r - probDistJnu(j))/(probDistJnu(j+1)-probDistJnu(j))
+                            ! note that probdistjnu(nfreq) cancels here so it's fine
+                            thisLam = (cSpeed / thisFreq) * 1.e8
+                            !                      write(*,*) cSpeed/thisFreq/angstromtocm
+                         endif
+                      endif
+                      oldUhat = uHat
+                      uHat = randomUnitVector()
+                      thermalPhoton = .true.
+                      scatteredPhoton = .false.
+                      ! make sure diffused photon is moving out of diffusion zone
+
+                      if (photonInDiffusionZone) then
+                         if ((oldUhat.dot.uHat)  > 0.) then
+                            uHat = (-1.d0) * uHat
+                         endif
+                      endif
+
+                   endif
+
+                endif
+             enddo
+
+          enddo photonLoop
+          !$OMP END DO
 
           !$OMP END PARALLEL
 
-                if (doTuning) call tune(6, "Photon loop")
+          if (doTuning) call tune(6, "Photon loop")
 
 #ifdef MPI
           ! Summing the value in octal computed by each processors.
@@ -735,14 +766,14 @@ contains
           ! (Maybe faster to pack the values in 1D arrays and distribute.)
 
           if(doTuning) call tune(6, "  Lucy Loop Update ")  ! start a stopwatch
-!          if(myRankIsZero) write(*,*) "Calling update_octal_MPI"
+          !          if(myRankIsZero) write(*,*) "Calling update_octal_MPI"
           !   call update_octal_MPI(grid%octreeRoot, grid)
 
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
 
           call updateGridMPI(grid)
-!          if(myRankGlobal == 0) write(*,*) "Done update."
+          !          if(myRankGlobal == 0) write(*,*) "Done update."
 
           if(doTuning) call tune(6, "  Lucy Loop Update ")  ! stop a stopwatch
 
@@ -800,8 +831,8 @@ contains
           endif
 #endif
 
-             call calculateMeanIntensity(grid%octreeRoot, epsOverDeltaT)
-             call calculateAdotPAH(grid%octreeRoot, epsOverDeltaT)
+          call calculateMeanIntensity(grid%octreeRoot, epsOverDeltaT)
+          call calculateAdotPAH(grid%octreeRoot, epsOverDeltaT)
 
 
           if (storeScattered) then
@@ -809,7 +840,7 @@ contains
              call calculateMeanIntensityOverdNu(grid%octreeRoot, epsOverDeltaT,dnu(i))
           endif
 
-          
+
 
           call calculateTemperatureCorrections(.true., grid%octreeRoot, totalEmission, epsOverDeltaT, &
                nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled,  &
@@ -836,11 +867,11 @@ contains
                 if (iIter_grand >= 5) call solveArbitraryDiffusionZones(grid)
              endif
           endif
-       call writeVtkFile(grid, "diff.vtk", &
-            valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
-            "dust       ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", "diff       ", &
-            "chiline    ", &
-            "adot       ", "under      "/))
+          call writeVtkFile(grid, "diff.vtk", &
+               valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+               "dust       ", "deltaT     ", "etaline    ","fixedtemp  ",     "inflow     ", "diff       ", &
+               "chiline    ", &
+               "adot       ", "under      "/))
 
 
           nCellsInDiffusion = 0
@@ -910,7 +941,7 @@ contains
 
           nCellsInDiffusion = 0
           if (solvediffusionZone) then
-                call defineDiffusionOnRosseland(grid,grid%octreeRoot,tauDiff,  nDiff=nCellsInDiffusion)
+             call defineDiffusionOnRosseland(grid,grid%octreeRoot,tauDiff,  nDiff=nCellsInDiffusion)
              !       call unsetOnDirect(grid%octreeRoot)
              write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
              call writeInfo(message,IMPORTANT)
@@ -944,100 +975,105 @@ contains
        if (variableDustSublimation) then
           totFrac = 0.
           nFrac = 0
-          if ((iIter_grand > 3).and.(iIter_grand <=5)) then
-             taumax = 10.**(-10. + 10.*dble(iIter_grand-4))
-             call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+
+          if (iiter_grand == 3) then
+             taumax = 0.1
+             call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, taumax)
           endif
-          
-             if ((iIter_grand == 6).and.(iIter_grand <= 7))  then
-                tauMax = 1.e30
-                call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+          if ((iIter_grand > 3).and.(iIter_grand <=10)) then
+             if (iIter_grand <= 6) then
+                taumax = 0.1
+             else
+                taumax = 1.e30
              endif
-!
-!             if (iIter_grand == 6) then
-!                tauMax = 1.e-3
-!                call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
-!             endif
-!
-!             if (iIter_grand == 9) then
-!                tauMax = 1.e-2
-!                call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
-!             endif
-!
-!             if (iIter_grand == 12) then
-!                tauMax = 1.e-1
-!                call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
-!             endif
-!
-!             
-!             if (iIter_grand > 15) then
-!                tauMax = 1.e30
-!!                if (dustSettling) call fillDustSettled(grid)
-!!                call setupOrigDustFraction(grid%octreeRoot)
-!                call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
-!             endif
+             if (mod(iIter_grand-4,2)==0) call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+          endif
+          if (iiter_grand==12) call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+          !
+          !             if (iIter_grand == 6) then
+          !                tauMax = 1.e-3
+          !                call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+          !             endif
+          !
+          !             if (iIter_grand == 9) then
+          !                tauMax = 1.e-2
+          !                call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+          !             endif
+          !
+          !             if (iIter_grand == 12) then
+          !                tauMax = 1.e-1
+          !                call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+          !             endif
+          !
+          !             
+          !             if (iIter_grand > 15) then
+          !                tauMax = 1.e30
+          !!                if (dustSettling) call fillDustSettled(grid)
+          !!                call setupOrigDustFraction(grid%octreeRoot)
+          !                call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+          !             endif
 
-             if ((iiter_grand == 7).and.doSmoothGridTau) then
-                call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
+          if ((iiter_grand == 7).and.doSmoothGridTau) then
+             call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
-                call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
-                do j = iSmoothLam, iSmoothLam
-                   write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
-                   call putTau(grid, grid%lamArray(j))
-!                      call writeVtkFile(grid, "puttau.vtk", &
-!                           valueTypeString=(/"rho        ", "temperature", "dust       ", &
-!                                    "etaline    "/))
-                   call writeInfo(message, TRIVIAL)
-                   do
-                      gridConverged = .true.
-
-                      if (solveVerticalHydro) then
-                         call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                              inheritProps = .false., interpProps = .true.)!, photosphereSplit = .true.)
-                      else
-                         call getSublimationRadius(grid, subRadius)
-                         call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-                              inheritProps = .false., interpProps = .true., photosphereSplit = .true., splitToRadius=2.d0*subRadius)
-                      endif
-
-                      if (gridConverged) exit
-                   end do
-
-!                   do
-!                      gridConverged = .true.
-!                      call unrefineThinCells(grid%octreeRoot, grid, j, nUnrefine, gridconverged)
-!                      if (gridConverged) exit
-!                   end do
-                   
-                enddo
-
-                
-                call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
-                call writeInfo("...grid smoothing complete", TRIVIAL)
-
-                call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
+             call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
+             do j = iSmoothLam, iSmoothLam
+                write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
+                call putTau(grid, grid%lamArray(j))
+                !                      call writeVtkFile(grid, "puttau.vtk", &
+                !                           valueTypeString=(/"rho        ", "temperature", "dust       ", &
+                !                                    "etaline    "/))
+                call writeInfo(message, TRIVIAL)
                 do
                    gridConverged = .true.
-                   call myScaleSmooth(smoothFactor, grid, &
-                        gridConverged,  inheritProps = .false., interpProps = .true.)
+
+                   if (solveVerticalHydro) then
+                      call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
+                           inheritProps = .false., interpProps = .true.)!, photosphereSplit = .true.)
+                   else
+                      call getSublimationRadius(grid, subRadius)
+                      call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
+                           inheritProps = .false., interpProps = .true., photosphereSplit = .true., splitToRadius=2.d0*subRadius)
+                   endif
+
                    if (gridConverged) exit
                 end do
-                call writeInfo("...grid smoothing complete", TRIVIAL)
 
-                taumax = 1.d30
-                call fixDust(grid,grid%octreeRoot)                
-!
+                !                   do
+                !                      gridConverged = .true.
+                !                      call unrefineThinCells(grid%octreeRoot, grid, j, nUnrefine, gridconverged)
+                !                      if (gridConverged) exit
+                !                   end do
+
+             enddo
+
+
+             call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
+             call writeInfo("...grid smoothing complete", TRIVIAL)
+
+             call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
+             do
+                gridConverged = .true.
+                call myScaleSmooth(smoothFactor, grid, &
+                     gridConverged,  inheritProps = .false., interpProps = .true.)
+                if (gridConverged) exit
+             end do
+             call writeInfo("...grid smoothing complete", TRIVIAL)
+
+             taumax = 1.d30
+             call fixDust(grid,grid%octreeRoot)                
+             !
              if (writeoutput) write(*,*) "Global Memory has ",humanReadableMemory(globalMemoryFootprint)
              call findTotalMemory(grid, totMem)
              if (writeoutput) write(*,*) "Full check  has ", humanReadableMemory(totMem)
-!             if (writeoutput) write(*,*) "Max memory available ", humanReadableMemory(maxMemoryAvailable)
-!
+             !             if (writeoutput) write(*,*) "Max memory available ", humanReadableMemory(maxMemoryAvailable)
+             !
 
 
 
              call writeVtkFile(grid, "afterphotorefine.vtk", &
                   valueTypeString=(/"rho        ", "temperature", "dust       ", &
-                                    "etaline    "/))
+                  "etaline    "/))
 
 
           endif
@@ -1074,23 +1110,23 @@ contains
           iMultiplier  = iMultiplier * 2
           if ( convergeOnUndersampled ) converged = .false.
        endif
-!       if (variableDustSublimation.and.(iIter_grand == 7)) converged = .true.
+       !       if (variableDustSublimation.and.(iIter_grand == 7)) converged = .true.
 
 
-       if ((grid%geometry == "shakara").and.variableDustSublimation) then
+       if (variableDustSublimation) then
           call getSublimationRadius(grid, subRadius)
-          write(message, '(a, i3, a, f8.1,a )') "End of lucy iteration ",iIter_grand,&
-               ": Dust Sublimation radius is: ",(1.d10*subRadius/rSol), " solar radii"
+          write(message, '(a, i3, a, f8.3,a )') "End of lucy iteration ",iIter_grand,&
+               ": Dust Sublimation radius is: ",(1.d10*subRadius/autocm), " au"
           call writeInfo(message, FORINFO)
-          write(message, '(a, i3, a, f8.1,a )') "End of lucy iteration ",iIter_grand,&
-               ": Dust Sublimation radius is: ",(subRadius/rCore), " core radii"
+          write(message, '(a, i3, a, f8.3,a )') "End of lucy iteration ",iIter_grand,&
+               ": Theoretical Dust Sublimation (1500K) radius is: ",(subRadius_monnier), " au"
           call writeInfo(message, FORINFO)
-      endif
+       endif
 
 
 
        if (iIter_grand < iterlucy) converged = .false.
-       if (variableDustSublimation.and.(iIter_grand < 8)) converged = .false.
+       if (variableDustSublimation.and.(iIter_grand < 11)) converged = .false.
 
        if (iIter_grand >= maxiterLucy) then
           write(message,'(a)') "Lucy loop exceeded max iterations. Forcing convergence"
@@ -1123,7 +1159,7 @@ contains
        if (myRankIsZero.and.writelucytmpfile) then
           write(tfilename, '(a,i3.3,a,i3.3,a,i3.3,a)') "lucy_",iHydro,"_",iIter_grand,"_",imultiplier,".dat"
           call writeAMRgrid(tfilename, .false., grid)
-!          call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
+          !          call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
        endif
        if (myrankIsZero) then
           open(33, file="restart.dat", status="unknown",form="formatted")
@@ -1133,58 +1169,59 @@ contains
        endif
     enddo
 
-!    if (variableDustSublimation.and.thisIsFinalPass.and.doSmoothGridTau) then
-!       call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
-!       if ((nfrac /= 0).and.(writeoutput)) then
-!          write(*,*) "Average absolute change in sublimation fraction: ",totFrac/real(nfrac)
-!       endif
-!       call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
-!       
-!       call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
-!       do j = iSmoothLam, nLambda, 2
-!          write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
-!          call writeInfo(message, TRIVIAL)
-!          do
-!             gridConverged = .true.
-!             call putTau(grid, grid%lamArray(j))
-!             call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
-!                  inheritProps = .false., interpProps = .true., photosphereSplit = thisIsFinalPass)
-!             
-!             if (gridConverged) exit
-!          end do
-!       enddo
-!       call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
-!       call writeInfo("...grid smoothing complete", TRIVIAL)
-!
-!       call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
-!       do
-!          gridConverged = .true.
-!          call myScaleSmooth(smoothFactor, grid, &
-!               gridConverged,  inheritProps = .false., interpProps = .true.)
-!          if (gridConverged) exit
-!       end do
-!       call writeInfo("...grid smoothing complete", TRIVIAL)
-!       
-!    endif
-
- 
+    !    if (variableDustSublimation.and.thisIsFinalPass.and.doSmoothGridTau) then
+    !       call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
+    !       if ((nfrac /= 0).and.(writeoutput)) then
+    !          write(*,*) "Average absolute change in sublimation fraction: ",totFrac/real(nfrac)
+    !       endif
+    !       call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
+    !       
+    !       call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
+    !       do j = iSmoothLam, nLambda, 2
+    !          write(message,*) "Smoothing at lam = ",grid%lamArray(j), " angs"
+    !          call writeInfo(message, TRIVIAL)
+    !          do
+    !             gridConverged = .true.
+    !             call putTau(grid, grid%lamArray(j))
+    !             call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, &
+    !                  inheritProps = .false., interpProps = .true., photosphereSplit = thisIsFinalPass)
+    !             
+    !             if (gridConverged) exit
+    !          end do
+    !       enddo
+    !       call countVoxels(grid%OctreeRoot,nOctals,nVoxels)  
+    !       call writeInfo("...grid smoothing complete", TRIVIAL)
+    !
+    !       call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
+    !       do
+    !          gridConverged = .true.
+    !          call myScaleSmooth(smoothFactor, grid, &
+    !               gridConverged,  inheritProps = .false., interpProps = .true.)
+    !          if (gridConverged) exit
+    !       end do
+    !       call writeInfo("...grid smoothing complete", TRIVIAL)
+    !       
+    !    endif
 
 
-    if (grid%geometry == "shakara") then
+
+
+    if (variabledustsublimation) then
        call getSublimationRadius(grid, subRadius)
        write(message, '(a, f8.3,a )') "End of lucy loop: Dust Sublimation radius is: ",(1.d10*subRadius/rSol), " solar radii"
        call writeInfo(message, FORINFO)
-       write(message, '(a, f7.3,a )') "End of lucy loop: Dust Sublimation radius is: ",(subRadius/rCore), " core radii"
+       write(message, '(a, f8.3,a )') "End of lucy loop: Dust Sublimation radius is: ",(1.d10*subRadius/autocm), " au"
        call writeInfo(message, FORINFO)
-       write(message, '(a,f7.1,a)') "Dust sublimation radius is ",subRadius/rcore, " stellar radii"
-       call writeInfo(message,TRIVIAL)
+                 write(message, '(a, i3, a, f8.3,a )') "End of lucy iteration ",iIter_grand,&
+               ": Theoretical Dust Sublimation (1500K) radius is: ",(subRadius_monnier), " au"
+          call writeInfo(message, FORINFO)
     endif
 
-        if (storescattered) then 
-           call locate(freq, nFreq, cSpeed/(scatteredlightwavelength*angstromtocm),i)
-           call calcIntensityFromGrid(grid%octreeRoot, epsOverDeltaT, dnu(i))
-           if (writeoutput) call writeVTKfile(grid, "scattered.vtk", valueTypeString = (/"scattered"/))
-        endif
+    if (storescattered) then 
+       call locate(freq, nFreq, cSpeed/(scatteredlightwavelength*angstromtocm),i)
+       call calcIntensityFromGrid(grid%octreeRoot, epsOverDeltaT, dnu(i))
+       if (writeoutput) call writeVTKfile(grid, "scattered.vtk", valueTypeString = (/"scattered"/))
+    endif
 
   end subroutine lucyRadiativeEquilibriumAMR
 
@@ -1201,10 +1238,10 @@ contains
 
     allocate(tauArray(1:100000), xArray(1:100000))
 
-   call tauAlongPath(1, grid, VECTOR(0.d0, 0.d0, 1.d-3*grid%halfSmallestSubcell), VECTOR(1.d0, 0.d0, 0.d0), &
+    call tauAlongPath(1, grid, VECTOR(0.d0, 0.d0, 1.d-3*grid%halfSmallestSubcell), VECTOR(1.d0, 0.d0, 0.d0), &
          tau,  tauMax=0.667d0, subRadius=subRadius)
 
-   if (tau >= 0.667d0) then
+    if (tau >= 0.667d0) then
        if (present(temperature)) then
           point = VECTOR(subRadius, 0.d0, 0.d0)
           call findSubcellTD(point, grid%octreeRoot, thisOctal, subcell)
@@ -1513,7 +1550,7 @@ contains
     real(oct) :: dnu(:)
 
     integer :: i
-    
+
     probDist(1:nFreq) = 0.
     do i = 2, nFreq
        probDist(i) = probDist(i-1) + bnu(dble(freq(i)),dble(temperature)) * dnu(i)
@@ -1524,27 +1561,27 @@ contains
   end subroutine setupFreqProb
 
 
- subroutine toNextEvent(grid, rVec, uHat, packetWeight,  escaped, distanceGrid, thisFreq, nLambda, lamArray)
-   use grid_mod, only: getindices
+  subroutine toNextEvent(grid, rVec, uHat, packetWeight,  escaped, distanceGrid, thisFreq, nLambda, lamArray)
+    use grid_mod, only: getindices
 
-   type(GRIDTYPE) :: grid
-   type(VECTOR) :: rVec, uHat
-   integer :: i1, i2, i3
-   real(oct) :: t1, t2, t3
-   real(oct) :: tval, tau, r
-   real :: lamArray(:)
-   integer :: nLambda
-   real(double) :: packetWeight
-   logical :: stillinGrid
-   logical :: escaped
-   real(oct) :: thisTau
-   real(oct) :: kabs, ksca
-   real(oct) :: thisFreq
-   real(oct) :: distanceGrid(1:grid%nx, 1:grid%ny, 1:grid%nz)
-   real(oct) :: thisLam
-   integer :: iLam
+    type(GRIDTYPE) :: grid
+    type(VECTOR) :: rVec, uHat
+    integer :: i1, i2, i3
+    real(oct) :: t1, t2, t3
+    real(oct) :: tval, tau, r
+    real :: lamArray(:)
+    integer :: nLambda
+    real(double) :: packetWeight
+    logical :: stillinGrid
+    logical :: escaped
+    real(oct) :: thisTau
+    real(oct) :: kabs, ksca
+    real(oct) :: thisFreq
+    real(oct) :: distanceGrid(1:grid%nx, 1:grid%ny, 1:grid%nz)
+    real(oct) :: thisLam
+    integer :: iLam
 
-   tVal = 0.d0
+    tVal = 0.d0
     stillinGrid = .true.
     escaped = .false.
 
@@ -1575,11 +1612,11 @@ contains
 
 
        if ((rVec%x > grid%xAxis(grid%nx)).or. &
-           (rVec%y > grid%yAxis(grid%ny)).or. &
-           (rVec%z > grid%zAxis(grid%nz)).or. &
-           (rVec%x < grid%xAxis(1)).or. &
-           (rVec%y < grid%yAxis(1)).or. &
-           (rVec%z < grid%zAxis(1))) then
+            (rVec%y > grid%yAxis(grid%ny)).or. &
+            (rVec%z > grid%zAxis(grid%nz)).or. &
+            (rVec%x < grid%xAxis(1)).or. &
+            (rVec%y < grid%yAxis(1)).or. &
+            (rVec%z < grid%zAxis(1))) then
           stillinGrid = .false.
           escaped = .true.
           if (.not.grid%oneKappa) then
@@ -1625,114 +1662,114 @@ contains
           endif
           distanceGrid(i1,i2,i3) = distanceGrid(i1,i2,i3) + (tVal*tau/thisTau) * kabs * packetWeight
        endif
-       
+
 
        if (tau > thisTau) then
           write(*,*) "tau > thistau"
           stop
        endif
-       
+
        rVec = rVec + (tVal*tau/thisTau) * uHat
     endif
 
 
 
 
- end subroutine toNextEvent
+  end subroutine toNextEvent
 
 
   subroutine intersectCubeCart(grid, posVec, i1,i2,i3,direction, tval)
-   use vector_mod
-   use grid_mod
-   implicit none
-   type(GRIDTYPE) :: grid
-   type(VECTOR) :: direction
-   type(VECTOR) :: posVec, norm(6), p3(6)
-   real(oct) :: t(6),tval,denom(6)
-   integer :: i,j
-   logical :: ok, thisOk(6)
-   integer :: i1, i2, i3
+    use vector_mod
+    use grid_mod
+    implicit none
+    type(GRIDTYPE) :: grid
+    type(VECTOR) :: direction
+    type(VECTOR) :: posVec, norm(6), p3(6)
+    real(oct) :: t(6),tval,denom(6)
+    integer :: i,j
+    logical :: ok, thisOk(6)
+    integer :: i1, i2, i3
 
-   ok = .true.
+    ok = .true.
 
-   norm(1) = VECTOR(1., 0., 0.)
-   norm(2) = VECTOR(0., 1., 0.)
-   norm(3) = VECTOR(0., 0., 1.)
-   norm(4) = VECTOR(-1., 0., 0.)
-   norm(5) = VECTOR(0., -1., 0.)
-   norm(6) = VECTOR(0., 0., -1.)
+    norm(1) = VECTOR(1., 0., 0.)
+    norm(2) = VECTOR(0., 1., 0.)
+    norm(3) = VECTOR(0., 0., 1.)
+    norm(4) = VECTOR(-1., 0., 0.)
+    norm(5) = VECTOR(0., -1., 0.)
+    norm(6) = VECTOR(0., 0., -1.)
 
-   p3(1) = VECTOR(grid%xAxis(i1+1), 0., 0.)
-   p3(2) = VECTOR(0.,grid%yAxis(i2+1),0.)
-   p3(3) = VECTOR(0.,0.,grid%zAxis(i3+1))
-   p3(4) = VECTOR(grid%xAxis(i1), 0., 0.)
-   p3(5) = VECTOR(0.,grid%yAxis(i2),0.)
-   p3(6) = VECTOR(0.,0.,grid%zAxis(i3))
+    p3(1) = VECTOR(grid%xAxis(i1+1), 0., 0.)
+    p3(2) = VECTOR(0.,grid%yAxis(i2+1),0.)
+    p3(3) = VECTOR(0.,0.,grid%zAxis(i3+1))
+    p3(4) = VECTOR(grid%xAxis(i1), 0., 0.)
+    p3(5) = VECTOR(0.,grid%yAxis(i2),0.)
+    p3(6) = VECTOR(0.,0.,grid%zAxis(i3))
 
-   thisOk = .true.
-   
-   do i = 1, 6
+    thisOk = .true.
 
-      denom(i) = norm(i) .dot. direction
-      if (denom(i) /= 0.) then
-         t(i) = (norm(i) .dot. (p3(i)-posVec))/denom(i)
-      else
-         thisOk(i) = .false.
-         t(i) = 0.
-      endif
-      if (t(i) < 0.) thisOk(i) = .false.
-!      if (denom > 0.) thisOK(i) = .false.
- enddo
+    do i = 1, 6
 
-
+       denom(i) = norm(i) .dot. direction
+       if (denom(i) /= 0.) then
+          t(i) = (norm(i) .dot. (p3(i)-posVec))/denom(i)
+       else
+          thisOk(i) = .false.
+          t(i) = 0.
+       endif
+       if (t(i) < 0.) thisOk(i) = .false.
+       !      if (denom > 0.) thisOK(i) = .false.
+    enddo
 
 
-  
-  j = 0
-  do i = 1, 6
-    if (thisOk(i)) j=j+1
-  enddo
-
-  if (j == 0) ok = .false.
-   
-  if (.not.ok) then
-     write(*,*) i1, i2, i3
-     write(*,*) direction%x,direction%y,direction%z
-     write(*,*) t(1:6)
-     stop
-  endif
-
-  tval = minval(t, mask=thisOk)
-  tval = max(tval * 1.001d0,dble((grid%xAxis(2)-grid%xAxis(1))/1000.))
 
 
-  if (tval == 0.) then
-     write(*,*) i1, i2, i3,tval
-     write(*,*) posVec
-     write(*,*) grid%xAxis(i1),grid%yAxis(i2),grid%zAxis(i3)
-     write(*,*) grid%xAxis(i1+1),grid%yAxis(i2+1),grid%zAxis(i3+1)
-     write(*,*) direction%x,direction%y,direction%z
-     write(*,*) t(1:6)
-     stop
-  endif
 
-  if (tval > 2.*(grid%xAxis(2)-grid%xAxis(1))) then
-!     write(*,*) "tval too big",tval,i1,i2,i3,posvec
-!     write(*,*) "direction",direction
-!     write(*,*) t(1:6)
-!     write(*,*) denom(1:6)
-  endif
+    j = 0
+    do i = 1, 6
+       if (thisOk(i)) j=j+1
+    enddo
+
+    if (j == 0) ok = .false.
+
+    if (.not.ok) then
+       write(*,*) i1, i2, i3
+       write(*,*) direction%x,direction%y,direction%z
+       write(*,*) t(1:6)
+       stop
+    endif
+
+    tval = minval(t, mask=thisOk)
+    tval = max(tval * 1.001d0,dble((grid%xAxis(2)-grid%xAxis(1))/1000.))
 
 
-  end subroutine intersectCubeCart 
+    if (tval == 0.) then
+       write(*,*) i1, i2, i3,tval
+       write(*,*) posVec
+       write(*,*) grid%xAxis(i1),grid%yAxis(i2),grid%zAxis(i3)
+       write(*,*) grid%xAxis(i1+1),grid%yAxis(i2+1),grid%zAxis(i3+1)
+       write(*,*) direction%x,direction%y,direction%z
+       write(*,*) t(1:6)
+       stop
+    endif
+
+    if (tval > 2.*(grid%xAxis(2)-grid%xAxis(1))) then
+       !     write(*,*) "tval too big",tval,i1,i2,i3,posvec
+       !     write(*,*) "direction",direction
+       !     write(*,*) t(1:6)
+       !     write(*,*) denom(1:6)
+    endif
+
+
+  end subroutine intersectCubeCart
 
 
   recursive subroutine zeroDistanceGrid(thisOctal)
-  type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
-  integer :: subcell, i
-  
-  do subcell = 1, thisOctal%maxChildren
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -1805,11 +1842,11 @@ contains
   end subroutine fixDust
 
   recursive subroutine zeroAdot(thisOctal)
-  type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
-  integer :: subcell, i
-  
-  do subcell = 1, thisOctal%maxChildren
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -1821,18 +1858,18 @@ contains
           end do
        else
 
-               thisOctal%aDot(subcell) = 0.d0
+          thisOctal%aDot(subcell) = 0.d0
 
        endif
     enddo
   end subroutine zeroAdot
 
   recursive subroutine countInflow(thisOctal,n)
-  type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
-  integer :: subcell, i, n
-  
-  do subcell = 1, thisOctal%maxChildren
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, n
+
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -1849,12 +1886,12 @@ contains
   end subroutine countInflow
 
   recursive subroutine calculateMeanIntensity(thisOctal, epsOverDt)
-  type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
-  real(double) :: epsOverDt, dV
-  integer :: subcell, i
-  
-  do subcell = 1, thisOctal%maxChildren
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    real(double) :: epsOverDt, dV
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -1875,12 +1912,12 @@ contains
   end subroutine calculateMeanIntensity
 
   recursive subroutine calculateAdotPAH(thisOctal, epsOverDt)
-  type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
-  real(double) :: epsOverDt, dV
-  integer :: subcell, i
-  
-  do subcell = 1, thisOctal%maxChildren
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    real(double) :: epsOverDt, dV
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -1898,12 +1935,12 @@ contains
   end subroutine calculateAdotPAH
 
   recursive subroutine calculateMeanIntensityOverdNu(thisOctal, epsOverDt, dnu)
-  type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
-  real(double) :: epsOverDt, dV, dnu
-  integer :: subcell, i
-  
-  do subcell = 1, thisOctal%maxChildren
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    real(double) :: epsOverDt, dV, dnu
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -1979,7 +2016,7 @@ contains
     ! [kelvins]  the maximum fractional change of temperature
     real(oct), intent(inout) :: dT_over_T_max 
 
-!    real :: kabs
+    !    real :: kabs
     real(double) :: kabsArray(1000)
     real :: lamArray(:)
     integer :: nFreq
@@ -1997,7 +2034,7 @@ contains
        nDT = 0
        dT_over_T_max = 0.0
     end if
-    
+
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -2034,15 +2071,15 @@ contains
 
                    ! tjh added on 7/4/05 - stop direct addressing of octal kappa arrays
                    ! to allow implemntation of gas opacities...
-                   
-!                   call amrGridValues(grid%octreeRoot, subcellCentre(thisOctal,subcell), startOctal=thisOctal, &
-!                        actualSubcell=subcell, kappaAbs=kabs, ilambda=ilam, grid=grid)
 
-!                   if (.not.grid%oneKappa) then
-!                      kabs = thisOctal%kappaAbs(subcell,iLam)
-!                   else
-!                      kabs = grid%oneKappaAbs(thisOctal%dustType(subcell),iLam) * thisOctal%rho(subcell)
-!                   endif
+                   !                   call amrGridValues(grid%octreeRoot, subcellCentre(thisOctal,subcell), startOctal=thisOctal, &
+                   !                        actualSubcell=subcell, kappaAbs=kabs, ilambda=ilam, grid=grid)
+
+                   !                   if (.not.grid%oneKappa) then
+                   !                      kabs = thisOctal%kappaAbs(subcell,iLam)
+                   !                   else
+                   !                      kabs = grid%oneKappaAbs(thisOctal%dustType(subcell),iLam) * thisOctal%rho(subcell)
+                   !                   endif
                    kappaP = kappaP + dble(kabsArray(ilam)) * &
                         dble(bnu(dble(freq(i)),dble(thisOctal%temperature(subcell))))  * dble(dnu(i))
                    norm = norm + dble(bnu(dble(freq(i)),dble(thisOctal%temperature(subcell))))  * dble(dnu(i))
@@ -2053,8 +2090,8 @@ contains
              else
                 kappaP = 0.d0
              endif
-             
-             
+
+
              if (kappaP /= 0.d0) then
                 newT = dble(pi / stefanBoltz) * aDot / (dble(fourPi) * kappaP)
                 newT = newT**0.25d0
@@ -2078,7 +2115,7 @@ contains
                    nwarning = nwarning + 1
                 else
                    continue
-                end if                   
+                end if
                 !                write(*,*) deltaT, thisOctal%temperature(subcell), newT
                 !                write(*,*) adot,kappap,thisOctal%rho(subcell)
              endif
@@ -2137,85 +2174,85 @@ contains
     enddo
   end subroutine calculateTemperatureCorrections
 
-subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, nLambda, lamArray,  &
-      photonInDiffusionZone, diffusionZoneTemp,  directPhoton, scatteredPhoton, &
+  subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, nLambda, lamArray,  &
+       photonInDiffusionZone, diffusionZoneTemp,  directPhoton, scatteredPhoton, &
        startOctal, foundOctal, foundSubcell, ilamIn, kappaAbsOut, kappaScaOut, kappaAbsPAHout, kappaScaPAHout)
-   use diffusion_mod, only: randomwalk
-   use inputs_mod, only : scatteredLightWavelength, storeScattered, usePAH
+    use diffusion_mod, only: randomwalk
+    use inputs_mod, only : scatteredLightWavelength, storeScattered, usePAH
 
 #ifdef CHEMISTRY
-   use chemistry_mod
-   use inputs_mod, only : doChemistry
+    use chemistry_mod
+    use inputs_mod, only : doChemistry
 #endif
 
-   type(GRIDTYPE) :: grid
-   type(VECTOR) :: rVec,uHat, octVec
-   type(OCTAL), pointer :: thisOctal, tempOctal !, sourceOctal
-   type(OCTAL),pointer :: oldOctal, sOctal, topOctal
-   type(OCTAL),pointer :: foundOctal, endOctal, startOctal
-   real(double) :: packetWeight
-   logical :: scatteredPhoton
-   integer :: foundSubcell
-   integer :: endSubcell
-   integer :: subcell, tempSubcell!, sourceSubcell
-   logical :: directPhoton
-   real(oct) :: tval, tau, r
-   real(double) :: tval_db
-   real :: lamArray(:)
-   integer :: nLambda
-   logical :: stillinGrid, ok
-   logical :: escaped
-   real(double) :: kappaScaDb, kappaAbsDb, kappaAbsPAH, kappaScaPAH
-   real(oct) :: thisTau
-   real(double) :: tauRatio
-   real(oct) :: thisFreq
-   real(oct) :: thisLam
-   integer :: iLam
-   logical ::inFlow
-   real :: diffusionZoneTemp
-   logical :: photonInDiffusionZone
-!   real(double) :: prob
-   integer :: i
-   real(double), parameter :: fudgeFac = 1.d-2
-   integer, optional :: ilamIn
-   real(double), optional :: kappaScaOut, kappaAbsOut, kappaAbsPAHout, kappaScaPAHout
-   integer, save :: iLamScat
-   logical, save :: firstTime = .true.
+    type(GRIDTYPE) :: grid
+    type(VECTOR) :: rVec,uHat, octVec
+    type(OCTAL), pointer :: thisOctal, tempOctal !, sourceOctal
+    type(OCTAL),pointer :: oldOctal, sOctal, topOctal
+    type(OCTAL),pointer :: foundOctal, endOctal, startOctal
+    real(double) :: packetWeight
+    logical :: scatteredPhoton
+    integer :: foundSubcell
+    integer :: endSubcell
+    integer :: subcell, tempSubcell!, sourceSubcell
+    logical :: directPhoton
+    real(oct) :: tval, tau, r
+    real(double) :: tval_db
+    real :: lamArray(:)
+    integer :: nLambda
+    logical :: stillinGrid, ok
+    logical :: escaped
+    real(double) :: kappaScaDb, kappaAbsDb, kappaAbsPAH, kappaScaPAH
+    real(oct) :: thisTau
+    real(double) :: tauRatio
+    real(oct) :: thisFreq
+    real(oct) :: thisLam
+    integer :: iLam
+    logical ::inFlow
+    real :: diffusionZoneTemp
+    logical :: photonInDiffusionZone
+    !   real(double) :: prob
+    integer :: i
+    real(double), parameter :: fudgeFac = 1.d-2
+    integer, optional :: ilamIn
+    real(double), optional :: kappaScaOut, kappaAbsOut, kappaAbsPAHout, kappaScaPAHout
+    integer, save :: iLamScat
+    logical, save :: firstTime = .true.
     real :: test  
     logical :: test2
 
-!$OMP THREADPRIVATE(firstTime, iLamScat)
+    !$OMP THREADPRIVATE(firstTime, iLamScat)
 
 
     test = lamArray(1)
     test2 = scatteredPhoton
-   endSubcell = 0
-   stillinGrid = .true.
-   escaped = .false.
-   ok = .true.
-   photonInDiffusionZone = .false.
-   kappaAbsDb = 0.d0; kappaScaDb = 0.d0
-   topOctal => grid%octreeRoot
+    endSubcell = 0
+    stillinGrid = .true.
+    escaped = .false.
+    ok = .true.
+    photonInDiffusionZone = .false.
+    kappaAbsDb = 0.d0; kappaScaDb = 0.d0
+    topOctal => grid%octreeRoot
 
 
-   if (firstTime) then
-      call hunt(lamArray, nLambda, scatteredLightWavelength, iLamScat)
-      firstTime = .false.
-   endif
+    if (firstTime) then
+       call hunt(lamArray, nLambda, scatteredLightWavelength, iLamScat)
+       firstTime = .false.
+    endif
 
 
-   if(.not. present(ilamIn)) then
-      thisLam = (cSpeed / thisFreq) * 1.e8
-      if ((ilam < 1).or.(ilam > nlambda)) then
-         write(*,*) "ilam error in tonexteventamr",ilam,thislam
-      endif
-   else
-      ilam = ilamin
-   endif
+    if(.not. present(ilamIn)) then
+       thisLam = (cSpeed / thisFreq) * 1.e8
+       if ((ilam < 1).or.(ilam > nlambda)) then
+          write(*,*) "ilam error in tonexteventamr",ilam,thislam
+       endif
+    else
+       ilam = ilamin
+    endif
 
-! select an initial random tau and find distance to next cell
-   call randomNumberGenerator(getDouble=r)
-   tau = -log(1.0-r)
+    ! select an initial random tau and find distance to next cell
+    call randomNumberGenerator(getDouble=r)
+    tau = -log(1.0-r)
 
     octVec = rVec
 
@@ -2238,7 +2275,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     oldOctal => thisOctal
     sOctal => thisOctal
 
-! moved from before call to amrgridvalues - th 16/11/05
+    ! moved from before call to amrgridvalues - th 16/11/05
 
     call distanceToCellBoundary(grid, rVec, uHat, tVal, sOctal)
 
@@ -2250,11 +2287,11 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
        thisTau = 1.0e-28
     end if
 
-! if tau > thisTau then the photon has traversed a cell with no interactions
+    ! if tau > thisTau then the photon has traversed a cell with no interactions
 
     do while(stillinGrid .and. (tau > thisTau)) 
 
-! add on the distance to the next cell
+       ! add on the distance to the next cell
        rVec = rVec + tVal * uHat
        octVec = rVec
 
@@ -2263,18 +2300,18 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           escaped = .true.
        endif
 
-! It is here that the photon path has potentially entered a cell
-! in the diffusion approximation zone. In this case we have to return
-! a position _before_ the photon enters the cell, and we need to
-! tell the main photon loop that the photon has been absorbed
-! and needs to re-emitted with a temperature corresponding to
-! the top layer of the diffusion zone (this will conserve
-! energy, and will create the appropriate boundary condition
-! at the surface of the diffusion zone.
-!       write(*,*) "octvec",octvec
-!       write(*,*) sOctal%centre,sOctal%subcellSize
-!       call amrGridValues(grid%octreeRoot, octVec,  startOctal=sOctal, foundOctal=tempOctal, &
-!            foundSubcell=tempsubcell)
+       ! It is here that the photon path has potentially entered a cell
+       ! in the diffusion approximation zone. In this case we have to return
+       ! a position _before_ the photon enters the cell, and we need to
+       ! tell the main photon loop that the photon has been absorbed
+       ! and needs to re-emitted with a temperature corresponding to
+       ! the top layer of the diffusion zone (this will conserve
+       ! energy, and will create the appropriate boundary condition
+       ! at the surface of the diffusion zone.
+       !       write(*,*) "octvec",octvec
+       !       write(*,*) sOctal%centre,sOctal%subcellSize
+       !       call amrGridValues(grid%octreeRoot, octVec,  startOctal=sOctal, foundOctal=tempOctal, &
+       !            foundSubcell=tempsubcell)
 
        if (.not.escaped) then
 
@@ -2286,119 +2323,119 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
           tempOctal => sOctal
           call findSubcellLocal(octVec, tempOctal, tempSubcell)
-!          call amrGridValues(grid%octreeRoot, octVec,  startOctal=sOctal, foundOctal=tempOctal, &
-!            foundSubcell=tempsubcell)
-
-       sOctal => tempOctal
-
-       if (tempOctal%diffusionApprox(tempsubcell)) then
-!XXXXXXXXX
-          photoninDiffusionZone = .true.
-          escaped = .true.
-          goto 666
-
-          call randomWalk(grid, tempOctal, tempSubcell,  endOctal, endSubcell, diffusionZoneTemp, ok)
-
-          if (.not.ok) goto 666
-          photonInDiffusionZone = .true.
-          directPhoton = .false.
-          rVec = subcellCentre(endOctal,endSubcell)
-          octVec = rVec
-
-          tempOctal => sOctal
-          call findSubcellLocal(rVec, tempOctal, tempSubcell)
-!          call amrGridValues(grid%octreeRoot, rVec,  startOctal=sOctal, foundOctal=tempOctal, &
-!            foundSubcell=tempsubcell)
+          !          call amrGridValues(grid%octreeRoot, octVec,  startOctal=sOctal, foundOctal=tempOctal, &
+          !            foundSubcell=tempsubcell)
 
           sOctal => tempOctal
-          if (tempOctal%diffusionApprox(tempsubcell)) then
-             write(*,*) "moved to cell with diffapprox",tempOctal%diffusionApprox(tempsubcell)
-             write(*,*) "endOctal",endOctal%diffusionApprox(endSubcell)
-             write(*,*) "temp octal",subcellCentre(tempOctal, tempSubcell),tempSubcell, tempOctal%rho(tempSubcell)
-             write(*,*) "end octal",subcellCentre(endOctal, endSubcell), endSubcell,endOctal%rho(endSubcell)
-             write(*,*) tempOctal%chiLine(tempSubcell),endOctal%chiLine(endSubcell)
-             write(*,*) tempOctal%chiLine(1:tempOctal%maxChildren)
-             write(*,*) tempOctal%splitAzimuthally, endOctal%splitAzimuthally
-             write(*,*) tempOctal%haschild(tempSubcell), endOctal%hasChild(endSubcell)
-             write(*,*) tempOctal%nDepth,endOctal%nDepth
-             write(*,*) tempOctal%phi*radtodeg,tempOctal%dphi*radtodeg
-             write(*,*) endOctal%phi*radtodeg,endOctal%dphi*radtodeg
-             write(*,*) tempOctal%r, endOctal%r
-             write(*,*) tempOctal%parent%chiline(1:tempOctal%parent%maxChildren)
-             write(*,*) endOctal%parent%chiline(1:endOctal%parent%maxChildren)
-             write(*,*) "temp"
-             do i = 1, tempOctal%parent%maxChildren
-                write(*,*) subcellCentre(tempOctal,i)
-             enddo
-             write(*,*) "end"
-             do i = 1, tempOctal%parent%maxChildren
-                write(*,*) subcellCentre(tempOctal,i)
-             enddo
 
-!             do;enddo
+          if (tempOctal%diffusionApprox(tempsubcell)) then
+             !XXXXXXXXX
+             photoninDiffusionZone = .true.
+             escaped = .true.
+             goto 666
+
+             call randomWalk(grid, tempOctal, tempSubcell,  endOctal, endSubcell, diffusionZoneTemp, ok)
+
+             if (.not.ok) goto 666
+             photonInDiffusionZone = .true.
+             directPhoton = .false.
+             rVec = subcellCentre(endOctal,endSubcell)
+             octVec = rVec
+
+             tempOctal => sOctal
+             call findSubcellLocal(rVec, tempOctal, tempSubcell)
+             !          call amrGridValues(grid%octreeRoot, rVec,  startOctal=sOctal, foundOctal=tempOctal, &
+             !            foundSubcell=tempsubcell)
+
+             sOctal => tempOctal
+             if (tempOctal%diffusionApprox(tempsubcell)) then
+                write(*,*) "moved to cell with diffapprox",tempOctal%diffusionApprox(tempsubcell)
+                write(*,*) "endOctal",endOctal%diffusionApprox(endSubcell)
+                write(*,*) "temp octal",subcellCentre(tempOctal, tempSubcell),tempSubcell, tempOctal%rho(tempSubcell)
+                write(*,*) "end octal",subcellCentre(endOctal, endSubcell), endSubcell,endOctal%rho(endSubcell)
+                write(*,*) tempOctal%chiLine(tempSubcell),endOctal%chiLine(endSubcell)
+                write(*,*) tempOctal%chiLine(1:tempOctal%maxChildren)
+                write(*,*) tempOctal%splitAzimuthally, endOctal%splitAzimuthally
+                write(*,*) tempOctal%haschild(tempSubcell), endOctal%hasChild(endSubcell)
+                write(*,*) tempOctal%nDepth,endOctal%nDepth
+                write(*,*) tempOctal%phi*radtodeg,tempOctal%dphi*radtodeg
+                write(*,*) endOctal%phi*radtodeg,endOctal%dphi*radtodeg
+                write(*,*) tempOctal%r, endOctal%r
+                write(*,*) tempOctal%parent%chiline(1:tempOctal%parent%maxChildren)
+                write(*,*) endOctal%parent%chiline(1:endOctal%parent%maxChildren)
+                write(*,*) "temp"
+                do i = 1, tempOctal%parent%maxChildren
+                   write(*,*) subcellCentre(tempOctal,i)
+                enddo
+                write(*,*) "end"
+                do i = 1, tempOctal%parent%maxChildren
+                   write(*,*) subcellCentre(tempOctal,i)
+                enddo
+
+                !             do;enddo
+             endif
+
           endif
+
 
        endif
 
-
-    endif
-
-! check whether the photon has escaped from the grid
+       ! check whether the photon has escaped from the grid
 
 
-! two cases here now. in the 2D case we only update the distance grid in a single plane (y=0, x>=0)
+       ! two cases here now. in the 2D case we only update the distance grid in a single plane (y=0, x>=0)
 
-! update the distance grid
+       ! update the distance grid
 
-! ifort (v11 and earlier) has problems with type conversion in atomic statements.
-    tval_db = real(tval,db)
-!$OMP ATOMIC
-    thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + tVal_db * kappaAbsdb * packetWeight
-    if (usePAH) then
-!$OMP ATOMIC
-       thisOctal%aDotPAH(subcell) = thisOctal%adotPAH(subcell) + tVal_db * getkappaAbsPAH(thisFreq) * packetWeight
-    endif
+       ! ifort (v11 and earlier) has problems with type conversion in atomic statements.
+       tval_db = real(tval,db)
+       !$OMP ATOMIC
+       thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + tVal_db * kappaAbsdb * packetWeight
+       if (usePAH) then
+          !$OMP ATOMIC
+          thisOctal%aDotPAH(subcell) = thisOctal%adotPAH(subcell) + tVal_db * getkappaAbsPAH(thisFreq) * packetWeight
+       endif
 
 
-!$OMP ATOMIC
-    thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
+       !$OMP ATOMIC
+       thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
 
 #ifdef CHEMISTRY
-    if (doChemistry) call storePathLength(thisOctal, subcell, thisFreq, tval_db * packetWeight)
+       if (doChemistry) call storePathLength(thisOctal, subcell, thisFreq, tval_db * packetWeight)
 #endif
 
-    if (directPhoton) then
-!$OMP ATOMIC
-       thisOctal%nDirectPhotons(subcell) = thisOctal%nDirectPhotons(subcell)+1
-    end if
+       if (directPhoton) then
+          !$OMP ATOMIC
+          thisOctal%nDirectPhotons(subcell) = thisOctal%nDirectPhotons(subcell)+1
+       end if
 
-! These lines were previously in an openmp critical section. If they are reinstated with OpenMP
-! in use then access to shared memory may need to be protected from simutaneous updates. 
-          if (storeScattered.and.(iLam==iLamScat)) &
-               call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, tVal)
+       ! These lines were previously in an openmp critical section. If they are reinstated with OpenMP
+       ! in use then access to shared memory may need to be protected from simutaneous updates. 
+       if (storeScattered.and.(iLam==iLamScat)) &
+            call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, tVal)
 
-    call addMeanIntensity(thisOctal, subcell, tVal*1.d10)
-
-
-          if (storeScattered.and.(iLam==iLamScat)) &
-               call addMeanIntensity(thisOctal, subcell, tVal*1.d10)
+       call addMeanIntensity(thisOctal, subcell, tVal*1.d10)
 
 
+       if (storeScattered.and.(iLam==iLamScat)) &
+            call addMeanIntensity(thisOctal, subcell, tVal*1.d10)
 
 
-! now we need to return if the photon is in the diffusionzone
+
+
+       ! now we need to return if the photon is in the diffusionzone
 
        if (photonInDiffusionZone) then
           goto 666
        endif
-         
 
-! now if the photon is in the grid choose a new random tau
+
+       ! now if the photon is in the grid choose a new random tau
 
        if (stillinGrid) then
           call randomNumberGenerator(getDouble=r)
           tau = -log(1.0-r)
-!          tau = -log(r)  ! modified as above
+          !          tau = -log(r)  ! modified as above
 
           sOctal => thisOctal
 
@@ -2418,13 +2455,13 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           sOctal => thisOctal
           oldOctal => thisOctal
 
-! calculate the distance to the next cell
+          ! calculate the distance to the next cell
 
           call distanceToCellBoundary(grid, rVec, uHat, tVal, sOctal)
           tval = tval + fudgeFac*grid%halfSmallestSubcell
           octVec = rVec
 
-! calculate the optical depth to the next cell boundary
+          ! calculate the optical depth to the next cell boundary
 
           if (inFlow) then
              thisTau = dble(tVal) * (kappaAbsdb + kappaScadb + kappaAbsPAH)
@@ -2438,27 +2475,27 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           endif
        endif ! still in grid
 
-! if photon is still in grid and  tau > tau_to_the_next_cell then loop round again
-! choosing a new tau
+       ! if photon is still in grid and  tau > tau_to_the_next_cell then loop round again
+       ! choosing a new tau
 
-       
+
     enddo
-    
 
-! the photon may have escaped the grid...
+
+    ! the photon may have escaped the grid...
 
     if (.not.inOctal(topOctal, octVec))  escaped = .true.
 
- ! if not the photon must interact in this cell
+    ! if not the photon must interact in this cell
     if (.not.escaped) then
        octVec = rVec
-!       if (.not.inOctal(grid%octreeRoot, octVec)) then
-!          write(*,*) "Error:: Photon location is out of boundaries, but its status is not ESCAPED."
-!          write(*,*) "        .... [lucy_mod::toNextEventAMR]"
-!          write(*,*) "octVec-centre = ",octVec-grid%octreeRoot%centre
-!          write(*,*) "cell size = ",grid%octreeRoot%subcellsize
-!          stop
-!       endif
+       !       if (.not.inOctal(grid%octreeRoot, octVec)) then
+       !          write(*,*) "Error:: Photon location is out of boundaries, but its status is not ESCAPED."
+       !          write(*,*) "        .... [lucy_mod::toNextEventAMR]"
+       !          write(*,*) "octVec-centre = ",octVec-grid%octreeRoot%centre
+       !          write(*,*) "cell size = ",grid%octreeRoot%subcellsize
+       !          stop
+       !       endif
        if (dble(tau)/thisTau .gt. 1.d0) then
           write(*,*) "tau prob",tau,thisTau
        endif
@@ -2487,38 +2524,38 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
        endif
 
 
-! update the distance grid
+       ! update the distance grid
 
        if (thisTau > 0.d0) then
 
 
-! ifort (v11 and earlier) has problems with type conversion in atomic statements.
-    tval_db = real(tval,db)
-    tauRatio = real( (tau/thisTau) ,db)
-!$OMP ATOMIC
-    thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + (tVal_db*tauRatio) * kappaAbsdb * packetWeight
-    if (usePAH) then
-!$OMP ATOMIC
-       thisOctal%adotPAH(subcell) = thisOctal%aDotPAH(subcell) + (tVal_db*tauRatio) * getKappaAbsPAH(thisFreq) * packetWeight
-    endif
+          ! ifort (v11 and earlier) has problems with type conversion in atomic statements.
+          tval_db = real(tval,db)
+          tauRatio = real( (tau/thisTau) ,db)
+          !$OMP ATOMIC
+          thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + (tVal_db*tauRatio) * kappaAbsdb * packetWeight
+          if (usePAH) then
+             !$OMP ATOMIC
+             thisOctal%adotPAH(subcell) = thisOctal%aDotPAH(subcell) + (tVal_db*tauRatio) * getKappaAbsPAH(thisFreq) * packetWeight
+          endif
 
 #ifdef CHEMISTRY
-    if (doChemistry) call storePathLength(thisOctal, subcell, thisFreq, (tval_db*tauRatio) * packetWeight)
+          if (doChemistry) call storePathLength(thisOctal, subcell, thisFreq, (tval_db*tauRatio) * packetWeight)
 #endif
 
-!$OMP ATOMIC
-    thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
-    if (directPhoton) then
-!$OMP ATOMIC
-       thisOctal%nDirectPhotons(subcell) = thisOctal%nDirectPhotons(subcell)+1
-    end if
+          !$OMP ATOMIC
+          thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
+          if (directPhoton) then
+             !$OMP ATOMIC
+             thisOctal%nDirectPhotons(subcell) = thisOctal%nDirectPhotons(subcell)+1
+          end if
 
-! These lines were previously in an openmp critical section. If they are reinstated with OpenMP
-! in use then access to shared memory may need to be protected from simutaneous updates. 
+          ! These lines were previously in an openmp critical section. If they are reinstated with OpenMP
+          ! in use then access to shared memory may need to be protected from simutaneous updates. 
           if (storeScattered.and.(iLam==iLamScat)) &
                call addToScatteredIntensity(octVec, thisOctal, subcell, uHat, dble(tVal)*dble(tau)/thisTau)
 
-               call addMeanIntensity(thisOctal, subcell, 1.d10*dble(tVal)*dble(tau)/thisTau)
+          call addMeanIntensity(thisOctal, subcell, 1.d10*dble(tVal)*dble(tau)/thisTau)
 
           if (storeScattered.and.(iLam==iLamScat)) &
                call addMeanIntensity(thisOctal, subcell, 1.d10*dble(tVal)*dble(tau)/thisTau)
@@ -2528,7 +2565,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
 
           oldOctal => thisOctal
-          
+
        endif
 
        if (tau > thisTau) then
@@ -2536,19 +2573,19 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           stop
        endif
 
-! move the requisite distance within the cell and return. Reduce tval slightly to ensure
-! event is within the grid if we are in the root octal.
+       ! move the requisite distance within the cell and return. Reduce tval slightly to ensure
+       ! event is within the grid if we are in the root octal.
        tVal = tVal - 2.0 * fudgeFac * grid%halfSmallestSubcell
        rVec = rVec + (dble(tVal)*dble(tau)/thisTau) * uHat
 
 
-! this is a workaround due to numerical problems with long pathlengths
-! and small cells. needs fixing.
+       ! this is a workaround due to numerical problems with long pathlengths
+       ! and small cells. needs fixing.
 
        tempOctal => sOctal
        call findSubcellLocal(rVec, tempOctal, tempSubcell)
-!       call amrGridValues(grid%octreeRoot, rVec,  startOctal=sOctal, foundOctal=tempOctal, &
-!            foundSubcell=tempsubcell)
+       !       call amrGridValues(grid%octreeRoot, rVec,  startOctal=sOctal, foundOctal=tempOctal, &
+       !            foundSubcell=tempsubcell)
        if (tempOctal%diffusionApprox(tempsubcell)) then
           photonInDiffusionZone = .true.
           call randomWalk(grid, tempOctal, tempSubcell,  endOctal, endSubcell, diffusionZoneTemp, ok)
@@ -2557,7 +2594,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           rVec = subcellCentre(endOctal,endSubcell)
           octVec = rVec
           call amrGridValues(topOctal, rVec,  startOctal=sOctal,foundOctal=tempOctal, &
-            foundSubcell=tempsubcell)
+               foundSubcell=tempsubcell)
           if (tempOctal%diffusionApprox(tempsubcell)) then
              write(*,*) "! error - photon produced in diffusion zone 2..."
              write(*,*) Tau,thistau,tval
@@ -2567,7 +2604,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
        foundOctal => tempOctal
 
     endif
-    
+
 666 continue
 
   end subroutine toNextEventAMR
@@ -2639,16 +2676,16 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 #endif
 
 
-          
-          
+
+
           call MPI_ALLGATHER(DBLE(thisOctal%ncrossings(subcell)), 1, MPI_DOUBLE_PRECISION, &
                buffer_ncrossings, 1, MPI_DOUBLE_PRECISION, MPI_COMM_WORLD, ierr)  
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-          
+
           thisOctal%distanceGrid(subcell) = SUM(buffer_distanceGrid)
           thisOctal%aDotPAH(subcell) = SUM(buffer_adotpah)
           thisOctal%nCrossings(subcell) = INT(SUM(buffer_ncrossings), kind=bigint)
-          
+
        endif
     enddo
   end subroutine update_octal_MPI
@@ -2686,15 +2723,15 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
 
 
-!    if (storeScattered) then
-!       allocate(tempDoubleArray(nVoxels*nTheta*nPhi))
-!       tempDoubleArray = 0.d0
-!       call MPI_ALLREDUCE(scatteredIntensity,tempDoubleArray, &
-!            nVoxels*nTheta*nPhi,MPI_DOUBLE_PRECISION,&
-!            MPI_SUM,MPI_COMM_WORLD,ierr)
-!       scatteredIntensity= tempDoubleArray 
-!       deallocate(tempDoubleArray)
-!    endif
+    !    if (storeScattered) then
+    !       allocate(tempDoubleArray(nVoxels*nTheta*nPhi))
+    !       tempDoubleArray = 0.d0
+    !       call MPI_ALLREDUCE(scatteredIntensity,tempDoubleArray, &
+    !            nVoxels*nTheta*nPhi,MPI_DOUBLE_PRECISION,&
+    !            MPI_SUM,MPI_COMM_WORLD,ierr)
+    !       scatteredIntensity= tempDoubleArray 
+    !       deallocate(tempDoubleArray)
+    !    endif
 
 
     allocate(tempRealArray(nVoxels))
@@ -2727,11 +2764,11 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     call MPI_ALLREDUCE(nDiffusion,tempRealArray,nVoxels,MPI_REAL,&
          MPI_SUM,MPI_COMM_WORLD,ierr)
     nDiffusion = tempRealArray 
-    
+
     deallocate(tempRealArray, tempDoubleArray)
-     
+
     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-    
+
     nIndex = 0
     nIndexScattered = 0
     call unpackValues(grid%octreeRoot,nIndex,nIndexScattered, &
@@ -2750,9 +2787,9 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     integer :: subcell
     real(oct) :: r
 
-! This subroutine finds the location of an octal in the y=0, x>=0 plane
-! that corresponds to the position vector rVec when it is rotated
-! into the y=0 plane 
+    ! This subroutine finds the location of an octal in the y=0, x>=0 plane
+    ! that corresponds to the position vector rVec when it is rotated
+    ! into the y=0 plane 
 
 
     rotVec%z = rVec%z     ! the new vector has the same "z" value
@@ -2763,7 +2800,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
     rotVec%x = r
 
-! now we find the octal and subcell that rotVec lies in
+    ! now we find the octal and subcell that rotVec lies in
 
     call findSubcellTD(rotVec, grid%ocTreeRoot, resultOctal, subcell)
     foundOctal => resultOctal
@@ -2772,11 +2809,11 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
 
   recursive subroutine resetDistanceGrid(thisOctal)
-  type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
-  integer :: subcell, i
-  
-  do subcell = 1, thisOctal%maxChildren
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -2793,11 +2830,11 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
   end subroutine resetDistanceGrid
 
   recursive subroutine resetDirectGrid(thisOctal)
-  type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
-  integer :: subcell, i
-  
-  do subcell = 1, thisOctal%maxChildren
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -2815,12 +2852,12 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
   end subroutine resetDirectGrid
 
   recursive subroutine recountDiffusionCells(thisOctal, ncells)
-  type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
-  integer :: subcell, i
-  integer :: ncells
-  
-  do subcell = 1, thisOctal%maxChildren
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    integer :: ncells
+
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -2888,31 +2925,31 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
              end if
           end do
        else
-             kappaP = 0.d0
-             norm = 0.d0
-             if (.not.grid%oneKappa) then
-                kabsArray(1:nlambda) = thisOctal%kappaAbs(subcell,1:nlambda)
-             else
-                call amrGridValues(grid%octreeRoot, subcellCentre(thisOctal,subcell), startOctal=thisOctal, &
-                     actualSubcell=subcell, kappaAbsArray=kabsArray, grid=grid)
-             endif
+          kappaP = 0.d0
+          norm = 0.d0
+          if (.not.grid%oneKappa) then
+             kabsArray(1:nlambda) = thisOctal%kappaAbs(subcell,1:nlambda)
+          else
+             call amrGridValues(grid%octreeRoot, subcellCentre(thisOctal,subcell), startOctal=thisOctal, &
+                  actualSubcell=subcell, kappaAbsArray=kabsArray, grid=grid)
+          endif
 
-             do j = 1, nFreq
-                thisLam = (cSpeed / freq(j)) * 1.e8
-                call hunt(lamArray, nLambda, real(thisLam), iLam)
-                if ((iLam >=1) .and. (iLam <= nLambda)) then
-                   kappaP = kappaP + dble(kabsArray(ilam)) * &
-                        dble(bnu(dble(freq(j)),dble(thisOctal%temperature(subcell)))) * dble(dnu(j)) 
-                   norm = norm + dble(bnu(dble(freq(j)),dble(thisOctal%temperature(subcell)))) * dble(dnu(j)) 
-                endif
-             enddo
-             if (norm /= 0.d0) then
-                kappaP = kappaP / norm / 1.d10
-             else
-                kappaP = TINY(kappaP)
+          do j = 1, nFreq
+             thisLam = (cSpeed / freq(j)) * 1.e8
+             call hunt(lamArray, nLambda, real(thisLam), iLam)
+             if ((iLam >=1) .and. (iLam <= nLambda)) then
+                kappaP = kappaP + dble(kabsArray(ilam)) * &
+                     dble(bnu(dble(freq(j)),dble(thisOctal%temperature(subcell)))) * dble(dnu(j)) 
+                norm = norm + dble(bnu(dble(freq(j)),dble(thisOctal%temperature(subcell)))) * dble(dnu(j)) 
              endif
-             thisOctal%etaCont(subcell) = fourPi * kappaP * (stefanBoltz/pi) * &
-                  (thisOctal%temperature(subcell)**4)
+          enddo
+          if (norm /= 0.d0) then
+             kappaP = kappaP / norm / 1.d10
+          else
+             kappaP = TINY(kappaP)
+          endif
+          thisOctal%etaCont(subcell) = fourPi * kappaP * (stefanBoltz/pi) * &
+               (thisOctal%temperature(subcell)**4)
        endif
     enddo
   end subroutine calculateEtaCont
@@ -2920,18 +2957,18 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
   recursive subroutine packvalues(thisOctal,nIndex, nIndexScattered,&
        distanceGrid,adotPAH,nCrossings, nDiffusion, meanIntensity)
     use inputs_mod, only : usePAH
-  type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
-  real(double) :: distanceGrid(:)
-  real(double) :: aDotPAH(:)
-  real(double) :: meanIntensity(:)
-  real(double) :: nCrossings(:)
-  real :: nDiffusion(:)
-  integer :: nIndex, nIndexScattered
-  integer :: subcell, i !, j , k
-!  integer, parameter :: nTheta = 10, nPhi = 10
-  
-  do subcell = 1, thisOctal%maxChildren
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    real(double) :: distanceGrid(:)
+    real(double) :: aDotPAH(:)
+    real(double) :: meanIntensity(:)
+    real(double) :: nCrossings(:)
+    real :: nDiffusion(:)
+    integer :: nIndex, nIndexScattered
+    integer :: subcell, i !, j , k
+    !  integer, parameter :: nTheta = 10, nPhi = 10
+
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -2948,14 +2985,14 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           meanIntensity(nIndex) = thisOctal%meanIntensity(subcell)
           nCrossings(nIndex) = dble(thisOctal%nCrossings(subcell))
           nDiffusion(nIndex) = thisOctal%nDiffusion(subcell)
-!          if (storeScattered) then
-!             do j = 1, nTheta
-!                do k = 1, nPhi
-!                   nIndexScattered = nIndexScattered+1
-!                   scatteredIntensity(nIndexScattered) = thisOctal%scatteredIntensity(subcell, j ,k)
-!                enddo
-!             enddo
-!          endif
+          !          if (storeScattered) then
+          !             do j = 1, nTheta
+          !                do k = 1, nPhi
+          !                   nIndexScattered = nIndexScattered+1
+          !                   scatteredIntensity(nIndexScattered) = thisOctal%scatteredIntensity(subcell, j ,k)
+          !                enddo
+          !             enddo
+          !          endif
 
        endif
     enddo
@@ -2963,17 +3000,17 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
   recursive subroutine unpackvalues(thisOctal,nIndex,nIndexScattered,distanceGrid,adotPAH,nCrossings, nDiffusion, meanIntensity)
     use inputs_mod, only : usePAH
-  type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
-  real(double) :: distanceGrid(:), adotPAH(:), meanIntensity(:)
-  real(double) :: ncrossings(:)
-  real :: ndiffusion(:)
-  integer :: nIndex
-  integer :: subcell, i !, j, k
-  integer :: nIndexScattered
-!  integer, parameter :: nTheta = 10, nPhi = 10
-  
-  do subcell = 1, thisOctal%maxChildren
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    real(double) :: distanceGrid(:), adotPAH(:), meanIntensity(:)
+    real(double) :: ncrossings(:)
+    real :: ndiffusion(:)
+    integer :: nIndex
+    integer :: subcell, i !, j, k
+    integer :: nIndexScattered
+    !  integer, parameter :: nTheta = 10, nPhi = 10
+
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -2991,14 +3028,14 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           thisOctal%meanIntensity(subcell) = meanIntensity(nIndex)
           thisOctal%nCrossings(subcell) = int(nCrossings(nIndex), kind=bigint)
           thisOctal%nDiffusion(subcell) = nDiffusion(nIndex)
-!          if (storescattered) then
-!             do j = 1, nTheta
-!                do k = 1, nPhi
-!                   nIndexScattered = nIndexScattered + 1
-!                   thisOctal%scatteredIntensity(subcell,j,k) = scatteredIntensity(nIndexScattered)
-!                enddo
-!             enddo
-!          endif
+          !          if (storescattered) then
+          !             do j = 1, nTheta
+          !                do k = 1, nPhi
+          !                   nIndexScattered = nIndexScattered + 1
+          !                   thisOctal%scatteredIntensity(subcell,j,k) = scatteredIntensity(nIndexScattered)
+          !                enddo
+          !             enddo
+          !          endif
        endif
     enddo
   end subroutine unpackvalues
@@ -3021,7 +3058,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     dirVec(5) = VECTOR( 0.d0,-1.d0,  0.d0)
     dirVec(6) = VECTOR( 0.d0, 0.d0, -1.d0)
 
-!    do subcell = 1, thisOctal%maxChildren
+    !    do subcell = 1, thisOctal%maxChildren
     subcell = 1
     do while (subcell < thisOctal%maxChildren)
        if (thisOctal%hasChild(subcell)) then
@@ -3081,8 +3118,8 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-  
-  do subcell = 1, thisOctal%maxChildren
+
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -3097,7 +3134,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           if (thisOctal%temperature(subcell) > 1.d-3) then
 
              call addDustContinuumLucy(thisOctal, subcell, grid, nlambda, lamArray)
-             
+
           endif
 
        endif
@@ -3111,8 +3148,8 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-  
-  do subcell = 1, thisOctal%maxChildren
+
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -3127,7 +3164,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           if ((thisOctal%temperature(subcell) > 1.d-3).and.(thisOctal%rho(subcell) > 1.d-30)) then
 
              call addDustContinuumLucyMono(thisOctal, subcell, grid, lambda, iPhotonLambda)
-             
+
           endif
 
        endif
@@ -3138,8 +3175,8 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-  
-  do subcell = 1, thisOctal%maxChildren
+
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -3164,8 +3201,8 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-  
-  do subcell = 1, thisOctal%maxChildren
+
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -3178,10 +3215,10 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
        else
           thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont)
           if ((thisOctal%temperature(subcell) > 1.d-3).and.(thisOctal%tdust(subcell) > 1.d-3) & 
-             .and.(thisOctal%rho(subcell) > 1.d-30)) then
+               .and.(thisOctal%rho(subcell) > 1.d-30)) then
 
              call addDustContinuumLucyMonoAtDustTemp(thisOctal, subcell, grid, lambda, iPhotonLambda)
-             
+
           endif
 
        endif
@@ -3190,123 +3227,123 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
 
 
-subroutine addDustContinuumLucy(thisOctal, subcell, grid, nlambda, lamArray)
-  use inputs_mod, only : usePAH
-  type(OCTAL), pointer :: thisOctal
-  integer :: subcell
-  type(GRIDTYPE) :: grid
-  integer :: nLambda
-  real :: lamArray(:)
-  integer :: i
-  real :: dlam
-  real(double), allocatable :: kabsArray(:)
+  subroutine addDustContinuumLucy(thisOctal, subcell, grid, nlambda, lamArray)
+    use inputs_mod, only : usePAH
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    type(GRIDTYPE) :: grid
+    integer :: nLambda
+    real :: lamArray(:)
+    integer :: i
+    real :: dlam
+    real(double), allocatable :: kabsArray(:)
 
 
-  allocate(kAbsArray(1:nlambda))
+    allocate(kAbsArray(1:nlambda))
 
-  call returnKappa(grid, thisOctal, subcell, kappaAbsArray=kAbsArray)
+    call returnKappa(grid, thisOctal, subcell, kappaAbsArray=kAbsArray)
 
-  thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont(subcell))
+    thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont(subcell))
 
-  do i = 2, nLambda
-     dlam = lamArray(i)-lamArray(i-1)
-     thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + &
-          bLambda(dble(lamArray(i)), dble(thisOctal%temperature(subcell))) * &
-             kAbsArray(i) *1.d-10* dlam * fourPi * 1.d-8 ! conversion from per cm to per A
-
-
-     if (usePAH) then
-        thisOctal%pahEmissivity(subcell) = PAHemissivityFromAdot(dble(lamArray(i)), &
-             thisOctal%adotPAH(subcell), &
-             thisOctal%rho(subcell)) & 
-             *cSpeed/(lamArray(i)*angstromtocm)**2 *dlam * fourPi * 1.d-8
-
-        thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + thisOctal%pahEmissivity(subcell)
-     endif
-  enddo
-
-  deallocate(kAbsArray)
-
-end subroutine addDustContinuumLucy
-
-!-------------------------------------------------------------------------------
-
-subroutine addDustContinuumLucyMono(thisOctal, subcell, grid,  lambda, iPhotonLambda)
-  use pah_mod
-  use inputs_mod, only : usePAH
-  type(OCTAL), pointer :: thisOctal
-  integer :: subcell
-  type(GRIDTYPE) :: grid
-  integer :: iPhotonLambda
-  real ::  lambda
-  real(double) :: kappaAbs
-  kappaAbs = 0.d0
-  thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont(subcell))
-
-  call returnKappa(grid, thisOctal, subcell, lambda=lambda, iLambda=iPhotonLambda, kappaAbs=kappaAbs)
-
-  thisOctal%etaCont(subcell) =  bLambda(dble(lambda), dble(thisOctal%temperature(subcell))) * &
-             kappaAbs * 1.d-10 * fourPi * 1.d-8 ! conversion from per cm to per A
-
-  if (usePAH) then
-     thisOctal%pahEmissivity(subcell) =  PAHemissivityFromAdot(dble(lambda), &
-          thisOctal%adotPAH(subcell), &
-          thisOctal%rho(subcell)) &
-          *cSpeed/(lambda*angstromtocm)**2 * fourPi * 1.d-8
+    do i = 2, nLambda
+       dlam = lamArray(i)-lamArray(i-1)
+       thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + &
+            bLambda(dble(lamArray(i)), dble(thisOctal%temperature(subcell))) * &
+            kAbsArray(i) *1.d-10* dlam * fourPi * 1.d-8 ! conversion from per cm to per A
 
 
-     thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + thisOctal%pahEmissivity(subcell)
-  endif
+       if (usePAH) then
+          thisOctal%pahEmissivity(subcell) = PAHemissivityFromAdot(dble(lamArray(i)), &
+               thisOctal%adotPAH(subcell), &
+               thisOctal%rho(subcell)) & 
+               *cSpeed/(lamArray(i)*angstromtocm)**2 *dlam * fourPi * 1.d-8
 
-  if (.not.thisOctal%inFlow(subcell)) thisOctal%etaCont(subcell) = 0.d0
+          thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + thisOctal%pahEmissivity(subcell)
+       endif
+    enddo
 
-end subroutine addDustContinuumLucyMono
+    deallocate(kAbsArray)
 
-!-------------------------------------------------------------------------------
+  end subroutine addDustContinuumLucy
 
-subroutine addDustContinuumLucyMonoAtDustTemp(thisOctal, subcell, grid,  lambda, iPhotonLambda)
-  use inputs_mod, only : tminGlobal, decoupleGasDustTemperature, usePAH
-  type(OCTAL), pointer :: thisOctal
-  integer :: subcell
-  type(GRIDTYPE) :: grid
-  integer :: iPhotonLambda
-  real ::  lambda
-  real(double) :: kappaAbs
-  logical, save :: firstTime = .true.
+  !-------------------------------------------------------------------------------
 
-  kappaAbs = 0.d0
-  thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont(subcell))
+  subroutine addDustContinuumLucyMono(thisOctal, subcell, grid,  lambda, iPhotonLambda)
+    use pah_mod
+    use inputs_mod, only : usePAH
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    type(GRIDTYPE) :: grid
+    integer :: iPhotonLambda
+    real ::  lambda
+    real(double) :: kappaAbs
+    kappaAbs = 0.d0
+    thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont(subcell))
 
-  if (.not.decoupleGasDustTemperature) then
-     if (thisOctal%tDust(subcell) < tMinglobal) then
-        if (firstTime.and.writeoutput) write(*,*) "Looks like tdust not set up, setting tdust to temperature"
-        thisOctal%tDust(subcell) = dble(thisOctal%temperature(subcell))
-        firstTime = .false.
-     endif
-  endif
+    call returnKappa(grid, thisOctal, subcell, lambda=lambda, iLambda=iPhotonLambda, kappaAbs=kappaAbs)
 
+    thisOctal%etaCont(subcell) =  bLambda(dble(lambda), dble(thisOctal%temperature(subcell))) * &
+         kappaAbs * 1.d-10 * fourPi * 1.d-8 ! conversion from per cm to per A
 
-  call returnKappa(grid, thisOctal, subcell, lambda=lambda, iLambda=iPhotonLambda, kappaAbs=kappaAbs)
-  thisOctal%etaCont(subcell) =  bLambda(dble(lambda), thisOctal%tdust(subcell)) * &
-             kappaAbs * 1.d-10 * fourPi * 1.d-8 ! conversion from per cm to per A
-  if (usePAH) then
-     thisOctal%pahEmissivity(subcell) =  PAHemissivityFromAdot(dble(lambda), &
-          thisOctal%adotPAH(subcell), &
-          thisOctal%rho(subcell)) &
-          *cSpeed/(lambda*angstromtocm)**2 * fourPi * 1.d-8
-
-
-     thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + thisOctal%pahEmissivity(subcell)
-  endif
+    if (usePAH) then
+       thisOctal%pahEmissivity(subcell) =  PAHemissivityFromAdot(dble(lambda), &
+            thisOctal%adotPAH(subcell), &
+            thisOctal%rho(subcell)) &
+            *cSpeed/(lambda*angstromtocm)**2 * fourPi * 1.d-8
 
 
-  if (.not.thisOctal%inFlow(subcell)) thisOctal%etaCont(subcell) = 0.d0
+       thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + thisOctal%pahEmissivity(subcell)
+    endif
 
-end subroutine addDustContinuumLucyMonoAtDustTemp
+    if (.not.thisOctal%inFlow(subcell)) thisOctal%etaCont(subcell) = 0.d0
 
-!-------------------------------------------------------------------------------
+  end subroutine addDustContinuumLucyMono
 
-subroutine setBiasOnTau(grid, iLambda)
+  !-------------------------------------------------------------------------------
+
+  subroutine addDustContinuumLucyMonoAtDustTemp(thisOctal, subcell, grid,  lambda, iPhotonLambda)
+    use inputs_mod, only : tminGlobal, decoupleGasDustTemperature, usePAH
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    type(GRIDTYPE) :: grid
+    integer :: iPhotonLambda
+    real ::  lambda
+    real(double) :: kappaAbs
+    logical, save :: firstTime = .true.
+
+    kappaAbs = 0.d0
+    thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont(subcell))
+
+    if (.not.decoupleGasDustTemperature) then
+       if (thisOctal%tDust(subcell) < tMinglobal) then
+          if (firstTime.and.writeoutput) write(*,*) "Looks like tdust not set up, setting tdust to temperature"
+          thisOctal%tDust(subcell) = dble(thisOctal%temperature(subcell))
+          firstTime = .false.
+       endif
+    endif
+
+
+    call returnKappa(grid, thisOctal, subcell, lambda=lambda, iLambda=iPhotonLambda, kappaAbs=kappaAbs)
+    thisOctal%etaCont(subcell) =  bLambda(dble(lambda), thisOctal%tdust(subcell)) * &
+         kappaAbs * 1.d-10 * fourPi * 1.d-8 ! conversion from per cm to per A
+    if (usePAH) then
+       thisOctal%pahEmissivity(subcell) =  PAHemissivityFromAdot(dble(lambda), &
+            thisOctal%adotPAH(subcell), &
+            thisOctal%rho(subcell)) &
+            *cSpeed/(lambda*angstromtocm)**2 * fourPi * 1.d-8
+
+
+       thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + thisOctal%pahEmissivity(subcell)
+    endif
+
+
+    if (.not.thisOctal%inFlow(subcell)) thisOctal%etaCont(subcell) = 0.d0
+
+  end subroutine addDustContinuumLucyMonoAtDustTemp
+
+  !-------------------------------------------------------------------------------
+
+  subroutine setBiasOnTau(grid, iLambda)
     use inputs_mod, only : cylindrical, amr3d, amr1d, smallestCellSize
     use amr_mod, only: tauAlongPath, getOctalArray
 #ifdef MPI
@@ -3316,8 +3353,8 @@ subroutine setBiasOnTau(grid, iLambda)
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     real(double) :: tau, thisTau
-  type(VECTOR) :: rVec, direction
-  integer :: i
+    type(VECTOR) :: rVec, direction
+    integer :: i
     integer :: subcell
     integer :: iLambda
     integer                     :: nOctal        ! number of octals in grid
@@ -3326,19 +3363,19 @@ subroutine setBiasOnTau(grid, iLambda)
     integer :: iOctal_beg, iOctal_end
     real(double) :: kappaSca, kappaAbs, kappaExt
     type(VECTOR) :: arrayVec(6)
-     integer :: nDir
+    integer :: nDir
 #ifdef MPI
-! Only declared in MPI case
-     real(double), allocatable :: eArray(:), tArray(:)
-     integer :: nVoxels, ierr
-     integer :: nBias
-     integer :: np, n_rmdr, m
+    ! Only declared in MPI case
+    real(double), allocatable :: eArray(:), tArray(:)
+    integer :: nVoxels, ierr
+    integer :: nBias
+    integer :: np, n_rmdr, m
 #endif
 
 
-     kappaAbs = 0.d0; kappasca = 0.d0; thisTau = 0.d0
+    kappaAbs = 0.d0; kappasca = 0.d0; thisTau = 0.d0
 
-     call writeInfo("Computing bias on tau...",TRIVIAL)
+    call writeInfo("Computing bias on tau...",TRIVIAL)
 
     allocate(octalArray(grid%nOctals))
     nOctal = 0
@@ -3348,55 +3385,55 @@ subroutine setBiasOnTau(grid, iLambda)
        stop
     endif
 
-    
+
     ! default loop indices
     ioctal_beg = 1
     ioctal_end = nOctal
 
 #ifdef MPI
-    
-            ! Set the range of index for octal loop used later.     
-            np = nThreadsGlobal
-            n_rmdr = MOD(SIZE(octalArray),np)
-            m = SIZE(octalArray)/np
-            
-            if (myRankGlobal .lt. n_rmdr ) then
-               ioctal_beg = (m+1)*myRankGlobal + 1
-               ioctal_end = ioctal_beg + m
-            else
-               ioctal_beg = m*myRankGlobal + 1 + n_rmdr
-               ioctal_end = ioctal_beg + m - 1
-            end if
-            
+
+    ! Set the range of index for octal loop used later.     
+    np = nThreadsGlobal
+    n_rmdr = MOD(SIZE(octalArray),np)
+    m = SIZE(octalArray)/np
+
+    if (myRankGlobal .lt. n_rmdr ) then
+       ioctal_beg = (m+1)*myRankGlobal + 1
+       ioctal_end = ioctal_beg + m
+    else
+       ioctal_beg = m*myRankGlobal + 1 + n_rmdr
+       ioctal_end = ioctal_beg + m - 1
+    end if
+
 #endif
 
 
-!$OMP PARALLEL DEFAULT (NONE) &
-!$OMP PRIVATE (iOctal, subcell,  kappaExt, kappaAbs, KappaSca, tau,  thisOctal, direction, thisTau, ndir, arrayvec, rvec) &
-!$OMP SHARED (iOctal_beg, iOctal_end, octalArray, grid, cylindrical, ilambda, amr3d, amr1d, smallestCellSize)
-     call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
+    !$OMP PARALLEL DEFAULT (NONE) &
+    !$OMP PRIVATE (iOctal, subcell,  kappaExt, kappaAbs, KappaSca, tau,  thisOctal, direction, thisTau, ndir, arrayvec, rvec) &
+    !$OMP SHARED (iOctal_beg, iOctal_end, octalArray, grid, cylindrical, ilambda, amr3d, amr1d, smallestCellSize)
+    call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
 
-     if (amr3d) then
-        nDir = 6
-     else
-        nDir = 4
-     endif
+    if (amr3d) then
+       nDir = 6
+    else
+       nDir = 4
+    endif
 
-     if (amr1d) ndir = 2
-     if (nDir == 4) then
-        arrayVec(1) = VECTOR(1.d0, 1.d-10, 1.d-10)
-        arrayVec(2) = VECTOR(-1.d0, 1.d-10, 1.d-10)
-        arrayVec(3) = VECTOR(1.d-10, 1.d-10, 1.d0)
-        arrayVec(4) = VECTOR(1.d-10, 1.d-10,-1.d0)
-     endif
+    if (amr1d) ndir = 2
+    if (nDir == 4) then
+       arrayVec(1) = VECTOR(1.d0, 1.d-10, 1.d-10)
+       arrayVec(2) = VECTOR(-1.d0, 1.d-10, 1.d-10)
+       arrayVec(3) = VECTOR(1.d-10, 1.d-10, 1.d0)
+       arrayVec(4) = VECTOR(1.d-10, 1.d-10,-1.d0)
+    endif
 
-     if (nDir == 2) then
-        arrayVec(1) = VECTOR(1.d0, 0.d0, 0.d0)
-        arrayVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
-     endif
+    if (nDir == 2) then
+       arrayVec(1) = VECTOR(1.d0, 0.d0, 0.d0)
+       arrayVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+    endif
 
 
-!$OMP DO SCHEDULE (DYNAMIC, 1)
+    !$OMP DO SCHEDULE (DYNAMIC, 1)
     do iOctal =  iOctal_beg, iOctal_end
        thisOctal => octalArray(iOctal)%content
 
@@ -3405,13 +3442,13 @@ subroutine setBiasOnTau(grid, iLambda)
           if (.not.thisOctal%hasChild(subcell)) then
 
              thisOctal%biasCont3d(subcell) = 1.d0
-!             cycle
+             !             cycle
 
              rVec = subcellCentre(thisOctal, subcell)
              if (thisOctal%threed) then
                 rVec = rVec + 0.01d0*smallestCellSize*randomUnitVector()
              endif
-              
+
              call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
              kappaExt = kappaAbs + kappaSca
              if (thisOctal%subcellSize*kappaExt < 0.1d0) then
@@ -3445,52 +3482,52 @@ subroutine setBiasOnTau(grid, iLambda)
 
 
                 do i = 1, ndir 
-                  direction = arrayVec(i)
+                   direction = arrayVec(i)
                    call tauAlongPath(ilambda, grid, rVec, direction, thistau, 10.d0, startOctal=thisOctal, startSubcell=subcell)
                    tau = min(tau, thisTau)
                 enddo
-!                if (tau < 5.) then
-!                   thisOctal%biasCont3D(subcell) = 1.d0
-!                else
+                !                if (tau < 5.) then
+                !                   thisOctal%biasCont3D(subcell) = 1.d0
+                !                else
                 thisOctal%biasCont3D(subcell) = max(exp(-tau),1.d-6)
-                
-!                endif
-                 
+
+                !                endif
+
 
              endif
 
-            
+
           endif
 
        enddo
     enddo
-!$OMP END DO
-!$OMP END PARALLEL
+    !$OMP END DO
+    !$OMP END PARALLEL
 
 #ifdef MPI
-     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
 
-     call countVoxels(grid%octreeRoot,nOctal,nVoxels)
-     allocate(eArray(1:nVoxels))
-     allocate(tArray(1:nVoxels))
-     eArray = 0.d0
-     call packBias(octalArray, nBias, eArray, ioctal_beg, ioctal_end)
-     call MPI_ALLREDUCE(eArray,tArray,nBias,MPI_DOUBLE_PRECISION,&
+    call countVoxels(grid%octreeRoot,nOctal,nVoxels)
+    allocate(eArray(1:nVoxels))
+    allocate(tArray(1:nVoxels))
+    eArray = 0.d0
+    call packBias(octalArray, nBias, eArray, ioctal_beg, ioctal_end)
+    call MPI_ALLREDUCE(eArray,tArray,nBias,MPI_DOUBLE_PRECISION,&
          MPI_SUM,MPI_COMM_WORLD,ierr)
-     eArray = tArray
-     call unpackBias(octalArray, nBias, eArray)
-     deallocate(eArray, tArray)
+    eArray = tArray
+    call unpackBias(octalArray, nBias, eArray)
+    deallocate(eArray, tArray)
 #endif
 
     deallocate(octalArray)
-!    call writeVtkFile(grid, "bias.vtk", &
-!            valueTypeString=(/"bias"/))
-     call writeInfo("Done.",TRIVIAL)
+    !    call writeVtkFile(grid, "bias.vtk", &
+    !            valueTypeString=(/"bias"/))
+    call writeInfo("Done.",TRIVIAL)
 
   end subroutine setBiasOnTau
 
-subroutine setFixedTemperatureOnTau(grid, iLambda)
+  subroutine setFixedTemperatureOnTau(grid, iLambda)
     use inputs_mod, only : cylindrical, amr3d, amr1d, smallestCellSize
     use amr_mod, only: tauAlongPath, getOctalArray
 #ifdef MPI
@@ -3500,8 +3537,8 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     real(double) :: tau, thisTau
-  type(VECTOR) :: rVec, direction
-  integer :: i
+    type(VECTOR) :: rVec, direction
+    integer :: i
     integer :: subcell
     integer :: iLambda
     integer                     :: nOctal        ! number of octals in grid
@@ -3510,19 +3547,19 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
     integer :: iOctal_beg, iOctal_end
     real(double) :: kappaSca, kappaAbs, kappaExt, r
     type(VECTOR) :: arrayVec(6)
-     integer :: nDir
+    integer :: nDir
 #ifdef MPI
-! Only declared in MPI case
-     logical, allocatable :: eArray(:), tArray(:)
-     integer :: nVoxels, ierr
-     integer :: nFixed
-     integer :: np, n_rmdr, m
+    ! Only declared in MPI case
+    logical, allocatable :: eArray(:), tArray(:)
+    integer :: nVoxels, ierr
+    integer :: nFixed
+    integer :: np, n_rmdr, m
 #endif
 
 
-     kappaAbs = 0.d0; kappasca = 0.d0; thisTau = 0.d0
+    kappaAbs = 0.d0; kappasca = 0.d0; thisTau = 0.d0
 
-     call writeInfo("Fixing temperature on tau...",TRIVIAL)
+    call writeInfo("Fixing temperature on tau...",TRIVIAL)
 
     allocate(octalArray(grid%nOctals))
     nOctal = 0
@@ -3532,55 +3569,55 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
        stop
     endif
 
-    
+
     ! default loop indices
     ioctal_beg = 1
     ioctal_end = nOctal
 
 #ifdef MPI
-    
-            ! Set the range of index for octal loop used later.     
-            np = nThreadsGlobal
-            n_rmdr = MOD(SIZE(octalArray),np)
-            m = SIZE(octalArray)/np
-            
-            if (myRankGlobal .lt. n_rmdr ) then
-               ioctal_beg = (m+1)*myRankGlobal + 1
-               ioctal_end = ioctal_beg + m
-            else
-               ioctal_beg = m*myRankGlobal + 1 + n_rmdr
-               ioctal_end = ioctal_beg + m - 1
-            end if
-            
+
+    ! Set the range of index for octal loop used later.     
+    np = nThreadsGlobal
+    n_rmdr = MOD(SIZE(octalArray),np)
+    m = SIZE(octalArray)/np
+
+    if (myRankGlobal .lt. n_rmdr ) then
+       ioctal_beg = (m+1)*myRankGlobal + 1
+       ioctal_end = ioctal_beg + m
+    else
+       ioctal_beg = m*myRankGlobal + 1 + n_rmdr
+       ioctal_end = ioctal_beg + m - 1
+    end if
+
 #endif
 
 
-!$OMP PARALLEL DEFAULT (NONE) &
-!$OMP PRIVATE (iOctal, subcell,  kappaExt, kappaAbs, KappaSca, tau,  thisOctal, direction, thisTau, ndir, arrayvec, rvec, r) &
-!$OMP SHARED (iOctal_beg, iOctal_end, octalArray, grid, cylindrical, ilambda, amr3d, amr1d, smallestCellSize)
-     call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
+    !$OMP PARALLEL DEFAULT (NONE) &
+    !$OMP PRIVATE (iOctal, subcell,  kappaExt, kappaAbs, KappaSca, tau,  thisOctal, direction, thisTau, ndir, arrayvec, rvec, r) &
+    !$OMP SHARED (iOctal_beg, iOctal_end, octalArray, grid, cylindrical, ilambda, amr3d, amr1d, smallestCellSize)
+    call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
 
-     if (amr3d) then
-        nDir = 6
-     else
-        nDir = 4
-     endif
+    if (amr3d) then
+       nDir = 6
+    else
+       nDir = 4
+    endif
 
-     if (amr1d) ndir = 2
-     if (nDir == 4) then
-        arrayVec(1) = VECTOR(1.d0, 1.d-10, 1.d-10)
-        arrayVec(2) = VECTOR(-1.d0, 1.d-10, 1.d-10)
-        arrayVec(3) = VECTOR(1.d-10, 1.d-10, 1.d0)
-        arrayVec(4) = VECTOR(1.d-10, 1.d-10,-1.d0)
-     endif
+    if (amr1d) ndir = 2
+    if (nDir == 4) then
+       arrayVec(1) = VECTOR(1.d0, 1.d-10, 1.d-10)
+       arrayVec(2) = VECTOR(-1.d0, 1.d-10, 1.d-10)
+       arrayVec(3) = VECTOR(1.d-10, 1.d-10, 1.d0)
+       arrayVec(4) = VECTOR(1.d-10, 1.d-10,-1.d0)
+    endif
 
-     if (nDir == 2) then
-        arrayVec(1) = VECTOR(1.d0, 0.d0, 0.d0)
-        arrayVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
-     endif
+    if (nDir == 2) then
+       arrayVec(1) = VECTOR(1.d0, 0.d0, 0.d0)
+       arrayVec(2) = VECTOR(-1.d0, 0.d0, 0.d0)
+    endif
 
 
-!$OMP DO SCHEDULE (DYNAMIC, 1)
+    !$OMP DO SCHEDULE (DYNAMIC, 1)
     do iOctal =  iOctal_beg, iOctal_end
        thisOctal => octalArray(iOctal)%content
 
@@ -3592,7 +3629,7 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
              if (thisOctal%threed) then
                 rVec = rVec + 0.01d0*smallestCellSize*randomUnitVector()
              endif
-              
+
              call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
              kappaExt = kappaAbs + kappaSca
              if (thisOctal%subcellSize*kappaExt < 0.1d0) then
@@ -3626,7 +3663,7 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
 
 
                 do i = 1, ndir 
-                  direction = arrayVec(i)
+                   direction = arrayVec(i)
                    call tauAlongPath(ilambda, grid, rVec, direction, thistau, 10.d0, startOctal=thisOctal, startSubcell=subcell)
                    tau = min(tau, thisTau)
                 enddo
@@ -3635,34 +3672,34 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
                 r = sqrt(rVec%x**2 + rVec%y**2)
 
                 if ((tau > 5.).and.(r > 2.*autocm/1.d10).and.(r < 12.d0*autocm)) thisOctal%fixedTemperature(subcell) = .true.
-            
+
              endif
           endif
        enddo
     enddo
-!$OMP END DO
-!$OMP END PARALLEL
+    !$OMP END DO
+    !$OMP END PARALLEL
 
 #ifdef MPI
-     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
 
-     call countVoxels(grid%octreeRoot,nOctal,nVoxels)
-     allocate(eArray(1:nVoxels))
-     allocate(tArray(1:nVoxels))
-     eArray = .false.
-     call packFixed(octalArray, nFixed, eArray, ioctal_beg, ioctal_end)
-     call MPI_ALLREDUCE(eArray,tArray,nFixed,MPI_LOGICAL,&
+    call countVoxels(grid%octreeRoot,nOctal,nVoxels)
+    allocate(eArray(1:nVoxels))
+    allocate(tArray(1:nVoxels))
+    eArray = .false.
+    call packFixed(octalArray, nFixed, eArray, ioctal_beg, ioctal_end)
+    call MPI_ALLREDUCE(eArray,tArray,nFixed,MPI_LOGICAL,&
          MPI_LOR,MPI_COMM_WORLD,ierr)
-     eArray = tArray
-     call unpackFixed(octalArray, nFixed, eArray)
-     deallocate(eArray, tArray)
+    eArray = tArray
+    call unpackFixed(octalArray, nFixed, eArray)
+    deallocate(eArray, tArray)
 #endif
 
     deallocate(octalArray)
-!    call writeVtkFile(grid, "bias.vtk", &
-!            valueTypeString=(/"bias"/))
-     call writeInfo("Done.",TRIVIAL)
+    !    call writeVtkFile(grid, "bias.vtk", &
+    !            valueTypeString=(/"bias"/))
+    call writeInfo("Done.",TRIVIAL)
 
   end subroutine setFixedTemperatureOnTau
 
@@ -3674,16 +3711,16 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
     integer :: iOctal, iSubcell
     type(OCTAL), pointer :: thisOctal
 
-       !
-       ! Update the bias values of grid computed by all processors.
-       !
+    !
+    ! Update the bias values of grid computed by all processors.
+    !
     nBias = 0
     do iOctal = 1, SIZE(octalArray)
-       
+
        thisOctal => octalArray(iOctal)%content
-          
+
        do iSubcell = 1, thisOctal%maxChildren
-                
+
           if (.not.thisOctal%hasChild(iSubcell)) then
              nBias = nBias + 1
              if ((ioctal >= ioctal_beg).and.(iOctal<=ioctal_end)) then
@@ -3692,7 +3729,7 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
                 eArray(nBias) = 0.d0
              endif
           endif
-          
+
        end do
     end do
   end subroutine packBias
@@ -3711,9 +3748,9 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
     do iOctal = 1, SIZE(octalArray)
 
        thisOctal => octalArray(iOctal)%content
-          
+
        do iSubcell = 1, thisOctal%maxChildren
-          
+
           if (.not.thisOctal%hasChild(iSubcell)) then
              nBias = nBias + 1
              octalArray(iOctal)%content%biasCont3d(iSubcell) = eArray(nBias)
@@ -3730,16 +3767,16 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
     integer :: iOctal, iSubcell
     type(OCTAL), pointer :: thisOctal
 
-       !
-       ! Update the bias values of grid computed by all processors.
-       !
+    !
+    ! Update the bias values of grid computed by all processors.
+    !
     nFixed = 0
     do iOctal = 1, SIZE(octalArray)
-       
+
        thisOctal => octalArray(iOctal)%content
-          
+
        do iSubcell = 1, thisOctal%maxChildren
-                
+
           if (.not.thisOctal%hasChild(iSubcell)) then
              nFixed = nFixed + 1
              if ((ioctal >= ioctal_beg).and.(iOctal<=ioctal_end)) then
@@ -3748,7 +3785,7 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
                 eArray(nFixed) = .false.
              endif
           endif
-          
+
        end do
     end do
   end subroutine packFixed
@@ -3767,9 +3804,9 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
     do iOctal = 1, SIZE(octalArray)
 
        thisOctal => octalArray(iOctal)%content
-          
+
        do iSubcell = 1, thisOctal%maxChildren
-          
+
           if (.not.thisOctal%hasChild(iSubcell)) then
              nFixed = nFixed + 1
              octalArray(iOctal)%content%fixedTemperature(iSubcell) = eArray(nFixed)
@@ -3783,7 +3820,7 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    
+
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -3818,7 +3855,7 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
 
   subroutine addToScatteredIntensity(position, thisOctal, subcell, uHat, tVal)
 
-!    use intensity_storage_mod
+    !    use intensity_storage_mod
 
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
@@ -3829,7 +3866,7 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
     ang = atan2(position%y, position%x)
 
     thisVec = uHat
-    
+
     if (thisOctal%twoD) then
        thisVec = rotateZ(uHat, -ang)
     endif
@@ -3843,24 +3880,24 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) :: tVal
-!$OMP ATOMIC
+    !$OMP ATOMIC
     thisOctal%meanIntensity(subcell) = thisOctal%meanIntensity(subcell) + tVal
-    
+
   end subroutine addMeanIntensity
 
 
   recursive subroutine calcIntensityFromGrid(thisOctal, epsOverDt, dnu)
-!    use intensity_storage_mod
+    !    use intensity_storage_mod
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     real(double) :: epsOverDt, dnu
     real(double) :: v
     integer :: subcell, i
     real(double), allocatable :: iNuDOmega(:,:)
-!    integer :: npix
+    !    integer :: npix
 
-!    npix = returnHealpixPixelNumber()
-!    allocate(iNuDOmega(1:1,1:nPix))
+    !    npix = returnHealpixPixelNumber()
+    !    allocate(iNuDOmega(1:1,1:nPix))
 
 
 
@@ -3878,14 +3915,14 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
        else
 
           V = cellVolume(thisOctal, subcell)*1.d30
-!          InuDomega(:,:) = (epsOverDt / V) * thisOctal%scatteredIntensity(subcell, :,:) / dnu
+          !          InuDomega(:,:) = (epsOverDt / V) * thisOctal%scatteredIntensity(subcell, :,:) / dnu
 
-!          thisOctal%scatteredIntensity(subcell, :, :) = inuDomega(:,:) / (fourPi/dble(nPix))
+          !          thisOctal%scatteredIntensity(subcell, :, :) = inuDomega(:,:) / (fourPi/dble(nPix))
 
           write(*,*) "scat ",thisOctal%scatteredIntensity(subcell,1,:)
 
        endif
-       
+
     enddo
 
     deallocate(iNuDOmega)
@@ -3906,7 +3943,7 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
     integer :: nUnrefine
     integer :: nChild
 
-    
+
 
     kappaAbs = 0.d0; kappaSca = 0.d0
     nc = 0
@@ -3946,7 +3983,7 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
                    write(*,*) thisOctal%parent%nChildren,thisOctal%parent%indexchild
                    stop
                 endif
-                   
+
                 call deleteChild(thisOctal%parent, thisOctal%parentSubcell, adjustParent = .true., &
                      grid = grid, adjustGridInfo = .true.)
                 converged = .false.
@@ -3972,7 +4009,7 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
     integer :: nUnrefine
 
     type(VECTOR) :: cellCentre
-    
+
 
     unrefine = .true.
 
@@ -3996,14 +4033,14 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
           thisHeightSplitfac = heightSplitFac
           if (r < rSublimation) thisHeightSplitFac = 1.
           split = .false.
-          
+
 
           if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > thisheightSplitFac)) split = .true.
-          
+
           if (.not.split) then
              if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
           endif
-          
+
           if (.not.split) then
              if (.not.smoothInnerEdge) then
                 if (((r-cellsize/2.d0) < rinner).and. ((r+cellsize/2.d0) > rInner) .and. &
@@ -4016,7 +4053,7 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
           endif
           if (.not.split) then
              if (((r-cellsize/2.d0) < rSub).and. ((r+cellsize/2.d0) > rSub) .and. &
-               (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+                  (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
           endif
 
           if (.not.split) then
@@ -4032,11 +4069,11 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
           if (.not.split) then
              if ((r-cellsize/2.d0) > grid%router*1.) split = .false.
           endif
-       
+
           if ((.not.split).and.(thisOctal%nDepth > minDepthAMR)) then
              nUnrefine = nUnrefine + thisOctal%parent%nChildren
              call deleteChild(thisOctal%parent, thisOctal%parentSubcell, adjustParent = .true., &
-               grid = grid, adjustGridInfo = .true.)
+                  grid = grid, adjustGridInfo = .true.)
              converged = .false.
           endif
        endif
@@ -4104,9 +4141,9 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
        call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, kappaAbs = kappaAbs, kappaSca = kappaSca, &
             kappaAbsDust = kappaAbsDust, kappaScaDust=kappaScaDust)
        dTau = (kappaAbsDust + kappaScaDust) * tVal
-       
+
        jnu = kappaAbs * bnu(cspeed/(grid%lamArray(ilambda)*angstromTocm), dble(thisOctal%temperature(subcell)))
-       
+
        if (kappaAbs .ne. 0.d0) then
           snu = jnu/kappaAbs
           i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
@@ -4114,7 +4151,7 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
           snu = tiny(snu)
           i0 = i0 + tiny(i0)
        endif
-       
+
        tau = tau + dtau
        position = position + (tval+1.d-3*grid%halfSmallestSubcell) * viewVec
        thisOctal%etaLine(subcell) =  max(tau,1.d-30)
@@ -4146,9 +4183,9 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
        call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, kappaAbs = kappaAbs, kappaSca = kappaSca, &
             kappaAbsDust = kappaAbsDust, kappaScaDust=kappaScaDust)
        dTau = (kappaAbsDust + kappaScaDust) * tVal
-       
+
        jnu = kappaAbs * bnu(cspeed/(grid%lamArray(ilambda)*angstromTocm), dble(thisOctal%temperature(subcell)))
-       
+
        if (kappaAbs .ne. 0.d0) then
           snu = jnu/kappaAbs
           i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
@@ -4156,7 +4193,7 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
           snu = tiny(snu)
           i0 = i0 + tiny(i0)
        endif
-       
+
        tau = tau + dtau
        position = position + (tval+1.d-3*grid%halfSmallestSubcell) * viewVec
        thisOctal%etaLine(subcell) =  max(tau,thisOctal%etaLine(subcell))
@@ -4189,9 +4226,9 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
        call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, kappaAbs = kappaAbs, kappaSca = kappaSca, &
             kappaAbsDust = kappaAbsDust, kappaScaDust=kappaScaDust)
        dTau = (kappaAbsDust + kappaScaDust) * tVal
-       
+
        jnu = kappaAbs * bnu(cspeed/(grid%lamArray(ilambda)*angstromTocm), dble(thisOctal%temperature(subcell)))
-       
+
        if (kappaAbs .ne. 0.d0) then
           snu = jnu/kappaAbs
           i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
@@ -4199,7 +4236,7 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
           snu = tiny(snu)
           i0 = i0 + tiny(i0)
        endif
-       
+
        tau = tau + dtau
        position = position + (tval+1.d-3*grid%halfSmallestSubcell) * viewVec
        thisOctal%etaLine(subcell) = max(tau,1.d-30)
@@ -4243,12 +4280,12 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
 
 
           if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > heightSplitFac)) split = .true.
-          
+
           if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
-          
+
           if (((r-cellsize/2.d0) < rSub).and. ((r+cellsize/2.d0) > rSub) .and. &
                (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
-          
+
           if (((r-cellsize/2.d0) < rInner).and. ((r+cellsize/2.d0) > rInner) .and. &
                (thisOctal%nDepth < maxdepthamr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
 
@@ -4283,16 +4320,16 @@ subroutine setFixedTemperatureOnTau(grid, iLambda)
   end subroutine refineDiscGrid
 
 
-recursive subroutine quickSublimateLucy(thisOctal, minLevel)
-  use inputs_mod, only : grainFrac, nDustType, tsub
-  type(octal), pointer   :: thisOctal
-  real(double), optional :: minLevel
-  real(double) :: thisMinLevel
-  type(octal), pointer  :: child 
-  ! Where dust is present set dustTypeFraction to this value. 
-  integer :: subcell, i, idust
-  
-  do subcell = 1, thisOctal%maxChildren
+  recursive subroutine quickSublimateLucy(thisOctal, minLevel)
+    use inputs_mod, only : grainFrac, nDustType, tsub
+    type(octal), pointer   :: thisOctal
+    real(double), optional :: minLevel
+    real(double) :: thisMinLevel
+    type(octal), pointer  :: child 
+    ! Where dust is present set dustTypeFraction to this value. 
+    integer :: subcell, i, idust
+
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1

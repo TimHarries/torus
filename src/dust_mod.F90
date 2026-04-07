@@ -1368,6 +1368,12 @@ contains
              newfrac = max(newfrac,smallVal)
              
              deltaFrac = newFrac - thisOctal%oldFrac(subcell)
+             underCorrect = 1.
+             if (deltaFrac < 0.d0) then
+                underCorrect = 1.
+             else
+                undercorrect = 0.5
+             endif
              
              frac = thisOctal%oldFrac(subcell) + underCorrect * deltaFrac
              

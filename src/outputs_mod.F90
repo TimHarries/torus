@@ -81,7 +81,8 @@ contains
     real(double) :: lambdaArray(2000), dx
     integer :: nimage, nCubeLambda
     type(IMAGETYPE) :: imageSlice
-
+    real(double) :: rArrayRun(2000),tArrayRun(2000)
+    integer :: nr
 #ifdef MPI
     real(double), pointer :: image(:,:)
     character(len=80) :: thisFile
@@ -131,7 +132,23 @@ contains
        call writeScatteringSurfaceFile(scatteringSurfaceFilename, grid)
     endif
 
-
+    if (geometry == "athena") then
+       call temperatureAlongPath(grid, VECTOR(1.d-10,0.d0,0.d0), VECTOR(1.d0,0.d0,0.d0) &
+            , nr, rArrayRun, tArrayRun)
+       open(20,file="radial_temperature.dat",status="unknown", form="formatted")
+       do i = 1, nr
+          write(20,*) rarrayRun(i)*1.e10/autocm,tarrayRun(i)
+       enddo
+       close(20)
+       call temperatureAlongPath(grid, VECTOR(1.*autocm/1.e10,0.d0, -1.*autocm/1.d10), &
+            VECTOR(0.d0,0.d0,1.d0) , nr, rArrayRun, tArrayRun)
+       open(20,file="slice_0p5au_temperature.dat",status="unknown", form="formatted")
+       do i = 1, nr
+          write(20,*) rarrayRun(i)*1.e10/autocm,tarrayRun(i)
+       enddo
+       close(20)
+    endif
+    
     if (geometry == "envelope") then
        if (writeoutput.and.amr2d) call writeEduard(grid)
        goto 666

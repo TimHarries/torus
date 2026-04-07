@@ -64,7 +64,7 @@ module readathena_mod
         integer, intent(in) :: nblock, nr, ntheta
         logical, intent(inout) :: converged
         type(VECTOR) :: rVec
-        real(double) :: r, theta, rhocell, cellsize
+        real(double) :: r, theta, rhocell, cellsize, ang, rcylindrical
         integer :: subcell, i
         logical :: found
         do subcell = 1, thisOctal%maxChildren
@@ -81,6 +81,10 @@ module readathena_mod
         rVec = subcellCentre(thisOctal, subcell)
         r = modulus(rVec)*1.e10
         theta = acos(rVec%z/modulus(rvec))
+        rcylindrical = sqrt(rVec%x**2 + rVec%y**2)*1.e10
+
+        ang = acos(rcylindrical/r)*180.d0/pi
+        if (ang > 20.) cycle
         call return_rho_size(r, theta, nblock, nr, ntheta, rarray, thetaarray, rhoarray, rhocell, cellsize, found)
         if (found) then
             cellsize = cellsize/1.d10

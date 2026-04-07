@@ -18726,6 +18726,42 @@ END SUBROUTINE assignDensitiesStellarWind
     end do
   end subroutine tauAlongPath2
 
+
+  subroutine temperatureAlongPath(grid, rVec, direction, nr, rArray, tArray)
+    type(GRIDTYPE) :: grid
+    real(double) :: tArray(:),rArray(:)
+    integer :: nr,i
+    type(VECTOR) :: rVec, direction, currentPosition, beforeVec, afterVec
+    real(double) :: distToNextCell
+    type(OCTAL), pointer :: thisOctal, sOctal
+    real(double) :: fudgeFac = 1.d-3
+    real(double) :: kappaSca, kappaAbs, kappaExt
+    integer :: subcell
+    currentPosition = rVec
+    nr = 1
+    rarray(nr) = rvec.dot.direction
+
+    CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
+    tArray(nr) = thisOctal%temperature(subcell)
+    do while (inOctal(grid%octreeRoot, currentPosition))
+
+       call findSubcellLocal(currentPosition, thisOctal,subcell)
+       
+       sOctal => thisOctal
+       call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
+
+       currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
+       if (.not.inOctal(grid%octreeRoot, currentPosition)) exit
+       call findSubcellLocal(currentPosition, thisOctal,subcell)
+       rVec = subcellCentre(thisOctal,subcell)
+       nr = nr + 1
+       rArray(nr) = rVec.dot.direction
+       tArray(nr) = thisOctal%temperature(subcell)
+
+    end do
+  end subroutine temperatureAlongPath
+
+  
     subroutine tauAlongPathScat(ilambda, grid, rVec, direction, tau, tauMax, ross, startOctal, startSubcell, nTau, xArray, tauArray)
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, direction, currentPosition, beforeVec, afterVec
