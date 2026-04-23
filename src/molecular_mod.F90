@@ -901,10 +901,16 @@ module molecular_mod
               if ((subcell == 1).and.associated(thisOctal%molecularLevel)) &
                    deallocate(thisOctal%molecularLevel)
               
+
+              
               if (.not. associated(thisOctal%molecularLevel)) &
                    allocate(thisOctal%molecularLevel(1:maxlevel,1:thisOctal%maxChildren))
 
-
+              if (SIZE(thisOctal%molecularLevel,1).ne.maxlevel) then
+                   deallocate(thisOctal%molecularLevel)
+                   allocate(thisOctal%molecularLevel(1:maxlevel,1:thisOctal%maxChildren))
+                   thisOctal%molecularLevel = 0.d0
+              endif
 
               
                  if((grid%geometry .eq. "h2obench1") .or. (grid%geometry .eq. "h2obench2")) then
@@ -934,9 +940,16 @@ module molecular_mod
 !!!!!
               if ((subcell==1).and.(associated(thisOctal%bnu))) deallocate(thisOctal%bnu)
 
-
+              
+              
                  if (.not.associated(thisOctal%bnu)) &
-                 allocate(thisOctal%bnu(1:maxtrans, thisOctal%maxChildren))
+                      allocate(thisOctal%bnu(1:maxtrans, thisOctal%maxChildren))
+
+                 if (size(thisOctal%bnu,1).ne.maxtrans) then
+                    deallocate(thisOctal%bnu)
+                    allocate(thisOctal%bnu(1:maxtrans, thisOctal%maxChildren))
+                 endif
+                   
               do i = 1, maxtrans
                  thisOctal%bnu(i,subcell) = bnu(thisMolecule%transFreq(i), dble(thisOctal%temperature(subcell)))
               enddo
@@ -946,6 +959,12 @@ module molecular_mod
 
               if (.not.associated(thisOctal%jnu)) &
                  allocate(thisOctal%jnu(1:maxtrans,1:thisOctal%maxChildren))
+
+              if (size(thisOctal%jnu,1).ne.maxtrans) then
+                 deallocate(thisOctal%jnu)
+                 allocate(thisOctal%jnu(1:maxtrans, thisOctal%maxChildren))
+              endif
+                 
               
               nmol = thisoctal%nh2(subcell) * thisoctal%molabundance(subcell)
 
@@ -4877,9 +4896,9 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, dataCubeFilename, input
        else
           Out = amrGridVelocity(grid%octreeRoot, position, startOctal = startOctal, &
                actualSubcell = subcell, linearinterp = .false.)
+          out = startOctal%velocity(subcell)
        endif
 
-!       print *, "out velocity", thisout, "km/s"
        oldout = out
        oldposition = position
 
@@ -6477,6 +6496,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
 !                xhitau = xhitau + dtau
          
            jnu = etaLine * phiProfVal
+!           write(*,*) "xxx jnu ",jnu,etaline,phiprofval, dv, thisOctal%molMicroturb(subcell), thisVel*(cspeed/1.e5)
 
            if(usedustmolecular) then
               jnu = jnu + dustjnu
@@ -6501,6 +6521,7 @@ subroutine intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, d
 
 !           if(dI .gt. i0 * 1d-10 .and. tau .lt. 100) then
            i0 = i0 + dI
+!           write(*,*) "xxx di",di,i0
 !           if(thisoctal%rho(subcell) / (amu * 2.) .gt. 1e3 .and. thisoctal%rho(subcell) / (amu * 2.) .lt. 1e4) &
 !                lowi0 = lowi0 + dI
 !           if(thisoctal%rho(subcell) / (amu * 2.) .gt. 1e4 .and. thisoctal%rho(subcell) / (amu * 2.) .lt. 1e5) &

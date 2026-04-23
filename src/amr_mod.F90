@@ -5393,10 +5393,11 @@ CONTAINS
           rVec = subcellCentre(thisOCtal,subcell)
           r = sqrt(rvec%x**2 + rVec%y**2)
           z = rVec%z
+          if ( ((r - thisOctal%subcellsize/2.)<rinner) .and.((r + thisOCtal%subcellsize/2.)>rinner)) split=.true.
           if ((r>rInner).and.(r<rOuter)) then
              h = height*(r/rOuter)**betaDisc
              if ((abs(z/h)) < 10.) then
-                if (thisOctal%subcellSize/h > 1.) split = .true.
+                if (thisOctal%subcellSize/h > heightsplitfac) split = .true.
              endif
           endif
           if (thisOctal%cylindrical) then

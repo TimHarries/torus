@@ -232,9 +232,23 @@ doReadgrid: if (readgrid.and.(.not.loadBalancingThreadGlobal)) then
 
        case("katie")
           call writeInfo("Filling katie geometry",TRIVIAL)
+          
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d)
-          !          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
-          gridconverged = .false.
+          call writeInfo("Doing initial split",TRIVIAL)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, .false.)
+          call writeInfo("Done",TRIVIAL)
+          call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
+          do
+             smoothConverged = .true.
+             ! The following is Tim's replacement for soomthAMRgrid.
+             call myScaleSmooth(smoothFactor, grid, &
+                  smoothConverged,  inheritProps = .false., interpProps = .false.)
+             if (smoothConverged) exit
+          end do
+          call writeInfo("...grid smoothing complete", TRIVIAL)
+
+          
+          gridconverged = .true.
           j = 0
           do while(.not.gridconverged)
              call fillgridKatie(grid, gridconverged, dosplit=.true.)
@@ -3417,7 +3431,7 @@ recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, fac
   type(GRIDTYPE) :: grid
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child
-  type(VECTOR) :: rVec
+  type(VECTOR) :: rVec, vVec, thisvVec
   integer :: subcell, i, j
   real(double) :: thisZ, rho, h, thisH, thisRho, z, thisR, r, fac
 
@@ -3432,7 +3446,7 @@ recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, fac
            end if
         end do
      else
-        testVec = vector(6.e3,0.d0,0.0)
+        testVec = 1496.d0*vector(-48.,-24.d0,-0.001d0)
         !           testVec = vector(83.d0,357.d0,1.d-3)
         debug = .false.
         if (inSubcell(thisOctal,subcell,testVec)) debug = .true.
@@ -3445,6 +3459,7 @@ recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, fac
         thisH = 1.d30
         thisZ  = 0.
         thisR = 0.
+        thisvVEc = VECTOR(0.d0,0.d0,0.d0)
         aziSplit = .false.
         !!           !$OMP PARALLEL DEFAULT(none) &
         !!           !$OMP PRIVATE (j,  rho, h, z, r) &
@@ -3453,21 +3468,24 @@ recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, fac
         !!           !$OMP DO SCHEDULE(DYNAMIC)
         do j = 1, nr
            if (j < nr) then
-              call katieRho(rVec, lArray(j),rArray(j),rArray(j+1), rho, h, z, r)
+              call katieRho(rVec, lArray(j),rArray(j),rArray(j+1), rho, h, z, r, vVec, debug)
            else
-              call katieRho(rVec, lArray(j),rArray(j),dble(rOuter), rho, h, z, r)
+              call katieRho(rVec, lArray(j),rArray(j),dble(rOuter), rho, h, z, r, vVec, debug)
            endif
+           if (debug) write(*,*) j,rho
            if (rho > thisRho) then
               thisH = h
               thisZ = z
               thisR = r
               thisRho = rho
+              thisVvec = vVec
               fac = facArray(j)
               if (lArray(j)%z < 1.d0) aziSplit = .true.
            endif
         enddo
 
         thisOctal%rho(subcell) = max(thisRho*fac,1.d-30)
+        thisOctal%velocity(subcell) = vVec
         if (debug) write(*,*) "rho ",thisOctal%rho(subcell),fac
 
 
@@ -3540,19 +3558,23 @@ recursive subroutine fillGridRecurKatie(thisOctal, grid, nr, rArray, lArray, fac
 end subroutine fillGridRecurKatie
 
 
-subroutine katieRho(rVec, lHat, rIn, rOut, rho, h, z, r)
-  use inputs_mod, only : alphaDisc, betaDisc, height, rInner
-  type(VECTOR) :: lHat, rVec, pVec
+subroutine katieRho(rVec, lHat, rIn, rOut, rho, h, z, r, vVec, debug)
+  use inputs_mod, only : alphaDisc, betaDisc, height, rInner, sourceMass
+  type(VECTOR) :: lHat, rVec, pVec,vdot, vVec
   real(double) :: h, z, r, rho, rIn, rOut
+  logical :: debug
   z = lHat.dot.rVec
   pVec = rVec - z * lHat
   r = modulus(pVec)
+  vdot = lhat.cross.pVec
+  call normalize(vdot)
+  vVec = (sqrt(bigG * sourcemass(1)/(r*1.d10))/cSpeed) * vdot
   h = 1.d30
   rho = 0.d0
-  if ((r > rIn*0.5).and.(r < rOut)) then
+  if (debug) write(*,*) r, rin, rout
+  if ((r >= rIn*0.99).and.(r <= rOut)) then
      h = height*(r/(100.d0*autocm/1.d10))**betaDisc
      rho = max(1.d-300,(r/rInner)**(-alphaDisc) * exp(-0.5d0*(z/h)**2))
-     if (r < rIn) rho = 1.d-30
   endif
 end subroutine katieRho
 
