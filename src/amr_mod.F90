@@ -5393,10 +5393,11 @@ CONTAINS
           rVec = subcellCentre(thisOCtal,subcell)
           r = sqrt(rvec%x**2 + rVec%y**2)
           z = rVec%z
-          if ( ((r - thisOctal%subcellsize/2.)<rinner) .and.((r + thisOCtal%subcellsize/2.)>rinner)) split=.true.
+          h = height*(r/rOuter)**betaDisc
+          if ( ((r - thisOctal%subcellsize/2.)<rinner) .and.((r + thisOCtal%subcellsize/2.)>rinner) &
+               .and. (abs(z/h)<7.)) split=.true.
           if ((r>rInner).and.(r<rOuter)) then
-             h = height*(r/rOuter)**betaDisc
-             if ((abs(z/h)) < 10.) then
+             if ((abs(z/h)) < 7.) then
                 if (thisOctal%subcellSize/h > heightsplitfac) split = .true.
              endif
           endif
@@ -11340,6 +11341,12 @@ logical function insideCone(position, binarySep, momRatio)
     thisOctal%velocity = VECTOR(0.,0.,0.)
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
+!    thisOctal%rho(subcell) = 1.e-30
+!    rVec = subcellCentre(thisOctal,subcell)
+!    r = modulus(rVec)
+!    if ((r>rinner).and.(r < router)) then
+!       thisOctal%rho(subcell) = 1.e-18
+!    endif
   end subroutine benchmarkDisk
 
   subroutine parkerWind(thisOctal,subcell)
@@ -12115,18 +12122,19 @@ logical function insideCone(position, binarySep, momRatio)
 
   subroutine clumpyAgb(thisOctal,subcell)
 
-    use inputs_mod, only : rinner, router, vterm, mdot
+    use inputs_mod, only : rinner, router, vterm, mdot, beta, v0
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     type(VECTOR) :: rvec
-    real(double) :: r
+    real(double) :: r, v
     rVec = subcellCentre(thisOctal, subcell)
     r = modulus(rVec)
+    v = (vterm - v0) + vterm *(1.d0 - rinner/r)**beta
     thisOctal%rho(subcell) = 1.d-30
        thisOctal%temperature(subcell) = 10.
     if ((r > rinner).and.(r < router)) then
-       thisOctal%rho(subcell) = mdot / (fourpi* (r*1.d10)**2 * vterm)
+       thisOctal%rho(subcell) = mdot / (fourpi* (r*1.d10)**2 * v)
     endif
 
 

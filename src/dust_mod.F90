@@ -502,7 +502,7 @@ contains
   subroutine fillGridMie(grid, aMin, aMax, a0, qDist, pDist, fillingFactor,&
        ngrain, abundance, grainname, thisDust)
 !DEC$ NOOPTIMIZE
-    use inputs_mod, only : grainFrac, grainDensity
+    use inputs_mod, only : grainFrac, grainDensity, noscattering
 ! This compiler directive disables optimisation in this subroutine, as  
 ! ifort 12 was incorrectly setting up grid%oneKappaAbs and grid%oneKappaSca. 
     use mieDistCrossSection_mod, only: mieDistCrossSection, mieSingleCrossSection
@@ -726,6 +726,11 @@ contains
        enddo
        grid%oneKappaAbs(thisDust,1:grid%nLambda) = (sigmaAbs(1:grid%nLambda) * 1.e10)/meanParticleMass
        grid%oneKappaSca(thisDust,1:grid%nLambda) = (sigmaSca(1:grid%nLambda) * 1.e10)/meanParticleMass
+
+       if (noScattering) then
+          grid%oneKappaSca(thisDust,1:grid%nLambda) = 1.e-30
+       endif
+          
 
        write(albedoFilename,'(a,i2.2,a)') "albedo",thisDust,".dat"
        if (writeoutput) open(20,file=albedoFilename,form="formatted",status="unknown")

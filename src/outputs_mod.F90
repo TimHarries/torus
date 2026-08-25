@@ -612,7 +612,8 @@ if (.false.) then
           call writeRadialMolecular(grid, radialFilename, globalMolecule, itrans)
        else
 #endif
-          call writeValuesNoDomain(radialFilename, grid)
+          call writeValuesNoDomain(radialFilename, grid, VECTOR(0.d0,0.d0,0.d0),VECTOR(1.d0,0.d0,0.d0))
+          call writeValuesNoDomain("vertical.dat", grid, VECTOR(300.d0*1496.d0, 0.d0, -1000.d0*1496.),VECTOR(0.d0,0.d0,1.d0))
 !          call writeRadial(grid, radialFilename)
 #ifdef MOLECULAR
        endif
@@ -740,22 +741,21 @@ if (.false.) then
     close(33)
   end subroutine writeEduard
 
-  subroutine writeValuesNoDomain(outputFilename, grid)
+  subroutine writeValuesNoDomain(outputFilename, grid,origin,uhat)
     type(GRIDTYPE) :: grid
-    real(double) ::  tVal
+    real(double) ::  tVal,cval
     character(len=*) :: outputFilename
-    type(VECTOR) :: rVec, uHat, cVec
+    type(VECTOR) :: rVec, uHat, origin
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     open(21, file=outputFilename, status="unknown", form="formatted")
-    rVec = VECTOR(0.d0, 0.d0, 0.d0)
-    uHat = VECTOR(1.d0, 0.d0, 0.d0)
+    rVec = origin
     thisOctal => grid%octreeRoot
     call findSubcellLocal(rVec, thisOctal, subcell)
     do while(inOctal(grid%octreeRoot, rVec))
        call findSubcellLocal(rVec, thisOctal, subcell)
-       cVec = subcellCentre(thisOctal, subcell)
-       write(21, *) modulus(cVec)*1.d10/autocm, thisOctal%temperature(subcell)
+       cval = subcellCentre(thisOctal, subcell).dot.uhat
+       write(21, *) cVal*1.d10/autocm, thisOctal%temperature(subcell), thisOctal%rho(subcell)
        call distanceToCellBoundary(grid, rVec, uHat, tVal, sOctal=thisOctal)
        rVec = rVec + (tVal + 1.d-3*grid%halfSmallestSubcell) * uHat
     enddo

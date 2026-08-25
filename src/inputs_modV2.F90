@@ -1629,9 +1629,15 @@ contains
 
           call getReal("vterm", vterm, 1.e5, cLine, fLine, nLines, &
                "Terminal velocity (km/s): ","(a,1pe8.1,1x,a)", 1000., ok, .true.)
+          call getReal("v0", v0, 1.e5, cLine, fLine, nLines, &
+               "Wind base velocity (km/s): ","(a,1pe8.1,1x,a)", 1000., ok, .true.)
 
+          
           call getReal("mdot", mdot, real(mSol) /( 365.25 * 24. * 3600.),  cLine, fLine, nLines, &
                "Mass-loss rate (solar masses per year): ","(a,1pe8.1,1x,a)", 1000., ok, .true.)
+
+          call getReal("beta", beta, 1.,  cLine, fLine, nLines, &
+               "Velocity law beta: ","(a,f5.2,1x,a)", 1., ok, .true.)
 
        case("lexington")
           call getReal("rinner", rInner, 1.e7, cLine, fLine, nLines, &
@@ -3308,6 +3314,8 @@ contains
           goto 555
        endif
 
+       call getLogical("noscat", noScattering, cLine, fLine, nLines, &
+            "No scattering opacity in model: ","(a,1l,1x,a)", .false., ok, .false.)
           
 
        call getReal("dusttogas", dusttoGas, 1., cLine, fLine, nLines, &

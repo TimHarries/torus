@@ -1621,6 +1621,11 @@ subroutine convertVTKdistance(float32)
 
     call findMultiFilename(rootVTKFilename, iModel, vtkfilename)
 
+    if (grid%octreeRoot%oneD) then
+       call writeRadialTextFile(grid, vtkFilename, valueTypeFilename, valueTypeString)
+       goto 666
+    endif
+
     call writeInfo("Writing vtk file to: "//trim(vtkfilename),TRIVIAL)
 
     if (useBinaryXMLVtkFiles) then
@@ -1893,6 +1898,147 @@ endif
   call writeInfo("Vtk file written and closed",TRIVIAL)
 
   end subroutine writeVtkFileAMR
+
+  subroutine writeRadialTextFile(grid, vtkFilename, valueTypeFilename, valueTypeString)
+    ! For 1D (radial) grids, write a plain multicolumn text file instead of a
+    ! vtk/vtu file: column 1 is the radial cell centre, the rest are whatever
+    ! quantities are requested in valueTypeString (or valueTypeFilename).
+    use inputs_mod, only : vtkIncludeGhosts, nDustType
+    type(GRIDTYPE) :: grid
+    character(len=*) :: vtkFilename
+    character(len=*), optional :: valueTypeFilename
+    character(len=*), optional :: valueTypeString(:)
+    character(len=84) :: datFilename
+    character(len=25) :: valueType(1000)
+    integer :: nValueType, i_tmp, j
+    integer :: nOctals, nVoxels, nCells
+    integer :: lunit = 69
+    integer :: i, iType, idot
+    real, allocatable :: radius(:), columns(:,:)
+    real, allocatable :: rArray(:,:)
+
+#ifdef MPI
+    if (myRankGlobal /= 0) return
+#endif
+
+    idot = index(vtkFilename, ".", back=.true.)
+    if (idot > 0) then
+       datFilename = vtkFilename(1:idot-1)//".dat"
+    else
+       datFilename = trim(vtkFilename)//".dat"
+    endif
+
+    if (PRESENT(valueTypeFilename)) then
+       nValueType = 1
+       open(29, file=valueTypeFilename, status="old", form="formatted")
+30     continue
+       read(29,'(a)',end=40) valueType(nValueType)
+       nValueType = nValueType + 1
+       goto 30
+40     continue
+       nValueType = nValueType - 1
+       close(29)
+    else
+       nValueType = 3
+       valueType(1) = "rho"
+       valueType(2) = "velocity"
+       valueType(3) = "temperature"
+    endif
+
+    if (PRESENT(valueTypeString)) then
+       nValueType = SIZE(valueTypeString)
+       valueType(1:nValueType) = valueTypeString(1:nValueType)
+
+       if (ANY(valueTypeString == "dust")) then
+          i_tmp = nValueType
+          do j = 1, i_tmp
+             if (valueType(j) == "dust") valueType(j) = "dust01"
+          enddo
+          if (nDustType > 1) then
+             nValueType = i_tmp + nDustType - 1
+             do j = 2, nDustType
+                write(valueType(i_tmp+j-1),'(a,i2.2)') "dust", j
+             enddo
+          endif
+       endif
+    endif
+
+    call countVoxels(grid%octreeRoot, nOctals, nVoxels)
+    nCells = nVoxels
+
+    allocate(radius(nCells))
+    call getRadialCentres(grid, radius, vtkIncludeGhosts)
+
+    allocate(columns(nValueType, nCells))
+    allocate(rArray(1:3, 1:nCells))
+    do iType = 1, nValueType
+       call getValues(grid, valueType(iType), rArray, vtkIncludeGhosts, 0)
+       columns(iType,:) = rArray(1,:)
+    enddo
+    deallocate(rArray)
+
+    call writeInfo("Writing radial text file to: "//trim(datFilename), TRIVIAL)
+
+    open(lunit, file=datFilename, form="formatted", status="unknown")
+    write(lunit,'(a)',advance="no") "# r"
+    do iType = 1, nValueType
+       write(lunit,'(1x,a)',advance="no") trim(valueType(iType))
+    enddo
+    write(lunit,*)
+
+    do i = 1, nCells
+       write(lunit,'(1p,999e16.7)') radius(i), columns(1:nValueType,i)
+    enddo
+    close(lunit)
+
+    deallocate(radius)
+    deallocate(columns)
+
+  end subroutine writeRadialTextFile
+
+  subroutine getRadialCentres(grid, rArray, includeGhosts)
+    type(GRIDTYPE) :: grid
+    real :: rArray(:)
+    logical :: includeGhosts
+    integer :: n
+
+    n = 0
+    call recursiveGetRadialCentres(grid, grid%octreeRoot, rArray, n, includeGhosts)
+
+  end subroutine getRadialCentres
+
+  recursive subroutine recursiveGetRadialCentres(grid, thisOctal, rArray, n, includeGhosts)
+    use inputs_mod, only : hydrodynamics
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, child
+    real :: rArray(:)
+    integer :: n, subcell, i
+    logical :: includeGhosts
+    type(VECTOR) :: cen
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          do i = 1, thisOctal%nChildren
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call recursiveGetRadialCentres(grid, child, rArray, n, includeGhosts)
+                exit
+             endif
+          enddo
+       else
+#ifdef MPI
+          if ( (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) .and. grid%splitOverMPI ) cycle
+          if (hydrodynamics) then
+             if (checkGhost(thisOctal, subcell).and.(.not.includeGhosts)) cycle
+          endif
+#endif
+          n = n + 1
+          cen = subcellCentre(thisOctal, subcell)
+          rArray(n) = real(cen%x)
+       endif
+    enddo
+
+  end subroutine recursiveGetRadialCentres
 
 !   subroutine writeIfitFile(grid, ifritFilename)
 !      use inputs_mod, only : minDepthAMR, maxDepthAMR
