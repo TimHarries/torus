@@ -2008,7 +2008,6 @@ endif
   end subroutine getRadialCentres
 
   recursive subroutine recursiveGetRadialCentres(grid, thisOctal, rArray, n, includeGhosts)
-    use inputs_mod, only : hydrodynamics
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child
     real :: rArray(:)
