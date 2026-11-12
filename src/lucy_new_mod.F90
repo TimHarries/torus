@@ -152,6 +152,7 @@ contains
     logical :: thisSmooth
     logical :: thermalPhoton, scatteredPhoton
     integer :: nCellsInDiffusion
+    integer :: nColdDiff
     real(double) :: fac1(nLambda), fac1dnu(nlambda)
     integer :: nVoxels, nOctals, nInFlow
     real(double), allocatable :: dustMassArray(:)
@@ -871,6 +872,16 @@ contains
              else
                 if (iIter_grand >= 5) call solveArbitraryDiffusionZones(grid)
              endif
+             ! The diffusion solver sets only the cell temperature. Photon packets deposit little
+             ! or no energy in diffusion cells, so the per-species temperatures computed in
+             ! calculateTemperatureCorrections collapse towards TMinGlobal there. Those stale
+             ! values are then used for the emissivity (calculateEtaCont) and for sublimation.
+             ! In the optically thick diffusion limit all grain species share the local
+             ! radiation-field temperature, so set them to the cell temperature.
+             nColdDiff = 0
+             call syncDustTempsInDiffusionZone(grid%octreeRoot, nColdDiff)
+             write(message,'(a,i8)') "Diffusion cells with a dust species <50% of cell T (reset to cell T): ", nColdDiff
+             call writeInfo(message, FORINFO)
           endif
        call writeVtkFile(grid, "diff.vtk", &
             valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
@@ -1776,6 +1787,42 @@ contains
 
   end subroutine intersectCubeCart 
 
+
+
+
+  ! Set the per-species dust temperatures (tempStorage columns nDustType+1:2*nDustType)
+  ! and tDust to the cell temperature in cells treated with the diffusion approximation.
+  ! nCold counts cells where any species was below half the cell temperature beforehand.
+  recursive subroutine syncDustTempsInDiffusionZone(thisOctal, nCold)
+    use inputs_mod, only : nDustType
+    type(octal), pointer :: thisOctal
+    type(octal), pointer :: child
+    integer :: nCold
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call syncDustTempsInDiffusionZone(child, nCold)
+                exit
+             end if
+          end do
+       else
+          if (.not.associated(thisOctal%diffusionApprox)) cycle
+          if (.not.thisOctal%diffusionApprox(subcell)) cycle
+          if (associated(thisOctal%tempStorage)) then
+             if (size(thisOctal%tempStorage,2) >= 2*nDustType) then
+                if (any(thisOctal%tempStorage(subcell,nDustType+1:2*nDustType) < &
+                     0.5d0*dble(thisOctal%temperature(subcell)))) nCold = nCold + 1
+                thisOctal%tempStorage(subcell,nDustType+1:2*nDustType) = dble(thisOctal%temperature(subcell))
+             endif
+          endif
+          if (associated(thisOctal%tDust)) thisOctal%tDust(subcell) = dble(thisOctal%temperature(subcell))
+       endif
+    enddo
+  end subroutine syncDustTempsInDiffusionZone
 
    recursive subroutine zeroDistanceGrid(thisOctal)
    use inputs_mod, only : nDustType
