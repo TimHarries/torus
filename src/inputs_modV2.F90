@@ -4194,6 +4194,15 @@ contains
     call getLogical("vardustsub", variableDustSublimation, cLine, fLine, nLines, &
          "Variable dust sublimation temperature: ", "(a,1l,1x,a)", .false., ok, .false.)
 
+    call getString("sublimationmethod", sublimationMethod, cLine, fLine, nLines, &
+         "Variable dust sublimation method: ","(a,a,1x,a)","sweep", ok, .false.)
+    if (variableDustSublimation.and.(trim(sublimationMethod) /= "old").and. &
+         (trim(sublimationMethod) /= "adaptive").and.(trim(sublimationMethod) /= "sweep")) then
+       call writeFatal("sublimationmethod must be old, adaptive or sweep")
+    endif
+    call getDouble("sublimationtolerance", sublimationTolerance, 1.d0, cLine, fLine, nLines, &
+         "Sublimation front radius tolerance (sweep): ","(a,f8.4,1x,a)", 0.02d0, ok, .false.)
+
 
     call getReal("tthresh", tthresh, 1., cLine, fLine,  nLines, &
          "Dust sublimation temperature (K): ","(a,f8.2,a)", 0., ok, .false.)

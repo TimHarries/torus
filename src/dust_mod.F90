@@ -1473,6 +1473,159 @@ contains
 
   end subroutine sublimateDust
 
+  ! ---------------------------------------------------------------------------------------
+  ! Adaptive variable dust sublimation (sublimationmethod adaptive)
+  !
+  ! Called after the temperature update in every Lucy iteration. For each cell and dust
+  ! type, the surviving fraction s = dustTypeFraction/origDustTypeFraction is moved towards
+  ! the equilibrium value s_eq(T_d) given by the sublimation curve, where T_d is the
+  ! per-species dust temperature. T_d is meaningful even in dust-free cells, because the
+  ! Monte Carlo estimate (absorbed energy / Planck-mean opacity) does not depend on the
+  ! amount of dust.
+  !
+  ! Each cell keeps its own step size: it grows by 1.2 (up to 1) while the cell keeps moving in
+  ! the same direction and halves (down to stepMin) when the direction reverses. Cells that
+  ! are steadily sublimating or condensing therefore move quickly, while cells that
+  ! oscillate (e.g. the sublimation front lying inside a cell, or Monte Carlo noise near
+  ! T_sub) settle geometrically. Changes are only made when s lies outside the range of
+  ! s_eq allowed by the noise in T_d (+/- 2 sigma, sigma ~ T/(4 sqrt(nCrossings))).
+  !
+  ! On the first call (after a dust-free first iteration, i.e. optically thin temperatures)
+  ! s is set directly to s_eq.
+  ! ---------------------------------------------------------------------------------------
+
+  real(double) function sublimationSurvivalFraction(temperature, sublimationTemp)
+    use inputs_mod, only : subrange
+    real(double), intent(in) :: temperature, sublimationTemp
+    real(double) :: arg
+    arg = (temperature - sublimationTemp) / dble(max(subrange, 1.e-30))
+    arg = max(-700.d0, min(700.d0, arg))
+    sublimationSurvivalFraction = 1.d0 / (1.d0 + exp(arg))
+  end function sublimationSurvivalFraction
+
+  real(double) function localSublimationTemperature(thisOctal, subcell, iDust)
+    ! Same rules as sublimateDust: density-dependent Tsub, disc-height form for
+    ! tsubpower <= 0, and tThresh overriding everything when set.
+    use inputs_mod, only : tThresh, tSub, tsubpower, height, betaDisc
+    type(octal), pointer :: thisOctal
+    integer, intent(in) :: subcell, iDust
+    type(VECTOR) :: cellCentre
+    real(double) :: r, z, h
+
+    localSublimationTemperature = max(700.d0, tSub(iDust) * thisOctal%rho(subcell)**(tsubpower(iDust)))
+    if (tsubpower(iDust) <= 0.) then
+       cellCentre = subcellCentre(thisOctal, subcell)
+       r = sqrt(cellCentre%x**2 + cellCentre%y**2)
+       z = cellCentre%z
+       h = height*(r/(100.d0*autocm/1.d10))**betaDisc
+       localSublimationTemperature = tsub(iDust) * exp(-0.5d0*(z/h)**2)**(1.95d-2)
+    endif
+    if (tThresh /= 0.) localSublimationTemperature = dble(tThresh)
+  end function localSublimationTemperature
+
+  recursive subroutine adaptiveSublimateDust(thisOctal, firstCall, nCells, nChanged, nDamped, maxChange)
+    use inputs_mod, only : nDustType
+    type(octal), pointer :: thisOctal
+    type(octal), pointer :: child
+    logical, intent(in) :: firstCall
+    integer :: nCells, nChanged, nDamped   ! accumulated over the grid (per cell and dust type)
+    real(double) :: maxChange              ! largest |change in s| this call
+    real(double), parameter :: stepMin = 1.d-3     ! smallest step size
+    ! Step grows by stepGrow when the direction repeats and halves when it reverses. With
+    ! noise-driven random reversals, stepGrow*0.5 < 1 makes the step shrink on average
+    ! (with a factor of 2 it random-walks and noisy front cells never settle).
+    real(double), parameter :: stepGrow = 1.2d0
+    real(double), parameter :: sMin = 1.d-20       ! floor on surviving fraction
+    real(double), parameter :: changeTol = 1.d-2   ! |ds| above this counts as "changed"
+    real(double), parameter :: nSigma = 2.d0
+    integer :: subcell, i, j
+    real(double) :: tDust, sigmaT, tSubLocal, s, sNew, sLo, sHi, target, newDir, step, nCross
+    logical :: sweepEmptied
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call adaptiveSublimateDust(child, firstCall, nCells, nChanged, nDamped, maxChange)
+                exit
+             end if
+          end do
+          cycle
+       endif
+
+       if (thisOctal%rho(subcell) < 1.d-29) cycle
+       if (.not.associated(thisOctal%origDustTypeFraction)) cycle
+       if (.not.associated(thisOctal%subStep)) then
+          allocate(thisOctal%subStep(1:thisOctal%maxChildren, 1:nDustType))
+          allocate(thisOctal%subDir(1:thisOctal%maxChildren, 1:nDustType))
+          thisOctal%subStep = 1.d0
+          thisOctal%subDir = 0.d0
+       endif
+
+       nCross = 0.d0
+       if (associated(thisOctal%nCrossings)) nCross = dble(thisOctal%nCrossings(subcell))
+
+       do j = 1, nDustType
+          if (thisOctal%origDustTypeFraction(subcell,j) <= 0.d0) cycle
+
+          tDust = dble(thisOctal%temperature(subcell))
+          if (associated(thisOctal%tempStorage)) then
+             if (size(thisOctal%tempStorage,2) >= 2*nDustType) tDust = thisOctal%tempStorage(subcell,nDustType+j)
+          endif
+          ! Monte Carlo noise in T_d: sigma_E/E ~ 1/sqrt(N) and T ~ E^(1/4). Cells with no
+          ! crossings (e.g. diffusion zone, where T comes from the diffusion solver) are
+          ! treated as noise-free.
+          sigmaT = 0.d0
+          if (nCross > 0.d0) sigmaT = tDust / (4.d0*sqrt(nCross))
+
+          tSubLocal = localSublimationTemperature(thisOctal, subcell, j)
+          ! (min: the 1e-30 floor on dustTypeFraction exceeds orig*s in nearly dust-free cells)
+          s = min(1.d0, thisOctal%dustTypeFraction(subcell,j) / thisOctal%origDustTypeFraction(subcell,j))
+
+          if (firstCall) then
+             sNew = sublimationSurvivalFraction(tDust, tSubLocal)
+          else
+             ! range of s_eq consistent with the noise in T_d
+             sHi = sublimationSurvivalFraction(tDust - nSigma*sigmaT, tSubLocal)   ! cooler -> more dust
+             sLo = sublimationSurvivalFraction(tDust + nSigma*sigmaT, tSubLocal)   ! hotter -> less dust
+             newDir = 0.d0
+             if (s < sLo) then
+                target = sLo
+                newDir = 1.d0
+             else if (s > sHi) then
+                target = sHi
+                newDir = -1.d0
+             endif
+             sNew = s
+             ! subDir = 2 marks a cell emptied by the sublimation sweep: the Monte Carlo
+             ! update may remove dust from it but not add any back (see sweepSublimation)
+             sweepEmptied = (thisOctal%subDir(subcell,j) == 2.d0)
+             if (sweepEmptied .and. (newDir > 0.d0)) newDir = 0.d0
+             if (newDir /= 0.d0) then
+                if (thisOctal%subDir(subcell,j) == newDir) then
+                   thisOctal%subStep(subcell,j) = min(1.d0, stepGrow*thisOctal%subStep(subcell,j))
+                else if (thisOctal%subDir(subcell,j) == -newDir) then
+                   thisOctal%subStep(subcell,j) = max(stepMin, 0.5d0*thisOctal%subStep(subcell,j))
+                endif
+                thisOctal%subDir(subcell,j) = newDir
+                if (sweepEmptied) thisOctal%subDir(subcell,j) = 2.d0
+                step = min(thisOctal%subStep(subcell,j), abs(target - s))
+                sNew = s + newDir*step
+             endif
+          endif
+
+          sNew = max(sMin, min(1.d0, sNew))
+          thisOctal%dustTypeFraction(subcell,j) = max(1.d-30, thisOctal%origDustTypeFraction(subcell,j) * sNew)
+
+          nCells = nCells + 1
+          if (abs(sNew - s) > changeTol) nChanged = nChanged + 1
+          if (thisOctal%subStep(subcell,j) < 0.1d0) nDamped = nDamped + 1
+          maxChange = max(maxChange, abs(sNew - s))
+       enddo
+    enddo
+  end subroutine adaptiveSublimateDust
+
 !!$  subroutine returnScaleHeight(grid, x,  height)
 !!$    type(gridtype) :: grid
 !!$    integer :: nz

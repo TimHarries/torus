@@ -22,6 +22,28 @@ module lucy_new_mod
    include 'mkl_vml.fi'
 #endif
 
+  ! Cells below this density are treated as empty (e.g. the rho = 1e-30 placeholder inside
+  ! an inner radius) and are ignored when checking for undersampled cells.
+  real(double), parameter, private :: emptyCellRho = 1.d-29
+
+  ! state for the sublimation ray sweep (sublimationmethod sweep)
+  integer, parameter, private :: nSweepBins = 360        ! angular bins for the backwarming factor
+  real(double), parameter, private :: sweepTauCrit = 1.d0 ! cells with tau from the star below this are "directly lit"
+  integer, parameter, private :: nKPTable = 300           ! Planck-mean absorption table, log T from 1 to 1e5 K
+  ! B(theta) per dust type is constrained to be smooth and symmetric about the midplane: each
+  ! measure iteration, the measured ratios q = B_measured/B_trial of all lit fronts are fitted
+  ! with an even polynomial in theta, and B is multiplied by the (under-relaxed) fit. Per-bin
+  ! or per-group B let protrusions of the front lower their own B (they see less of the wall),
+  ! which grew fingers and dips.
+  real(double), allocatable, save, private :: sweepB(:,:)        ! (nSweepBins,nDustType) trial B
+  real(double), allocatable, save, private :: fitRelax(:)        ! (nDustType) relaxation factor of the B update
+  real(double), allocatable, save, private :: fitLastSign(:)     ! (nDustType) sign of the last midplane correction
+  character(len=240), allocatable, save, private :: sweepFitText(:) ! (nDustType) convergence diagnostic of the last measure sweep
+  real(double), allocatable, save, private :: sweepFrontR(:,:)   ! front radius at the previous move sweep
+  real(double), allocatable, save, private :: kPAbsTable(:,:)    ! (nKPTable, nDustType), includes 1e10 factor
+  real(double), allocatable, save, private :: kPAbsSource(:,:)   ! (nDustType, nSource) Planck mean abs at source Teff
+  real(double), allocatable, save, private :: kPExtSource(:)     ! (nDustType) Planck mean ext at source 1 Teff
+
 contains
 
    function relative_q(source, grid,tdust) result(q)
@@ -55,10 +77,11 @@ contains
        source, nSource, nLucy, massEnvelope,  percent_undersampled_min, iHydro, finalPass)
     use inputs_mod, only : usemultidust, grainfrac, mdisc, tsub
     use inputs_mod, only : variableDustSublimation, iterlucy, solveVerticalHydro, dustSettling, restartLucy
+    use inputs_mod, only : sublimationMethod
     use inputs_mod, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles, doSmoothGridTau
     use inputs_mod, only : object, convergeOnUndersampled, storeScattered, scatteredLightWavelength
     use inputs_mod, only : writelucyTmpfile, discWind, mincrossings, maxiterLucy, solveDiffusionZone, quickSublimate, usePAH
-    use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection
+    use source_mod, only: SOURCETYPE, randomSource, getPhotonPositionDirection, distanceToSource
     use phasematrix_mod, only: PHASEMATRIX, newDirectionMie
     use diffusion_mod, only: solvearbitrarydiffusionzones, defineDiffusionOnRosseland, defineDiffusionOnUndersampled, randomwalk, &
          unsetDiffusion
@@ -66,7 +89,7 @@ contains
 !    use intensity_storage_mod
     use dust_mod, only: filldustuniform, stripdustaway, sublimatedust, sublimatedustwr104, fillDustShakara, &
          normalizeDustFractions, findDustMass, reportMasses, fillDustSettled, &
-         getDustMasses, setupDustFracOriginal
+         getDustMasses, setupDustFracOriginal, adaptiveSublimateDust
     use random_mod
     use gas_opacity_mod, only: atomhydrogenRayXsection
     use gridio_mod, only: writeAMRgrid
@@ -119,6 +142,9 @@ contains
     integer :: iSource
     integer :: iLam
     integer(double) :: nInf
+    integer(double) :: nStarHit            ! packets absorbed (and removed) on hitting a stellar surface
+    real(double) :: dStar                  ! distance along the packet direction to a stellar surface
+    logical :: hitsStarSurface, hitStar
     integer :: iIter, nIter
     real(oct) ::   epsOverDeltaT
     integer :: nDT, nUndersampled
@@ -153,6 +179,12 @@ contains
     logical :: thermalPhoton, scatteredPhoton
     integer :: nCellsInDiffusion
     integer :: nColdDiff
+    logical :: adaptiveSublimation, sweepSub, sweepMeasure
+    integer :: nSubCells, nSubChanged, nSubDamped, nDustSettled
+    integer :: nSweepChanged, nSweepExposed, nSweepFronts, nSweepFrontMoved, nSweepFrontConv, nSweepMidUnconv
+    real(double) :: sweepFrontErr
+    real(double) :: maxSubChange
+    character(len=300) :: subMessage
     real(double) :: fac1(nLambda), fac1dnu(nlambda)
     integer :: nVoxels, nOctals, nInFlow
     real(double), allocatable :: dustMassArray(:)
@@ -348,6 +380,10 @@ contains
     endif
 
     iIter_grand = 0
+    sweepSub = variableDustSublimation .and. (trim(sublimationMethod) == "sweep")
+    adaptiveSublimation = variableDustSublimation .and. &
+         ((trim(sublimationMethod) == "adaptive") .or. sweepSub)
+    nDustSettled = 0
     converged = .false.
     dT_mean_new = 10.0d0
     dT_mean_old = 10.0d0
@@ -448,6 +484,7 @@ contains
           call resetDirectGrid(grid%octreeRoot)
 
           nInf = 0
+          nStarHit = 0
           nScat = 0
           nAbs = 0
           nDiffusion = 0
@@ -523,11 +560,12 @@ contains
                 !$OMP PRIVATE(foundOctal, foundSubcell, hrecip_kt, logt, logNucritUpper, logNucritLower) &
                 !$OMP PRIVATE(icritupper, icritlower,  kAbsArray2, hNuOverkT, fac2, this_bnu ) &
                 !$OMP PRIVATE(thermalPhoton, scatteredPhoton, weight, PAHprob) &
+                !$OMP PRIVATE(dStar, hitsStarSurface, hitStar) &
                 !$OMP SHARED(logNu1, fac1dnu, loglam1, scalelam, scalenu)  &
                 !$OMP SHARED(grid, nLambda, lamArray,miePhase, nMuMie, nDustType) &
                 !$OMP SHARED(imonte_beg, imonte_end, source, nsource, usePAH) &
                 !$OMP SHARED(dnu, nFreq, freq, nMonte, epsOverDeltaT) &
-                !$OMP REDUCTION (+: nAbs, nScat, nInf, totalLumInPackets, nDiffusion, nKilled) 
+                !$OMP REDUCTION (+: nAbs, nScat, nInf, totalLumInPackets, nDiffusion, nKilled, nStarHit)
 
                  call returnKappa(grid, grid%OctreeRoot, 1, reset_kappa=.true.)
 
@@ -582,11 +620,22 @@ contains
                       ilam = min(floor((log(thislam) - loglam1) * scalelam) + 1, nfreq)
                       ilam = max(ilam, 1)
 
+                      ! distance to a (non-point) stellar surface along the current direction;
+                      ! 1e30 if the packet will not hit one
+                      call distanceToSource(source, nSource, rVec, uHat, hitsStarSurface, dStar)
+
                       call toNextEventAMR(grid, rVec, uHat, packetWeight, escaped, thisFreq, nLambda, lamArray,  &
                            photonInDiffusionZone, diffusionZoneTemp,  &
                            directPhoton, scatteredPhoton,  &
                            sOctal, foundOctal, foundSubcell, iLamIn=ilam, kappaAbsOut = kappaAbsdb, kappaScaOut = kappaScadb ,&
-                           kappaAbsPAHout = kappaAbsPAH, kappaScaPAHout = kappaScaPAH)
+                           kappaAbsPAHout = kappaAbsPAH, kappaScaPAHout = kappaScaPAH, &
+                           distToStar=dStar, hitStar=hitStar)
+
+                      ! packets reaching a stellar surface are absorbed and removed
+                      if (hitStar) then
+                         nStarHit = nStarHit + 1
+                         cycle photonloop
+                      endif
 
                       If (escaped) then
                          !$OMP ATOMIC
@@ -788,6 +837,10 @@ contains
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
           nInf = INT(SUM(buffer_real), double)
 
+          call MPI_ALLGATHER(REAL(nStarHit), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
+          call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+          nStarHit = INT(SUM(buffer_real), double)
+
           call MPI_ALLGATHER(REAL(nScat), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
           call MPI_BARRIER(MPI_COMM_WORLD, ierr)
           nScat = INT(SUM(buffer_real), double)
@@ -823,7 +876,12 @@ contains
           call writeInfo(message,IMPORTANT)
 
 
-          epsOverDeltaT = lCore / dble(nInf)
+          ! Packets absorbed by a star are removed: their energy is lost rather than shared out
+          ! over the escaping packets, so they are included in the normalisation.
+          write(message,'(a,f8.4)') "Fraction of packets absorbed by a star: ", &
+               real(nStarHit)/real(max(nInf+nStarHit,1_bigint))
+          call writeInfo(message,IMPORTANT)
+          epsOverDeltaT = lCore / dble(nInf + nStarHit)
 
           nDT = 0
           nUndersampled = 0
@@ -867,7 +925,7 @@ contains
           endif
 
           if (solveDiffusionZone) then
-             if (.not.variableDustSublimation) then
+             if ((.not.variableDustSublimation).or.adaptiveSublimation) then
                 call solveArbitraryDiffusionZones(grid)
              else
                 if (iIter_grand >= 5) call solveArbitraryDiffusionZones(grid)
@@ -988,10 +1046,65 @@ contains
 
 
 
-       if (variableDustSublimation) then
+       if (adaptiveSublimation) then
+          ! every iteration: move each cell's surviving dust fraction towards equilibrium
+          ! with an adaptive per-cell step (see adaptiveSublimateDust in dust_mod)
+          nSubCells = 0
+          nSubChanged = 0
+          nSubDamped = 0
+          maxSubChange = 0.d0
+          ! With the sweep, iterations alternate after the first: odd iterations "move"
+          ! (the sweep places the fronts with the current backwarming factor B(theta), and
+          ! the Monte Carlo update adjusts shadowed cells), even iterations "measure"
+          ! (nothing changes the dust, so the temperatures are consistent with it, and the
+          ! sweep measures B and updates the fit of B(theta)). See sweepSublimation.
+          sweepMeasure = sweepSub .and. (iIter_grand > 1) .and. (mod(iIter_grand,2) == 0)
+          if ((.not.sweepSub) .or. ((iIter_grand >= 3).and.(.not.sweepMeasure))) then
+             call adaptiveSublimateDust(grid%octreeRoot, (iIter_grand == 1).and.(.not.sweepSub), &
+                  nSubCells, nSubChanged, nSubDamped, maxSubChange)
+          endif
+          if (sweepSub) then
+             call sweepSublimation(grid, source, nSource, iIter_grand == 1, sweepMeasure, &
+                  nSweepChanged, nSweepExposed, nSweepFronts, nSweepFrontMoved, &
+                  nSweepFrontConv, sweepFrontErr, nSweepMidUnconv)
+             nSubChanged = nSubChanged + nSweepChanged
+             ! settled when, on a measure iteration, at least 95% of the lit fronts, and all
+             ! of those within 10 degrees of the midplane, have their radius determined to
+             ! within sublimationTolerance; converged after two consecutive settled measure
+             ! iterations
+             if (sweepMeasure) then
+                if ((nSweepFronts > 0).and.(real(nSweepFrontConv) >= 0.95*real(nSweepFronts)) .and. &
+                     (nSweepMidUnconv == 0)) then
+                   nDustSettled = nDustSettled + 1
+                else
+                   nDustSettled = 0
+                endif
+                write(subMessage,'(a,i3,a,i4,a,i4,a,i3,a,f6.2,a,i2,a)') "Sublimation (measure) iteration ",iIter_grand, &
+                     ": fronts converged ",nSweepFrontConv," of ",nSweepFronts,", unconverged within 10 deg ", &
+                     nSweepMidUnconv,", mean front error ",100.d0*sweepFrontErr,"%, settled ",nDustSettled,"/2"
+             else
+                write(subMessage,'(a,i3,a,i4,a,i4,a,i8,a,i8,a)') "Sublimation (move) iteration ",iIter_grand, &
+                     ": fronts moved ",nSweepFrontMoved," of ",nSweepFronts,", cells changed by sweep ", &
+                     nSweepChanged,", by Monte Carlo update ",nSubChanged-nSweepChanged
+             endif
+             call writeInfo(subMessage, FORINFO)
+             if (sweepMeasure) call writeSweepFitInfo()
+          else
+             if ((iIter_grand > 1).and.(nSubCells > 0).and. &
+                  (real(nSubChanged) <= 1.e-3*real(max(nSubCells,1)))) then
+                nDustSettled = nDustSettled + 1
+             else
+                nDustSettled = 0
+             endif
+             write(subMessage,'(a,i4,a,i9,a,i9,a,i9,a,1pe10.3,a,i3)') "Adaptive sublimation iteration ",iIter_grand, &
+                  ": cells ",nSubCells,"  changed(>0.01) ",nSubChanged,"  damped ",nSubDamped, &
+                  "  max |ds| ",maxSubChange,"  settled count ",nDustSettled
+             call writeInfo(subMessage, FORINFO)
+          endif
+       else if (variableDustSublimation) then
           totFrac = 0.
           nFrac = 0
-          
+
 
           if (iiter_grand == 3) then
              taumax = 0.1
@@ -1145,8 +1258,22 @@ contains
 
 
 
+       if (sweepSub) then
+          ! Sweep method: stop only on a measure iteration (its temperatures are
+          ! consistent with the dust) once the sublimation front is determined. The
+          ! emission criterion is not used: the emission always changes between a move and
+          ! a measure iteration, and the front criterion already requires the dust to be
+          ! settled.
+          converged = sweepMeasure .and. (nDustSettled >= 2) .and. &
+               (.not.(convergeOnUndersampled .and. (percent_undersampled > percent_undersampled_min)))
+       endif
        if (iIter_grand < iterlucy) converged = .false.
-       if (variableDustSublimation.and.(iIter_grand < 11)) converged = .false.
+       if (adaptiveSublimation) then
+          ! dust must have settled (<0.1% of cells changing) for two consecutive iterations
+          if (nDustSettled < 2) converged = .false.
+       else
+          if (variableDustSublimation.and.(iIter_grand < 11)) converged = .false.
+       endif
 
        if (iIter_grand >= maxiterLucy) then
           write(message,'(a)') "Lucy loop exceeded max iterations. Forcing convergence"
@@ -1790,6 +1917,597 @@ contains
 
 
 
+  ! =====================================================================================
+  ! Ray sweep for variable dust sublimation (sublimationmethod sweep)
+  !
+  ! The sublimation front for direct starlight is causal along rays from the star: the
+  ! first dust along a ray is where a directly lit grain is cooler than T_sub, and dust
+  ! behind it is shadowed. Updating dust only from the Monte Carlo temperatures moves the
+  ! front ~1 optical depth per iteration (a shadowed cell only learns it is too hot once
+  ! the dust in front of it has gone). The sweep instead visits cells in order of distance
+  ! from the star, integrates the optical depth from the star using the dust already
+  ! decided for closer cells, and for directly lit cells (tau < sweepTauCrit) sets the
+  ! dust from the directly lit temperature B*T_thin, where T_thin is the analytic optically
+  ! thin dust temperature and B a backwarming factor. Shadowed cells are left to the
+  ! Monte Carlo (adaptiveSublimateDust), but keep at least the dust that B*T_thin allows.
+  !
+  ! B is measured along each ray from the Monte Carlo temperature of the last dust-free
+  ! directly lit cell in front of the dust (T_MC/T_thin), which samples the radiation field
+  ! at the face of the dust. (The cell average temperature of an unresolved, optically thick
+  ! front cell is not used: it is dominated by the shadowed interior.) B(theta) is fitted,
+  ! per dust type, as a smooth function symmetric about the midplane (see sweepSublimation).
+  !
+  ! The first source is taken as the centre for rays and angular bins.
+  ! =====================================================================================
+
+  real(double) function planckMeanDustKappa(grid, iDust, temperature, extinction)
+    ! Planck mean of grid%oneKappaAbs (or abs+sca) of dust type iDust (includes 1e10 factor)
+    type(GRIDTYPE) :: grid
+    integer, intent(in) :: iDust
+    real(double), intent(in) :: temperature
+    logical, intent(in) :: extinction
+    integer :: i
+    real(double) :: nu1, nu2, numid, dnu, b, k, num, den
+    num = 0.d0
+    den = 0.d0
+    do i = 2, grid%nLambda
+       nu1 = cSpeed / (dble(grid%lamArray(i-1))*1.d-8)
+       nu2 = cSpeed / (dble(grid%lamArray(i))*1.d-8)
+       numid = 0.5d0*(nu1 + nu2)
+       dnu = abs(nu1 - nu2)
+       b = bnu(numid, temperature)
+       k = 0.5d0*dble(grid%oneKappaAbs(iDust,i-1) + grid%oneKappaAbs(iDust,i))
+       if (extinction) k = k + 0.5d0*dble(grid%oneKappaSca(iDust,i-1) + grid%oneKappaSca(iDust,i))
+       num = num + k*b*dnu
+       den = den + b*dnu
+    enddo
+    planckMeanDustKappa = 0.d0
+    if (den > 0.d0) planckMeanDustKappa = num/den
+  end function planckMeanDustKappa
+
+  subroutine setupKPAbsTable(grid)
+    ! Planck-mean absorption opacity of each dust type tabulated against temperature
+    use inputs_mod, only : nDustType
+    type(GRIDTYPE) :: grid
+    integer :: i, j
+    real(double) :: t
+    if (allocated(kPAbsTable)) return
+    allocate(kPAbsTable(nKPTable, nDustType))
+    do j = 1, nDustType
+       do i = 1, nKPTable
+          t = 10.d0**(5.d0*dble(i-1)/dble(nKPTable-1))
+          kPAbsTable(i,j) = planckMeanDustKappa(grid, j, t, .false.)
+       enddo
+    enddo
+  end subroutine setupKPAbsTable
+
+  subroutine setupSweepTables(grid, source, nSource)
+    use inputs_mod, only : nDustType
+    use source_mod, only : SOURCETYPE
+    type(GRIDTYPE) :: grid
+    integer :: nSource
+    type(SOURCETYPE) :: source(:)
+    integer :: j, k
+    call setupKPAbsTable(grid)
+    if (allocated(kPAbsSource)) return
+    allocate(kPAbsSource(nDustType, nSource), kPExtSource(nDustType))
+    allocate(sweepB(nSweepBins,nDustType), sweepFrontR(nSweepBins,nDustType))
+    allocate(fitRelax(nDustType), fitLastSign(nDustType), sweepFitText(nDustType))
+    sweepFitText = " "
+    sweepB = 1.d0
+    fitRelax = 1.d0
+    fitLastSign = 0.d0
+    sweepFrontR = -1.d0
+    do j = 1, nDustType
+       do k = 1, nSource
+          kPAbsSource(j,k) = planckMeanDustKappa(grid, j, source(k)%teff, .false.)
+       enddo
+       kPExtSource(j) = planckMeanDustKappa(grid, j, source(1)%teff, .true.)
+    enddo
+  end subroutine setupSweepTables
+
+  real(double) function kPAbsAt(iDust, temperature)
+    integer, intent(in) :: iDust
+    real(double), intent(in) :: temperature
+    real(double) :: x
+    integer :: i
+    x = log10(max(1.d0, min(1.d5, temperature)))/5.d0*dble(nKPTable-1) + 1.d0
+    i = min(nKPTable-1, max(1, int(x)))
+    kPAbsAt = kPAbsTable(i,iDust) + (x - dble(i))*(kPAbsTable(i+1,iDust) - kPAbsTable(i,iDust))
+  end function kPAbsAt
+
+  real(double) function thinDustTemperature(position, iDust, source, nSource)
+    ! Optically thin equilibrium temperature of dust type iDust at position:
+    ! T^4 kP(T) = sum over sources of W T_eff^4 kP(T_eff), W the geometric dilution factor
+    ! (stellar radius from luminosity and T_eff, so point sources are handled too).
+    use source_mod, only : SOURCETYPE
+    type(VECTOR), intent(in) :: position
+    integer, intent(in) :: iDust, nSource
+    type(SOURCETYPE) :: source(:)
+    integer :: k, it
+    real(double) :: d, rEff, w, rhs, lo, hi, mid, t
+    rhs = 0.d0
+    do k = 1, nSource
+       d = modulus(position - source(k)%position)
+       rEff = sqrt(source(k)%luminosity / (fourPi*stefanBoltz*source(k)%teff**4)) / 1.d10
+       if (d > rEff) then
+          w = 0.5d0*(1.d0 - sqrt(max(0.d0, 1.d0 - (rEff/d)**2)))
+       else
+          w = 0.5d0
+       endif
+       rhs = rhs + w * source(k)%teff**4 * kPAbsSource(iDust,k)
+    enddo
+    lo = 0.d0
+    hi = 5.d0
+    do it = 1, 60
+       mid = 0.5d0*(lo + hi)
+       t = 10.d0**mid
+       if (t**4 * kPAbsAt(iDust, t) > rhs) then
+          hi = mid
+       else
+          lo = mid
+       endif
+    enddo
+    thinDustTemperature = 10.d0**(0.5d0*(lo + hi))
+  end function thinDustTemperature
+
+  recursive subroutine collectSweepCells(thisOctal, n, octs, subs, store)
+    type(octal), pointer :: thisOctal
+    type(octal), pointer :: child
+    integer :: n
+    type(octalWrapper) :: octs(:)
+    integer :: subs(:)
+    logical, intent(in) :: store
+    integer :: subcell, i
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call collectSweepCells(child, n, octs, subs, store)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%rho(subcell) < emptyCellRho) cycle
+          if (.not.associated(thisOctal%origDustTypeFraction)) cycle
+          n = n + 1
+          if (store) then
+             octs(n)%content => thisOctal
+             subs(n) = subcell
+          endif
+       endif
+    enddo
+  end subroutine collectSweepCells
+
+  real(double) function tauFromSource(grid, src, targetOctal, targetSub, tauStop)
+    ! Optical depth (Planck mean extinction at the source T_eff) along the straight line
+    ! from the source to where it enters the target cell. Stops early at tauStop.
+    use inputs_mod, only : nDustType
+    use source_mod, only : SOURCETYPE
+    type(GRIDTYPE) :: grid
+    type(SOURCETYPE) :: src
+    type(octal), pointer :: targetOctal
+    integer, intent(in) :: targetSub
+    real(double), intent(in) :: tauStop
+    type(VECTOR) :: cen, dir, pos
+    type(octal), pointer :: thisOctal
+    integer :: subcell, nStep, j
+    real(oct) :: tVal
+    real(double) :: dist, travelled, seg, kext, rStart
+
+    tauFromSource = 0.d0
+    cen = subcellCentre(targetOctal, targetSub)
+    dir = cen - src%position
+    dist = modulus(dir)
+    if (dist <= 0.d0) return
+    dir = dir / dist
+    rStart = max(src%radius, 1.d-6*dist)
+    if (rStart >= dist) return
+    pos = src%position + rStart*dir
+    travelled = rStart
+    thisOctal => grid%octreeRoot
+    nStep = 0
+    do
+       nStep = nStep + 1
+       if (nStep > 1000000) exit
+       call findSubcellLocal(pos, thisOctal, subcell)
+       if (associated(thisOctal, targetOctal) .and. (subcell == targetSub)) exit
+       call distanceToCellBoundary(grid, pos, dir, tVal, thisOctal)
+       seg = dble(tVal) + 1.d-2*grid%halfSmallestSubcell
+       if (thisOctal%rho(subcell) >= emptyCellRho) then
+          kext = 0.d0
+          do j = 1, nDustType
+             kext = kext + thisOctal%dustTypeFraction(subcell,j) * kPExtSource(j)
+          enddo
+          tauFromSource = tauFromSource + seg * kext * thisOctal%rho(subcell)
+          if (tauFromSource >= tauStop) exit
+       endif
+       travelled = travelled + seg
+       if (travelled >= dist) exit
+       pos = pos + seg*dir
+    enddo
+  end function tauFromSource
+
+  subroutine sweepSublimation(grid, source, nSource, firstSweep, measureOnly, nChanged, nExposed, &
+       nFronts, nFrontMoved, nFrontConverged, meanFrontErr, nMidUnconverged)
+    ! Each dust type d has, in each angular bin, its own sublimation front and its own
+    ! backwarming factor B(bin,d).
+    ! Move iteration (measureOnly = .false.): in directly lit cells (optical depth from the
+    !   star, all dust types, below sweepTauCrit) dust type d survives according to
+    !   B(bin,d)*T_thin(d) < T_sub(d); shadowed cells keep at least that much dust.
+    ! Measure iteration (measureOnly = .true.): no dust is changed, so the Monte Carlo
+    !   temperatures are consistent with the dust. B(bin,d) is measured as T_MC(d)/T_thin(d)
+    !   in the last unattenuated cell in front of dust type d's front. The ratios
+    !   q = B_measured/B_trial of all lit fronts of dust type d are fitted with an even
+    !   polynomial in theta (B smooth and symmetric about the midplane), and B is multiplied
+    !   by the under-relaxed fit, with B >= 1.
+    use inputs_mod, only : nDustType, sublimationTolerance
+    use source_mod, only : SOURCETYPE
+    use dust_mod, only : sublimationSurvivalFraction, localSublimationTemperature
+    use utils_mod, only : sortdouble2index
+    type(GRIDTYPE) :: grid
+    integer :: nSource
+    type(SOURCETYPE) :: source(:)
+    logical, intent(in) :: firstSweep    ! first call: shadowed cells start with full dust
+    logical, intent(in) :: measureOnly   ! measure iteration: do not change the dust
+    integer, intent(out) :: nChanged, nExposed
+    integer, intent(out) :: nFronts          ! (bin, dust type) pairs with a directly lit front
+    integer, intent(out) :: nFrontMoved      ! move iteration: fronts that moved by more than a cell
+    integer, intent(out) :: nFrontConverged  ! fronts whose B (and so front radius) is determined
+    real(double), intent(out) :: meanFrontErr ! mean estimated relative uncertainty of the front radius
+    integer, intent(out) :: nMidUnconverged  ! lit fronts within midplaneZone of the midplane not yet converged
+    real(double), parameter :: midplaneZone = 10.d0  ! degrees
+    real(double), parameter :: tauMeasure = 0.1d0    ! B is only measured where the starlight is unattenuated
+    real(double), parameter :: dustyCellTau = 0.1d0  ! a dust type with optical depth above this in a cell is "present"
+    integer, parameter :: nFitMin = 6                ! fewest measured fronts for a fit of B(theta)
+    real(double), parameter :: relaxMin = 0.25d0
+    type(octalWrapper), allocatable :: octs(:)
+    integer, allocatable :: subs(:), idx(:)
+    real(double), allocatable :: rr(:)
+    real(double), allocatable :: bMeasR(:,:), bMeas(:,:), frontR(:,:), frontSize(:,:), bTrialUsed(:,:)
+    logical, allocatable :: frontFound(:,:), anyDust(:,:)
+    real(double), allocatable :: tThinCell(:), ratioCell(:)
+    logical, allocatable :: presentCell(:)
+    type(octal), pointer :: thisOctal
+    type(VECTOR) :: cen, rel, posF, posF2
+    integer :: n, i, ii, j, subcell, ib, nErr, k
+    real(double) :: theta, tau, orig, sOld, sNew, slope, frontErr, errSum, thetaBin
+    logical :: exposed, haveRatio
+    real(double) :: xPt(nSweepBins), yPt(nSweepBins), coef(4), sigma, thetaMax, resid, sgn
+    logical :: usePt(nSweepBins), fitOK(nDustType)
+    real(double) :: fitQ(nSweepBins,nDustType), fitSig(nDustType), fitTmax(nDustType), fitCoef(4,nDustType)
+    integer :: nPts, nUse, nCoef, iPass, fitNC(nDustType), fitNUse(nDustType)
+    character(len=12) :: roughText
+
+    call setupSweepTables(grid, source, nSource)
+
+    n = 0
+    allocate(octs(1), subs(1))
+    call collectSweepCells(grid%octreeRoot, n, octs, subs, .false.)
+    deallocate(octs, subs)
+    allocate(octs(max(n,1)), subs(max(n,1)), rr(max(n,1)), idx(max(n,1)))
+    i = 0
+    call collectSweepCells(grid%octreeRoot, i, octs, subs, .true.)
+    do i = 1, n
+       rr(i) = modulus(subcellCentre(octs(i)%content, subs(i)) - source(1)%position)
+       idx(i) = i
+    enddo
+    if (n > 1) call sortdouble2index(rr(1:n), idx(1:n))
+
+    allocate(bMeasR(nSweepBins,nDustType), bMeas(nSweepBins,nDustType), frontR(nSweepBins,nDustType))
+    allocate(frontSize(nSweepBins,nDustType), bTrialUsed(nSweepBins,nDustType))
+    allocate(frontFound(nSweepBins,nDustType), anyDust(nSweepBins,nDustType))
+    allocate(tThinCell(nDustType), ratioCell(nDustType), presentCell(nDustType))
+
+    nChanged = 0
+    nExposed = 0
+    bMeasR = -1.d0
+    bMeas = 0.d0
+    frontFound = .false.
+    anyDust = .false.
+    frontR = -1.d0
+    frontSize = 0.d0
+    do ii = 1, n
+       i = idx(ii)
+       thisOctal => octs(i)%content
+       subcell = subs(i)
+       cen = subcellCentre(thisOctal, subcell)
+       rel = cen - source(1)%position
+       theta = atan2(rel%z, sqrt(rel%x**2 + rel%y**2))
+       ib = min(nSweepBins, max(1, 1 + int((theta + 0.5d0*pi)/pi*dble(nSweepBins))))
+
+       tau = tauFromSource(grid, source(1), thisOctal, subcell, sweepTauCrit)
+       exposed = (tau < sweepTauCrit)
+       if (exposed) nExposed = nExposed + 1
+
+       haveRatio = .false.
+       if (associated(thisOctal%tempStorage)) haveRatio = (size(thisOctal%tempStorage,2) >= 2*nDustType)
+       presentCell = .false.
+       do j = 1, nDustType
+          orig = thisOctal%origDustTypeFraction(subcell,j)
+          if (orig <= 0.d0) cycle
+          sOld = thisOctal%dustTypeFraction(subcell,j) / orig
+          sNew = sOld
+          tThinCell(j) = 0.d0
+          ratioCell(j) = 0.d0
+          if (exposed) then
+             tThinCell(j) = thinDustTemperature(cen, j, source, nSource)
+             if (haveRatio) ratioCell(j) = thisOctal%tempStorage(subcell,nDustType+j)/tThinCell(j)
+             if (.not.measureOnly) then
+                ! directly lit temperature: thin temperature times backwarming. (No exp(-tau/4)
+                ! attenuation: the diffuse field largely makes up for the attenuated starlight
+                ! at tau < 1, and the attenuation put dust in lit cells whose Monte Carlo
+                ! temperature was above T_sub, ahead of the front.) B*T_thin falls monotonically
+                ! along the ray, so the front is the first cell where B*T_thin < T_sub.
+                sNew = sublimationSurvivalFraction(sweepB(ib,j)*tThinCell(j), &
+                     localSublimationTemperature(thisOctal, subcell, j))
+                ! hysteresis: a cell the sweep empties is marked (subDir = 2) so that the
+                ! Monte Carlo update cannot put dust back into it once it is shadowed
+                if (associated(thisOctal%subStep)) then
+                   thisOctal%subStep(subcell,j) = 1.d0
+                   if (sNew < 0.5d0) then
+                      thisOctal%subDir(subcell,j) = 2.d0
+                   else
+                      thisOctal%subDir(subcell,j) = 0.d0
+                   endif
+                endif
+             endif
+          else if (.not.measureOnly) then
+             if (firstSweep) then
+                sNew = 1.d0
+             else if (sOld < 1.d0 - 1.d-6) then
+                ! A shadowed cell is no hotter than it would be if directly lit, B*T_thin, so it
+                ! keeps at least the dust that allows (the same rule as the lit cells). This fills, in the same move, the cells left empty behind a front that has
+                ! moved inwards (the new front cell is optically thick even when nearly
+                ! empty, so they are shadowed, and their Monte Carlo temperatures are stale).
+                sNew = max(sOld, sublimationSurvivalFraction(sweepB(ib,j)*thinDustTemperature(cen, j, source, nSource), &
+                     localSublimationTemperature(thisOctal, subcell, j)))
+             endif
+             ! a cell that is no longer directly lit is handed back to the Monte Carlo update,
+             ! which may put dust back if it is cool enough
+             if (associated(thisOctal%subDir)) then
+                if (thisOctal%subDir(subcell,j) == 2.d0) then
+                   thisOctal%subDir(subcell,j) = 0.d0
+                   thisOctal%subStep(subcell,j) = 1.d0
+                endif
+             endif
+          endif
+          if (.not.measureOnly) then
+             sNew = max(1.d-20, min(1.d0, sNew))
+             thisOctal%dustTypeFraction(subcell,j) = max(1.d-30, orig*sNew)
+             if (abs(sNew - sOld) > 1.d-2) nChanged = nChanged + 1
+          endif
+          ! dust type j is present in this cell if most of it survives or if its own optical
+          ! depth is significant (near the front cells are so optically thick at full dust that
+          ! even a small surviving fraction blocks the starlight)
+          presentCell(j) = (sNew > 0.5d0) .or. &
+               (thisOctal%dustTypeFraction(subcell,j)*kPExtSource(j)*thisOctal%rho(subcell)* &
+               thisOctal%subcellSize > dustyCellTau)
+       enddo
+
+       ! Front of dust type j in this bin: its first present cell (lit or shadowed). B for
+       ! dust type j is measured from the last unattenuated cell in front of it.
+       do j = 1, nDustType
+          if (anyDust(ib,j)) cycle
+          if (thisOctal%origDustTypeFraction(subcell,j) <= 0.d0) cycle
+          if (.not.presentCell(j)) then
+             if (exposed .and. (tau < tauMeasure) .and. haveRatio) then
+                bMeasR(ib,j) = rr(ii)
+                bMeas(ib,j) = ratioCell(j)
+             endif
+          else
+             anyDust(ib,j) = .true.
+             if (exposed) frontFound(ib,j) = .true.
+             frontR(ib,j) = rr(ii)
+             frontSize(ib,j) = thisOctal%subcellSize
+          endif
+       enddo
+    enddo
+
+    nFronts = count(frontFound)
+    nFrontMoved = 0
+    if (.not.measureOnly) then
+       do j = 1, nDustType
+          do ib = 1, nSweepBins
+             if (frontFound(ib,j) .neqv. (sweepFrontR(ib,j) > 0.d0)) then
+                nFrontMoved = nFrontMoved + 1
+             else if (frontFound(ib,j)) then
+                if (abs(frontR(ib,j) - sweepFrontR(ib,j)) > frontSize(ib,j)) nFrontMoved = nFrontMoved + 1
+             endif
+             sweepFrontR(ib,j) = frontR(ib,j)
+          enddo
+       enddo
+    endif
+
+    ! Fit q = B_measured/B_trial over the lit fronts of each dust type as an even polynomial in
+    ! theta (symmetric about the midplane), with one pass of 3-sigma clipping.
+    bTrialUsed = sweepB
+    fitQ = 1.d0
+    fitOK = .false.
+    fitSig = 0.d0
+    fitTmax = 0.d0
+    fitCoef = 0.d0
+    fitNC = 0
+    fitNUse = 0
+    do j = 1, nDustType
+       nPts = 0
+       thetaMax = 0.d0
+       do ib = 1, nSweepBins
+          if (frontFound(ib,j) .and. (bMeasR(ib,j) > 0.d0)) then
+             nPts = nPts + 1
+             xPt(nPts) = abs(-0.5d0*pi + (dble(ib) - 0.5d0)*pi/dble(nSweepBins))
+             yPt(nPts) = bMeas(ib,j)/bTrialUsed(ib,j)
+             thetaMax = max(thetaMax, xPt(nPts))
+          endif
+       enddo
+       if (nPts < nFitMin) cycle
+       thetaMax = max(thetaMax, pi/180.d0)
+       xPt(1:nPts) = xPt(1:nPts)/thetaMax
+       nCoef = max(1, min(4, nPts/8))
+       usePt(1:nPts) = .true.
+       do iPass = 1, 2
+          call fitEvenPoly(nPts, xPt, yPt, usePt, nCoef, coef)
+          nUse = count(usePt(1:nPts))
+          sigma = 0.d0
+          do i = 1, nPts
+             if (usePt(i)) sigma = sigma + (yPt(i) - evalEvenPoly(nCoef, coef, xPt(i)))**2
+          enddo
+          sigma = sqrt(sigma/dble(max(1, nUse - nCoef)))
+          if (iPass == 1) then
+             do i = 1, nPts
+                resid = yPt(i) - evalEvenPoly(nCoef, coef, xPt(i))
+                if (abs(resid) > 3.d0*sigma) usePt(i) = .false.
+             enddo
+          endif
+       enddo
+       fitOK(j) = .true.
+       fitNC(j) = nCoef
+       fitNUse(j) = count(usePt(1:nPts))
+       fitCoef(1:nCoef,j) = coef(1:nCoef)
+       fitSig(j) = sigma/sqrt(dble(max(1, fitNUse(j))))
+       fitTmax(j) = thetaMax
+       do ib = 1, nSweepBins
+          thetaBin = abs(-0.5d0*pi + (dble(ib) - 0.5d0)*pi/dble(nSweepBins))
+          fitQ(ib,j) = evalEvenPoly(nCoef, coef, min(thetaBin, thetaMax)/thetaMax)
+       enddo
+    enddo
+
+    if (measureOnly) then
+       do j = 1, nDustType
+          if (.not.fitOK(j)) cycle
+          ! under-relax when the midplane correction reverses (overshoot)
+          sgn = sign(1.d0, fitCoef(1,j) - 1.d0)
+          if (sgn*fitLastSign(j) < 0.d0) fitRelax(j) = max(relaxMin, 0.5d0*fitRelax(j))
+          fitLastSign(j) = sgn
+          do ib = 1, nSweepBins
+             sweepB(ib,j) = max(1.d0, sweepB(ib,j)*(1.d0 + fitRelax(j)*(fitQ(ib,j) - 1.d0)))
+          enddo
+       enddo
+    endif
+
+    ! convergence diagnostics (written by the Lucy loop), one line per dust type: B at 0, 10 and 20 degrees, the fit
+    ! (number of lit fronts used, angular range, midplane correction q(0)-1 and its
+    ! statistical error, relaxation factor) and the front roughness within midplaneZone
+    ! (rms relative radius jump between adjacent lit bins)
+    if (measureOnly) then
+       do j = 1, nDustType
+          errSum = 0.d0
+          nErr = 0
+          do ib = 1, nSweepBins-1
+             thetaBin = -90.d0 + dble(ib)*180.d0/dble(nSweepBins)
+             if (abs(thetaBin) > midplaneZone) cycle
+             if (frontFound(ib,j) .and. frontFound(ib+1,j)) then
+                errSum = errSum + (2.d0*(frontR(ib+1,j) - frontR(ib,j))/(frontR(ib+1,j) + frontR(ib,j)))**2
+                nErr = nErr + 1
+             endif
+          enddo
+          roughText = "     -"
+          if (nErr > 0) write(roughText,'(f5.1,a)') 100.d0*sqrt(errSum/dble(nErr)),"%"
+          if (fitOK(j)) then
+             write(sweepFitText(j),'(a,i2,a,3f7.3,a,i4,a,f5.1,a,f6.2,a,f5.2,a,f5.2,a,a)') "  dust ",j, &
+                  ": B(0,10,20 deg)",(sweepB(nSweepBins/2 + 1 + k*nSweepBins/18, j), k = 0, 2), &
+                  "  fit to ",fitNUse(j)," fronts within ",fitTmax(j)*180.d0/pi," deg, midplane correction ", &
+                  100.d0*(fitCoef(1,j) - 1.d0),"% +/-",100.d0*fitSig(j),"%, step ",fitRelax(j), &
+                  ", front roughness ",trim(roughText)
+          else
+             write(sweepFitText(j),'(a,i2,a,a)') "  dust ",j,": too few lit fronts to fit B, front roughness ", &
+                  trim(roughText)
+          endif
+       enddo
+    endif
+
+    ! convergence: the fitted correction |q - 1| (plus its statistical error), times the
+    ! sensitivity of the front radius to B (1/|dlnT_thin/dlnr| at the front), estimates the
+    ! remaining error in the front radius
+    nFrontConverged = 0
+    nMidUnconverged = 0
+    nErr = 0
+    errSum = 0.d0
+    do j = 1, nDustType
+       do ib = 1, nSweepBins
+          if (.not.frontFound(ib,j)) cycle
+          thetaBin = -0.5d0*pi + (dble(ib) - 0.5d0)*pi/dble(nSweepBins)
+          frontErr = 1.d0
+          if (fitOK(j)) then
+             posF = source(1)%position + frontR(ib,j)*VECTOR(cos(thetaBin), 0.d0, sin(thetaBin))
+             posF2 = source(1)%position + 1.02d0*frontR(ib,j)*VECTOR(cos(thetaBin), 0.d0, sin(thetaBin))
+             slope = log(thinDustTemperature(posF2, j, source, nSource) / &
+                  thinDustTemperature(posF, j, source, nSource)) / log(1.02d0)
+             frontErr = (abs(fitQ(ib,j) - 1.d0) + fitSig(j)) / max(0.05d0, abs(slope))
+             errSum = errSum + frontErr
+             nErr = nErr + 1
+          endif
+          if (frontErr < sublimationTolerance) then
+             nFrontConverged = nFrontConverged + 1
+          else if (abs(thetaBin)*180.d0/pi <= midplaneZone) then
+             nMidUnconverged = nMidUnconverged + 1
+          endif
+       enddo
+    enddo
+    meanFrontErr = 0.d0
+    if (nErr > 0) meanFrontErr = errSum/dble(nErr)
+    deallocate(octs, subs, rr, idx, bMeasR, bMeas, frontR, frontSize, bTrialUsed)
+    deallocate(frontFound, anyDust, tThinCell, ratioCell, presentCell)
+  contains
+    subroutine fitEvenPoly(np, x, y, use, nc, c)
+      ! least squares fit of y = sum_k c(k) x^(2(k-1)), k = 1..nc, to the points with use
+      integer, intent(in) :: np, nc
+      real(double), intent(in) :: x(:), y(:)
+      logical, intent(in) :: use(:)
+      real(double), intent(out) :: c(4)
+      real(double) :: a(4,4), rhs(4), f(4), piv
+      integer :: ip, k1, k2, kr
+      a = 0.d0
+      rhs = 0.d0
+      do ip = 1, np
+         if (.not.use(ip)) cycle
+         do k1 = 1, nc
+            f(k1) = x(ip)**(2*(k1-1))
+         enddo
+         do k1 = 1, nc
+            rhs(k1) = rhs(k1) + f(k1)*y(ip)
+            do k2 = 1, nc
+               a(k1,k2) = a(k1,k2) + f(k1)*f(k2)
+            enddo
+         enddo
+      enddo
+      ! Gaussian elimination (the normal matrix is symmetric positive definite)
+      do k1 = 1, nc
+         piv = a(k1,k1)
+         if (abs(piv) < 1.d-30) piv = 1.d-30
+         do kr = k1+1, nc
+            f(1) = a(kr,k1)/piv
+            a(kr,k1:nc) = a(kr,k1:nc) - f(1)*a(k1,k1:nc)
+            rhs(kr) = rhs(kr) - f(1)*rhs(k1)
+         enddo
+      enddo
+      c = 0.d0
+      do k1 = nc, 1, -1
+         c(k1) = (rhs(k1) - sum(a(k1,k1+1:nc)*c(k1+1:nc)))/max(1.d-30, a(k1,k1))
+      enddo
+    end subroutine fitEvenPoly
+
+    real(double) function evalEvenPoly(nc, c, x)
+      integer, intent(in) :: nc
+      real(double), intent(in) :: c(4), x
+      integer :: k1
+      evalEvenPoly = 0.d0
+      do k1 = 1, nc
+         evalEvenPoly = evalEvenPoly + c(k1)*x**(2*(k1-1))
+      enddo
+    end function evalEvenPoly
+  end subroutine sweepSublimation
+
+  subroutine writeSweepFitInfo()
+    ! per dust type convergence diagnostics of the last measure sweep
+    integer :: j
+    if (.not.allocated(sweepFitText)) return
+    do j = 1, size(sweepFitText)
+       call writeInfo(trim(sweepFitText(j)), FORINFO)
+    enddo
+  end subroutine writeSweepFitInfo
+
   ! Set the per-species dust temperatures (tempStorage columns nDustType+1:2*nDustType)
   ! and tDust to the cell temperature in cells treated with the diffusion approximation.
   ! nCold counts cells where any species was below half the cell temperature beforehand.
@@ -1948,7 +2666,7 @@ contains
              end if
           end do
        else
-          if (thisOctal%inFlow(subcell)) n = n + 1
+          if (thisOctal%inFlow(subcell).and.(thisOctal%rho(subcell) >= emptyCellRho)) n = n + 1
        endif
     enddo
   end subroutine countInflow
@@ -2046,6 +2764,7 @@ contains
              end if
           end do
        else
+          if (thisOctal%rho(subcell) < emptyCellRho) cycle   ! empty cells don't count either way
           if (.not.thisOctal%fixedTemperature(subcell)) then
              if (thisOctal%diffusionApprox(subcell)) then
                 nCellsInDiffusion = nCellsInDiffusion + 1
@@ -2097,6 +2816,8 @@ contains
    integer :: iDust
    real(oct) :: fracDust, fracNorm
    real(oct) :: aDotDust, kappaPDust, normDust, newTDust, etaDust
+   real(double) :: eqTarget, logTlo, logThi, logTmid, tMid
+   integer :: iBisect
    real(oct) :: tDustEff, oldTDustEff
 
     if(this_is_root) then !initialize some values
@@ -2186,31 +2907,34 @@ contains
                    enddo
                 endif
 
+                ! Per-species dust temperature from radiative equilibrium,
+                !    4 pi kappa_P(T) (sigma/pi) T^4 = adot,
+                ! solved self-consistently in T (bisection in log T on the tabulated Planck
+                ! mean). Evaluating kappa_P at the previous temperature instead makes the
+                ! temperature lag the radiation field by several iterations whenever a cell's
+                ! illumination changes (e.g. 10 K -> 10^4 K -> 1300 K -> 2000 K at the start).
+                if (.not.allocated(kPAbsTable)) call setupKPAbsTable(grid)
                 do iDust = 1, nDustType
                    fracDust = max(1.d-30, thisOctal%dustTypeFraction(subcell,iDust))
                    aDotDust = epsoverDeltaT * (thisOctal%tempStorage(subcell,iDust)/v) / 1.d30
-                   kappaPDust = 0.d0
-                   normDust = 0.d0
-                   do i = 1, nFreq
-                      thisLam = (cSpeed / freq(i)) * 1.d8
-                      call hunt(lamArray, nLambda, real(thisLam), iLam)
-                      if ((iLam >=1) .and. (iLam <= nLambda)) then
-                         kappaPDust = kappaPDust + fracDust * dble(grid%oneKappaAbs(iDust,iLam)) * dble(thisOctal%rho(subcell)) * &
-                              dble(bnu(dble(freq(i)),thisOctal%tempStorage(subcell,nDustType+iDust))) * dble(dnu(i))
-                         normDust = normDust + &
-                              dble(bnu(dble(freq(i)),thisOctal%tempStorage(subcell,nDustType+iDust))) * dble(dnu(i))
-                      endif
-                   enddo
-                   if (normDust /= 0.d0) then
-                      kappaPDust = kappaPDust / normDust / 1.d10
+                   ! target value of T^4 * kPAbsTable(T) (the table includes the 1e10 factor)
+                   eqTarget = dble(pi/stefanBoltz) * aDotDust / (dble(fourPi) * fracDust * &
+                        dble(thisOctal%rho(subcell)) / 1.d10)
+                   if ((aDotDust > 0.d0) .and. (thisOctal%rho(subcell) > 0.d0)) then
+                      logTlo = log10(max(1.d0, dble(TMinGlobal)))
+                      logThi = 4.d0
+                      do iBisect = 1, 50
+                         logTmid = 0.5d0*(logTlo + logThi)
+                         tMid = 10.d0**logTmid
+                         if (tMid**4 * kPAbsAt(iDust, tMid) > eqTarget) then
+                            logThi = logTmid
+                         else
+                            logTlo = logTmid
+                         endif
+                      enddo
+                      newTDust = 10.d0**(0.5d0*(logTlo + logThi))
                    else
-                      kappaPDust = 0.d0
-                   endif
-
-                   if (kappaPDust > 0.d0) then
-                      newTDust = (dble(pi/stefanBoltz) * aDotDust / (dble(fourPi) * kappaPDust))**0.25d0
-                   else
-                      newTDust = thisOctal%tempStorage(subcell,nDustType+iDust)
+                      newTDust = dble(TMinGlobal)
                    endif
                    thisOctal%tempStorage(subcell,nDustType+iDust) = max(dble(TMinGlobal), min(newTDust, 10000.d0))
                 enddo
@@ -2335,7 +3059,8 @@ contains
 
 subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, nLambda, lamArray,  &
       photonInDiffusionZone, diffusionZoneTemp,  directPhoton, scatteredPhoton, &
-       startOctal, foundOctal, foundSubcell, ilamIn, kappaAbsOut, kappaScaOut, kappaAbsPAHout, kappaScaPAHout)
+       startOctal, foundOctal, foundSubcell, ilamIn, kappaAbsOut, kappaScaOut, kappaAbsPAHout, kappaScaPAHout, &
+       distToStar, hitStar)
    use diffusion_mod, only: randomwalk
    use inputs_mod, only : scatteredLightWavelength, storeScattered, usePAH, nDustType
 
@@ -2379,7 +3104,13 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
    real(double), optional :: kappaScaOut, kappaAbsOut, kappaAbsPAHout, kappaScaPAHout
    integer, save :: iLamScat
    logical, save :: firstTime = .true.
-    real :: test  
+   ! distToStar: distance along uHat to a stellar surface (>= 1e30 if none). If the packet
+   ! reaches it before interacting, the path is cut there and hitStar is returned .true.
+   real(double), optional, intent(in) :: distToStar
+   logical, optional, intent(out) :: hitStar
+   real(double) :: pathSoFar
+   logical :: reachesStar
+    real :: test
     logical :: test2
 
 !$OMP THREADPRIVATE(firstTime, iLamScat)
@@ -2394,6 +3125,9 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
    photonInDiffusionZone = .false.
    kappaAbsDb = 0.d0; kappaScaDb = 0.d0
    topOctal => grid%octreeRoot
+   pathSoFar = 0.d0
+   reachesStar = .false.
+   if (present(hitStar)) hitStar = .false.
 
 
    if (firstTime) then
@@ -2441,6 +3175,14 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
     call distanceToCellBoundary(grid, rVec, uHat, tVal, sOctal)
 
     tval = tval + fudgeFac * grid%halfSmallestSubcell
+
+    ! stop the step at a stellar surface if it lies within this cell
+    if (present(distToStar)) then
+       if (pathSoFar + dble(tVal) >= distToStar) then
+          tVal = real(max(0.d0, distToStar - pathSoFar), oct)
+          reachesStar = .true.
+       endif
+    endif
 
     if (inFlow) then
        thisTau = dble(tVal) * (kappaAbsdb + kappaScadb + kappaAbsPAH + kappaScaPAH)
@@ -2591,6 +3333,15 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
 
 
+       ! the packet has now travelled this (possibly shortened) step; if it ended on a
+       ! stellar surface the packet is absorbed by the star
+       pathSoFar = pathSoFar + dble(tVal)
+       if (reachesStar) then
+          if (present(hitStar)) hitStar = .true.
+          escaped = .false.
+          goto 666
+       endif
+
 ! now we need to return if the photon is in the diffusionzone
 
        if (photonInDiffusionZone) then
@@ -2629,6 +3380,14 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
           tval = tval + fudgeFac*grid%halfSmallestSubcell
           octVec = rVec
 
+          ! stop the step at a stellar surface if it lies within this cell
+          if (present(distToStar)) then
+             if (pathSoFar + dble(tVal) >= distToStar) then
+                tVal = real(max(0.d0, distToStar - pathSoFar), oct)
+                reachesStar = .true.
+             endif
+          endif
+
 ! calculate the optical depth to the next cell boundary
 
           if (inFlow) then
@@ -2637,7 +3396,7 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
              thisTau = 1.0e-28
           end if
 
-          if (tVal == 0.0d0) then
+          if ((tVal == 0.0d0).and.(.not.reachesStar)) then
              escaped = .true.
              stillingrid = .false.
           endif

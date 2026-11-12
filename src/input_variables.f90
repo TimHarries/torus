@@ -510,6 +510,9 @@
   character(len=80) :: dustfilename(maxdusttypes)
   character(len=80) :: kappafilename(maxdusttypes)
   logical :: variableDustSublimation
+  real(double) :: sublimationTolerance   ! sweep: target relative uncertainty of the sublimation front radius
+  character(len=20) :: sublimationMethod ! "sweep" (default: ray sweep from the star plus adaptive
+                                         ! Monte Carlo update), "adaptive" or "old" (scheduled updates)
   real(double) :: tSub(maxdusttypes) ! variable dust sublimation temperature factor
   real(double) :: tSubPower(maxdusttypes) ! variable dust sublimation density factor
   real :: subrange
