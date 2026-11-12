@@ -21,7 +21,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt install -y gfortran
-          sudo apt-get install libcurl4-openssl-dev
+          sudo apt-get install libcurl4-openssl-dev libcfitsio-dev
         
       - name: Build and Test Linux
         run: |
