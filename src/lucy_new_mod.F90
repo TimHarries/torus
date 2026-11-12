@@ -2903,10 +2903,13 @@ subroutine toNextEventAMR(grid, rVec, uHat, packetWeight,  escaped,  thisFreq, n
 
     if (nTempStorage > 0) then
        tempStorageReduced = 0.d0
-       ! tempStorage is 2D; reduce across all contiguous elements.
-       call MPI_ALLREDUCE(tempStorage,tempStorageReduced,nVoxels*nTempStorage,MPI_DOUBLE_PRECISION,&
+       ! Only columns 1:nDustType (absorbed energy per dust type) are tallies to be summed.
+       ! Columns nDustType+1:2*nDustType hold per-dust temperatures, which are identical on
+       ! every rank; summing them would scale the temperatures by the number of ranks.
+       ! The first nDustType columns are contiguous, so reduce just those elements.
+       call MPI_ALLREDUCE(tempStorage,tempStorageReduced,nVoxels*nDustType,MPI_DOUBLE_PRECISION,&
             MPI_SUM,MPI_COMM_WORLD,ierr)
-       tempStorage = tempStorageReduced
+       tempStorage(:,1:nDustType) = tempStorageReduced(:,1:nDustType)
     endif
     
       deallocate(tempRealArray, tempDoubleArray)
