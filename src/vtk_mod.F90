@@ -2008,7 +2008,10 @@ endif
   end subroutine getRadialCentres
 
   recursive subroutine recursiveGetRadialCentres(grid, thisOctal, rArray, n, includeGhosts)
+#ifdef MPI
+    ! only referenced in the MPI block below; importing it unconditionally fails -Werror builds
     use inputs_mod, only : hydrodynamics
+#endif
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child
     real :: rArray(:)
