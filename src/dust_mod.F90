@@ -1366,12 +1366,12 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call sublimateDust(grid, child, totFrac,nFrac, tauMax, subTemp, minLevel)
+                call sublimateDust(grid, child, totFrac,nFrac, tauMax, subTemp, minLevel, undercorrectopt)
                 exit
              end if
           end do
        else
-          if (thisOctal%rho(subcell) < 1.e-29) continue
+          if (thisOctal%rho(subcell) < 1.e-29) cycle
           do j = 1, nDustType
              if (associated(thisOctal%tempStorage)) then
                 if (size(thisOctal%tempStorage,2) >= 2*nDustType) then
@@ -1399,15 +1399,20 @@ contains
              endif   
 
              if (tThresh /= 0.) sublimationTemp = tThresh
-             if (temperature < sublimationTemp) newFrac = 1.
 
-             
+
              newfrac = 1.d0 / (1.d0 + exp((temperature-sublimationTemp)/subrange))
 
              call locate(grid%lamArray, grid%nLambda, 5500., iLambda)
              newfrac = max(newfrac,smallVal)
 
-             oldFrac = thisOctal%dusttypeFraction(subcell,j) 
+             ! newFrac is a surviving fraction (0-1), so compare it with the current surviving
+             ! fraction, not with the absolute dust-to-gas ratio held in dustTypeFraction.
+             if (thisOctal%origDustTypeFraction(subcell,j) > 0.d0) then
+                oldFrac = thisOctal%dustTypeFraction(subcell,j) / thisOctal%origDustTypeFraction(subcell,j)
+             else
+                oldFrac = 0.d0
+             endif
              call returnKappa(grid, thisOctal, subcell, ilambda=iLambda, kappaSca=kappaSca, kappaAbs=kappaAbs, idust=j)
              oldtau = (kappaAbs+kappaSca)*thisOctal%subcellSize
 
