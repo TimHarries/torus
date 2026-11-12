@@ -122,7 +122,11 @@ contains
 #ifdef MPI
     ! Set the range of index for a photon loop used later.     
     np = nThreadsGlobal
-    if (np >= nMuMie) then        
+    ! Split the angles into contiguous blocks when there are no more processes than angles
+    ! (the usual case). The one-angle-per-process branch is only for np > nMuMie.
+    ! (This test was previously inverted, so every MPI run computed only the first np angles,
+    ! leaving a pure-backscatter phase function.)
+    if (np <= nMuMie) then
        n_rmdr = MOD(nMumie,np)
        m = nMumie/np
        if (myRankGlobal .lt. n_rmdr ) then
