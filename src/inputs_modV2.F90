@@ -4934,6 +4934,9 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     call getBigInteger("nphotimage", nphotimage, cLine, fLine, nLines, &
          "Number of photons in image: ","(a,i9,a)", nPhotons, ok, .false.)
 
+    call getReal("probdust", probDustInput, 1., cLine, fLine, nLines, &
+         "Fraction of packets emitted by dust (<=0: physical fraction): ","(a,f6.3,a)", -1., ok, .false.)
+
     call getInteger("maxscat", maxScat, cLine, fLine, nLines, &
          "Maximum number of scatterings: ","(a,i9,a)", 10000, ok, .false.)
 
@@ -5203,6 +5206,9 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
     call getBigInteger("nphotimage", nphotimage, cLine, fLine, nLines, &
          "Number of photons in image: ","(a,i9,a)", nPhotons, ok, .false.)
 
+    call getReal("probdust", probDustInput, 1., cLine, fLine, nLines, &
+         "Fraction of packets emitted by dust (<=0: physical fraction): ","(a,f6.3,a)", -1., ok, .false.)
+
     call getInteger("maxscat", maxScat, cLine, fLine, nLines, &
          "Maximum number of scatterings: ","(a,i9,a)", 10000, ok, .false.)
 
@@ -5438,6 +5444,9 @@ molecular_orientation: if ( .not.internalView .and. (molecularPhysics.or.h21cm))
 
     call getBigInteger("nphotspec", nPhotSpec, cLine, fLine, nLines, &
          "Number of photons in SED: ", "(a,i15,1x,a)", nphotons, ok, .false.)
+
+    call getReal("probdust", probDustInput, 1., cLine, fLine, nLines, &
+         "Fraction of packets emitted by dust (<=0: physical fraction): ","(a,f6.3,a)", -1., ok, .false.)
 
     call getLogical("forcefirstscat", forceFirstScat, cLine, fLine, nLines, &
          "Force first scattering: ","(a,1l,1x,a)", .false., ok, .false.)

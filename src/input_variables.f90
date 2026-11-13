@@ -1095,6 +1095,7 @@
   integer(kind=bigInt) :: nPhotons ! number of photons to use (phaseloop, photoion, photoionAMR, timedep)
   integer(kind=bigInt) :: nPhotSpec ! number of photons to use (phaseloop, photoion, photoionAMR, timedep)
   integer(kind=bigInt) :: nPhotImage ! number of photons to use (phaseloop, photoion, photoionAMR, timedep)
+  real :: probDustInput = -1. ! phaseloop: fraction of packets emitted by dust (re-weighted); <= 0 means use the physical fraction
   integer :: maxScat ! maximum number of scatterings a photon undergoes in phaseloop
   logical :: radPressureTest ! perform on the spot absorption for radiation pressure tests
   logical :: UV_vector

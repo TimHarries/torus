@@ -1415,6 +1415,19 @@ subroutine do_phaseloop(grid, flatspec, maxTau, miePhase, nsource, source, nmumi
               weightPhoto = (1. - chanceDust) / (1. - probDust)
            endif
 
+           ! User-chosen split between dust-emitted and source-emitted packets (probdust),
+           ! with packet weights chanceDust/probDust and (1-chanceDust)/(1-probDust) so the
+           ! expected flux is unchanged. E.g. probdust 0.5 gives many more stellar packets
+           ! (and hence less noisy scattered/polarized light) when dust emission dominates.
+           if ((probDustInput > 0.).and.(probDustInput < 1.).and.(nsource > 0).and. &
+                (chanceDust > 0.).and.(chanceDust < 1.)) then
+              probDust = probDustInput
+              weightDust = chanceDust / probDust
+              weightPhoto = (1. - chanceDust) / (1. - probDust)
+              if (writeoutput) write(*,'(a,f8.3,a,f8.3,a,f8.3)') "Using probdust: ", probDust, &
+                   "  weightDust: ", weightDust, "  weightPhoto: ", weightPhoto
+           endif
+
 
            energyPerPhoton =  (totDustContinuumEmission*1.d30 + lCore)/1.d20/dble(nInnerLoop)
 !           if (writeoutput) write(*,*) "WeightDust",weightDust
