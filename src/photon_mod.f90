@@ -271,6 +271,8 @@ contains
     integer :: subcellLocation
     logical :: mie_scattering
     real :: weight
+    integer :: kSampled                          ! dust type sampled by newDirectionMie (0 = none)
+    real(double) :: scaTot
     logical, save :: firstTime = .true.
 !$OMP THREADPRIVATE (firstTime)
     real, allocatable, save :: cosArray(:)
@@ -301,6 +303,7 @@ contains
     outgoing = givenVec
 
     randomDirection = .false.
+    kSampled = 0
 
 
     !
@@ -353,7 +356,7 @@ contains
        else
 
           outgoing = newDirectionMie(grid, thisOctal, subcell, incoming, thisPhoton%lambda, lamArray, nLambda, &
-               miePhase, nDustType, nMuMie, weight)
+               miePhase, nDustType, nMuMie, weight, iDustOut=kSampled)
           outPhoton%stokes = outPhoton%stokes * (1./weight)
 
 
@@ -401,14 +404,38 @@ contains
              j = nMumie-1
              fac =1.
           endif
-          allocate(allsca(1:nDustType))
-          call returnKappa(grid, currentOctal, currentSubcell, ilambda=i, allSca=allSca,&
-               dir=thisPhoton%direction)
-
-          k = randomIndex(allSca(1:nDustType), nDustType)
-          deallocate(allSca)
-          miePhaseTemp = miePhase(k, i, j) + fac * &
+          if (kSampled > 0) then
+             ! Direction was sampled from dust type kSampled's phase function and the
+             ! packet divided by that type's P11: apply the same type's matrix. (Drawing a
+             ! second, independent dust type here gave weights P11_k'/P11_k with unbounded
+             ! variance when the dust types' phase functions differ.)
+             k = kSampled
+             miePhaseTemp = miePhase(k, i, j) + fac * &
                   (miePhase(k, i, j+1) - miePhase(k, i, j))
+          else
+             ! Given direction (peel-off towards the observer): use the scattering-opacity
+             ! weighted mean phase matrix of all dust types in the cell rather than one dust
+             ! type drawn at random. Same expectation, no sampling noise from the choice.
+             allocate(allsca(1:nDustType))
+             call returnKappa(grid, thisOctal, subcell, ilambda=i, allSca=allSca,&
+                  dir=thisPhoton%direction)
+             scaTot = sum(allSca(1:nDustType))
+             miePhaseTemp%element = 0.d0
+             miePhaseTemp%gfac = 0.d0
+             if (scaTot > 0.d0) then
+                do k = 1, nDustType
+                   if (allSca(k) <= 0.d0) cycle
+                   miePhaseTemp%element = miePhaseTemp%element + (allSca(k)/scaTot) * &
+                        (miePhase(k, i, j)%element + dble(fac) * &
+                        (miePhase(k, i, j+1)%element - miePhase(k, i, j)%element))
+                enddo
+             else
+                k = 1
+                miePhaseTemp = miePhase(k, i, j) + fac * &
+                     (miePhase(k, i, j+1) - miePhase(k, i, j))
+             endif
+             deallocate(allSca)
+          endif
 
           outPhoton%stokes = apply(miePhaseTemp, outPhoton%stokes)
        endif

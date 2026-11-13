@@ -321,7 +321,10 @@ contains
 
   type(VECTOR) function newDirectionMie(grid, currentOctal, currentSubcell, &
        oldDirection, wavelength, &
-       lamArray, nLambda, miePhase, nDustType, nMuMie, weight)
+       lamArray, nLambda, miePhase, nDustType, nMuMie, weight, iDustOut)
+    ! iDustOut (optional): the dust type whose phase function was sampled, so the caller
+    ! can apply the same dust type's phase matrix (weight = that type's P11 at the
+    ! sampled angle, so the intensity is then unchanged by the scattering).
     use amr_mod, only : returnKappa
     use gridtype_mod
 !    use inputs_mod, only : inputGfac, henyeyGreensteinPhaseFunction
@@ -333,6 +336,7 @@ contains
     real, intent(in) :: wavelength
     integer :: nDustType
     real, optional :: weight
+    integer, optional, intent(out) :: iDustOut
     integer, intent(in) :: nMuMie, nLambda
     integer :: i, j, k, ilam
     real(double) :: theta, phi
@@ -357,6 +361,7 @@ contains
     call returnKappa(grid, currentOctal, currentSubcell, ilambda=ilam, allSca=allSca)
        
     k = randomIndex(allSca(1:nDustType), nDustType)
+    if (present(iDustOut)) iDustOut = k
     prob = 0.d0
     do i = 2, nMuMie
        prob(i) = prob(i-1) + miePhase(k,ilam,i)%element(1,1)*(cosArray(i)-cosArray(i-1))
