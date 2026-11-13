@@ -41,7 +41,7 @@ module lucy_new_mod
   character(len=240), allocatable, save, private :: sweepFitText(:) ! (nDustType) convergence diagnostic of the last measure sweep
   real(double), allocatable, save, private :: sweepFrontR(:,:)   ! front radius at the previous move sweep
   real(double), allocatable, save, private :: kPAbsTable(:,:)    ! (nKPTable, nDustType), includes 1e10 factor
-  real(double), allocatable, save, private :: kPAbsSource(:,:)   ! (nDustType, nSource) Planck mean abs at source Teff
+  real(double), allocatable, save, private :: kPAbsSource(:,:)   ! (nDustType, nSource) abs opacity averaged over the source spectrum
   real(double), allocatable, save, private :: kPExtSource(:)     ! (nDustType) Planck mean ext at source 1 Teff
 
 contains
@@ -1965,6 +1965,42 @@ contains
     if (den > 0.d0) planckMeanDustKappa = num/den
   end function planckMeanDustKappa
 
+  real(double) function spectrumMeanDustKappa(grid, iDust, src)
+    ! Absorption opacity of dust type iDust averaged over the source's emergent spectrum
+    ! (surface F_lambda), on the grid wavelength bins (includes 1e10 factor):
+    !    kappa_* = sum_i kappa_i * int_bin_i F_lambda dlambda / sum_i int_bin_i F_lambda dlambda
+    ! Falls back to the Planck mean at T_eff if the source has no spectrum.
+    use source_mod, only : SOURCETYPE
+    use spectrum_mod, only : integrateSpectrumOverBand
+    type(GRIDTYPE) :: grid
+    integer, intent(in) :: iDust
+    type(SOURCETYPE) :: src
+    integer :: i, nSpec
+    real(double) :: lam1, lam2, f, k, num, den
+
+    num = 0.d0
+    den = 0.d0
+    if (associated(src%spectrum%lambda).and.associated(src%spectrum%flux)) then
+       nSpec = src%spectrum%nLambda
+       do i = 2, grid%nLambda
+          lam1 = max(dble(grid%lamArray(i-1)), src%spectrum%lambda(1))
+          lam2 = min(dble(grid%lamArray(i)), src%spectrum%lambda(nSpec))
+          if (lam2 <= lam1) cycle
+          f = integrateSpectrumOverBand(src%spectrum, lam1, lam2)
+          if (f <= 0.d0) cycle
+          k = 0.5d0*dble(grid%oneKappaAbs(iDust,i-1) + grid%oneKappaAbs(iDust,i))
+          num = num + k*f
+          den = den + f
+       enddo
+    endif
+    if (den > 0.d0) then
+       spectrumMeanDustKappa = num/den
+    else
+       call writeWarning("spectrumMeanDustKappa: no source spectrum on the grid wavelengths, using Planck mean at Teff")
+       spectrumMeanDustKappa = planckMeanDustKappa(grid, iDust, src%teff, .false.)
+    endif
+  end function spectrumMeanDustKappa
+
   subroutine setupKPAbsTable(grid)
     ! Planck-mean absorption opacity of each dust type tabulated against temperature
     use inputs_mod, only : nDustType
@@ -1988,6 +2024,8 @@ contains
     integer :: nSource
     type(SOURCETYPE) :: source(:)
     integer :: j, k
+    real(double) :: kBB
+    character(len=200) :: message
     call setupKPAbsTable(grid)
     if (allocated(kPAbsSource)) return
     allocate(kPAbsSource(nDustType, nSource), kPExtSource(nDustType))
@@ -2000,7 +2038,14 @@ contains
     sweepFrontR = -1.d0
     do j = 1, nDustType
        do k = 1, nSource
-          kPAbsSource(j,k) = planckMeanDustKappa(grid, j, source(k)%teff, .false.)
+          kPAbsSource(j,k) = spectrumMeanDustKappa(grid, j, source(k))
+          kBB = planckMeanDustKappa(grid, j, source(k)%teff, .false.)
+          if (kBB > 0.d0) then
+             write(message,'(a,i2,a,i2,a,1pe10.3,a,0pf7.4)') "Sweep heating opacity: dust type ", j, &
+                  ", source ", k, ": spectrum-weighted kappa_abs ", kPAbsSource(j,k), &
+                  ", ratio to Planck mean at Teff ", kPAbsSource(j,k)/kBB
+             call writeInfo(message, TRIVIAL)
+          endif
        enddo
        kPExtSource(j) = planckMeanDustKappa(grid, j, source(1)%teff, .true.)
     enddo
@@ -2018,8 +2063,11 @@ contains
 
   real(double) function thinDustTemperature(position, iDust, source, nSource)
     ! Optically thin equilibrium temperature of dust type iDust at position:
-    ! T^4 kP(T) = sum over sources of W T_eff^4 kP(T_eff), W the geometric dilution factor
-    ! (stellar radius from luminosity and T_eff, so point sources are handled too).
+    ! T^4 kP(T) = sum over sources of W T_eff^4 kappa_*, W the geometric dilution factor
+    ! (stellar radius from luminosity and T_eff, so point sources are handled too) and
+    ! kappa_* the absorption opacity averaged over the source's actual spectrum
+    ! (spectrumMeanDustKappa), so the bolometric heating is sigma T_eff^4 W but its
+    ! wavelength distribution follows e.g. the Kurucz model rather than a blackbody.
     use source_mod, only : SOURCETYPE
     type(VECTOR), intent(in) :: position
     integer, intent(in) :: iDust, nSource
